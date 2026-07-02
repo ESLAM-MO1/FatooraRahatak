@@ -1,0 +1,15 @@
+D:\SAAS\src\FatooraRahatak.Application\bin\Debug\net10.0\FatooraRahatak.Application.deps.json
+D:\SAAS\src\FatooraRahatak.Application\bin\Debug\net10.0\FatooraRahatak.Application.dll
+D:\SAAS\src\FatooraRahatak.Application\bin\Debug\net10.0\FatooraRahatak.Application.pdb
+D:\SAAS\src\FatooraRahatak.Application\bin\Debug\net10.0\FatooraRahatak.Domain.dll
+D:\SAAS\src\FatooraRahatak.Application\bin\Debug\net10.0\FatooraRahatak.Domain.pdb
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.csproj.AssemblyReference.cache
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.AssemblyInfoInputs.cache
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.AssemblyInfo.cs
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.csproj.CoreCompileInputs.cache
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraR.35F22331.Up2Date
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.dll
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\refint\FatooraRahatak.Application.dll
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.pdb
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\ref\FatooraRahatak.Application.dll

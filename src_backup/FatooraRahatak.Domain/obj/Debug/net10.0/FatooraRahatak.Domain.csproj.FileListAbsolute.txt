@@ -1,0 +1,11 @@
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\FatooraRahatak.Domain.GeneratedMSBuildEditorConfig.editorconfig
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\FatooraRahatak.Domain.AssemblyInfoInputs.cache
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\FatooraRahatak.Domain.AssemblyInfo.cs
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\FatooraRahatak.Domain.csproj.CoreCompileInputs.cache
+D:\SAAS\src\FatooraRahatak.Domain\bin\Debug\net10.0\FatooraRahatak.Domain.deps.json
+D:\SAAS\src\FatooraRahatak.Domain\bin\Debug\net10.0\FatooraRahatak.Domain.dll
+D:\SAAS\src\FatooraRahatak.Domain\bin\Debug\net10.0\FatooraRahatak.Domain.pdb
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\FatooraRahatak.Domain.dll
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\refint\FatooraRahatak.Domain.dll
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\FatooraRahatak.Domain.pdb
+D:\SAAS\src\FatooraRahatak.Domain\obj\Debug\net10.0\ref\FatooraRahatak.Domain.dll

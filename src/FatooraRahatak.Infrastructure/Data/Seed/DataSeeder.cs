@@ -1,5 +1,6 @@
 using FatooraRahatak.Domain.Entities.Roles;
 using FatooraRahatak.Domain.Entities.Packages;
+using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ public static class DataSeeder
     {
         await SeedRolesAndPermissionsAsync(context);
         await SeedPackagesAsync(context);
+        await SeedSuperAdminAsync(context);
     }
 
     private static async Task SeedRolesAndPermissionsAsync(AppDbContext context)
@@ -259,6 +261,26 @@ public static class DataSeeder
         };
 
         await context.Packages.AddRangeAsync(packages);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedSuperAdminAsync(AppDbContext context)
+    {
+        if (await context.Users.AnyAsync(u => u.Email == "admin@platform.com"))
+            return;
+
+        var superAdmin = new User
+        {
+            FullName = "منصة الإدارة",
+            Email = "admin@platform.com",
+            Phone = "0500000001",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
+            UserType = UserType.SuperAdmin,
+            IsActive = true,
+            IsVerified = true
+        };
+
+        context.Users.Add(superAdmin);
         await context.SaveChangesAsync();
     }
 }

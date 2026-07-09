@@ -5,7 +5,15 @@ using System.Text;
 using FatooraRahatak.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -46,13 +54,19 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICategoryServic
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductService, FatooraRahatak.Infrastructure.Services.ProductService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IInventoryService, FatooraRahatak.Infrastructure.Services.InventoryService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IEmployeeService, FatooraRahatak.Infrastructure.Services.EmployeeService>();
-builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ISubscriptionService, FatooraRahatak.Infrastructure.Services.SubscriptionService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductVariantService, FatooraRahatak.Infrastructure.Services.ProductVariantService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStockCountService, FatooraRahatak.Infrastructure.Services.StockCountService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ISubscriptionService, FatooraRahatak.Infrastructure.Services.SubscriptionService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAttendanceService, FatooraRahatak.Infrastructure.Services.AttendanceService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IPayrollService, FatooraRahatak.Infrastructure.Services.PayrollService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICartService, FatooraRahatak.Infrastructure.Services.CartService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICouponService, FatooraRahatak.Infrastructure.Services.CouponService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAdminService, FatooraRahatak.Infrastructure.Services.AdminService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IPublicStoreService, FatooraRahatak.Infrastructure.Services.PublicStoreService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOrderService, FatooraRahatak.Infrastructure.Services.OrderService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerCustomerService, FatooraRahatak.Infrastructure.Services.OwnerCustomerService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerDashboardService, FatooraRahatak.Infrastructure.Services.OwnerDashboardService>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -66,7 +80,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

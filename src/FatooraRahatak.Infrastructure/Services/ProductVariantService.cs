@@ -101,7 +101,7 @@ public class ProductVariantService : IProductVariantService
         await GetOwnedProductAsync(storeId, productId);
 
         var variants = await _context.ProductVariants
-            .Where(v => v.ProductId == productId)
+            .Where(v => v.ProductId == productId && v.IsActive)
             .ToListAsync();
 
         var result = new List<VariantResponseDto>();
@@ -121,6 +121,14 @@ public class ProductVariantService : IProductVariantService
         if (variant == null)
             throw new InvalidOperationException("المتغير غير موجود");
 
+        var hasBlockingTransactions = await _context.InventoryTransactions
+            .AnyAsync(t => t.VariantId == variantId &&
+                (t.ReferenceType != "InitialStock" || t.Quantity != 0));
+
+        if (hasBlockingTransactions)
+            throw new InvalidOperationException(
+                "لا يمكن حذف هذا المتغير لأن له حركات مخزون مسجلة. يمكنك إخفاؤه بدلاً من ذلك.");
+
         var attributes = _context.VariantAttributes.Where(a => a.VariantId == variantId);
         _context.VariantAttributes.RemoveRange(attributes);
 
@@ -128,6 +136,24 @@ public class ProductVariantService : IProductVariantService
         _context.InventoryStocks.RemoveRange(stocks);
 
         _context.ProductVariants.Remove(variant);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeactivateVariantAsync(long storeId, long productId, long variantId)
+    {
+        await GetOwnedProductAsync(storeId, productId);
+
+        var variant = await _context.ProductVariants
+            .FirstOrDefaultAsync(v => v.Id == variantId && v.ProductId == productId);
+
+        if (variant == null)
+            throw new InvalidOperationException("المتغير غير موجود");
+
+        if (!variant.IsActive)
+            throw new InvalidOperationException("المتغير مخفي بالفعل");
+
+        variant.IsActive = false;
+        variant.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
     }
 
@@ -216,6 +242,7 @@ public class ProductVariantService : IProductVariantService
             Barcode = v.Barcode,
             PriceAdjustment = v.PriceAdjustment,
             AvailableQuantity = quantity,
+            IsActive = v.IsActive,
             Attributes = attributes
         };
     }

@@ -8,4 +8,7 @@ public class StoreResponseDto
     public string Status { get; set; } = string.Empty;
     public string PackageName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public string? CustomDomain { get; set; }
+    public string CustomDomainStatus { get; set; } = string.Empty;
+    public bool IsOnline { get; set; }
 }

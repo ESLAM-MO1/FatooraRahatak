@@ -83,6 +83,23 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [HttpPut("variants/{variantId}/deactivate")]
+    public async Task<IActionResult> DeactivateVariant(long productId, long variantId)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            await _variantService.DeactivateVariantAsync(storeId.Value, productId, variantId);
+            return Ok(new { success = true, message = "تم إخفاء المتغير بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpPost("images")]
     public async Task<IActionResult> AddImage(long productId, [FromBody] AddProductImageDto dto)
     {

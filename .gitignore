@@ -1,0 +1,54 @@
+# Claude
+.claude/
+
+# Local NuGet cache
+.nuget-packages/
+
+# Backup
+src_backup/
+
+# Ignore these markdown files
+مرجع_المشروع_الشامل.md
+معلم1_برومبت_لكيرسر.md
+
+# Build
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# NuGet
+.nuget/
+.nuget-packages/
+packages/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+
+# Publish
+publish/
+
+# Temporary
+temp/
+tmp/

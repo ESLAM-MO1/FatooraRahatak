@@ -8,6 +8,7 @@ D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Applicat
 D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.AssemblyInfoInputs.cache
 D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.AssemblyInfo.cs
 D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.csproj.CoreCompileInputs.cache
+D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.sourcelink.json
 D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraR.35F22331.Up2Date
 D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\FatooraRahatak.Application.dll
 D:\SAAS\src\FatooraRahatak.Application\obj\Debug\net10.0\refint\FatooraRahatak.Application.dll

@@ -37,10 +37,14 @@ D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.IdentityModel.Logging
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.IdentityModel.Tokens.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.OpenApi.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.SqlServer.Server.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.VisualStudio.SolutionPersistence.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Mono.TextTemplating.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Newtonsoft.Json.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.ClientModel.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.CodeDom.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Composition.AttributedModel.dll
@@ -147,7 +151,9 @@ D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.GeneratedMSB
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.AssemblyInfoInputs.cache
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.AssemblyInfo.cs
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.csproj.CoreCompileInputs.cache
+D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.MvcApplicationPartsAssemblyInfo.cs
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.MvcApplicationPartsAssemblyInfo.cache
+D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.sourcelink.json
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\rjimswa.dswa.cache.json
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
@@ -163,8 +169,3 @@ D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\refint\FatooraRahatak.API.dll
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.pdb
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.genruntimeconfig.cache
 D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\ref\FatooraRahatak.API.dll
-D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.OpenApi.dll
-D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
-D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
-D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
-D:\SAAS\src\FatooraRahatak.API\obj\Debug\net10.0\FatooraRahatak.API.MvcApplicationPartsAssemblyInfo.cs

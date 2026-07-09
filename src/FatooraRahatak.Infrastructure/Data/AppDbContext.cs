@@ -7,6 +7,8 @@ using FatooraRahatak.Domain.Entities.Employees;
 using FatooraRahatak.Domain.Entities.Products;
 using FatooraRahatak.Domain.Entities.Inventory;
 using FatooraRahatak.Domain.Entities.Sales;
+using FatooraRahatak.Domain.Entities.Platform;
+using FatooraRahatak.Domain.Entities.Orders;
 
 namespace FatooraRahatak.Infrastructure.Data;
 
@@ -51,6 +53,10 @@ public class AppDbContext : DbContext
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<CouponUsage> CouponUsages => Set<CouponUsage>();
+    public DbSet<PlatformSetting> PlatformSettings => Set<PlatformSetting>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -477,6 +483,74 @@ modelBuilder.Entity<Coupon>()
     .Property(c => c.DiscountValue).HasPrecision(10, 2);
 modelBuilder.Entity<Coupon>()
     .Property(c => c.MinOrderAmount).HasPrecision(10, 2);
-        
+modelBuilder.Entity<PlatformSetting>()
+    .HasIndex(p => p.SettingKey)
+    .IsUnique();
+
+// --- تاسك 4 (معلم 2): نظام الطلبات ---
+
+modelBuilder.Entity<Order>()
+    .HasIndex(o => o.OrderNumber)
+    .IsUnique();
+
+modelBuilder.Entity<Order>()
+    .HasOne(o => o.Store)
+    .WithMany()
+    .HasForeignKey(o => o.StoreId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+modelBuilder.Entity<Order>()
+    .HasOne(o => o.Customer)
+    .WithMany()
+    .HasForeignKey(o => o.CustomerId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+modelBuilder.Entity<Order>()
+    .HasOne(o => o.Coupon)
+    .WithMany()
+    .HasForeignKey(o => o.CouponId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+modelBuilder.Entity<OrderItem>()
+    .HasOne(i => i.Order)
+    .WithMany(o => o.Items)
+    .HasForeignKey(i => i.OrderId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+modelBuilder.Entity<OrderItem>()
+    .HasOne(i => i.Product)
+    .WithMany()
+    .HasForeignKey(i => i.ProductId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+modelBuilder.Entity<OrderItem>()
+    .HasOne(i => i.Variant)
+    .WithMany()
+    .HasForeignKey(i => i.VariantId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+modelBuilder.Entity<OrderStatusHistory>()
+    .HasOne(h => h.Order)
+    .WithMany(o => o.StatusHistory)
+    .HasForeignKey(h => h.OrderId)
+    .OnDelete(DeleteBehavior.Cascade);
+
+modelBuilder.Entity<OrderStatusHistory>()
+    .HasOne(h => h.ChangedBy)
+    .WithMany()
+    .HasForeignKey(h => h.ChangedByUserId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+modelBuilder.Entity<Order>()
+    .Property(o => o.SubTotal).HasPrecision(10, 2);
+modelBuilder.Entity<Order>()
+    .Property(o => o.DiscountAmount).HasPrecision(10, 2);
+modelBuilder.Entity<Order>()
+    .Property(o => o.TotalAmount).HasPrecision(10, 2);
+modelBuilder.Entity<OrderItem>()
+    .Property(i => i.UnitPriceSnapshot).HasPrecision(10, 2);
+modelBuilder.Entity<OrderItem>()
+    .Property(i => i.LineTotal).HasPrecision(10, 2);
+
     }
 }

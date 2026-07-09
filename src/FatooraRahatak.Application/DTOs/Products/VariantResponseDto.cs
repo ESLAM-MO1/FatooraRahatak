@@ -8,5 +8,6 @@ public class VariantResponseDto
     public string? Barcode { get; set; }
     public decimal PriceAdjustment { get; set; }
     public int AvailableQuantity { get; set; }
+    public bool IsActive { get; set; }
     public List<VariantAttributeDto> Attributes { get; set; } = new();
 }

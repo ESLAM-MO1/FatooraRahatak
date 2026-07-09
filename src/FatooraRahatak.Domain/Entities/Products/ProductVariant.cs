@@ -9,6 +9,7 @@ public class ProductVariant : BaseEntity
     public string Sku { get; set; } = string.Empty;
     public string? Barcode { get; set; }
     public decimal PriceAdjustment { get; set; } = 0;
+    public bool IsActive { get; set; } = true;
     public string? Image { get; set; }
 
     public Product Product { get; set; } = null!;

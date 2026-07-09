@@ -44,4 +44,61 @@ public class StoreController : ControllerBase
 
         return Ok(new { success = true, data = result });
     }
+
+    [HttpPut("custom-domain")]
+    public async Task<IActionResult> UpdateCustomDomain([FromBody] UpdateCustomDomainDto dto)
+    {
+        try
+        {
+            var result = await _storeService.UpdateCustomDomainAsync(GetUserId(), dto);
+            return Ok(new { success = true, data = result, message = "تم حفظ الدومين، بانتظار المراجعة والتفعيل" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("return-policy")]
+    public async Task<IActionResult> UpdateReturnPolicy([FromBody] UpdateReturnPolicyDto dto)
+    {
+        try
+        {
+            var result = await _storeService.UpdateReturnPolicyAsync(GetUserId(), dto);
+            return Ok(new { success = true, data = result, message = "تم حفظ سياسة الاسترجاع بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("contact")]
+    public async Task<IActionResult> UpdateContact([FromBody] UpdateStoreContactDto dto)
+    {
+        try
+        {
+            var result = await _storeService.UpdateContactAsync(GetUserId(), dto);
+            return Ok(new { success = true, data = result, message = "تم حفظ بيانات التواصل بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("toggle-online")]
+    public async Task<IActionResult> ToggleOnline()
+    {
+        try
+        {
+            var isOnline = await _storeService.ToggleStoreOnlineAsync(GetUserId());
+            var message = isOnline ? "تم تفعيل المتجر بنجاح" : "تم تعطيل المتجر بنجاح";
+            return Ok(new { success = true, data = new { isOnline }, message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 }

@@ -7,13 +7,13 @@ using FatooraRahatak.Domain.Entities.Products;
 using FatooraRahatak.Domain.Entities.Inventory;
 using FatooraRahatak.Domain.Entities.Sales;
 namespace FatooraRahatak.Domain.Entities.Stores;
-
 public class Store : BaseEntity
 {
     public long OwnerUserId { get; set; }
     public string StoreName { get; set; } = string.Empty;
     public string StoreSlug { get; set; } = string.Empty;
     public string? CustomDomain { get; set; }
+    public CustomDomainStatus CustomDomainStatus { get; set; } = CustomDomainStatus.None;
     public string? Logo { get; set; }
     public StoreStatus Status { get; set; } = StoreStatus.PendingApproval;
     public long PackageId { get; set; }
@@ -22,7 +22,10 @@ public class Store : BaseEntity
     public string DefaultLanguage { get; set; } = "ar";
     public bool IsVatRegistered { get; set; } = false;
     public string? VatNumber { get; set; }
-
+    public string? ReturnPolicyText { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactAddress { get; set; }
     public User Owner { get; set; } = null!;
     public Package Package { get; set; } = null!;
     public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
@@ -32,4 +35,5 @@ public class Store : BaseEntity
     public ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>();
     public ICollection<Cart> Carts { get; set; } = new List<Cart>();
     public ICollection<Coupon> Coupons { get; set; } = new List<Coupon>();
+    public bool IsOnline { get; set; } = true;
 }

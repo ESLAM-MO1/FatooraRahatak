@@ -11,6 +11,7 @@ D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraRahatak.Infra
 D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraRahatak.Infrastructure.AssemblyInfoInputs.cache
 D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraRahatak.Infrastructure.AssemblyInfo.cs
 D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraRahatak.Infrastructure.csproj.CoreCompileInputs.cache
+D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraRahatak.Infrastructure.sourcelink.json
 D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraR.B2FB6F7B.Up2Date
 D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\FatooraRahatak.Infrastructure.dll
 D:\SAAS\src\FatooraRahatak.Infrastructure\obj\Debug\net10.0\refint\FatooraRahatak.Infrastructure.dll

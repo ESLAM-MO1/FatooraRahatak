@@ -27,7 +27,7 @@ obj/
 # NuGet
 .nuget/
 .nuget-packages/
-packages/
+
 
 # Logs
 *.log

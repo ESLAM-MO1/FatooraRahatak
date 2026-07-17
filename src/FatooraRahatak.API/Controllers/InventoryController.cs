@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Inventory;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,11 +16,13 @@ public class InventoryController : ControllerBase
 {
     private readonly IInventoryService _inventoryService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public InventoryController(IInventoryService inventoryService, AppDbContext context)
+    public InventoryController(IInventoryService inventoryService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _inventoryService = inventoryService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -75,9 +78,12 @@ public class InventoryController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "StockTransfer.Add"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
-            var id = await _inventoryService.CreateStockTransferAsync(storeId.Value, GetUserId(), dto);
+            var id = await _inventoryService.CreateStockTransferAsync(storeId.Value, userId, dto);
             return Ok(new { success = true, data = new { transferId = id }, message = "تم إنشاء طلب التحويل، بانتظار الاعتماد" });
         }
         catch (InvalidOperationException ex)
@@ -92,9 +98,12 @@ public class InventoryController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "StockTransfer.Approve"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
-            await _inventoryService.ApproveStockTransferAsync(storeId.Value, id, GetUserId());
+            await _inventoryService.ApproveStockTransferAsync(storeId.Value, id, userId);
             return Ok(new { success = true, message = "تم اعتماد التحويل وتنفيذه" });
         }
         catch (InvalidOperationException ex)
@@ -109,9 +118,12 @@ public class InventoryController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "DamagedStock.Add"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
-            var id = await _inventoryService.ReportDamagedStockAsync(storeId.Value, GetUserId(), dto);
+            var id = await _inventoryService.ReportDamagedStockAsync(storeId.Value, userId, dto);
             return Ok(new { success = true, data = new { damageId = id }, message = "تم تسجيل التلف، بانتظار الاعتماد" });
         }
         catch (InvalidOperationException ex)
@@ -126,9 +138,12 @@ public class InventoryController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "DamagedStock.Approve"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
-            await _inventoryService.ApproveDamagedStockAsync(storeId.Value, id, GetUserId());
+            await _inventoryService.ApproveDamagedStockAsync(storeId.Value, id, userId);
             return Ok(new { success = true, message = "تم اعتماد التلف وخصم الكمية" });
         }
         catch (InvalidOperationException ex)

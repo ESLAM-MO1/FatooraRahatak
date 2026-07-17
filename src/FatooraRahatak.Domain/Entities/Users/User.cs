@@ -10,7 +10,8 @@ public class User : BaseEntity
     public string FullName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
+    public string? PasswordHash { get; set; }
+    public string? GoogleId { get; set; }
     public UserType UserType { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsVerified { get; set; } = false;
@@ -23,4 +24,3 @@ public class User : BaseEntity
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<VerificationCode> VerificationCodes { get; set; } = new List<VerificationCode>();
 }
-

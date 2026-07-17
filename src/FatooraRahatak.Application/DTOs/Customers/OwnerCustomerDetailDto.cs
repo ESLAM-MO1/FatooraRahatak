@@ -9,6 +9,7 @@ public class OwnerCustomerDetailDto
     public int OrdersCount { get; set; }
     public decimal TotalSpent { get; set; }
     public List<OwnerCustomerOrderDto> Orders { get; set; } = new();
+    public long? CustomerId { get; set; }
 }
 
 public class OwnerCustomerOrderDto
@@ -19,4 +20,6 @@ public class OwnerCustomerOrderDto
     public string Status { get; set; } = string.Empty;
     public int ItemsCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    
+    
 }

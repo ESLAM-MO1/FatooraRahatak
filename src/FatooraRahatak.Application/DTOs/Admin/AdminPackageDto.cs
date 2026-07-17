@@ -18,5 +18,7 @@ public class AdminPackageDto
     public bool HasCustomDomain { get; set; }
     public bool HasAffiliateMarketing { get; set; }
     public bool HasApiAccess { get; set; }
+    public int MaxThemes { get; set; }
+    public decimal CommissionPercentage { get; set; }
     public bool IsActive { get; set; }
 }

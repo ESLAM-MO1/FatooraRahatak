@@ -10,10 +10,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class StockCountService : IStockCountService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public StockCountService(AppDbContext context)
+    public StockCountService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<StockCountResponseDto> StartAsync(long storeId, long userId, StartStockCountDto dto)
@@ -131,6 +133,20 @@ public class StockCountService : IStockCountService
         stockCount.CompletedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        try
+        {
+            if (stockCount.StartedByUserId != approvedByUserId)
+            {
+                await _notificationService.CreateAsync(
+                    stockCount.StartedByUserId,
+                    "تم اعتماد الجرد الدوري",
+                    $"تم اعتماد جرد {stockCount.Warehouse.WarehouseName} بعد إدخال الكميات الفعلية",
+                    NotificationType.StockCountCompleted,
+                    $"/dashboard/stock-counts/{stockCount.Id}");
+            }
+        }
+        catch { }
     }
 
     private async Task<StockCountResponseDto> BuildResponseAsync(long stockCountId)

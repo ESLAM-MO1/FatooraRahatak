@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import Icon from "@/components/Icon";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Payroll {
   id: number;
@@ -14,6 +20,8 @@ interface Payroll {
   commission: number;
   netSalary: number;
   status: "Draft" | "Approved" | "Paid";
+  journalEntryId: number | null;
+  journalEntryNumber: string | null;
 }
 
 const emptyEditForm = {
@@ -22,16 +30,8 @@ const emptyEditForm = {
   commission: "",
 };
 
-function Icon({ path, className = "" }: { path: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} width="18" height="18">
-      <path d={path} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-const alertPath = "M12 9v4M12 17h.01M10.3 3.9 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z";
-
 export default function PayrollPage() {
+  const { t } = useTranslation();
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,11 +55,11 @@ export default function PayrollPage() {
       });
       setPayrolls(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل الرواتب");
+      setError(err.response?.data?.message || t("payroll.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [year, month]);
+  }, [year, month, t]);
 
   useEffect(() => {
     fetchPayrolls();
@@ -74,7 +74,7 @@ export default function PayrollPage() {
       await fetchPayrolls();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء إنشاء الرواتب"
+        err.response?.data?.message || t("payroll.generateError")
       );
     } finally {
       setGenerating(false);
@@ -116,7 +116,7 @@ export default function PayrollPage() {
       await fetchPayrolls();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء تحديث الراتب"
+        err.response?.data?.message || t("payroll.updateError")
       );
     } finally {
       setSubmittingEdit(false);
@@ -126,7 +126,7 @@ export default function PayrollPage() {
   const handleApprove = async (payroll: Payroll) => {
     if (
       !window.confirm(
-        `هل أنت متأكد من اعتماد راتب "${payroll.employeeName}"؟`
+        t("payroll.confirmApprove", { employeeName: payroll.employeeName })
       )
     ) {
       return;
@@ -139,7 +139,7 @@ export default function PayrollPage() {
       await fetchPayrolls();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء اعتماد الراتب"
+        err.response?.data?.message || t("payroll.approveError")
       );
     } finally {
       setApprovingId(null);
@@ -149,7 +149,7 @@ export default function PayrollPage() {
   const handleMarkPaid = async (payroll: Payroll) => {
     if (
       !window.confirm(
-        `هل أنت متأكد من تسجيل صرف راتب "${payroll.employeeName}"؟`
+        t("payroll.confirmPaid", { employeeName: payroll.employeeName })
       )
     ) {
       return;
@@ -162,7 +162,7 @@ export default function PayrollPage() {
       await fetchPayrolls();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء تسجيل الصرف"
+        err.response?.data?.message || t("payroll.markPaidError")
       );
     } finally {
       setPayingId(null);
@@ -172,11 +172,11 @@ export default function PayrollPage() {
   const statusLabel = (status: string) => {
     switch (status) {
       case "Draft":
-        return "مسودة";
+        return t("payroll.statusDraft");
       case "Approved":
-        return "معتمد";
+        return t("payroll.statusApproved");
       case "Paid":
-        return "مصرف";
+        return t("payroll.statusPaid");
       default:
         return status;
     }
@@ -185,34 +185,29 @@ export default function PayrollPage() {
   const statusColor = (status: string) => {
     switch (status) {
       case "Draft":
-        return "text-[var(--gold-deep)] bg-[var(--gold-soft)]";
+        return "badge badge--yellow";
       case "Approved":
-        return "text-[var(--blue-deep)] bg-[var(--blue-50)]";
+        return "badge badge--blue";
       case "Paid":
-        return "text-[var(--green)] bg-[var(--green-soft)]";
+        return "badge badge--green";
       default:
-        return "text-[var(--sub)] bg-[#F1F2F4]";
+        return "badge badge--gray";
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جاري التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
-    <div dir="rtl">
+    <div>
       <div className="flex flex-col gap-4 mb-6">
-        <h1 className="text-[22px] font-bold text-[var(--blue-deep)]">الرواتب</h1>
+        <PageHeader icon="wallet" title={t("payroll.title")} />
 
         <div className="card p-6">
           <div className="flex flex-wrap gap-4 items-end">
             <div>
-              <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">السنة</label>
+              <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.year")}</label>
               <div className="field-shell max-w-[150px]">
                 <input
                   type="number"
@@ -224,7 +219,7 @@ export default function PayrollPage() {
               </div>
             </div>
             <div>
-              <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">الشهر</label>
+              <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.month")}</label>
               <div className="field-shell max-w-[150px]">
                 <select
                   value={month}
@@ -239,45 +234,36 @@ export default function PayrollPage() {
             <button
               onClick={handleGenerate}
               disabled={generating}
-              className="btn-primary whitespace-nowrap disabled:opacity-60"
+              className="btn btn-primary whitespace-nowrap disabled:opacity-60"
             >
-              {generating ? "جاري الإنشاء..." : "إنشاء رواتب الشهر"}
+              {generating ? t("payroll.generating") : t("payroll.generate")}
             </button>
           </div>
         </div>
 
-        {error && (
-          <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 text-sm flex items-start gap-2">
-            <Icon path={alertPath} className="shrink-0 mt-0.5" />
-            {error}
-          </div>
-        )}
+        {error && <div className="alert alert--danger mb-4">{error}</div>}
 
-        {actionError && !showEditModal && (
-          <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 text-sm flex items-start gap-2">
-            <Icon path={alertPath} className="shrink-0 mt-0.5" />
-            {actionError}
-          </div>
-        )}
+        {actionError && !showEditModal && <div className="alert alert--danger mb-4">{actionError}</div>}
 
         <div className="card overflow-hidden">
           {payrolls.length === 0 ? (
             <p className="p-6 text-[var(--sub)] text-sm text-center">
-              لا توجد رواتب لهذا الشهر. اضغط "إنشاء رواتب الشهر" لإنشاء رواتب لكل الموظفين النشطين.
+              {t("payroll.noPayrolls")}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                   <tr>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">اسم الموظف</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الراتب الأساسي</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">البدلات</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الخصومات</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">العمولة</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الصافي</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الحالة</th>
-                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">إجراءات</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.employeeName")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.basic")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.allowances")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.deductions")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.commission")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.net")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("common.status")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("payroll.journalEntry")}</th>
+                    <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,23 +276,36 @@ export default function PayrollPage() {
                       <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.commission.toLocaleString("ar-SA")} ر.س</td>
                       <td className="p-4 text-[var(--blue-deep)] font-bold" dir="ltr">{payroll.netSalary.toLocaleString("ar-SA")} ر.س</td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${statusColor(payroll.status)}`}>
+                        <span className={statusColor(payroll.status)}>
                           {statusLabel(payroll.status)}
                         </span>
+                      </td>
+                      <td className="p-4">
+                        {payroll.journalEntryId ? (
+                          <Link
+                            href={`/dashboard/accounting/journal-entries/${payroll.journalEntryId}`}
+                            className="inline-flex items-center gap-1.5 text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]"
+                          >
+                            <Icon name="journal" className="shrink-0" />
+                            {payroll.journalEntryNumber || `#${payroll.journalEntryId}`}
+                          </Link>
+                        ) : (
+                          <span className="text-[var(--sub)] text-[13px]">—</span>
+                        )}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           {payroll.status === "Draft" && (
                             <>
                               <button onClick={() => openEditModal(payroll)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
-                                تعديل
+                                {t("common.edit")}
                               </button>
                               <button
                                 onClick={() => handleApprove(payroll)}
                                 disabled={approvingId === payroll.id}
                                 className="text-[var(--green)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
                               >
-                                {approvingId === payroll.id ? "جاري الاعتماد..." : "اعتماد"}
+                                {approvingId === payroll.id ? t("payroll.approving") : t("payroll.approve")}
                               </button>
                             </>
                           )}
@@ -316,11 +315,11 @@ export default function PayrollPage() {
                               disabled={payingId === payroll.id}
                               className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px] disabled:opacity-50"
                             >
-                              {payingId === payroll.id ? "جاري التسجيل..." : "تسجيل الصرف"}
+                              {payingId === payroll.id ? t("payroll.markingPaid") : t("payroll.markPaid")}
                             </button>
                           )}
                           {payroll.status === "Paid" && (
-                            <span className="text-[var(--sub)] text-[13px]">تم الصرف</span>
+                            <span className="text-[var(--sub)] text-[13px]">{t("payroll.paid")}</span>
                           )}
                         </div>
                       </td>
@@ -333,22 +332,18 @@ export default function PayrollPage() {
         </div>
 
         {showEditModal && editingPayroll && (
-          <div className="fixed inset-0 bg-[var(--blue-deep)]/50 flex items-center justify-center z-50 p-4">
+          <div className="modal-overlay">
             <div className="card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
               <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">
-                تعديل راتب {editingPayroll.employeeName}
+                {t("payroll.editSalary")} {editingPayroll.employeeName}
               </h2>
 
-              {actionError && (
-                <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 mb-4 text-sm">
-                  {actionError}
-                </div>
-              )}
+              {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
               <form onSubmit={handleEditSubmit} className="space-y-3">
                 <div>
                   <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">
-                    الراتب الأساسي (للقراءة فقط)
+                    {t("payroll.readonlyBasic")}
                   </label>
                   <div className="field-shell bg-[#F7F8F9]">
                     <input
@@ -361,7 +356,7 @@ export default function PayrollPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">البدلات</label>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.allowances")}</label>
                   <div className="field-shell">
                     <input
                       type="number"
@@ -374,7 +369,7 @@ export default function PayrollPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">الخصومات</label>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.deductions")}</label>
                   <div className="field-shell">
                     <input
                       type="number"
@@ -387,7 +382,7 @@ export default function PayrollPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">العمولة</label>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.commission")}</label>
                   <div className="field-shell">
                     <input
                       type="number"
@@ -401,7 +396,7 @@ export default function PayrollPage() {
 
                 <div className="bg-[var(--blue-50)] p-4 rounded-xl text-sm">
                   <p className="font-bold text-[var(--ink)]">
-                    الصافي المتوقع:{" "}
+                    {t("payroll.expectedNet")}{" "}
                     <span className="text-[var(--blue-deep)]" dir="ltr">
                       {(
                         editingPayroll.basicSalary +
@@ -415,11 +410,11 @@ export default function PayrollPage() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={submittingEdit} className="btn-primary flex-1 disabled:opacity-60">
-                    {submittingEdit ? "جاري الحفظ..." : "حفظ"}
+                  <button type="submit" disabled={submittingEdit} className="btn btn-primary flex-1 disabled:opacity-60">
+                    {submittingEdit ? t("payroll.saving") : t("common.save")}
                   </button>
-                  <button type="button" onClick={closeEditModal} className="btn-secondary flex-1">
-                    إلغاء
+                  <button type="button" onClick={closeEditModal} className="btn btn-secondary flex-1">
+                    {t("common.cancel")}
                   </button>
                 </div>
               </form>

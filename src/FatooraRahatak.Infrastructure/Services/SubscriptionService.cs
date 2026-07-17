@@ -9,12 +9,14 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class SubscriptionService : ISubscriptionService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
     private static readonly string[] PackageOrder = { "المجانية", "الإنطلاق", "التوسع", "الريادة" };
 
-    public SubscriptionService(AppDbContext context)
+    public SubscriptionService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<SubscriptionStatusDto> GetStatusAsync(long storeId)
@@ -31,6 +33,26 @@ public class SubscriptionService : ISubscriptionService
             .Where(s => s.StoreId == storeId)
             .OrderByDescending(s => s.CreatedAt)
             .FirstOrDefaultAsync();
+
+        if (activeSubscription != null && activeSubscription.EndDate < DateTime.UtcNow.AddDays(7) && activeSubscription.EndDate > DateTime.UtcNow)
+        {
+            try
+            {
+                var existingWarning = await _context.Notifications
+                    .AnyAsync(n => n.UserId == store.OwnerUserId && n.Type == NotificationType.SubscriptionExpiring && n.CreatedAt > DateTime.UtcNow.AddDays(-1));
+
+                if (!existingWarning)
+                {
+                    await _notificationService.CreateAsync(
+                        store.OwnerUserId,
+                        "الباقة على وشك الانتهاء",
+                        $"باقتك الحالية تنتهي في {activeSubscription.EndDate:yyyy-MM-dd}، جدّدها لاستمرار الخدمة",
+                        NotificationType.SubscriptionExpiring,
+                        "/dashboard/subscription");
+                }
+            }
+            catch { }
+        }
 
         return new SubscriptionStatusDto
         {

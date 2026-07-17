@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/api";
+import Icon from "@/components/Icon";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 
 interface Category {
   id: number;
@@ -26,17 +31,8 @@ const emptyForm: CategoryForm = {
   sortOrder: 0,
 };
 
-function Icon({ path, className = "" }: { path: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} width="18" height="18">
-      <path d={path} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-const plusPath = "M12 5v14M5 12h14";
-const alertPath = "M12 9v4M12 17h.01M10.3 3.9 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z";
-
 export default function CategoriesPage() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -53,11 +49,11 @@ export default function CategoriesPage() {
       const res = await api.get("/categories");
       setCategories(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل التصنيفات");
+      setError(err.response?.data?.message || t("category.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchCategories();
@@ -114,7 +110,7 @@ export default function CategoriesPage() {
       await fetchCategories();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء حفظ التصنيف"
+        err.response?.data?.message || t("category.saveError")
       );
     } finally {
       setSubmitting(false);
@@ -123,7 +119,7 @@ export default function CategoriesPage() {
 
   const handleDelete = async (category: Category) => {
     if (
-      !window.confirm(`هل أنت متأكد من حذف التصنيف "${category.nameAr}"؟`)
+      !window.confirm(t("category.confirmDelete", { name: category.nameAr }))
     ) {
       return;
     }
@@ -134,7 +130,7 @@ export default function CategoriesPage() {
       await fetchCategories();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء حذف التصنيف"
+        err.response?.data?.message || t("category.deleteError")
       );
     }
   };
@@ -148,52 +144,36 @@ export default function CategoriesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جاري التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
-    <div dir="rtl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[22px] font-bold text-[var(--blue-deep)]">التصنيفات</h1>
-        <button onClick={openAddModal} className="btn-primary">
-          <Icon path={plusPath} />
-          إضافة تصنيف
+    <div>
+      <PageHeader icon="tag" title={t("category.title")}>
+        <button onClick={openAddModal} className="btn btn-primary">
+          <Icon name="plus" />
+          {t("category.add")}
         </button>
-      </div>
+      </PageHeader>
 
-      {error && (
-        <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 mb-4 text-sm flex items-start gap-2">
-          <Icon path={alertPath} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert--danger">{error}</div>}
 
-      {actionError && !showModal && (
-        <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 mb-4 text-sm flex items-start gap-2">
-          <Icon path={alertPath} className="shrink-0 mt-0.5" />
-          {actionError}
-        </div>
-      )}
+      {actionError && !showModal && <div className="alert alert--danger">{actionError}</div>}
 
       <div className="card overflow-hidden">
         {categories.length === 0 ? (
-          <p className="p-6 text-[var(--sub)] text-sm">لا توجد تصنيفات بعد.</p>
+          <p className="p-6 text-[var(--sub)] text-sm">{t("category.noCategories")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الاسم (عربي)</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الاسم (إنجليزي)</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">التصنيف الرئيسي</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الترتيب</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الحالة</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">إجراءات</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("category.nameAr")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("category.nameEn")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("category.parent")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("category.sortOrder")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("category.status")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("category.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,23 +184,17 @@ export default function CategoriesPage() {
                     <td className="p-4 text-[var(--sub)]">{getParentName(category.parentCategoryId)}</td>
                     <td className="p-4 text-[var(--sub)]">{category.sortOrder}</td>
                     <td className="p-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                          category.isActive
-                            ? "text-[var(--green)] bg-[var(--green-soft)]"
-                            : "text-[var(--sub)] bg-[#F1F2F4]"
-                        }`}
-                      >
-                        {category.isActive ? "مفعّل" : "غير مفعّل"}
+                      <span className={`badge ${category.isActive ? "badge--green" : "badge--gray"}`}>
+                        {category.isActive ? t("category.active") : t("category.inactive")}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex gap-3">
                         <button onClick={() => openEditModal(category)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
-                          تعديل
+                          {t("common.edit")}
                         </button>
                         <button onClick={() => handleDelete(category)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]">
-                          حذف
+                          {t("common.delete")}
                         </button>
                       </div>
                     </td>
@@ -233,21 +207,17 @@ export default function CategoriesPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-[var(--blue-deep)]/50 flex items-center justify-center z-50 p-4">
+        <div className="modal-overlay">
           <div className="card p-6 w-full max-w-md">
             <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">
-              {editingId ? "تعديل تصنيف" : "إضافة تصنيف"}
+              {editingId ? t("category.edit") : t("category.add")}
             </h2>
 
-            {actionError && (
-              <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 mb-4 text-sm">
-                {actionError}
-              </div>
-            )}
+            {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">الاسم (عربي)</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("category.nameAr")}</label>
                 <div className="field-shell">
                   <input
                     type="text"
@@ -259,7 +229,7 @@ export default function CategoriesPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">الاسم (إنجليزي)</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("category.nameEn")}</label>
                 <div className="field-shell">
                   <input
                     type="text"
@@ -272,13 +242,13 @@ export default function CategoriesPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">التصنيف الرئيسي (اختياري)</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("category.parentOptional")}</label>
                 <div className="field-shell">
                   <select
                     value={form.parentCategoryId}
                     onChange={(e) => setForm({ ...form, parentCategoryId: e.target.value })}
                   >
-                    <option value="">بدون تصنيف رئيسي</option>
+                    <option value="">{t("category.noParent")}</option>
                     {parentOptions.map((c) => (
                       <option key={c.id} value={c.id}>{c.nameAr}</option>
                     ))}
@@ -287,7 +257,7 @@ export default function CategoriesPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">الترتيب</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("category.sortOrder")}</label>
                 <div className="field-shell">
                   <input
                     type="number"
@@ -301,11 +271,11 @@ export default function CategoriesPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={submitting} className="btn-primary flex-1 disabled:opacity-60">
-                  {submitting ? "جاري الحفظ..." : "حفظ"}
+                <button type="submit" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">
+                  {submitting ? t("common.saving") : t("common.save")}
                 </button>
-                <button type="button" onClick={closeModal} className="btn-secondary flex-1">
-                  إلغاء
+                <button type="button" onClick={closeModal} className="btn btn-secondary flex-1">
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>

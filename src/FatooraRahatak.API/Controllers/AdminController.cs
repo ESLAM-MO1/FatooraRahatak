@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Admin;
+using FatooraRahatak.Application.DTOs.Platform;
 using FatooraRahatak.Application.Interfaces;
 namespace FatooraRahatak.API.Controllers;
 [ApiController]
@@ -10,9 +11,11 @@ namespace FatooraRahatak.API.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
-    public AdminController(IAdminService adminService)
+    private readonly ISiteService _siteService;
+    public AdminController(IAdminService adminService, ISiteService siteService)
     {
         _adminService = adminService;
+        _siteService = siteService;
     }
     private bool IsSuperAdmin()
     {
@@ -192,5 +195,152 @@ public class AdminController : ControllerBase
         if (forbidden != null) return forbidden;
         await _adminService.UpdateSettingsAsync(dto);
         return Ok(new { success = true, message = "تم تحديث الإعدادات بنجاح" });
+    }
+
+    // === Pages ===
+    [HttpGet("site/pages/{pageKey}")]
+    public async Task<IActionResult> GetPage(string pageKey)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var page = await _siteService.GetPageByKeyAsync(pageKey);
+        return Ok(new { success = true, data = page });
+    }
+
+    [HttpPut("site/pages/{pageKey}")]
+    public async Task<IActionResult> UpdatePage(string pageKey, [FromBody] UpdateSitePageDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.UpdatePageAsync(GetCurrentUserId(), pageKey, dto);
+        return Ok(new { success = true, message = "تم حفظ الصفحة" });
+    }
+
+    [HttpPost("site/upload"), DisableRequestSizeLimit]
+    public async Task<IActionResult> UploadSiteFile(IFormFile file)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, message = "الملف مطلوب" });
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowedImages = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        var allowedVideos = new[] { ".mp4", ".webm", ".mov" };
+        bool isVideo = allowedVideos.Contains(ext);
+        if (!allowedImages.Contains(ext) && !isVideo)
+            return BadRequest(new { success = false, message = "صيغة الملف غير مدعومة" });
+        long maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+        if (file.Length > maxSize)
+            return BadRequest(new { success = false, message = $"حجم الملف يتجاوز الحد المسموح {(isVideo ? "50" : "5")} ميجابايت" });
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        Directory.CreateDirectory(uploadsDir);
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var url = $"{baseUrl}/uploads/{fileName}";
+        return Ok(new { success = true, data = new { url } });
+    }
+
+    // === FAQ ===
+    [HttpGet("site/faq")]
+    public async Task<IActionResult> GetAllFaq()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetAllFaqAsync() });
+    }
+
+    [HttpPost("site/faq")]
+    public async Task<IActionResult> CreateFaq([FromBody] CreateFaqItemDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var result = await _siteService.CreateFaqAsync(dto);
+        return Ok(new { success = true, data = result, message = "تمت الإضافة" });
+    }
+
+    [HttpPut("site/faq/{id}")]
+    public async Task<IActionResult> UpdateFaq(long id, [FromBody] CreateFaqItemDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.UpdateFaqAsync(id, dto);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    [HttpDelete("site/faq/{id}")]
+    public async Task<IActionResult> DeleteFaq(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.DeleteFaqAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // === Contact Messages ===
+    [HttpGet("site/contact-messages")]
+    public async Task<IActionResult> GetContactMessages()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetContactMessagesAsync() });
+    }
+
+    [HttpPut("site/contact-messages/{id}/status")]
+    public async Task<IActionResult> UpdateContactMessageStatus(long id, [FromBody] string status)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.UpdateContactMessageStatusAsync(id, status);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Blog ===
+    [HttpGet("site/blog")]
+    public async Task<IActionResult> GetAllBlogPosts()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetAllBlogPostsAsync() });
+    }
+
+    [HttpPost("site/blog")]
+    public async Task<IActionResult> CreateBlogPost([FromBody] CreateBlogPostDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var result = await _siteService.CreateBlogPostAsync(GetCurrentUserId(), dto);
+        return Ok(new { success = true, data = result, message = "تم إنشاء المقال" });
+    }
+
+    [HttpPut("site/blog/{id}")]
+    public async Task<IActionResult> UpdateBlogPost(long id, [FromBody] UpdateBlogPostDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.UpdateBlogPostAsync(id, dto);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    [HttpDelete("site/blog/{id}")]
+    public async Task<IActionResult> DeleteBlogPost(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.DeleteBlogPostAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("site/blog/{id}/publish")]
+    public async Task<IActionResult> PublishBlogPost(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.PublishBlogPostAsync(id);
+        return Ok(new { success = true, message = "تم النشر" });
+    }
+
+    // === Landing Page ===
+    [HttpGet("site/landing-page")]
+    public async Task<IActionResult> GetLandingPage()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var content = await _siteService.GetLandingPageAsync();
+        return Ok(new { success = true, data = content });
+    }
+
+    [HttpPut("site/landing-page")]
+    public async Task<IActionResult> UpdateLandingPage([FromBody] LandingPageContentDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.UpdateLandingPageAsync(dto);
+        return Ok(new { success = true, message = "تم حفظ محتوى الصفحة الرئيسية" });
     }
 }

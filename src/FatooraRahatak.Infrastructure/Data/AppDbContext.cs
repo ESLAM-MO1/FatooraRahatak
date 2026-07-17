@@ -9,6 +9,9 @@ using FatooraRahatak.Domain.Entities.Inventory;
 using FatooraRahatak.Domain.Entities.Sales;
 using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Entities.Orders;
+using FatooraRahatak.Domain.Entities.Notifications;
+using FatooraRahatak.Domain.Entities.Accounting;
+using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Infrastructure.Data;
 
@@ -18,6 +21,8 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Store> Stores => Set<Store>();
+    public DbSet<StoreShippingMethod> StoreShippingMethods => Set<StoreShippingMethod>();
+    public DbSet<StorePaymentMethod> StorePaymentMethods => Set<StorePaymentMethod>();
 
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -33,6 +38,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<VariantAttribute> VariantAttributes => Set<VariantAttribute>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
@@ -57,6 +63,20 @@ public class AppDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<Account> Accounts => Set<Account>();
+    public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
+    public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
+    public DbSet<Invoice> Invoices => Set<Invoice>();
+    public DbSet<InvoiceItem> InvoiceItems => Set<InvoiceItem>();
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
+    public DbSet<FixedAsset> FixedAssets => Set<FixedAsset>();
+    public DbSet<DepreciationEntry> DepreciationEntries => Set<DepreciationEntry>();
+    public DbSet<StoreInvitation> StoreInvitations => Set<StoreInvitation>();
+    public DbSet<PosShift> PosShifts => Set<PosShift>();
+    public DbSet<SitePage> SitePages => Set<SitePage>();
+    public DbSet<SiteFaqItem> SiteFaqItems => Set<SiteFaqItem>();
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -99,6 +119,19 @@ public class AppDbContext : DbContext
             .WithMany(r => r.Employees)
             .HasForeignKey(e => e.RoleId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StoreInvitation>()
+            .HasOne(i => i.Store)
+            .WithMany()
+            .HasForeignKey(i => i.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreInvitation>()
+            .HasIndex(i => i.Token)
+            .IsUnique();
+
+        modelBuilder.Entity<StoreInvitation>()
+            .HasIndex(i => new { i.StoreId, i.Email });
 
         modelBuilder.Entity<Subscription>()
             .HasOne(s => s.Store)
@@ -145,6 +178,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Package>()
             .Property(p => p.MonthlyPrice)
             .HasPrecision(10, 2);
+
+        modelBuilder.Entity<Package>()
+            .Property(p => p.CommissionPercentage)
+            .HasPrecision(5, 2);
 
         modelBuilder.Entity<Employee>()
             .Property(e => e.Salary)
@@ -221,336 +258,605 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ProductVariant>()
             .Property(v => v.PriceAdjustment).HasPrecision(10, 2);
 
-modelBuilder.Entity<Warehouse>()
-    .HasOne(w => w.Store)
-    .WithMany(s => s.Warehouses)
-    .HasForeignKey(w => w.StoreId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Warehouse>()
+            .HasOne(w => w.Store)
+            .WithMany(s => s.Warehouses)
+            .HasForeignKey(w => w.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryStock>()
-    .HasOne(i => i.Warehouse)
-    .WithMany(w => w.StockItems)
-    .HasForeignKey(i => i.WarehouseId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryStock>()
+            .HasOne(i => i.Warehouse)
+            .WithMany(w => w.StockItems)
+            .HasForeignKey(i => i.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryStock>()
-    .HasOne(i => i.Product)
-    .WithMany()
-    .HasForeignKey(i => i.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryStock>()
+            .HasOne(i => i.Product)
+            .WithMany()
+            .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryStock>()
-    .HasOne(i => i.Variant)
-    .WithMany()
-    .HasForeignKey(i => i.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryStock>()
+            .HasOne(i => i.Variant)
+            .WithMany()
+            .HasForeignKey(i => i.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryTransaction>()
-    .HasOne(t => t.Warehouse)
-    .WithMany()
-    .HasForeignKey(t => t.WarehouseId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>()
+            .HasOne(t => t.Warehouse)
+            .WithMany()
+            .HasForeignKey(t => t.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryTransaction>()
-    .HasOne(t => t.Product)
-    .WithMany()
-    .HasForeignKey(t => t.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>()
+            .HasOne(t => t.Product)
+            .WithMany()
+            .HasForeignKey(t => t.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryTransaction>()
-    .HasOne(t => t.Variant)
-    .WithMany()
-    .HasForeignKey(t => t.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>()
+            .HasOne(t => t.Variant)
+            .WithMany()
+            .HasForeignKey(t => t.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryTransaction>()
-    .HasOne(t => t.CreatedBy)
-    .WithMany()
-    .HasForeignKey(t => t.CreatedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryTransaction>()
+            .HasOne(t => t.CreatedBy)
+            .WithMany()
+            .HasForeignKey(t => t.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockTransfer>()
-    .HasOne(t => t.FromWarehouse)
-    .WithMany()
-    .HasForeignKey(t => t.FromWarehouseId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockTransfer>()
+            .HasOne(t => t.FromWarehouse)
+            .WithMany()
+            .HasForeignKey(t => t.FromWarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockTransfer>()
-    .HasOne(t => t.ToWarehouse)
-    .WithMany()
-    .HasForeignKey(t => t.ToWarehouseId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockTransfer>()
+            .HasOne(t => t.ToWarehouse)
+            .WithMany()
+            .HasForeignKey(t => t.ToWarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockTransfer>()
-    .HasOne(t => t.RequestedBy)
-    .WithMany()
-    .HasForeignKey(t => t.RequestedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockTransfer>()
+            .HasOne(t => t.RequestedBy)
+            .WithMany()
+            .HasForeignKey(t => t.RequestedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockTransfer>()
-    .HasOne(t => t.ApprovedBy)
-    .WithMany()
-    .HasForeignKey(t => t.ApprovedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockTransfer>()
+            .HasOne(t => t.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(t => t.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockTransferItem>()
-    .HasOne(i => i.Transfer)
-    .WithMany(t => t.Items)
-    .HasForeignKey(i => i.TransferId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockTransferItem>()
+            .HasOne(i => i.Transfer)
+            .WithMany(t => t.Items)
+            .HasForeignKey(i => i.TransferId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<StockTransferItem>()
-    .HasOne(i => i.Product)
-    .WithMany()
-    .HasForeignKey(i => i.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockTransferItem>()
+            .HasOne(i => i.Product)
+            .WithMany()
+            .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockTransferItem>()
-    .HasOne(i => i.Variant)
-    .WithMany()
-    .HasForeignKey(i => i.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockTransferItem>()
+            .HasOne(i => i.Variant)
+            .WithMany()
+            .HasForeignKey(i => i.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<DamagedStock>()
-    .HasOne(d => d.Warehouse)
-    .WithMany()
-    .HasForeignKey(d => d.WarehouseId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DamagedStock>()
+            .HasOne(d => d.Warehouse)
+            .WithMany()
+            .HasForeignKey(d => d.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<DamagedStock>()
-    .HasOne(d => d.Product)
-    .WithMany()
-    .HasForeignKey(d => d.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DamagedStock>()
+            .HasOne(d => d.Product)
+            .WithMany()
+            .HasForeignKey(d => d.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<DamagedStock>()
-    .HasOne(d => d.Variant)
-    .WithMany()
-    .HasForeignKey(d => d.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DamagedStock>()
+            .HasOne(d => d.Variant)
+            .WithMany()
+            .HasForeignKey(d => d.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<DamagedStock>()
-    .HasOne(d => d.ReportedBy)
-    .WithMany()
-    .HasForeignKey(d => d.ReportedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DamagedStock>()
+            .HasOne(d => d.ReportedBy)
+            .WithMany()
+            .HasForeignKey(d => d.ReportedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<DamagedStock>()
-    .HasOne(d => d.ApprovedBy)
-    .WithMany()
-    .HasForeignKey(d => d.ApprovedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DamagedStock>()
+            .HasOne(d => d.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(d => d.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<InventoryStock>()
-    .HasIndex(i => new { i.WarehouseId, i.ProductId, i.VariantId })
-    .IsUnique();
-modelBuilder.Entity<VerificationCode>()
-    .HasOne(v => v.User)
-    .WithMany(u => u.VerificationCodes)
-    .HasForeignKey(v => v.UserId)
-    .OnDelete(DeleteBehavior.Cascade);
-modelBuilder.Entity<StockCount>()
-    .HasOne(s => s.Warehouse)
-    .WithMany()
-    .HasForeignKey(s => s.WarehouseId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InventoryStock>()
+            .HasIndex(i => new { i.WarehouseId, i.ProductId, i.VariantId })
+            .IsUnique();
+        modelBuilder.Entity<VerificationCode>()
+            .HasOne(v => v.User)
+            .WithMany(u => u.VerificationCodes)
+            .HasForeignKey(v => v.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockCount>()
+            .HasOne(s => s.Warehouse)
+            .WithMany()
+            .HasForeignKey(s => s.WarehouseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockCount>()
-    .HasOne(s => s.StartedBy)
-    .WithMany()
-    .HasForeignKey(s => s.StartedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockCount>()
+            .HasOne(s => s.StartedBy)
+            .WithMany()
+            .HasForeignKey(s => s.StartedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockCount>()
-    .HasOne(s => s.ApprovedBy)
-    .WithMany()
-    .HasForeignKey(s => s.ApprovedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockCount>()
+            .HasOne(s => s.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(s => s.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockCountItem>()
-    .HasOne(i => i.StockCount)
-    .WithMany(s => s.Items)
-    .HasForeignKey(i => i.StockCountId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockCountItem>()
+            .HasOne(i => i.StockCount)
+            .WithMany(s => s.Items)
+            .HasForeignKey(i => i.StockCountId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<StockCountItem>()
-    .HasOne(i => i.Product)
-    .WithMany()
-    .HasForeignKey(i => i.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StockCountItem>()
+            .HasOne(i => i.Product)
+            .WithMany()
+            .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<StockCountItem>()
-    .HasOne(i => i.Variant)
-    .WithMany()
-    .HasForeignKey(i => i.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
-modelBuilder.Entity<Attendance>()
-    .HasOne(a => a.Employee)
-    .WithMany(e => e.AttendanceRecords)
-    .HasForeignKey(a => a.EmployeeId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StockCountItem>()
+            .HasOne(i => i.Variant)
+            .WithMany()
+            .HasForeignKey(i => i.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Attendance>()
+            .HasOne(a => a.Employee)
+            .WithMany(e => e.AttendanceRecords)
+            .HasForeignKey(a => a.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<Attendance>()
-    .HasIndex(a => new { a.EmployeeId, a.Date })
-    .IsUnique();
+        modelBuilder.Entity<Attendance>()
+            .HasIndex(a => new { a.EmployeeId, a.Date })
+            .IsUnique();
 
-modelBuilder.Entity<LeaveRequest>()
-    .HasOne(l => l.Employee)
-    .WithMany(e => e.LeaveRequests)
-    .HasForeignKey(l => l.EmployeeId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LeaveRequest>()
+            .HasOne(l => l.Employee)
+            .WithMany(e => e.LeaveRequests)
+            .HasForeignKey(l => l.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<LeaveRequest>()
-    .HasOne(l => l.ApprovedBy)
-    .WithMany()
-    .HasForeignKey(l => l.ApprovedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
-modelBuilder.Entity<Payroll>()
-    .HasOne(p => p.Employee)
-    .WithMany(e => e.PayrollRecords)
-    .HasForeignKey(p => p.EmployeeId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LeaveRequest>()
+            .HasOne(l => l.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(l => l.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Payroll>()
+            .HasOne(p => p.Employee)
+            .WithMany(e => e.PayrollRecords)
+            .HasForeignKey(p => p.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<Payroll>()
-    .HasOne(p => p.ApprovedBy)
-    .WithMany()
-    .HasForeignKey(p => p.ApprovedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Payroll>()
+            .HasOne(p => p.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(p => p.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<Payroll>()
-    .HasIndex(p => new { p.EmployeeId, p.PeriodMonth })
-    .IsUnique();
+        modelBuilder.Entity<Payroll>()
+            .HasIndex(p => new { p.EmployeeId, p.PeriodMonth })
+            .IsUnique();
 
-modelBuilder.Entity<Payroll>()
-    .Property(p => p.BasicSalary).HasPrecision(10, 2);
-modelBuilder.Entity<Payroll>()
-    .Property(p => p.Allowances).HasPrecision(10, 2);
-modelBuilder.Entity<Payroll>()
-    .Property(p => p.Deductions).HasPrecision(10, 2);
-modelBuilder.Entity<Payroll>()
-    .Property(p => p.Commission).HasPrecision(10, 2);
-modelBuilder.Entity<Payroll>()
-    .Property(p => p.NetSalary).HasPrecision(10, 2);
-modelBuilder.Entity<Cart>()
-    .HasOne(c => c.Store)
-    .WithMany(s => s.Carts)
-    .HasForeignKey(c => c.StoreId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Payroll>()
+            .Property(p => p.BasicSalary).HasPrecision(10, 2);
+        modelBuilder.Entity<Payroll>()
+            .Property(p => p.Allowances).HasPrecision(10, 2);
+        modelBuilder.Entity<Payroll>()
+            .Property(p => p.Deductions).HasPrecision(10, 2);
+        modelBuilder.Entity<Payroll>()
+            .Property(p => p.Commission).HasPrecision(10, 2);
+        modelBuilder.Entity<Payroll>()
+            .Property(p => p.NetSalary).HasPrecision(10, 2);
+        modelBuilder.Entity<Cart>()
+            .HasOne(c => c.Store)
+            .WithMany(s => s.Carts)
+            .HasForeignKey(c => c.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<CartItem>()
-    .HasOne(i => i.Cart)
-    .WithMany(c => c.Items)
-    .HasForeignKey(i => i.CartId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CartItem>()
+            .HasOne(i => i.Cart)
+            .WithMany(c => c.Items)
+            .HasForeignKey(i => i.CartId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<CartItem>()
-    .HasOne(i => i.Product)
-    .WithMany()
-    .HasForeignKey(i => i.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CartItem>()
+            .HasOne(i => i.Product)
+            .WithMany()
+            .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<CartItem>()
-    .HasOne(i => i.Variant)
-    .WithMany()
-    .HasForeignKey(i => i.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CartItem>()
+            .HasOne(i => i.Variant)
+            .WithMany()
+            .HasForeignKey(i => i.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<Coupon>()
-    .HasOne(c => c.Store)
-    .WithMany(s => s.Coupons)
-    .HasForeignKey(c => c.StoreId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Coupon>()
+            .HasOne(c => c.Store)
+            .WithMany(s => s.Coupons)
+            .HasForeignKey(c => c.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<Coupon>()
-    .HasIndex(c => new { c.StoreId, c.Code })
-    .IsUnique();
+        modelBuilder.Entity<Coupon>()
+            .HasIndex(c => new { c.StoreId, c.Code })
+            .IsUnique();
 
-modelBuilder.Entity<CouponUsage>()
-    .HasOne(u => u.Coupon)
-    .WithMany(c => c.Usages)
-    .HasForeignKey(u => u.CouponId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CouponUsage>()
+            .HasOne(u => u.Coupon)
+            .WithMany(c => c.Usages)
+            .HasForeignKey(u => u.CouponId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<CouponUsage>()
-    .HasOne(u => u.Cart)
-    .WithMany()
-    .HasForeignKey(u => u.CartId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CouponUsage>()
+            .HasOne(u => u.Cart)
+            .WithMany()
+            .HasForeignKey(u => u.CartId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<CartItem>()
-    .Property(i => i.PriceAtAdd).HasPrecision(10, 2);
-modelBuilder.Entity<Coupon>()
-    .Property(c => c.DiscountValue).HasPrecision(10, 2);
-modelBuilder.Entity<Coupon>()
-    .Property(c => c.MinOrderAmount).HasPrecision(10, 2);
-modelBuilder.Entity<PlatformSetting>()
-    .HasIndex(p => p.SettingKey)
-    .IsUnique();
+        modelBuilder.Entity<CartItem>()
+            .Property(i => i.PriceAtAdd).HasPrecision(10, 2);
+        modelBuilder.Entity<Coupon>()
+            .Property(c => c.DiscountValue).HasPrecision(10, 2);
+        modelBuilder.Entity<Coupon>()
+            .Property(c => c.MinOrderAmount).HasPrecision(10, 2);
+        modelBuilder.Entity<PlatformSetting>()
+            .HasIndex(p => p.SettingKey)
+            .IsUnique();
 
-// --- تاسك 4 (معلم 2): نظام الطلبات ---
+        modelBuilder.Entity<SitePage>()
+            .HasIndex(p => p.PageKey)
+            .IsUnique();
 
-modelBuilder.Entity<Order>()
-    .HasIndex(o => o.OrderNumber)
-    .IsUnique();
+        modelBuilder.Entity<BlogPost>()
+            .HasIndex(p => p.SlugAr)
+            .IsUnique();
 
-modelBuilder.Entity<Order>()
-    .HasOne(o => o.Store)
-    .WithMany()
-    .HasForeignKey(o => o.StoreId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => o.OrderNumber)
+            .IsUnique();
 
-modelBuilder.Entity<Order>()
-    .HasOne(o => o.Customer)
-    .WithMany()
-    .HasForeignKey(o => o.CustomerId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Store)
+            .WithMany()
+            .HasForeignKey(o => o.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<Order>()
-    .HasOne(o => o.Coupon)
-    .WithMany()
-    .HasForeignKey(o => o.CouponId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Customer)
+            .WithMany()
+            .HasForeignKey(o => o.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<OrderItem>()
-    .HasOne(i => i.Order)
-    .WithMany(o => o.Items)
-    .HasForeignKey(i => i.OrderId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.Coupon)
+            .WithMany()
+            .HasForeignKey(o => o.CouponId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<OrderItem>()
-    .HasOne(i => i.Product)
-    .WithMany()
-    .HasForeignKey(i => i.ProductId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<OrderItem>()
+            .HasOne(i => i.Order)
+            .WithMany(o => o.Items)
+            .HasForeignKey(i => i.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<OrderItem>()
-    .HasOne(i => i.Variant)
-    .WithMany()
-    .HasForeignKey(i => i.VariantId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<OrderItem>()
+            .HasOne(i => i.Product)
+            .WithMany()
+            .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<OrderStatusHistory>()
-    .HasOne(h => h.Order)
-    .WithMany(o => o.StatusHistory)
-    .HasForeignKey(h => h.OrderId)
-    .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<OrderItem>()
+            .HasOne(i => i.Variant)
+            .WithMany()
+            .HasForeignKey(i => i.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-modelBuilder.Entity<OrderStatusHistory>()
-    .HasOne(h => h.ChangedBy)
-    .WithMany()
-    .HasForeignKey(h => h.ChangedByUserId)
-    .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<OrderStatusHistory>()
+            .HasOne(h => h.Order)
+            .WithMany(o => o.StatusHistory)
+            .HasForeignKey(h => h.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-modelBuilder.Entity<Order>()
-    .Property(o => o.SubTotal).HasPrecision(10, 2);
-modelBuilder.Entity<Order>()
-    .Property(o => o.DiscountAmount).HasPrecision(10, 2);
-modelBuilder.Entity<Order>()
-    .Property(o => o.TotalAmount).HasPrecision(10, 2);
-modelBuilder.Entity<OrderItem>()
-    .Property(i => i.UnitPriceSnapshot).HasPrecision(10, 2);
-modelBuilder.Entity<OrderItem>()
-    .Property(i => i.LineTotal).HasPrecision(10, 2);
+        modelBuilder.Entity<OrderStatusHistory>()
+            .HasOne(h => h.ChangedBy)
+            .WithMany()
+            .HasForeignKey(h => h.ChangedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<Order>()
+            .Property(o => o.SubTotal).HasPrecision(10, 2);
+        modelBuilder.Entity<Order>()
+            .Property(o => o.DiscountAmount).HasPrecision(10, 2);
+        modelBuilder.Entity<Order>()
+            .Property(o => o.TotalAmount).HasPrecision(10, 2);
+        modelBuilder.Entity<OrderItem>()
+            .Property(i => i.UnitPriceSnapshot).HasPrecision(10, 2);
+        modelBuilder.Entity<OrderItem>()
+            .Property(i => i.LineTotal).HasPrecision(10, 2);
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.UserId, n.IsRead });
+
+
+        modelBuilder.Entity<Account>()
+            .HasOne(a => a.Store)
+            .WithMany()
+            .HasForeignKey(a => a.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Account>()
+            .HasOne(a => a.ParentAccount)
+            .WithMany(a => a.SubAccounts)
+            .HasForeignKey(a => a.ParentAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Account>()
+            .HasIndex(a => new { a.StoreId, a.Code })
+            .IsUnique();
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasOne(e => e.Store)
+            .WithMany()
+            .HasForeignKey(e => e.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasOne(e => e.CreatedBy)
+            .WithMany()
+            .HasForeignKey(e => e.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasOne(e => e.ApprovedBy)
+            .WithMany()
+            .HasForeignKey(e => e.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasOne(e => e.ReversalOfEntry)
+            .WithMany()
+            .HasForeignKey(e => e.ReversalOfEntryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasIndex(e => new { e.StoreId, e.EntryNumber })
+            .IsUnique();
+
+        modelBuilder.Entity<JournalEntryLine>()
+            .HasOne(l => l.JournalEntry)
+            .WithMany(e => e.Lines)
+            .HasForeignKey(l => l.JournalEntryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<JournalEntryLine>()
+            .HasOne(l => l.Account)
+            .WithMany()
+            .HasForeignKey(l => l.AccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntryLine>()
+            .Property(l => l.Debit).HasPrecision(14, 2);
+        modelBuilder.Entity<JournalEntryLine>()
+            .Property(l => l.Credit).HasPrecision(14, 2);
+
+        modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.Store)
+            .WithMany()
+            .HasForeignKey(i => i.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.Customer)
+            .WithMany()
+            .HasForeignKey(i => i.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.CreatedBy)
+            .WithMany()
+            .HasForeignKey(i => i.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.JournalEntry)
+            .WithMany()
+            .HasForeignKey(i => i.JournalEntryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Invoice>()
+            .HasIndex(i => new { i.StoreId, i.InvoiceNumber })
+            .IsUnique();
+
+        modelBuilder.Entity<InvoiceItem>()
+            .HasOne(it => it.Invoice)
+            .WithMany(i => i.Items)
+            .HasForeignKey(it => it.InvoiceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<InvoiceItem>()
+            .HasOne(it => it.Product)
+            .WithMany()
+            .HasForeignKey(it => it.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<InvoiceItem>()
+            .HasOne(it => it.Variant)
+            .WithMany()
+            .HasForeignKey(it => it.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.SubTotal).HasPrecision(14, 2);
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.TaxAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.TotalAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<Invoice>()
+            .Property(i => i.CostOfGoodsSold).HasPrecision(14, 2);
+        modelBuilder.Entity<InvoiceItem>()
+            .Property(it => it.UnitPrice).HasPrecision(14, 2);
+        modelBuilder.Entity<InvoiceItem>()
+            .Property(it => it.LineTotal).HasPrecision(14, 2);
+
+        modelBuilder.Entity<Voucher>()
+            .HasOne(v => v.Store)
+            .WithMany()
+            .HasForeignKey(v => v.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Voucher>()
+            .HasOne(v => v.CounterpartAccount)
+            .WithMany()
+            .HasForeignKey(v => v.CounterpartAccountId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Voucher>()
+            .HasOne(v => v.Customer)
+            .WithMany()
+            .HasForeignKey(v => v.CustomerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Voucher>()
+            .HasOne(v => v.CreatedBy)
+            .WithMany()
+            .HasForeignKey(v => v.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Voucher>()
+            .HasOne(v => v.JournalEntry)
+            .WithMany()
+            .HasForeignKey(v => v.JournalEntryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Voucher>()
+            .HasIndex(v => new { v.StoreId, v.VoucherNumber })
+            .IsUnique();
+
+        modelBuilder.Entity<Voucher>()
+            .Property(v => v.Amount).HasPrecision(14, 2);
+
+        modelBuilder.Entity<FixedAsset>()
+            .HasOne(a => a.Store)
+            .WithMany()
+            .HasForeignKey(a => a.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FixedAsset>()
+            .HasOne(a => a.CreatedBy)
+            .WithMany()
+            .HasForeignKey(a => a.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DepreciationEntry>()
+            .HasOne(d => d.FixedAsset)
+            .WithMany(a => a.DepreciationEntries)
+            .HasForeignKey(d => d.FixedAssetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<DepreciationEntry>()
+            .HasOne(d => d.JournalEntry)
+            .WithMany()
+            .HasForeignKey(d => d.JournalEntryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DepreciationEntry>()
+            .HasOne(d => d.CreatedBy)
+            .WithMany()
+            .HasForeignKey(d => d.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DepreciationEntry>()
+            .HasIndex(d => new { d.FixedAssetId, d.PeriodMonth })
+            .IsUnique();
+
+        modelBuilder.Entity<FixedAsset>()
+            .Property(a => a.PurchaseCost).HasPrecision(14, 2);
+        modelBuilder.Entity<FixedAsset>()
+            .Property(a => a.AccumulatedDepreciation).HasPrecision(14, 2);
+        modelBuilder.Entity<DepreciationEntry>()
+            .Property(d => d.Amount).HasPrecision(14, 2);
+
+        modelBuilder.Entity<Payroll>()
+            .HasOne(p => p.JournalEntry)
+            .WithMany()
+            .HasForeignKey(p => p.JournalEntryId)
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StoreShippingMethod>()
+            .HasOne(m => m.Store)
+            .WithMany()
+            .HasForeignKey(m => m.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreShippingMethod>()
+            .HasIndex(m => new { m.StoreId, m.Type })
+            .IsUnique();
+
+        modelBuilder.Entity<StorePaymentMethod>()
+            .HasOne(m => m.Store)
+            .WithMany()
+            .HasForeignKey(m => m.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StorePaymentMethod>()
+            .HasIndex(m => new { m.StoreId, m.Type })
+            .IsUnique();
+
+        modelBuilder.Entity<PosShift>()
+            .HasOne(s => s.Store)
+            .WithMany()
+            .HasForeignKey(s => s.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PosShift>()
+            .HasOne(s => s.OpenedBy)
+            .WithMany()
+            .HasForeignKey(s => s.OpenedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PosShift>()
+            .Property(s => s.StartingCash).HasPrecision(14, 2);
+
+        modelBuilder.Entity<PosShift>()
+            .Property(s => s.EndingCash).HasPrecision(14, 2);
+
+        modelBuilder.Entity<PosShift>()
+            .Property(s => s.TotalSales).HasPrecision(14, 2);
+    }
+
+    public override int SaveChanges()
+    {
+        return base.SaveChanges();
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }

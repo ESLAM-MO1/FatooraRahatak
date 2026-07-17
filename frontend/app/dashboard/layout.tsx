@@ -1,117 +1,194 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { isAuthenticated, getUserType, logout } from "@/lib/auth";
+import GlobalSearch from "@/components/GlobalSearch";
+import Icon, { ICONS } from "@/components/Icon";
 
-function Icon({ path, className = "" }: { path: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} width="18" height="18">
-      <path d={path} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-const icons = {
-  home: "M4 11.5 12 4l8 7.5M6 10v9h12v-9",
-  box: "M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9ZM12 21v-9M3.5 7.5 12 12l8.5-4.5",
-  tag: "M20 12.5 12.5 20 3 10.5V3h7.5L20 12.5ZM7.5 7.5h.01",
-  warehouse: "M3 21V9l9-6 9 6v12H3ZM9 21v-7h6v7",
-  layers: "M12 3 3 8l9 5 9-5-9-5ZM3 13l9 5 9-5M3 8v9M21 8v9",
-  clipboard: "M9 3h6v3H9V3ZM6 6h12v15H6V6Zm3 6h6M9 15h6",
-  users: "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0M17 11a3 3 0 1 0 0-6M15 14a5 5 0 0 1 6 6H17",
-  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3.5 2",
-  calendarOff: "M3 5h18v16H3V5Zm0 5h18M8 3v4M16 3v4",
-  wallet: "M3 7h15a3 3 0 0 1 3 3v8a1 1 0 0 1-1 1H6a3 3 0 0 1-3-3V7Zm0 0a2 2 0 0 1 2-2h11M16 13h2",
-  crown: "M4 18h16l-1-9-4 3-3-6-3 6-4-3-1 9Z",
-  store: "M4 9h16l-1-5H5L4 9Zm0 0v10h16V9M9 21v-6h6v6",
-  package: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-9V7m0 4-3.5-2M12 12l3.5-2",
-  userGroup: "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6 9a6 6 0 0 1 12 0M17 11a3 3 0 1 0 0-6M15 14a5 5 0 0 1 6 6H17",
-  chart: "M4 21V9M10 21V4M16 21v-7M22 21H2",
-  settings:
-    "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.14-1.44l2.02-1.57-2-3.46-2.38.96a7.5 7.5 0 0 0-2.5-1.44L14 2h-4l-.4 2.55a7.5 7.5 0 0 0-2.5 1.44l-2.38-.96-2 3.46 2.02 1.57a7.4 7.4 0 0 0 0 2.88L2.72 14.5l2 3.46 2.38-.96a7.5 7.5 0 0 0 2.5 1.44L10 22h4l.4-2.55a7.5 7.5 0 0 0 2.5-1.44l2.38.96 2-3.46-2.02-1.57c.09-.47.14-.95.14-1.44Z",
-  receipt:
-    "M6 2h12v20l-3-2-3 2-3-2-3 2V2Zm3 5h6M9 11h6M9 15h4",
-};
-
-const sidebarTogglePath = "M4 6h16M4 12h16M4 18h16";
-const crownSmallPath = "M4 18h16l-1-9-4 3-3-6-3 6-4-3-1 9Z";
-
-type NavItem = { href: string; label: string; icon: keyof typeof icons };
+import api from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import LangSwitch from "@/components/LangSwitch";
+import "@/lib/i18n/config";
+type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
 type NavGroup = { title?: string; items: NavItem[] };
 
-const ownerNav: NavGroup[] = [
-  { items: [{ href: "/dashboard", label: "الرئيسية", icon: "home" }] },
+type NavItemKey = { href: string; labelKey: string; icon: keyof typeof ICONS };
+type NavGroupKey = { titleKey?: string; items: NavItemKey[] };
+
+const ownerNavKeys: NavGroupKey[] = [
+  { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" as const }] },
   {
-    title: "المتجر",
+    titleKey: "nav.store",
     items: [
-      { href: "/dashboard/products", label: "المنتجات", icon: "box" },
-      { href: "/dashboard/categories", label: "التصنيفات", icon: "tag" },
-      { href: "/dashboard/store-settings", label: "إعدادات المتجر", icon: "settings" },
+      { href: "/dashboard/products", labelKey: "nav.products", icon: "box" },
+      { href: "/dashboard/categories", labelKey: "nav.categories", icon: "tag" },
+      { href: "/dashboard/store-settings", labelKey: "nav.storeSettings", icon: "settings" },
     ],
   },
   {
-    title: "المبيعات",
+    titleKey: "nav.sales",
     items: [
-      { href: "/dashboard/orders", label: "الطلبات", icon: "receipt" },
-      { href: "/dashboard/customers", label: "العملاء", icon: "userGroup" },
-      { href: "/dashboard/statistics", label: "الإحصائيات", icon: "chart" },
+      { href: "/dashboard/pos", labelKey: "nav.pos", icon: "cashier" },
+      { href: "/dashboard/orders", labelKey: "nav.orders", icon: "receipt" },
+      { href: "/dashboard/customers", labelKey: "nav.customers", icon: "userGroup" },
+      { href: "/dashboard/statistics", labelKey: "nav.statistics", icon: "chart" },
     ],
   },
   {
-    title: "المخزون",
+    titleKey: "nav.inventory",
     items: [
-      { href: "/dashboard/warehouses", label: "المخازن", icon: "warehouse" },
-      { href: "/dashboard/inventory", label: "المخزون", icon: "layers" },
-      { href: "/dashboard/stock-counts", label: "الجرد الدوري", icon: "clipboard" },
+      { href: "/dashboard/warehouses", labelKey: "nav.warehouses", icon: "warehouse" },
+      { href: "/dashboard/inventory", labelKey: "nav.inventory", icon: "layers" },
+      { href: "/dashboard/stock-counts", labelKey: "nav.stockCounts", icon: "clipboard" },
     ],
   },
   {
-    title: "الموارد البشرية",
+    titleKey: "nav.accounting",
     items: [
-      { href: "/dashboard/employees", label: "الموظفون", icon: "users" },
-      { href: "/dashboard/attendance", label: "الحضور والانصراف", icon: "clock" },
-      { href: "/dashboard/leave-requests", label: "طلبات الإجازات", icon: "calendarOff" },
-      { href: "/dashboard/payroll", label: "الرواتب", icon: "wallet" },
+      { href: "/dashboard/accounting/accounts", labelKey: "nav.accounts", icon: "ledger" },
+      { href: "/dashboard/accounting/journal-entries", labelKey: "nav.journalEntries", icon: "journal" },
+      { href: "/dashboard/accounting/ledger", labelKey: "nav.ledger", icon: "book" },
+      { href: "/dashboard/accounting/invoices", labelKey: "nav.invoices", icon: "receipt" },
+      { href: "/dashboard/accounting/vouchers", labelKey: "nav.vouchers", icon: "wallet" },
+      { href: "/dashboard/accounting/fixed-assets", labelKey: "nav.fixedAssets", icon: "fixedAsset" },
+      { href: "/dashboard/accounting/reports", labelKey: "nav.reports", icon: "chart" },
     ],
   },
   {
-    title: "الحساب",
-    items: [{ href: "/dashboard/subscription", label: "الباقة والاشتراك", icon: "crown" }],
+    titleKey: "nav.hr",
+    items: [
+      { href: "/dashboard/employees", labelKey: "nav.employees", icon: "users" },
+      { href: "/dashboard/attendance", labelKey: "nav.attendance", icon: "clock" },
+      { href: "/dashboard/leave-requests", labelKey: "nav.leaveRequests", icon: "calendarOff" },
+      { href: "/dashboard/payroll", labelKey: "nav.payroll", icon: "wallet" },
+    ],
+  },
+  {
+    titleKey: "nav.account",
+    items: [{ href: "/dashboard/subscription", labelKey: "nav.subscription", icon: "crown" }],
   },
 ];
 
-const superAdminNav: NavGroup[] = [
-  { items: [{ href: "/dashboard", label: "الرئيسية", icon: "home" }] },
+const employeeNavKeys: NavGroupKey[] = [
+  { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
   {
-    title: "إدارة المنصة",
+    titleKey: "nav.sales",
     items: [
-      { href: "/dashboard/stores", label: "المتاجر", icon: "store" },
-      { href: "/dashboard/packages", label: "الباقات", icon: "package" },
-      { href: "/dashboard/users", label: "المستخدمون", icon: "userGroup" },
+      { href: "/dashboard/pos", labelKey: "nav.pos", icon: "cashier" },
+      { href: "/dashboard/orders", labelKey: "nav.orders", icon: "receipt" },
+      { href: "/dashboard/customers", labelKey: "nav.customers", icon: "userGroup" },
+      { href: "/dashboard/statistics", labelKey: "nav.statistics", icon: "chart" },
     ],
   },
   {
-    title: "النظام",
+    titleKey: "nav.accounting",
     items: [
-      { href: "/dashboard/reports", label: "التقارير", icon: "chart" },
-      { href: "/dashboard/settings", label: "الإعدادات", icon: "settings" },
+      { href: "/dashboard/accounting/accounts", labelKey: "nav.accounts", icon: "ledger" },
+      { href: "/dashboard/accounting/journal-entries", labelKey: "nav.journalEntries", icon: "journal" },
+      { href: "/dashboard/accounting/ledger", labelKey: "nav.ledger", icon: "book" },
+      { href: "/dashboard/accounting/invoices", labelKey: "nav.invoices", icon: "receipt" },
+      { href: "/dashboard/accounting/vouchers", labelKey: "nav.vouchers", icon: "wallet" },
+      { href: "/dashboard/accounting/fixed-assets", labelKey: "nav.fixedAssets", icon: "fixedAsset" },
+      { href: "/dashboard/accounting/reports", labelKey: "nav.reports", icon: "chart" },
     ],
   },
 ];
 
+const superAdminNavKeys: NavGroupKey[] = [
+  { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
+  {
+    titleKey: "nav.platform",
+    items: [
+      { href: "/dashboard/stores", labelKey: "nav.stores", icon: "store" },
+      { href: "/dashboard/packages", labelKey: "nav.packages", icon: "package" },
+      { href: "/dashboard/users", labelKey: "nav.users", icon: "userGroup" },
+    ],
+  },
+  {
+    titleKey: "nav.system",
+    items: [
+      { href: "/dashboard/reports", labelKey: "nav.reports", icon: "chart" },
+      { href: "/dashboard/settings", labelKey: "nav.settings", icon: "settings" },
+    ],
+  },
+  {
+    titleKey: "nav.siteContent",
+    items: [
+      { href: "/dashboard/site-content", labelKey: "nav.siteContent", icon: "settings" },
+      { href: "/dashboard/blog", labelKey: "nav.blog", icon: "edit" },
+    ],
+  },
+];
+interface AppNotification {
+  id: number;
+  titleAr: string;
+  messageAr: string;
+  isRead: boolean;
+  link: string | null;
+  createdAt: string;
+}
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const [userType, setUserType] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<number, boolean>>({});
+  const prevUnreadRef = useRef<number | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const playNotificationSound = () => {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.4);
+  };
+
+  const fetchNotifications = () => {
+    api
+      .get("/notifications")
+      .then((res) => {
+        const data = res.data.data;
+        const newUnread = data.unreadCount || 0;
+        if (prevUnreadRef.current !== null && newUnread > prevUnreadRef.current) {
+          playNotificationSound();
+        }
+        prevUnreadRef.current = newUnread;
+        setNotifications(data.notifications || []);
+        setUnreadCount(newUnread);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -120,134 +197,337 @@ export default function DashboardLayout({
     }
     setUserType(getUserType());
     setFullName(localStorage.getItem("fullName") || "");
+    setEmail(localStorage.getItem("email") || "");
     setReady(true);
   }, [router]);
+
+  useEffect(() => {
+    if (!ready) return;
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 20000);
+    return () => clearInterval(interval);
+  }, [ready]);
+
+  useEffect(() => {
+    if (ready && groups.length > 0) {
+      setOpenGroups({ 0: true });
+    }
+  }, [ready, userType]);
 
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex items-center gap-3 text-[var(--sub)]">
           <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-          جارٍ التحميل...
+          {t("common.loading")}
         </div>
       </div>
     );
   }
 
   const isSuperAdmin = userType === "SuperAdmin";
-  const groups = isSuperAdmin ? superAdminNav : ownerNav;
+  const isEmployee = userType === "Employee";
+  const resolveGroups = (navKeys: NavGroupKey[]): NavGroup[] =>
+    navKeys.map((g) => ({
+      title: g.titleKey ? t(g.titleKey) : undefined,
+      items: g.items.map((item) => ({ href: item.href, label: t(item.labelKey), icon: item.icon })),
+    }));
+  const groups = resolveGroups(isSuperAdmin ? superAdminNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys);
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(href);
 
+  const toggleGroup = (index: number) => {
+    setOpenGroups((prev) => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const handleNotifClick = async (n: AppNotification) => {
+    if (!n.isRead) {
+      try {
+        await api.put(`/notifications/${n.id}/read`);
+        setNotifications((prev) =>
+          prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x))
+        );
+        setUnreadCount((c) => {
+          const next = Math.max(0, c - 1);
+          prevUnreadRef.current = next;
+          return next;
+        });
+      } catch {}
+    }
+    setNotifOpen(false);
+    if (n.link) router.push(n.link);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.put("/notifications/read-all");
+      setNotifications((prev) => prev.map((x) => ({ ...x, isRead: true })));
+      setUnreadCount(0);
+      prevUnreadRef.current = 0;
+    } catch {}
+  };
+
   return (
-    <div className="min-h-screen flex bg-white" dir="rtl">
+    <div className="min-h-screen flex" style={{ backgroundColor: "var(--bg)" }} dir="rtl">
       <div className="brand-strip" />
 
       <aside
-        className={`shrink-0 bg-[var(--blue-deep)] flex flex-col transition-all duration-200 ${
-          collapsed ? "w-20" : "w-72"
+        className={`shrink-0 bg-white flex flex-col transition-all duration-200 border-l border-[var(--border)] ${
+          collapsed ? "w-16" : "w-[260px]"
         }`}
       >
-        <div className="h-20 px-5 flex items-center gap-3 border-b border-white/10">
-        <div className="brand-logo-frame on-dark" style={{ width: 46, height: 46 }}>
-            <img src="/logo.png" alt="فاتورة راحتك" className="brand-logo" />
+        <div
+          className="h-[4px] shrink-0"
+          style={{
+            background:
+              "linear-gradient(90deg, var(--blue) 0%, var(--blue) 33.33%, var(--gold) 33.33%, var(--gold) 66.66%, var(--green) 66.66%, var(--green) 100%)",
+          }}
+        />
+
+        <div className={`flex items-center gap-2.5 px-4 h-14 shrink-0 border-b border-[var(--border)] ${collapsed ? "justify-center px-0" : ""}`}>
+          <div className="brand-logo-frame" style={{ width: 34, height: 34 }}>
+            <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
           </div>
           {!collapsed && (
             <div className="leading-tight">
-              <p className="text-[15px] font-bold text-white tracking-tight">فاتورة راحتك</p>
-              <p className="text-[10.5px] text-[#BFE6F3] mt-0.5 tracking-wide">FATURAT RAHATIK</p>
-              <p className="text-[11px] text-[#9FCBDD] mt-1">
-                {isSuperAdmin ? "لوحة الإدارة" : "لوحة المتجر"}
+              <p className="text-[13px] font-bold text-[var(--ink)] tracking-tight">{t("brand.name")}</p>
+              <p className="text-[9px] text-[var(--sub)] mt-0.5">
+                {isSuperAdmin ? t("nav.dashboard") : isEmployee ? t("nav.dashboard") : t("nav.store")}
               </p>
             </div>
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-5 px-4 space-y-6">
-          {groups.map((group, gi) => (
-            <div key={gi}>
-              {group.title && !collapsed && (
-                <p className="px-2 mb-2 text-[10.5px] font-bold text-[var(--gold)] tracking-[0.12em]">
-                  {group.title}
-                </p>
-              )}
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const active = isActive(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      title={collapsed ? item.label : undefined}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13.5px] transition-colors border-r-2 ${
-                        collapsed ? "justify-center px-0" : ""
-                      } ${
-                        active
-                          ? "bg-white/[0.14] text-white font-bold border-[var(--gold)]"
-                          : "text-[#B9DCE9] hover:bg-white/[0.06] hover:text-white border-transparent"
-                      }`}
-                    >
-                      <Icon
-                        path={icons[item.icon]}
-                        className={active ? "text-[var(--gold)]" : "text-[#7FB4C9]"}
-                      />
-                      {!collapsed && item.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
+        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+          {groups.map((group, gi) => {
+            const hasTitle = !!group.title;
+            const isOpen = openGroups[gi];
 
-        <div className="p-4 border-t border-dashed border-white/15">
-          {!collapsed && (
-            <div className="flex items-center gap-2.5 px-1 mb-3">
-              <div className="w-9 h-9 rounded-full bg-[var(--gold)] text-white flex items-center justify-center text-xs font-bold shrink-0">
-                {fullName ? fullName.trim().charAt(0) : "؟"}
+            return (
+              <div key={gi} className={hasTitle ? "mb-1" : ""}>
+                {hasTitle && (
+                  <button
+                    onClick={() => toggleGroup(gi)}
+                    className={`w-full flex items-center gap-1 px-3 py-1.5 text-[11px] text-[var(--sub)] uppercase tracking-wider font-bold hover:text-[var(--ink)] transition-colors ${
+                      collapsed ? "justify-center" : ""
+                    }`}
+                  >
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-right">{group.title}</span>
+                        <svg
+                          className={`transition-transform duration-200 ${
+                            isOpen ? "rotate-90" : ""
+                          }`}
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {(isOpen || !hasTitle) && (
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const active = isActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          title={collapsed ? item.label : undefined}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] transition-all duration-150 border-r-3 border-r-transparent ${
+                            collapsed ? "justify-center px-0 mx-1" : ""
+                          } ${
+                            active
+                              ? "font-bold text-[var(--blue)] border-r-[var(--blue)]"
+                              : "text-[var(--ink)] hover:bg-gray-50"
+                          }`}
+                          style={
+                            active
+                              ? { backgroundColor: "var(--blue-50)", borderRightWidth: "3px" }
+                              : {}
+                          }
+                        >
+                          <Icon
+                            name={item.icon}
+                            size={18}
+                            className={active ? "text-[var(--blue)]" : "text-[var(--sub-light)]"}
+                          />
+                          {!collapsed && <span>{item.label}</span>}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              <p className="text-[13px] text-[#E4F1F7] truncate">{fullName || "المستخدم"}</p>
-            </div>
-          )}
-          <button
-            onClick={logout}
-            title={collapsed ? "تسجيل الخروج" : undefined}
-            className={`btn-ghost-danger w-full flex items-center justify-center gap-2 text-[13px] py-2.5`}
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M15 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1M10 12h10m0 0-3-3m3 3-3 3"
-                stroke="currentColor"
-                strokeWidth="1.7"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {!collapsed && "تسجيل الخروج"}
-          </button>
-        </div>
+            );
+          })}
+        </nav>
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="h-14 shrink-0 border-b border-gray-100 flex items-center justify-between px-5 bg-white">
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            title={collapsed ? "توسيع الشريط الجانبي" : "طي الشريط الجانبي"}
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors"
-          >
-            <Icon path={sidebarTogglePath} />
-          </button>
-
-          {!isSuperAdmin && (
-            <Link
-              href="/dashboard/subscription"
-              className="flex items-center gap-1.5 bg-[var(--gold)] text-white text-[12.5px] font-bold px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+        <div
+          className="h-[60px] shrink-0 border-b border-[var(--border)] flex items-center justify-between px-4 gap-3"
+          style={{ backgroundColor: "var(--bg-card)" }}
+        >
+          <div className="flex items-center gap-2 flex-1">
+            <button
+              onClick={() => setCollapsed((c) => !c)}
+              title={collapsed ? t("common.open") : t("common.close")}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors shrink-0"
             >
-              <Icon path={crownSmallPath} className="text-white" />
-              ترقية
-            </Link>
-          )}
+              <Icon name="sidebarToggle" />
+            </button>
+            <div className="hidden md:block flex-1 max-w-2xl">
+              <GlobalSearch />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <LangSwitch />
+            {!isSuperAdmin && (
+              <Link
+                href="/dashboard/subscription"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-bold text-white"
+                style={{ backgroundColor: "var(--gold)" }}
+              >
+                <Icon name="crown" size={14} />
+                {t("dashboard.upgradeBtn")}
+              </Link>
+            )}
+
+            <div className="relative">
+              <button
+                onClick={() => setNotifOpen((o) => !o)}
+                title={t("dashboard.notifications")}
+                className="relative w-9 h-9 rounded-lg flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors"
+              >
+                <Icon name="bell" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -left-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9.5px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute left-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-100 z-50 overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                    <p className="text-[13px] font-bold text-[var(--ink)]">{t("dashboard.notifications")}</p>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[11.5px] text-[var(--blue)] hover:underline"
+                      >
+                        {t("dashboard.markAllRead")}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <p className="text-center text-[12.5px] text-[var(--sub)] py-8">
+                        {t("dashboard.noNotifications")}
+                      </p>
+                    ) : (
+                      notifications.slice(0, 10).map((n) => (
+                        <button
+                          key={n.id}
+                          onClick={() => handleNotifClick(n)}
+                          className={`w-full text-right px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                            !n.isRead ? "bg-[var(--blue)]/[0.04]" : ""
+                          }`}
+                        >
+                          <p className="text-[12.5px] font-bold text-[var(--ink)] flex items-center gap-1.5">
+                            {!n.isRead && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-[var(--blue)] shrink-0" />
+                            )}
+                            {n.titleAr}
+                          </p>
+                          <p className="text-[11.5px] text-[var(--sub)] mt-0.5 line-clamp-2">
+                            {n.messageAr}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setUserMenuOpen((o) => !o)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold text-white shrink-0"
+                  style={{ backgroundColor: "var(--blue)" }}
+                >
+                  {fullName ? fullName.trim().charAt(0) : "؟"}
+                </div>
+                {!collapsed && (
+                  <span className="text-[13px] text-[var(--ink)] font-medium max-w-[100px] truncate">
+                    {fullName || t("common.profile")}
+                  </span>
+                )}
+              </button>
+
+              {userMenuOpen && (
+                <div className="absolute left-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-[13px] font-bold text-[var(--ink)] truncate">{fullName}</p>
+                    <p className="text-[11.5px] text-[var(--sub)] truncate mt-0.5">{email || ""}</p>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--ink)] hover:bg-gray-50 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                      </svg>
+                      {t("dashboard.mySettings")}
+                    </Link>
+                    <Link
+                      href="/help-center"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--ink)] hover:bg-gray-50 transition-colors"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                        <path d="M12 17h.01" />
+                      </svg>
+                      {t("dashboard.help")}
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <Icon name="logOut" size={16} />
+                      {t("dashboard.logout")}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <main className="flex-1 p-8 overflow-auto">{children}</main>

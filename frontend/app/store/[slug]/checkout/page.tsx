@@ -4,6 +4,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 
 interface CartItem {
   id: number;
@@ -27,6 +29,7 @@ function getCartSessionKey(slug: string) {
 }
 
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
@@ -72,7 +75,7 @@ export default function CheckoutPage() {
         if (err.response?.status === 404) {
           setCart(null);
         } else {
-          setError(err.response?.data?.message || "حدث خطأ أثناء تحميل السلة");
+          setError(err.response?.data?.message || t("checkout.errorLoadingCart"));
         }
       } finally {
         setLoading(false);
@@ -88,11 +91,11 @@ export default function CheckoutPage() {
     if (!cart) return;
 
     if (!shippingAddress.trim()) {
-      setError("عنوان الشحن مطلوب");
+      setError(t("checkout.shippingAddressRequired"));
       return;
     }
     if (!loggedIn && (!guestName.trim() || !guestPhone.trim())) {
-      setError("الاسم ورقم الجوال مطلوبان");
+      setError(t("checkout.nameAndPhoneRequired"));
       return;
     }
 
@@ -117,7 +120,7 @@ export default function CheckoutPage() {
       }
       router.push(`/store/${slug}/orders/${orderNumber}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء إتمام الطلب");
+      setError(err.response?.data?.message || t("checkout.errorPlacingOrder"));
       setSubmitting(false);
     }
   };
@@ -125,7 +128,7 @@ export default function CheckoutPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">جاري التحميل...</p>
+        <p className="text-gray-500">{t("common.loading")}</p>
       </div>
     );
   }
@@ -134,12 +137,12 @@ export default function CheckoutPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-500 mb-4">سلتك فارغة، لا يمكن إتمام الطلب</p>
+          <p className="text-gray-500 mb-4">{t("checkout.emptyCart")}</p>
           <Link
             href={`/store/${slug}`}
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition text-sm"
+            className="store-btn inline-block text-sm"
           >
-            تصفح المنتجات
+            {t("cart.browseProducts")}
           </Link>
         </div>
       </div>
@@ -148,119 +151,111 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="mb-4">
-        <Link href={`/store/${slug}/cart`} className="text-blue-600 hover:underline text-sm">
-          ← العودة للسلة
-        </Link>
-      </div>
-
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">إتمام الشراء</h1>
-
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
       )}
 
-      {/* ملخص السلة للمراجعة */}
+      {/* Cart summary for review */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100 mb-6">
         {cart.items.map((item) => (
           <div key={item.id} className="p-4 flex items-center justify-between gap-4">
             <div className="flex-1">
               <p className="text-gray-800 font-medium">{item.productNameAr}</p>
               <p className="text-sm text-gray-500 mt-1">
-                {item.quantity} × {item.priceAtAdd.toFixed(2)} ر.س
+                {item.quantity} × {t("cart.priceSAR", { price: item.priceAtAdd.toFixed(2) })}
               </p>
             </div>
-            <p className="font-bold text-gray-800">{item.lineTotal.toFixed(2)} ر.س</p>
+            <p className="font-bold text-gray-800">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
           </div>
         ))}
         <div className="p-4 flex items-center justify-between">
-          <span className="text-gray-600 font-medium">الإجمالي</span>
-          <span className="text-xl font-bold text-blue-600">
-            {cart.subtotal.toFixed(2)} ر.س
+          <span className="text-gray-600 font-medium">{t("cart.total")}</span>
+          <span className="text-xl font-bold store-price">
+            {t("cart.priceSAR", { price: cart.subtotal.toFixed(2) })}
           </span>
         </div>
       </div>
 
-      {/* فورم بيانات الشحن — فورم واحد مباشر دائمًا، بدون خطوة تسجيل دخول/ضيف */}
+      {/* Shipping form - always direct, no login/guest step */}
       <form
         onSubmit={handleSubmit}
         className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 space-y-4"
       >
         {loggedIn && (
           <p className="text-sm text-green-700 bg-green-50 rounded p-3">
-            أنت مسجل دخول، سيتم ربط الطلب بحسابك تلقائيًا
+            {t("checkout.loggedInNotice")}
           </p>
         )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            الاسم{!loggedIn && " *"}
+            {t("checkout.nameLabel")}{!loggedIn && " *"}
           </label>
           <input
             type="text"
             value={guestName}
             onChange={(e) => setGuestName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
             required={!loggedIn}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            رقم الجوال{!loggedIn && " *"}
+            {t("checkout.phoneLabel")}{!loggedIn && " *"}
           </label>
           <input
             type="tel"
             value={guestPhone}
             onChange={(e) => setGuestPhone(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
             required={!loggedIn}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            البريد الإلكتروني (اختياري)
+            {t("checkout.emailLabel")}
           </label>
           <input
             type="email"
             value={guestEmail}
             onChange={(e) => setGuestEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            عنوان الشحن *
+            {t("checkout.shippingAddressLabel")}
           </label>
           <textarea
             value={shippingAddress}
             onChange={(e) => setShippingAddress(e.target.value)}
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
             required
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            ملاحظات (اختياري)
+            {t("checkout.notesLabel")}
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
           />
         </div>
 
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-300 transition font-medium"
+          className="store-btn w-full disabled:bg-gray-300"
         >
-          {submitting ? "جاري تأكيد الطلب..." : "تأكيد الطلب"}
+          {submitting ? t("checkout.confirming") : t("checkout.confirmOrder")}
         </button>
       </form>
     </div>

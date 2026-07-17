@@ -3,6 +3,7 @@ using FatooraRahatak.Application.DTOs.Public;
 using FatooraRahatak.Application.DTOs.Orders;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Orders;
+using FatooraRahatak.Domain.Entities.Products;
 using FatooraRahatak.Domain.Entities.Sales;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
@@ -12,10 +13,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class OrderService : IOrderService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public OrderService(AppDbContext context)
+    public OrderService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<OrderConfirmationDto> CheckoutAsync(string slug, long? customerId, CheckoutRequestDto dto)
@@ -193,6 +196,52 @@ public class OrderService : IOrderService
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            // ⚠️ إضافة (ربط الإشعارات): إشعار الـ Owner بطلب جديد بعد نجاح الـ Checkout
+            try
+            {
+                if (store.OwnerUserId != 0)
+                {
+                    await _notificationService.CreateAsync(
+                        store.OwnerUserId,
+                        "طلب جديد",
+                        $"تم استلام طلب جديد رقم {order.OrderNumber} بقيمة {order.TotalAmount} ر.س",
+                        NotificationType.OrderCreated,
+                        $"/dashboard/orders/{order.Id}");
+                }
+            }
+            catch { }
+
+            // ⚠️ التحقق من المخزون المنخفض بعد خصم الكميات
+            try
+            {
+                var lowStockProductIds = stockRowsPerItem
+                    .Where(kv => kv.Value.Sum(s => s.QuantityAvailable) <= 5)
+                    .Select(kv => kv.Key)
+                    .ToList();
+
+                if (lowStockProductIds.Count > 0)
+                {
+                    var productNames = await _context.Products
+                        .Where(p => lowStockProductIds.Contains(p.Id))
+                        .ToDictionaryAsync(p => p.Id, p => p.NameAr);
+
+                    foreach (var productId in lowStockProductIds)
+                    {
+                        if (productNames.TryGetValue(productId, out var name))
+                        {
+                            var totalQty = stockRowsPerItem[productId].Sum(s => s.QuantityAvailable);
+                            await _notificationService.CreateAsync(
+                                store.OwnerUserId,
+                                "تنبيه مخزون منخفض",
+                                $"المنتج \"{name}\" تبقى منه {totalQty} قطع فقط",
+                                NotificationType.LowStock,
+                                $"/dashboard/products/{productId}");
+                        }
+                    }
+                }
+            }
+            catch { }
 
             // خطوة 12: إرجاع تأكيد الطلب
             return new OrderConfirmationDto

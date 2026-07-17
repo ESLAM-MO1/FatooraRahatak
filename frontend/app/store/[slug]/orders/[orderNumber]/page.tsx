@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 
 interface OrderItem {
   productNameSnapshot: string;
@@ -24,22 +26,23 @@ interface OrderDetail {
   items: OrderItem[];
 }
 
-const STATUS_LABELS: Record<string, { label: string; className: string }> = {
-  New: { label: "جديد", className: "bg-blue-100 text-blue-700" },
-  Processing: { label: "قيد التجهيز", className: "bg-yellow-100 text-yellow-700" },
-  Shipped: { label: "تم الشحن", className: "bg-purple-100 text-purple-700" },
-  Delivered: { label: "تم التسليم", className: "bg-green-100 text-green-700" },
-  Returned: { label: "مرتجع", className: "bg-red-100 text-red-700" },
-};
-
 function sessionPhoneKey(orderNumber: string) {
   return `order_phone_${orderNumber}`;
 }
 
 export default function OrderDetailPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const slug = params.slug as string;
   const orderNumber = params.orderNumber as string;
+
+  const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+    New: { label: t("order.statusNew"), className: "bg-blue-100 text-blue-700" },
+    Processing: { label: t("order.statusProcessing"), className: "bg-yellow-100 text-yellow-700" },
+    Shipped: { label: t("order.statusShipped"), className: "bg-purple-100 text-purple-700" },
+    Delivered: { label: t("order.statusDelivered"), className: "bg-green-100 text-green-700" },
+    Returned: { label: t("order.statusReturned"), className: "bg-red-100 text-red-700" },
+  };
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +68,7 @@ export default function OrderDetailPage() {
     const init = async () => {
       setLoading(true);
 
-      // 1. مسجل دخول؟ جرب مباشرة من غير رقم جوال (الباك إند بيتحقق بالتوكن)
+      // 1. Logged in? Try directly without phone (backend checks token)
       if (isAuthenticated()) {
         const ok = await fetchOrder();
         if (ok) {
@@ -74,7 +77,7 @@ export default function OrderDetailPage() {
         }
       }
 
-      // 2. جاي لسه من نفس جلسة الـ Checkout؟ (رقم الجوال محفوظ مؤقتًا)
+      // 2. Coming from Checkout session? (phone stored temporarily)
       const storedPhone = sessionStorage.getItem(sessionPhoneKey(orderNumber));
       if (storedPhone) {
         const ok = await fetchOrder(storedPhone);
@@ -84,7 +87,7 @@ export default function OrderDetailPage() {
         }
       }
 
-      // 3. غير ذلك (Deep Link): اعرض فورم التحقق
+      // 3. Otherwise (Deep Link): show verification form
       setNeedsVerification(true);
       setLoading(false);
     };
@@ -105,14 +108,14 @@ export default function OrderDetailPage() {
     if (ok) {
       sessionStorage.setItem(sessionPhoneKey(orderNumber), phoneInput.trim());
     } else {
-      setError("رقم الطلب أو رقم الجوال غير صحيح");
+      setError(t("order.verifyError"));
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">جاري التحميل...</p>
+        <p className="text-gray-500">{t("common.loading")}</p>
       </div>
     );
   }
@@ -121,7 +124,7 @@ export default function OrderDetailPage() {
     return (
       <div className="max-w-md mx-auto px-4 py-10">
         <h1 className="text-xl font-bold text-gray-800 mb-6 text-center">
-          التحقق من الطلب
+          {t("order.verifyTitle")}
         </h1>
         <form
           onSubmit={handleVerify}
@@ -129,7 +132,7 @@ export default function OrderDetailPage() {
         >
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              رقم الطلب
+              {t("order.orderNumberLabel")}
             </label>
             <input
               type="text"
@@ -140,13 +143,13 @@ export default function OrderDetailPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              رقم الجوال المستخدم في الطلب
+              {t("order.phoneUsedLabel")}
             </label>
             <input
               type="tel"
               value={phoneInput}
               onChange={(e) => setPhoneInput(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
               required
             />
           </div>
@@ -158,9 +161,9 @@ export default function OrderDetailPage() {
           <button
             type="submit"
             disabled={verifying}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-md hover:bg-blue-700 disabled:bg-gray-300 transition font-medium"
+            className="store-btn w-full disabled:bg-gray-300"
           >
-            {verifying ? "جاري التحقق..." : "عرض تفاصيل الطلب"}
+            {verifying ? t("order.verifying") : t("order.viewDetails")}
           </button>
         </form>
       </div>
@@ -170,9 +173,9 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 text-center">
-        <p className="text-gray-500 mb-4">تعذّر عرض تفاصيل الطلب</p>
-        <Link href={`/store/${slug}`} className="text-blue-600 hover:underline text-sm">
-          العودة للمتجر
+        <p className="text-gray-500 mb-4">{t("order.cannotDisplay")}</p>
+        <Link href={`/store/${slug}`} className="store-link">
+          {t("store.backToStore")}
         </Link>
       </div>
     );
@@ -185,29 +188,22 @@ export default function OrderDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="mb-4">
-        <Link href={`/store/${slug}`} className="text-blue-600 hover:underline text-sm">
-          ← العودة للمتجر
-        </Link>
-      </div>
-
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">تفاصيل الطلب</h1>
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusInfo.className}`}>
           {statusInfo.label}
         </span>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
-        <p className="text-sm text-gray-500">رقم الطلب</p>
+        <p className="text-sm text-gray-500">{t("order.orderNumberLabel")}</p>
         <p className="text-lg font-bold text-gray-800 mb-4">{order.orderNumber}</p>
 
-        <p className="text-sm text-gray-500">عنوان الشحن</p>
+        <p className="text-sm text-gray-500">{t("order.shippingAddressLabel")}</p>
         <p className="text-gray-800 mb-4">{order.shippingAddress}</p>
 
         {order.notes && (
           <>
-            <p className="text-sm text-gray-500">ملاحظات</p>
+            <p className="text-sm text-gray-500">{t("order.notesLabel")}</p>
             <p className="text-gray-800">{order.notes}</p>
           </>
         )}
@@ -219,29 +215,29 @@ export default function OrderDetailPage() {
             <div className="flex-1">
               <p className="text-gray-800 font-medium">{item.productNameSnapshot}</p>
               <p className="text-sm text-gray-500 mt-1">
-                {item.quantity} × {item.unitPriceSnapshot.toFixed(2)} ر.س
+                {item.quantity} × {t("cart.priceSAR", { price: item.unitPriceSnapshot.toFixed(2) })}
               </p>
             </div>
-            <p className="font-bold text-gray-800">{item.lineTotal.toFixed(2)} ر.س</p>
+            <p className="font-bold text-gray-800">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
           </div>
         ))}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-2 text-sm">
-          <span className="text-gray-500">الإجمالي قبل الخصم</span>
-          <span className="text-gray-500">{order.subTotal.toFixed(2)} ر.س</span>
+          <span className="text-gray-500">{t("cart.totalBeforeDiscount")}</span>
+          <span className="text-gray-500">{t("cart.priceSAR", { price: order.subTotal.toFixed(2) })}</span>
         </div>
         {order.discountAmount > 0 && (
           <div className="flex items-center justify-between mb-2 text-sm">
-            <span className="text-gray-500">قيمة الخصم</span>
-            <span className="text-green-600">− {order.discountAmount.toFixed(2)} ر.س</span>
+            <span className="text-gray-500">{t("cart.discountValue")}</span>
+            <span className="text-green-600">− {t("cart.priceSAR", { price: order.discountAmount.toFixed(2) })}</span>
           </div>
         )}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <span className="text-gray-600 font-medium">الإجمالي النهائي</span>
-          <span className="text-xl font-bold text-blue-600">
-            {order.totalAmount.toFixed(2)} ر.س
+          <span className="text-gray-600 font-medium">{t("order.totalFinal")}</span>
+          <span className="text-xl font-bold store-price">
+            {t("cart.priceSAR", { price: order.totalAmount.toFixed(2) })}
           </span>
         </div>
       </div>

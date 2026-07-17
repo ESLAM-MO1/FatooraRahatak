@@ -8,4 +8,13 @@ public interface IStoreService
     Task<ReturnPolicyResponseDto> UpdateReturnPolicyAsync(long ownerUserId, UpdateReturnPolicyDto dto);
     Task<StoreContactResponseDto> UpdateContactAsync(long ownerUserId, UpdateStoreContactDto dto);
     Task<bool> ToggleStoreOnlineAsync(long ownerUserId);
+    Task<VatRegistrationResponseDto> ToggleVatRegistrationAsync(long ownerUserId);
+    Task<StoreInfoDto> GetStoreInfoAsync(long ownerUserId);
+    Task<List<ShippingMethodDto>> UpdateShippingMethodsAsync(long ownerUserId, UpdateShippingMethodsDto dto);
+    Task<List<PaymentMethodDto>> UpdatePaymentMethodsAsync(long ownerUserId, UpdatePaymentMethodsDto dto);
+    Task<StoreSocialResponseDto> UpdateSocialInfoAsync(long ownerUserId, UpdateStoreSocialDto dto);
+    Task<CurrencyLanguageResponseDto> UpdateCurrencyLanguageAsync(long ownerUserId, UpdateCurrencyLanguageDto dto);
+    Task<StoreThemeResponseDto> UpdateThemeAsync(long ownerUserId, UpdateStoreThemeDto dto);
+    Task<StoreInfoDto> UpdateStoreSettingsAsync(long ownerUserId, UpdateStoreSettingsDto dto);
+    Task<StoreThemeResponseDto> GetThemeAsync(long ownerUserId);
 }

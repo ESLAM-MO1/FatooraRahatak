@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Employees;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,21 +16,32 @@ public class PayrollController : ControllerBase
 {
     private readonly IPayrollService _payrollService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public PayrollController(IPayrollService payrollService, AppDbContext context)
+    public PayrollController(IPayrollService payrollService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _payrollService = payrollService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    // ⚠️ مُعدَّلة: كانت بتحل المتجر لصاحب المتجر (Owner) فقط، فأصبحت تحله لصاحب المتجر
+    // أو لأي موظف نشط تابع له (Employee.Status == "Active")، بنفس نمط ResolveStoreAndRoleAsync
+    // المستخدم في AccountingService — بدون رجوع الدور نفسه لأنه غير مستخدم حاليًا في هذا الكنترولر.
     private async Task<long?> GetStoreIdAsync()
     {
         var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
+
+        var ownedStore = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
+        if (ownedStore != null)
+            return ownedStore.Id;
+
+        var employee = await _context.Employees
+            .FirstOrDefaultAsync(e => e.UserId == userId && e.Status == "Active");
+        return employee?.StoreId;
     }
 
     [HttpPost("generate")]
@@ -72,10 +84,13 @@ public class PayrollController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Payroll.Approve"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
-            await _payrollService.ApprovePayrollAsync(storeId.Value, id, GetUserId());
-            return Ok(new { success = true, message = "تم اعتماد الراتب" });
+            var result = await _payrollService.ApprovePayrollAsync(storeId.Value, id, userId);
+            return Ok(new { success = true, data = result, message = "تم اعتماد الراتب وتوليد القيد المحاسبي" });
         }
         catch (InvalidOperationException ex)
         {

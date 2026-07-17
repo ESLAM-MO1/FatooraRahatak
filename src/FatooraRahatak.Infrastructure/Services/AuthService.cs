@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -11,18 +12,22 @@ using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
-
+using Microsoft.Extensions.Configuration;
 namespace FatooraRahatak.Infrastructure.Services;
 
 public class AuthService : IAuthService
 {
     private readonly AppDbContext _context;
     private readonly JwtSettings _jwtSettings;
+    private readonly string _googleClientId;
+    private readonly IInvitationService _invitationService;
 
-    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings)
+    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings, IConfiguration configuration, IInvitationService invitationService)
     {
         _context = context;
         _jwtSettings = jwtSettings.Value;
+        _googleClientId = configuration["GoogleAuth:ClientId"] ?? string.Empty;
+        _invitationService = invitationService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -47,6 +52,11 @@ public class AuthService : IAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
+        if (!string.IsNullOrEmpty(dto.InvitationToken))
+        {
+            await _invitationService.AcceptInvitationAsync(dto.InvitationToken, user.Id);
+        }
+
         return await GenerateAuthResponseAsync(user);
     }
 
@@ -57,6 +67,56 @@ public class AuthService : IAuthService
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+
+        if (!user.IsActive)
+            throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await GenerateAuthResponseAsync(user);
+    }
+
+    public async Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthDto dto)
+    {
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _googleClientId }
+            });
+        }
+        catch (InvalidJwtException ex)
+        {
+            Console.WriteLine($"GOOGLE AUTH ERROR: {ex.Message}");
+            throw new UnauthorizedAccessException($"توكن جوجل غير صالح: {ex.Message}");
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == payload.Subject || u.Email == payload.Email);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                FullName = payload.Name,
+                Email = payload.Email,
+                Phone = string.Empty,
+                GoogleId = payload.Subject,
+                ProfileImage = payload.Picture,
+                UserType = UserType.Owner,
+                IsActive = true,
+                IsVerified = true
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+        }
+        else if (user.GoogleId == null)
+        {
+            user.GoogleId = payload.Subject;
+            user.IsVerified = true;
+            await _context.SaveChangesAsync();
+        }
 
         if (!user.IsActive)
             throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");

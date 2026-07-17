@@ -2,25 +2,13 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
-
-function LangSwitch() {
-  const [lang, setLang] = useState("ar");
-
-  return (
-    <div className="lang-switch" role="group" aria-label="اللغة / Language">
-      <button type="button" className={lang === "ar" ? "active" : ""} onClick={() => setLang("ar")}>
-        عربي
-      </button>
-      <button type="button" className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>
-        EN
-      </button>
-      <span className="lang-thumb" style={{ transform: lang === "ar" ? "translateX(0%)" : "translateX(-100%)" }} />
-    </div>
-  );
-}
+import LangSwitch from "@/components/LangSwitch";
+import "@/lib/i18n/config";
 
 function BrandPanel() {
+  const { t } = useTranslation();
   return (
     <div className="auth-brand-panel">
       <div className="relative z-[2] flex justify-start">
@@ -29,10 +17,10 @@ function BrandPanel() {
 
       <div className="relative z-[2] flex flex-col items-center my-2">
         <div className="brand-logo-frame" style={{ width: 220, height: 185 }}>
-          <img src="/logo.png" alt="فاتورة راحتك" className="brand-logo" />
+          <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
         </div>
         <div className="text-center mt-4">
-          <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">فاتورة راحتك</p>
+          <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">{t("brand.name")}</p>
           <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
             faturat rahatik
           </p>
@@ -45,14 +33,15 @@ function BrandPanel() {
       </div>
 
       <div className="relative z-[2] flex justify-between items-center border-t border-[var(--border)] pt-4.5">
-        <span className="text-[12.5px] text-[var(--sub)]">© 2026 فاتورة راحتك</span>
-        <span className="text-[12.5px] text-[var(--sub)]">جميع الحقوق محفوظة</span>
+        <span className="text-[12.5px] text-[var(--sub)]">&copy; {new Date().getFullYear()} {t("brand.name")}</span>
+        <span className="text-[12.5px] text-[var(--sub)]">{t("footer.copyright")}</span>
       </div>
     </div>
   );
 }
 
 function ResetPasswordContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const emailFromQuery = searchParams.get("email") || "";
 
@@ -70,7 +59,7 @@ function ResetPasswordContent() {
     setSuccessMessage("");
 
     if (newPassword !== confirmPassword) {
-      setError("كلمة المرور الجديدة وتأكيدها غير متطابقين");
+      setError(t("error.passwordMismatch"));
       return;
     }
 
@@ -81,24 +70,24 @@ function ResetPasswordContent() {
         code,
         newPassword,
       });
-      setSuccessMessage(response.data.message || "تم تغيير كلمة المرور، يرجى تسجيل الدخول");
+      setSuccessMessage(response.data.message || t("auth.resetSuccess"));
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تغيير كلمة المرور");
+      setError(err.response?.data?.message || t("error.serverError"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-layout" dir="rtl">
+    <div className="auth-layout">
       <div className="brand-strip" />
 
       <div className="auth-form-panel">
         <div className="w-full max-w-[400px]">
           <div className="mb-9">
-            <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">كلمة مرور جديدة</span>
-            <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">تعيين كلمة مرور جديدة</h1>
-            <p className="text-[14.5px] text-[var(--sub)]">أدخل الرمز اللي وصلك وكلمة المرور الجديدة</p>
+            <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">{t("auth.resetTitle")}</span>
+            <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">{t("auth.resetTitle")}</h1>
+            <p className="text-[14.5px] text-[var(--sub)]">{t("auth.resetSubtitle")}</p>
           </div>
 
           {error && (
@@ -113,14 +102,14 @@ function ResetPasswordContent() {
                 {successMessage}
               </div>
               <a href="/login" className="text-[var(--blue)] font-bold hover:underline text-[13.5px]">
-                اذهب لتسجيل الدخول
+                {t("auth.goToLogin")}
               </a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} noValidate>
               <div className="mb-5">
                 <label htmlFor="email" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  البريد الإلكتروني
+                  {t("auth.email")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -136,7 +125,7 @@ function ResetPasswordContent() {
 
               <div className="mb-5">
                 <label htmlFor="code" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  رمز التحقق (6 أرقام)
+                  {t("auth.codeLabel")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -153,7 +142,7 @@ function ResetPasswordContent() {
 
               <div className="mb-5">
                 <label htmlFor="newPassword" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  كلمة المرور الجديدة
+                  {t("auth.newPassword")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -170,7 +159,7 @@ function ResetPasswordContent() {
 
               <div className="mb-6">
                 <label htmlFor="confirmPassword" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  تأكيد كلمة المرور الجديدة
+                  {t("auth.confirmPassword")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -189,7 +178,7 @@ function ResetPasswordContent() {
                 {loading && (
                   <span className="w-[15px] h-[15px] rounded-full border-2 border-white/40 border-t-white animate-spin" />
                 )}
-                {loading ? "جارٍ التعيين..." : "تعيين كلمة المرور"}
+                {loading ? t("common.loading") : t("auth.resetPassword")}
               </button>
             </form>
           )}
@@ -202,11 +191,12 @@ function ResetPasswordContent() {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useTranslation();
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-white text-[var(--sub)]">
-          جارٍ التحميل...
+          {t("common.loading")}
         </div>
       }
     >

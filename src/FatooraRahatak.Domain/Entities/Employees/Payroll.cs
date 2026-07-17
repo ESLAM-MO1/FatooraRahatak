@@ -1,4 +1,5 @@
 using FatooraRahatak.Domain.Common;
+using FatooraRahatak.Domain.Entities.Accounting;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Enums;
 
@@ -17,6 +18,10 @@ public class Payroll : BaseEntity
     public long? ApprovedByUserId { get; set; }
     public DateTime? PaidAt { get; set; }
 
+    // ===== تاسك 15 (جديد): ربط الراتب بالقيد المحاسبي التلقائي الناتج عند الاعتماد =====
+    public long? JournalEntryId { get; set; }
+
     public Employee Employee { get; set; } = null!;
     public User? ApprovedBy { get; set; }
+    public JournalEntry? JournalEntry { get; set; }
 }

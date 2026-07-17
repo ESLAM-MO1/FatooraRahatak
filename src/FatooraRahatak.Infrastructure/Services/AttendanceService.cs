@@ -10,10 +10,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class AttendanceService : IAttendanceService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public AttendanceService(AppDbContext context)
+    public AttendanceService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     private async Task<Employee> GetOwnedEmployeeAsync(long storeId, long employeeId)
@@ -115,6 +117,21 @@ public class AttendanceService : IAttendanceService
         _context.LeaveRequests.Add(leaveRequest);
         await _context.SaveChangesAsync();
 
+        try
+        {
+            var storeOwnerId = await _context.Stores.Where(s => s.Id == storeId).Select(s => s.OwnerUserId).FirstOrDefaultAsync();
+            if (storeOwnerId != 0)
+            {
+                await _notificationService.CreateAsync(
+                    storeOwnerId,
+                    "طلب إجازة جديد",
+                    $"طلب إجازة جديد من {employee.User.FullName} ({dto.LeaveType})",
+                    NotificationType.LeaveRequestCreated,
+                    "/dashboard/leave-requests");
+            }
+        }
+        catch { }
+
         return MapLeaveToDto(leaveRequest, employee.User.FullName);
     }
 
@@ -147,6 +164,20 @@ public class AttendanceService : IAttendanceService
         leave.Status = LeaveRequestStatus.Approved;
         leave.ApprovedByUserId = approvedByUserId;
         await _context.SaveChangesAsync();
+
+        try
+        {
+            if (leave.Employee.UserId != approvedByUserId)
+            {
+                await _notificationService.CreateAsync(
+                    leave.Employee.UserId,
+                    "تم الموافقة على طلب الإجازة",
+                    $"تمت الموافقة على طلب إجازتك ({leave.LeaveType})",
+                    NotificationType.LeaveRequestApproved,
+                    "/dashboard/leave-requests");
+            }
+        }
+        catch { }
     }
 
     public async Task RejectLeaveRequestAsync(long storeId, long leaveRequestId, long approvedByUserId)
@@ -164,6 +195,20 @@ public class AttendanceService : IAttendanceService
         leave.Status = LeaveRequestStatus.Rejected;
         leave.ApprovedByUserId = approvedByUserId;
         await _context.SaveChangesAsync();
+
+        try
+        {
+            if (leave.Employee.UserId != approvedByUserId)
+            {
+                await _notificationService.CreateAsync(
+                    leave.Employee.UserId,
+                    "تم رفض طلب الإجازة",
+                    $"تم رفض طلب إجازتك ({leave.LeaveType})",
+                    NotificationType.LeaveRequestRejected,
+                    "/dashboard/leave-requests");
+            }
+        }
+        catch { }
     }
 
     private static AttendanceResponseDto MapToDto(Attendance a, string employeeName) => new()

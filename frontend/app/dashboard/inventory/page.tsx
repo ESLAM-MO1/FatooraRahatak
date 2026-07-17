@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import Icon from "@/components/Icon";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Warehouse {
   id: number;
@@ -40,6 +45,7 @@ const emptyDamageForm = {
 };
 
 export default function InventoryPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("stock");
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -73,11 +79,11 @@ export default function InventoryPage() {
       const res = await api.get("/inventory/stock", { params });
       setStock(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل الكميات");
+      setError(err.response?.data?.message || t("inventory.stockLoadError"));
     } finally {
       setStockLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchInitialData = useCallback(async () => {
     setLoading(true);
@@ -88,11 +94,11 @@ export default function InventoryPage() {
       setProducts(productsRes.data.data);
       await fetchStock();
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل البيانات");
+      setError(err.response?.data?.message || t("inventory.dataLoadError"));
     } finally {
       setLoading(false);
     }
-  }, [fetchStock]);
+  }, [fetchStock, t]);
 
   useEffect(() => {
     fetchInitialData();
@@ -134,7 +140,7 @@ export default function InventoryPage() {
       }));
 
     if (validItems.length === 0) {
-      setTransferError("أضف منتجًا واحدًا على الأقل");
+      setTransferError(t("inventory.addOneProduct"));
       setSubmittingTransfer(false);
       return;
     }
@@ -147,10 +153,10 @@ export default function InventoryPage() {
       });
       const transferId = res.data.data?.transferId;
       setPendingTransferId(transferId);
-      setTransferSuccess("بانتظار الاعتماد");
+      setTransferSuccess(t("inventory.pendingApproval"));
       setTransferItems([{ ...emptyTransferItem }]);
     } catch (err: any) {
-      setTransferError(err.response?.data?.message || "حدث خطأ أثناء إنشاء التحويل");
+      setTransferError(err.response?.data?.message || t("inventory.transferCreateError"));
     } finally {
       setSubmittingTransfer(false);
     }
@@ -162,11 +168,11 @@ export default function InventoryPage() {
     setApprovingTransfer(true);
     try {
       await api.put(`/inventory/transfer/${pendingTransferId}/approve`);
-      setTransferSuccess("تم اعتماد التحويل وتنفيذه بنجاح");
+      setTransferSuccess(t("inventory.transferApproved"));
       setPendingTransferId(null);
       await fetchStock(warehouseFilter || undefined);
     } catch (err: any) {
-      setTransferError(err.response?.data?.message || "حدث خطأ أثناء اعتماد التحويل");
+      setTransferError(err.response?.data?.message || t("inventory.transferApproveError"));
     } finally {
       setApprovingTransfer(false);
     }
@@ -188,10 +194,10 @@ export default function InventoryPage() {
       });
       const damageId = res.data.data?.damageId;
       setPendingDamageId(damageId);
-      setDamageSuccess("تم تسجيل التلف، بانتظار الاعتماد");
+      setDamageSuccess(t("inventory.damageRegistered"));
       setDamageForm(emptyDamageForm);
     } catch (err: any) {
-      setDamageError(err.response?.data?.message || "حدث خطأ أثناء تسجيل التالف");
+      setDamageError(err.response?.data?.message || t("inventory.damageCreateError"));
     } finally {
       setSubmittingDamage(false);
     }
@@ -203,40 +209,31 @@ export default function InventoryPage() {
     setApprovingDamage(true);
     try {
       await api.put(`/inventory/damage/${pendingDamageId}/approve`);
-      setDamageSuccess("تم اعتماد التلف وخصم الكمية بنجاح");
+      setDamageSuccess(t("inventory.damageApproved"));
       setPendingDamageId(null);
       await fetchStock(warehouseFilter || undefined);
     } catch (err: any) {
-      setDamageError(err.response?.data?.message || "حدث خطأ أثناء اعتماد التلف");
+      setDamageError(err.response?.data?.message || t("inventory.damageApproveError"));
     } finally {
       setApprovingDamage(false);
     }
   };
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "stock", label: "الكميات" },
-    { id: "transfer", label: "تحويل بين مخازن" },
-    { id: "damage", label: "تسجيل تالف" },
+    { id: "stock", label: t("inventory.stockTab") },
+    { id: "transfer", label: t("inventory.transferTab") },
+    { id: "damage", label: t("inventory.damageTab") },
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
     <div>
-      <h1 className="text-[22px] font-bold text-[var(--blue-deep)] mb-6">المخزون</h1>
+      <PageHeader icon="layers" title={t("inventory.title")} />
 
-      {error && (
-        <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert--danger">{error}</div>}
 
       <div className="tabs-bar">
         {tabs.map((tab) => (
@@ -254,11 +251,11 @@ export default function InventoryPage() {
         <div className="card p-6">
           <div className="mb-5">
             <label htmlFor="warehouseFilter" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-              فلترة بالمخزن
+              {t("inventory.filterByWarehouse")}
             </label>
             <div className="field-shell max-w-xs">
               <select id="warehouseFilter" value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-                <option value="">كل المخازن</option>
+                <option value="">{t("inventory.allWarehouses")}</option>
                 {warehouses.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.warehouseName}
@@ -269,19 +266,19 @@ export default function InventoryPage() {
           </div>
 
           {stockLoading ? (
-            <p className="text-[var(--sub)] text-[13.5px]">جارٍ التحميل...</p>
+            <p className="text-[var(--sub)] text-[13.5px]">{t("common.loading")}</p>
           ) : stock.length === 0 ? (
-            <p className="text-[var(--sub)] text-[13.5px]">لا توجد كميات مسجلة.</p>
+            <p className="text-[var(--sub)] text-[13.5px]">{t("inventory.noStock")}</p>
           ) : (
             <div className="table-wrap overflow-x-auto">
               <table>
                 <thead>
                   <tr>
-                    <th>المنتج</th>
-                    <th>المخزن</th>
-                    <th>الكمية المتاحة</th>
-                    <th>الكمية المحجوزة</th>
-                    <th>حد إعادة الطلب</th>
+                    <th>{t("inventory.product")}</th>
+                    <th>{t("inventory.warehouse")}</th>
+                    <th>{t("inventory.availableQty")}</th>
+                    <th>{t("inventory.reservedQty")}</th>
+                    <th>{t("inventory.reorderLevel")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -303,18 +300,14 @@ export default function InventoryPage() {
 
       {activeTab === "transfer" && (
         <div className="card p-6">
-          {transferError && (
-            <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-              {transferError}
-            </div>
-          )}
+          {transferError && <div className="alert alert--danger mb-4">{transferError}</div>}
 
           {transferSuccess && (
-            <div className="bg-[var(--green-soft)] border border-[#bfe8d7] text-[var(--green)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4 flex items-center justify-between">
+            <div className="alert alert--success mb-4 flex items-center justify-between">
               <span>{transferSuccess}</span>
               {pendingTransferId && (
-                <button onClick={handleApproveTransfer} disabled={approvingTransfer} className="btn-primary py-1.5 px-3 text-[12.5px]">
-                  {approvingTransfer ? "جارٍ الاعتماد..." : "اعتماد الآن"}
+                <button onClick={handleApproveTransfer} disabled={approvingTransfer} className="btn btn-primary py-1.5 px-3 text-[12.5px]">
+                  {approvingTransfer ? t("inventory.approving") : t("inventory.approveNow")}
                 </button>
               )}
             </div>
@@ -324,11 +317,11 @@ export default function InventoryPage() {
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label htmlFor="transferFrom" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  من مخزن
+                  {t("inventory.fromWarehouse")}
                 </label>
                 <div className="field-shell">
                   <select id="transferFrom" value={transferFrom} onChange={(e) => setTransferFrom(e.target.value)} required>
-                    <option value="">اختر المخزن</option>
+                    <option value="">{t("inventory.selectWarehouse")}</option>
                     {warehouses.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.warehouseName}
@@ -339,11 +332,11 @@ export default function InventoryPage() {
               </div>
               <div>
                 <label htmlFor="transferTo" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  إلى مخزن
+                  {t("inventory.toWarehouse")}
                 </label>
                 <div className="field-shell">
                   <select id="transferTo" value={transferTo} onChange={(e) => setTransferTo(e.target.value)} required>
-                    <option value="">اختر المخزن</option>
+                    <option value="">{t("inventory.selectWarehouse")}</option>
                     {warehouses.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.warehouseName}
@@ -356,16 +349,16 @@ export default function InventoryPage() {
 
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2.5">
-                <label className="text-[13.5px] font-bold text-[var(--ink)]">المنتجات</label>
+                <label className="text-[13.5px] font-bold text-[var(--ink)]">{t("inventory.products")}</label>
                 <button type="button" onClick={addTransferItem} className="text-[var(--blue)] text-[13px] font-bold hover:underline">
-                  + إضافة منتج
+                  {t("inventory.addProduct")}
                 </button>
               </div>
               {transferItems.map((item, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <div className="field-shell flex-1">
                     <select value={item.productId} onChange={(e) => updateTransferItem(index, "productId", e.target.value)} required>
-                      <option value="">اختر المنتج</option>
+                      <option value="">{t("inventory.selectProduct")}</option>
                       {products.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.nameAr}
@@ -380,7 +373,7 @@ export default function InventoryPage() {
                       onChange={(e) => updateTransferItem(index, "quantity", e.target.value)}
                       required
                       min={1}
-                      placeholder="الكمية"
+                      placeholder={t("inventory.quantity")}
                     />
                   </div>
                   {transferItems.length > 1 && (
@@ -389,15 +382,15 @@ export default function InventoryPage() {
                       onClick={() => removeTransferItem(index)}
                       className="text-[var(--danger)] text-[13px] font-bold px-2 hover:underline"
                     >
-                      حذف
+                      {t("common.delete")}
                     </button>
                   )}
                 </div>
               ))}
             </div>
 
-            <button type="submit" disabled={submittingTransfer} className="btn-primary">
-              {submittingTransfer ? "جارٍ الإرسال..." : "إرسال طلب التحويل"}
+            <button type="submit" disabled={submittingTransfer} className="btn btn-primary">
+              {submittingTransfer ? t("inventory.submitting") : t("inventory.submitTransfer")}
             </button>
           </form>
         </div>
@@ -405,22 +398,14 @@ export default function InventoryPage() {
 
       {activeTab === "damage" && (
         <div className="card p-6">
-          {damageError && (
-            <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-              {damageError}
-            </div>
-          )}
+          {damageError && <div className="alert alert--danger mb-4">{damageError}</div>}
 
-          {damageSuccess && (
-            <div className="bg-[var(--green-soft)] border border-[#bfe8d7] text-[var(--green)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-              {damageSuccess}
-            </div>
-          )}
+          {damageSuccess && <div className="alert alert--success mb-4">{damageSuccess}</div>}
 
           <form onSubmit={handleReportDamage} className="max-w-lg">
             <div className="mb-5">
               <label htmlFor="damageWarehouse" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                المخزن
+                {t("inventory.warehouse")}
               </label>
               <div className="field-shell">
                 <select
@@ -429,7 +414,7 @@ export default function InventoryPage() {
                   onChange={(e) => setDamageForm({ ...damageForm, warehouseId: e.target.value })}
                   required
                 >
-                  <option value="">اختر المخزن</option>
+                  <option value="">{t("inventory.selectWarehouse")}</option>
                   {warehouses.map((w) => (
                     <option key={w.id} value={w.id}>
                       {w.warehouseName}
@@ -441,7 +426,7 @@ export default function InventoryPage() {
 
             <div className="mb-5">
               <label htmlFor="damageProduct" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                المنتج
+                {t("inventory.product")}
               </label>
               <div className="field-shell">
                 <select
@@ -450,7 +435,7 @@ export default function InventoryPage() {
                   onChange={(e) => setDamageForm({ ...damageForm, productId: e.target.value })}
                   required
                 >
-                  <option value="">اختر المنتج</option>
+                  <option value="">{t("inventory.selectProduct")}</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.nameAr}
@@ -462,7 +447,7 @@ export default function InventoryPage() {
 
             <div className="mb-5">
               <label htmlFor="damageQuantity" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                الكمية
+                {t("inventory.quantity")}
               </label>
               <div className="field-shell">
                 <input
@@ -478,7 +463,7 @@ export default function InventoryPage() {
 
             <div className="mb-6">
               <label htmlFor="damageReason" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                السبب
+                {t("inventory.reason")}
               </label>
               <div className="field-shell">
                 <textarea
@@ -491,15 +476,15 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={submittingDamage} className="btn-primary">
-              {submittingDamage ? "جارٍ التسجيل..." : "تسجيل التالف"}
+            <button type="submit" disabled={submittingDamage} className="btn btn-primary">
+              {submittingDamage ? t("inventory.registering") : t("inventory.registerDamage")}
             </button>
           </form>
 
           {pendingDamageId && (
             <div className="mt-5 pt-5 border-t border-[var(--border)]">
-              <button onClick={handleApproveDamage} disabled={approvingDamage} className="btn-primary">
-                {approvingDamage ? "جارٍ الاعتماد..." : "اعتماد التلف"}
+              <button onClick={handleApproveDamage} disabled={approvingDamage} className="btn btn-primary">
+                {approvingDamage ? t("inventory.approving") : t("inventory.approveDamage")}
               </button>
             </div>
           )}

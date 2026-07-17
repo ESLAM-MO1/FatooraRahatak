@@ -11,10 +11,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class AdminService : IAdminService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
 
-    public AdminService(AppDbContext context)
+    public AdminService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<List<AdminStoreListDto>> GetAllStoresAsync()
@@ -96,6 +98,17 @@ public class AdminService : IAdminService
 
         store.CustomDomainStatus = CustomDomainStatus.Active;
         await _context.SaveChangesAsync();
+
+        try
+        {
+            await _notificationService.CreateAsync(
+                store.OwnerUserId,
+                "تم تفعيل الدومين الخاص",
+                $"تم تفعيل الدومين {store.CustomDomain} لمتجرك بنجاح",
+                NotificationType.DomainActivated,
+                "/dashboard/store-settings");
+        }
+        catch { }
     }
 
     public async Task<List<AdminPackageDto>> GetAllPackagesAsync()
@@ -120,6 +133,8 @@ public class AdminService : IAdminService
                 HasCustomDomain = p.HasCustomDomain,
                 HasAffiliateMarketing = p.HasAffiliateMarketing,
                 HasApiAccess = p.HasApiAccess,
+                MaxThemes = p.MaxThemes,
+                CommissionPercentage = p.CommissionPercentage,
                 IsActive = p.IsActive
             })
             .ToListAsync();
@@ -148,6 +163,8 @@ public class AdminService : IAdminService
             HasCustomDomain = package.HasCustomDomain,
             HasAffiliateMarketing = package.HasAffiliateMarketing,
             HasApiAccess = package.HasApiAccess,
+            MaxThemes = package.MaxThemes,
+            CommissionPercentage = package.CommissionPercentage,
             IsActive = package.IsActive
         };
     }
@@ -173,6 +190,8 @@ public class AdminService : IAdminService
         package.HasCustomDomain = dto.HasCustomDomain;
         package.HasAffiliateMarketing = dto.HasAffiliateMarketing;
         package.HasApiAccess = dto.HasApiAccess;
+        package.MaxThemes = dto.MaxThemes;
+        package.CommissionPercentage = dto.CommissionPercentage;
         package.IsActive = dto.IsActive;
 
         await _context.SaveChangesAsync();

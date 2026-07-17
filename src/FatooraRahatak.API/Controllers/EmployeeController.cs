@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Employees;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,11 +16,13 @@ public class EmployeeController : ControllerBase
 {
     private readonly IEmployeeService _employeeService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public EmployeeController(IEmployeeService employeeService, AppDbContext context)
+    public EmployeeController(IEmployeeService employeeService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _employeeService = employeeService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -38,6 +41,8 @@ public class EmployeeController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "EmployeeManagement.Add"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _employeeService.CreateAsync(storeId.Value, dto);
@@ -65,6 +70,8 @@ public class EmployeeController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "EmployeeManagement.Edit"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             await _employeeService.DeactivateAsync(storeId.Value, id);

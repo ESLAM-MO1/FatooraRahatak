@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Warehouse {
   id: number;
@@ -10,6 +14,7 @@ interface Warehouse {
 }
 
 export default function StockCountsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [warehouseId, setWarehouseId] = useState("");
@@ -25,11 +30,11 @@ export default function StockCountsPage() {
       const res = await api.get("/warehouses");
       setWarehouses(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المخازن");
+      setError(err.response?.data?.message || t("stockCount.errorLoadingWarehouses"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchWarehouses();
@@ -47,46 +52,33 @@ export default function StockCountsPage() {
       const stockCountId = res.data.data?.id;
       router.push(`/dashboard/stock-counts/${stockCountId}`);
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء بدء الجرد");
+      setActionError(err.response?.data?.message || t("stockCount.errorStartingCount"));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
     <div>
-      <h1 className="text-[22px] font-bold text-[var(--blue-deep)] mb-6">الجرد الدوري</h1>
+      <PageHeader icon="clipboard" title={t("stockCount.title")} />
 
-      {error && (
-        <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert--danger mb-4">{error}</div>}
 
       <div className="card p-6 max-w-md">
-        {actionError && (
-          <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-            {actionError}
-          </div>
-        )}
+        {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
         <form onSubmit={handleStart}>
           <div className="mb-6">
             <label htmlFor="warehouseId" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-              اختر المخزن
+              {t("stockCount.selectWarehouse")}
             </label>
             <div className="field-shell">
               <select id="warehouseId" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)} required>
-                <option value="">اختر المخزن</option>
+                <option value="">{t("stockCount.selectWarehouse")}</option>
                 {warehouses.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.warehouseName}
@@ -96,8 +88,8 @@ export default function StockCountsPage() {
             </div>
           </div>
 
-          <button type="submit" disabled={submitting} className="btn-primary w-full py-2.5">
-            {submitting ? "جارٍ البدء..." : "بدء جرد جديد"}
+          <button type="submit" disabled={submitting} className="btn btn-primary w-full py-2.5">
+            {submitting ? t("stockCount.starting") : t("stockCount.startNewCount")}
           </button>
         </form>
       </div>

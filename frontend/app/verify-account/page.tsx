@@ -2,25 +2,13 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
-
-function LangSwitch() {
-  const [lang, setLang] = useState("ar");
-
-  return (
-    <div className="lang-switch" role="group" aria-label="اللغة / Language">
-      <button type="button" className={lang === "ar" ? "active" : ""} onClick={() => setLang("ar")}>
-        عربي
-      </button>
-      <button type="button" className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>
-        EN
-      </button>
-      <span className="lang-thumb" style={{ transform: lang === "ar" ? "translateX(0%)" : "translateX(-100%)" }} />
-    </div>
-  );
-}
+import LangSwitch from "@/components/LangSwitch";
+import "@/lib/i18n/config";
 
 function BrandPanel() {
+  const { t } = useTranslation();
   return (
     <div className="auth-brand-panel">
       <div className="relative z-[2] flex justify-start">
@@ -29,10 +17,10 @@ function BrandPanel() {
 
       <div className="relative z-[2] flex flex-col items-center my-2">
         <div className="brand-logo-frame" style={{ width: 220, height: 185 }}>
-          <img src="/logo.png" alt="فاتورة راحتك" className="brand-logo" />
+          <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
         </div>
         <div className="text-center mt-4">
-          <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">فاتورة راحتك</p>
+          <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">{t("brand.name")}</p>
           <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
             faturat rahatik
           </p>
@@ -45,14 +33,15 @@ function BrandPanel() {
       </div>
 
       <div className="relative z-[2] flex justify-between items-center border-t border-[var(--border)] pt-4.5">
-        <span className="text-[12.5px] text-[var(--sub)]">© 2026 فاتورة راحتك</span>
-        <span className="text-[12.5px] text-[var(--sub)]">جميع الحقوق محفوظة</span>
+        <span className="text-[12.5px] text-[var(--sub)]">&copy; {new Date().getFullYear()} {t("brand.name")}</span>
+        <span className="text-[12.5px] text-[var(--sub)]">{t("footer.copyright")}</span>
       </div>
     </div>
   );
 }
 
 function VerifyAccountContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const emailFromQuery = searchParams.get("email") || "";
 
@@ -71,19 +60,19 @@ function VerifyAccountContent() {
     setDevCode("");
 
     if (!email) {
-      setError("من فضلك أدخل البريد الإلكتروني أولًا");
+      setError(t("auth.enterEmailFirst"));
       return;
     }
 
     setSending(true);
     try {
       const response = await api.post(`/auth/send-verification-code?email=${encodeURIComponent(email)}`);
-      setSuccessMessage(response.data.message || "تم إرسال رمز التفعيل");
+      setSuccessMessage(response.data.message || t("auth.codeSent"));
       if (response.data.code) {
         setDevCode(response.data.code);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء إرسال رمز التفعيل");
+      setError(err.response?.data?.message || t("error.serverError"));
     } finally {
       setSending(false);
     }
@@ -97,25 +86,25 @@ function VerifyAccountContent() {
     setVerifying(true);
     try {
       const response = await api.post("/auth/verify-account", { email, code });
-      setSuccessMessage(response.data.message || "تم تفعيل الحساب بنجاح");
+      setSuccessMessage(response.data.message || t("auth.accountVerified"));
       setVerified(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تفعيل الحساب");
+      setError(err.response?.data?.message || t("error.serverError"));
     } finally {
       setVerifying(false);
     }
   };
 
   return (
-    <div className="auth-layout" dir="rtl">
+    <div className="auth-layout">
       <div className="brand-strip" />
 
       <div className="auth-form-panel">
         <div className="w-full max-w-[400px]">
           <div className="mb-9">
-            <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">خطوة أخيرة</span>
-            <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">تفعيل الحساب</h1>
-            <p className="text-[14.5px] text-[var(--sub)]">أدخل بريدك واطلب رمز التفعيل</p>
+            <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">{t("auth.stepFinal")}</span>
+            <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">{t("auth.verifyTitle")}</h1>
+            <p className="text-[14.5px] text-[var(--sub)]">{t("auth.verifySubtitle")}</p>
           </div>
 
           {error && (
@@ -132,21 +121,21 @@ function VerifyAccountContent() {
 
           {devCode && (
             <div className="bg-[var(--gold-soft)] border border-[#e3d9ad] text-[var(--gold-deep)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-              وضع التطوير: رمزك هو <span className="font-bold">{devCode}</span>
+              {t("auth.devModeCode")} <span className="font-bold">{devCode}</span>
             </div>
           )}
 
           {verified ? (
             <div className="text-center">
               <a href="/login" className="text-[var(--blue)] font-bold hover:underline text-[13.5px]">
-                اذهب لتسجيل الدخول
+                {t("auth.goToLogin")}
               </a>
             </div>
           ) : (
             <>
               <div className="mb-4">
                 <label htmlFor="email" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  البريد الإلكتروني
+                  {t("auth.email")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -166,13 +155,13 @@ function VerifyAccountContent() {
                 disabled={sending}
                 className="btn-secondary w-full py-3 text-[14px] mb-6"
               >
-                {sending ? "جارٍ الإرسال..." : "إرسال رمز التفعيل"}
+                {sending ? t("common.loading") : t("auth.sendVerifyCode")}
               </button>
 
               <form onSubmit={handleVerify} noValidate>
                 <div className="mb-6">
                   <label htmlFor="code" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                    رمز التفعيل (6 أرقام)
+                    {t("auth.verifyCodeLabel")}
                   </label>
                   <div className="field-shell">
                     <input
@@ -190,7 +179,7 @@ function VerifyAccountContent() {
                   {verifying && (
                     <span className="w-[15px] h-[15px] rounded-full border-2 border-white/40 border-t-white animate-spin" />
                   )}
-                  {verifying ? "جارٍ التفعيل..." : "تفعيل الحساب"}
+                  {verifying ? t("common.loading") : t("auth.verifyButton")}
                 </button>
               </form>
             </>
@@ -204,11 +193,12 @@ function VerifyAccountContent() {
 }
 
 export default function VerifyAccountPage() {
+  const { t } = useTranslation();
   return (
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-white text-[var(--sub)]">
-          جارٍ التحميل...
+          {t("common.loading")}
         </div>
       }
     >

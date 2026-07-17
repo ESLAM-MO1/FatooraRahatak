@@ -10,6 +10,7 @@ export interface RegisterData {
   email: string;
   phone: string;
   password: string;
+  invitationToken?: string;
 }
 
 export async function login(data: LoginData) {
@@ -55,4 +56,16 @@ export function isAuthenticated(): boolean {
 export function getUserType(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("userType");
+}
+export async function googleAuth(idToken: string) {
+  const response = await api.post("/auth/google", { idToken });
+  const { accessToken, refreshToken, userType, fullName, email } = response.data.data;
+
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("refreshToken", refreshToken);
+  localStorage.setItem("userType", userType);
+  localStorage.setItem("fullName", fullName);
+  localStorage.setItem("email", email);
+
+  return response.data.data;
 }

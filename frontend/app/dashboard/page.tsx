@@ -1,69 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
+import Icon from "@/components/Icon";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 
-function Icon({ path, className = "" }: { path: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} width="20" height="20">
-      <path d={path} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-const boxPath = "M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9ZM12 21v-9M3.5 7.5 12 12l8.5-4.5";
-const usersPath =
-  "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0M17 11a3 3 0 1 0 0-6M15 14a5 5 0 0 1 6 6H17";
-const storePath = "M4 9h16l-1-5H5L4 9Zm0 0v10h16V9M9 21v-6h6v6";
-const packagePath = "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0-9V7m0 4-3.5-2M12 12l3.5-2";
-const userGroupPath =
-  "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-6 9a6 6 0 0 1 12 0M17 11a3 3 0 1 0 0-6M15 14a5 5 0 0 1 6 6H17";
-const alertPath = "M12 9v4M12 17h.01M10.3 3.9 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z";
-const arrowPath = "M15 5 8 12l7 7";
-
-const GREETINGS = [
-  { h: 5, text: "تصبح على خير" },
-  { h: 12, text: "صباح الخير" },
-  { h: 17, text: "نهارك سعيد" },
-  { h: 24, text: "مساء الخير" },
-];
-function getGreeting() {
+function getGreeting(t: (key: string) => string) {
   const hour = new Date().getHours();
-  return (GREETINGS.find((g) => hour < g.h) || GREETINGS[GREETINGS.length - 1]).text;
+  if (hour < 5) return t("dashboard.greetingNight");
+  if (hour < 12) return t("dashboard.greetingMorning");
+  if (hour < 17) return t("dashboard.greetingAfternoon");
+  return t("dashboard.greetingEvening");
 }
 
-function SealBadge({
-  eyebrow,
-  title,
-  sub,
-  tone = "light",
-}: {
-  eyebrow: string;
-  title: string;
-  sub?: string;
-  tone?: "light" | "dark";
-}) {
-  const titleColor = tone === "dark" ? "text-[var(--blue-deep)]" : "text-[var(--blue-deep)]";
-  const accentColor = "text-[var(--gold)]";
-
+function SealBadge({ eyebrow, title, sub }: { eyebrow: string; title: string; sub?: string }) {
   return (
     <div className="seal-badge w-[126px] h-[126px] shrink-0 rotate-[-4deg]">
       <div className="seal-inner">
-        <p className={`text-[8.5px] font-bold tracking-[0.08em] ${accentColor}`}>{eyebrow}</p>
-        <p className={`text-[13px] font-bold mt-1.5 leading-tight ${titleColor}`}>{title}</p>
-        {sub && <p className={`text-[8.5px] mt-1.5 ${accentColor}`}>{sub}</p>}
+        <p className="text-[8.5px] font-bold tracking-[0.08em] text-[var(--gold)]">{eyebrow}</p>
+        <p className="text-[13px] font-bold mt-1.5 leading-tight text-[var(--blue-deep)]">{title}</p>
+        {sub && <p className="text-[8.5px] mt-1.5 text-[var(--gold)]">{sub}</p>}
       </div>
     </div>
   );
 }
 
 function UsageBar({ current, max }: { current: number; max: number | null }) {
+  const { t } = useTranslation();
   if (max === null) {
     return (
       <span className="badge-unlimited mt-3">
         <span className="dot" />
-        غير محدود
+        {t("dashboard.unlimited")}
       </span>
     );
   }
@@ -74,17 +45,10 @@ function UsageBar({ current, max }: { current: number; max: number | null }) {
 
   return (
     <div className="mt-4">
-      <div className="relative h-2 w-full rounded-full overflow-hidden bg-[#ECEEF1]">
+      <div className="progress-track">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="progress-fill"
           style={{ width: `${pct}%`, backgroundColor: barColor }}
-        />
-        <div
-          className="absolute inset-0 rounded-full pointer-events-none"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(90deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 10px)",
-          }}
         />
       </div>
       <p className="text-[11px] text-[var(--sub)] mt-2" style={{ direction: "ltr", textAlign: "right" }}>
@@ -94,26 +58,16 @@ function UsageBar({ current, max }: { current: number; max: number | null }) {
   );
 }
 
-function StatCard({
-  label,
-  current,
-  max,
-  icon,
-}: {
-  label: string;
-  current: number;
-  max: number | null;
-  icon: string;
-}) {
+function StatCard({ label, current, max, icon }: { label: string; current: number; max: number | null; icon: string }) {
   return (
-    <div className="card p-6">
+    <div className="stat-card">
       <div className="flex items-center justify-between">
-        <div className="w-10 h-10 rounded-lg bg-[var(--gold-soft)] text-[var(--gold)] flex items-center justify-center">
-          <Icon path={icon} />
+        <div className="w-11 h-11 rounded-xl bg-[var(--gold-soft)] text-[var(--gold)] flex items-center justify-center">
+          <Icon name={icon as any} size={20} />
         </div>
         <span className="text-[28px] font-bold text-[var(--blue-deep)]">{current}</span>
       </div>
-      <p className="text-[13.5px] text-[var(--sub)] mt-3">{label}</p>
+      <p className="text-[14px] text-[var(--sub)] mt-3">{label}</p>
       <UsageBar current={current} max={max} />
     </div>
   );
@@ -121,27 +75,27 @@ function StatCard({
 
 function QuickLink({ href, label, desc, icon }: { href: string; label: string; desc: string; icon: string }) {
   return (
-    <Link href={href} className="card p-6 flex items-center gap-4 group">
-      <div className="w-11 h-11 rounded-lg bg-[var(--blue-deep)] text-[var(--blue-bright)] flex items-center justify-center shrink-0">
-        <Icon path={icon} />
+    <Link href={href} className="stat-card flex items-center gap-4 group">
+      <div className="w-12 h-12 rounded-xl bg-[var(--blue-deep)] text-[var(--blue-bright)] flex items-center justify-center shrink-0">
+        <Icon name={icon as any} size={20} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-bold text-[var(--blue-deep)]">{label}</p>
         <p className="text-[12px] text-[var(--sub)] mt-0.5">{desc}</p>
       </div>
-      <Icon
-        path={arrowPath}
-        className="text-[#D5D9DE] group-hover:text-[var(--gold)] group-hover:-translate-x-1 transition-all shrink-0 rotate-180"
-      />
+      <Icon name="arrowLeft" className="text-[#D5D9DE] group-hover:text-[var(--gold)] group-hover:-translate-x-1 transition-all shrink-0 rotate-180" />
     </Link>
   );
 }
 
 export default function DashboardHome() {
+  const { t } = useTranslation();
   const [userType, setUserType] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [stats, setStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     const type = getUserType();
@@ -151,27 +105,36 @@ export default function DashboardHome() {
       api
         .get("/subscriptions/status")
         .then((res) => setSubscriptionStatus(res.data.data))
-        .catch((err) => setError(err.response?.data?.message || "حدث خطأ"))
+        .catch((err) => setError(err.response?.data?.message || t("common.error")))
         .finally(() => setLoading(false));
+
+      api
+        .get("/owner/dashboard/stats", { params: { period: "monthly" } })
+        .then((res) => setStats(res.data.data))
+        .catch(() => {})
+        .finally(() => setStatsLoading(false));
     } else {
       setLoading(false);
+      setStatsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   if (loading) {
     return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
+      <div className="min-h-[40vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <span className="w-7 h-7 rounded-full border-[3px] border-[var(--blue)] border-t-transparent animate-spin" />
+          <p className="text-[14px] text-[var(--sub)]">{t("common.loading")}</p>
+        </div>
       </div>
     );
   }
 
-  const greeting = getGreeting();
+  const greeting = getGreeting(t);
 
   return (
     <div>
-      <div className="relative overflow-hidden rounded-2xl bg-[var(--blue-deep)] p-8 md:p-10 mb-8">
+      <div className="relative overflow-hidden rounded-[var(--radius-xl)] bg-[var(--blue-deep)] p-8 md:p-10 mb-8">
         <div
           className="absolute inset-0 opacity-[0.05]"
           style={{
@@ -193,61 +156,84 @@ export default function DashboardHome() {
               {greeting}
             </p>
             <h1 className="text-[24px] md:text-[29px] font-bold text-white leading-tight">
-              {userType === "SuperAdmin" ? "مرحبًا بك في لوحة الإدارة" : "مرحبًا بك في لوحة تحكم متجرك"}
+              {userType === "SuperAdmin" ? t("dashboard.adminWelcome") : userType === "Employee" ? t("dashboard.employeeWelcome") : t("dashboard.ownerWelcome")}
             </h1>
             <p className="text-[13.5px] text-[#BFE6F3] mt-3 max-w-md">
               {userType === "SuperAdmin"
-                ? "يمكنك استخدام الروابط أدناه للوصول السريع إلى أهم أقسام المنصة"
-                : "نظرة سريعة على أداء متجرك والمساحة المتاحة ضمن باقتك الحالية"}
+                ? t("dashboard.adminDesc")
+                : userType === "Employee"
+                ? t("dashboard.employeeDesc")
+                : t("dashboard.ownerDesc")}
             </p>
           </div>
           <div className="hidden sm:block">
-            <SealBadge eyebrow="فاتورة راحتك" title="FATURAT RAHATIK" tone="dark" />
+            <SealBadge eyebrow={t("dashboard.sealEyebrow")} title="FATURAT RAHATIK" />
           </div>
         </div>
       </div>
 
       {userType === "SuperAdmin" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <QuickLink href="/dashboard/stores" label="إدارة المتاجر" desc="عرض المتاجر وتعليقها وتفعيلها" icon={storePath} />
-          <QuickLink href="/dashboard/packages" label="إدارة الباقات" desc="تعديل حدود الباقات ومزاياها" icon={packagePath} />
-          <QuickLink href="/dashboard/users" label="إدارة المستخدمين" desc="تفعيل الحسابات وتعطيلها" icon={userGroupPath} />
+          <QuickLink href="/dashboard/stores" label={t("dashboard.manageStores")} desc={t("dashboard.manageStoresDesc")} icon="store" />
+          <QuickLink href="/dashboard/packages" label={t("dashboard.managePackages")} desc={t("dashboard.managePackagesDesc")} icon="package" />
+          <QuickLink href="/dashboard/users" label={t("dashboard.manageUsers")} desc={t("dashboard.manageUsersDesc")} icon="userGroup" />
         </div>
       ) : (
         <>
           {error && (
-            <div className="bg-[var(--gold-soft)] border border-[#E3D9AD] text-[var(--gold-deep)] rounded-2xl p-5 mb-6 flex items-start gap-3 text-sm">
-              <Icon path={alertPath} className="shrink-0 mt-0.5 text-[var(--gold)]" />
-              <div>
-                <p>{error}</p>
-                {error.includes("لا يوجد متجر") && (
-                  <Link href="/dashboard/create-store" className="btn-primary inline-flex mt-3 px-4 py-2 text-sm">
-                    أنشئ متجرك الآن
+            <div className="alert alert--warning mb-6">
+              <Icon name="alert" size={16} className="shrink-0 mt-0.5 text-[var(--gold)]" />
+              <span>
+                {error}
+                {error.toLowerCase().includes("no store") && (
+                  <Link href="/dashboard/create-store" className="btn-primary inline-flex mr-3 px-4 py-2 text-sm">
+                    {t("dashboard.createStore")}
                   </Link>
                 )}
-              </div>
+              </span>
             </div>
           )}
 
           {subscriptionStatus && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <div className="card p-6 flex flex-col items-center justify-center text-center">
-                <SealBadge eyebrow="الباقة الحالية" title={subscriptionStatus.currentPackage} sub="سارية" tone="light" />
+              <div className="stat-card flex flex-col items-center justify-center text-center">
+                <SealBadge eyebrow={t("dashboard.currentPackage")} title={subscriptionStatus.currentPackage} sub={t("dashboard.active")} />
               </div>
 
               <StatCard
-                label="المنتجات"
+                label={t("dashboard.products")}
                 current={subscriptionStatus.currentProductsCount}
                 max={subscriptionStatus.maxProducts}
-                icon={boxPath}
+                icon="box"
               />
 
               <StatCard
-                label="الموظفون"
+                label={t("dashboard.employees")}
                 current={subscriptionStatus.currentEmployeesCount}
                 max={subscriptionStatus.maxEmployees}
-                icon={usersPath}
+                icon="users"
               />
+            </div>
+          )}
+
+          {stats && !statsLoading && (
+            <div className="stat-card p-5 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-[16px] font-bold text-[var(--ink)]">{t("dashboard.salesSummary")}</h2>
+                <Link href="/dashboard/statistics" className="text-[12.5px] font-bold text-[var(--blue)] hover:underline">{t("dashboard.viewDetails")}</Link>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-[11px] text-[var(--sub)]">{t("dashboard.totalSales")}</p>
+                  <p className="text-[18px] font-bold text-[var(--blue-deep)]">{stats.totalSales.toLocaleString("ar-SA")} {t("common.currency")}</p>
+                </div>
+                {stats.ordersCountByStatus?.map((s: any) => (
+                  <div key={s.status}>
+                    <p className="text-[11px] text-[var(--sub)]">{s.status === "New" ? t("order.statusNew") : s.status === "Processing" ? t("order.statusProcessing") : s.status === "Shipped" ? t("order.statusShipped") : s.status === "Delivered" ? t("order.statusDelivered") : s.status === "Returned" ? t("order.statusReturned") : s.status}</p>
+                    <p className="text-[18px] font-bold text-[var(--ink)]">{s.count}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>

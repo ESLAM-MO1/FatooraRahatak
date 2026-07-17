@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Orders;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,11 +16,13 @@ public class OwnerOrderController : ControllerBase
 {
     private readonly IOrderService _orderService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public OwnerOrderController(IOrderService orderService, AppDbContext context)
+    public OwnerOrderController(IOrderService orderService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _orderService = orderService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -38,6 +41,8 @@ public class OwnerOrderController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "Orders.View"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _orderService.GetOwnerOrdersAsync(storeId.Value, status);
@@ -55,6 +60,8 @@ public class OwnerOrderController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "Orders.View"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         var result = await _orderService.GetOwnerOrderDetailAsync(storeId.Value, id);
         if (result == null)
             return NotFound(new { success = false, message = "الطلب غير موجود" });
@@ -68,9 +75,12 @@ public class OwnerOrderController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Orders.Edit"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
-            await _orderService.UpdateOrderStatusAsync(storeId.Value, id, GetUserId(), dto.NewStatus);
+            await _orderService.UpdateOrderStatusAsync(storeId.Value, id, userId, dto.NewStatus);
             return Ok(new { success = true, message = "تم تحديث حالة الطلب بنجاح" });
         }
         catch (InvalidOperationException ex)

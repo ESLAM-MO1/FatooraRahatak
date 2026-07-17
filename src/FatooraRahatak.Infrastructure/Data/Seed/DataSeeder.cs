@@ -1,6 +1,7 @@
 using FatooraRahatak.Domain.Entities.Roles;
 using FatooraRahatak.Domain.Entities.Packages;
 using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,9 @@ public static class DataSeeder
         await SeedRolesAndPermissionsAsync(context);
         await SeedPackagesAsync(context);
         await SeedSuperAdminAsync(context);
+        await SeedSiteContentAsync(context);
+        await SeedLandingPageContentAsync(context);
+        await SeedAllSitePagesAsync(context);
     }
 
     private static async Task SeedRolesAndPermissionsAsync(AppDbContext context)
@@ -199,6 +203,8 @@ public static class DataSeeder
                 HasCustomDomain = false,
                 HasAffiliateMarketing = false,
                 HasApiAccess = false,
+                MaxThemes = 1,
+                CommissionPercentage = 0,
                 IsActive = true
             },
             new()
@@ -218,6 +224,8 @@ public static class DataSeeder
                 HasCustomDomain = false,
                 HasAffiliateMarketing = false,
                 HasApiAccess = false,
+                MaxThemes = 2,
+                CommissionPercentage = 5,
                 IsActive = true
             },
             new()
@@ -235,8 +243,10 @@ public static class DataSeeder
                 HasPayroll = true,
                 HasZatcaInvoice = true,
                 HasCustomDomain = true,
-                HasAffiliateMarketing = false,
-                HasApiAccess = true,
+                HasAffiliateMarketing = true,
+                HasApiAccess = false,
+                MaxThemes = 3,
+                CommissionPercentage = 3,
                 IsActive = true
             },
             new()
@@ -256,6 +266,8 @@ public static class DataSeeder
                 HasCustomDomain = true,
                 HasAffiliateMarketing = true,
                 HasApiAccess = true,
+                MaxThemes = 3,
+                CommissionPercentage = 5,
                 IsActive = true
             }
         };
@@ -281,6 +293,124 @@ public static class DataSeeder
         };
 
         context.Users.Add(superAdmin);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedSiteContentAsync(AppDbContext context)
+    {
+        if (await context.Set<SitePage>().AnyAsync()) return;
+
+        context.Set<SitePage>().AddRange(
+            new SitePage { PageKey = "about", TitleAr = "عن المنصة", TitleEn = "About Us", ContentAr = "<h2>فاتورة راحتك</h2><p>منصة سحابية متكاملة لإدارة المتاجر الإلكترونية، توفر حلولاً شاملة من إنشاء المتجر وإدارة المنتجات والمخزون إلى النظام المحاسبي الكامل والفواتير الإلكترونية.</p><p>نهدف إلى تمكين رواد الأعمال في المملكة العربية السعودية من إدارة أعمالهم بكفاءة واحترافية من خلال أدوات سهلة الاستخدام ومتكاملة.</p>", ContentEn = "<h2>FatooraRahatak</h2><p>A comprehensive SaaS platform for e-commerce management.</p>" },
+            new SitePage { PageKey = "help-center", TitleAr = "مركز المساعدة", TitleEn = "Help Center", ContentAr = "<h2>مرحبًا بك في مركز المساعدة</h2><p>هذا المركز قيد الإعداد حاليًا. سنوفر قريبًا أدلة وشروحات مفصلة لكل أجزاء المنصة.</p>", ContentEn = "<h2>Welcome to Help Center</h2><p>Coming soon.</p>" }
+        );
+
+        context.Set<SiteFaqItem>().AddRange(
+            new SiteFaqItem { QuestionAr = "هل الباقة المجانية مجانية للأبد؟", AnswerAr = "نعم، الباقة المجانية مجانية مدى الحياة بدون أي رسوم مخفية.", DisplayOrder = 1 },
+            new SiteFaqItem { QuestionAr = "هل يمكنني تغيير باقتي في أي وقت؟", AnswerAr = "نعم، يمكنك الترقية في أي وقت فوريًا. الترقية من باقة أعلى إلى أقل تتطلب خفض استخدامك أولاً.", DisplayOrder = 2 },
+            new SiteFaqItem { QuestionAr = "هل النظام متوافق مع الفاتورة الإلكترونية ZATCA؟", AnswerAr = "نعم، المنصة تدعم الفاتورة الإلكترونية (المرحلة الثانية) مع QR Code والتوقيع الرقمي.", DisplayOrder = 3 },
+            new SiteFaqItem { QuestionAr = "كيف أضيف موظفين لحسابي؟", AnswerAr = "يمكنك دعوة موظفين من لوحة التحكم عبر قسم الموظفين. ستحدد صلاحيات كل موظف حسب دوره.", DisplayOrder = 4 },
+            new SiteFaqItem { QuestionAr = "هل يمكنني استخدام دومين خاص لمتجري؟", AnswerAr = "نعم، يتوفر ربط دومين خاص في باقة التوسع والريادة.", DisplayOrder = 5 }
+        );
+
+        context.Set<BlogPost>().AddRange(
+            new BlogPost { TitleAr = "كيف تبدأ متجرك الإلكتروني في 5 دقائق", SlugAr = "how-to-start-your-store", ContentAr = "<p>إنشاء متجر إلكتروني احترافي لم يكن بهذه السهولة من قبل. مع منصة فاتورة راحتك، يمكنك البدء في خطوات بسيطة.</p><h3>الخطوة الأولى: إنشاء حساب</h3><p>سجل في المنصة وأنشئ متجرك ببضع نقرات.</p><h3>الخطوة الثانية: أضف منتجاتك</h3><p>ارفع منتجاتك مع الصور والأسعار والتصنيفات.</p>", AuthorName = "فريق فاتورة راحتك", Status = "Published", PublishedAt = DateTime.UtcNow },
+            new BlogPost { TitleAr = "الفرق بين الفاتورة الضريبية والمبسطة", SlugAr = "tax-invoice-vs-simplified", ContentAr = "<p>توضح هيئة الزكاة والضريبة والجمارك أن هناك نوعين من الفواتير الإلكترونية في المملكة.</p>", AuthorName = "فريق فاتورة راحتك", Status = "Published", PublishedAt = DateTime.UtcNow }
+        );
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedLandingPageContentAsync(AppDbContext context)
+    {
+        if (await context.PlatformSettings.AnyAsync(s => s.SettingKey == "landing_page_content")) return;
+
+        var defaultContent = new
+        {
+            siteName = "فاتورة راحتك",
+            siteDescription = "منصة إدارة المتاجر",
+            hero = new
+            {
+                title = "منصة متكاملة لإدارة\nمتجرك بالكامل",
+                description = "الفواتير، روابط الدفع، الكاشير، المتجر الإلكتروني، بوابة الدفع — كل ما تحتاجه في نظام واحد لتنمية أعمالك.",
+                backgroundImage = "",
+                primaryCta = "ابدأ الآن مجانًا",
+                primaryCtaHref = "/register",
+                secondaryCta = "اعرف أكثر",
+                secondaryCtaHref = "#",
+                stats = new[] {
+                    new { number = "10,000+", label = "تاجر" },
+                    new { number = "50,000+", label = "فاتورة" },
+                    new { number = "99.9%", label = "وقت تشغيل" },
+                }
+            },
+            videoSection = new { title = "كل ما تحتاجه في منصة واحدة", videoUrl = "" },
+            features = new[] {
+                new { title = "المتجر الإلكتروني الخاص بك", description = "أنشئ متجرك الإلكتروني بكل سهولة وأطلق أعمالك على الإنترنت. تحكم في المنتجات، التصنيفات، والعروض.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+                new { title = "روابط الدفع", description = "أرسل روابط دفع احترافية لعملائك واستلم المدفوعات بسرعة وأمان عبر قنوات التواصل المفضلة لديهم.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+                new { title = "بوابة الدفع الإلكتروني", description = "بوابة دفع متكاملة تدعم جميع طرق الدفع المحلية والعالمية. استلم مدفوعاتك بأمان وسرعة فائقة.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+                new { title = "الكاشير ونقاط البيع", description = "نظام كاشير سريع وسهل لإدارة المبيعات في متجرك الفعلي. يدعم الباركود، الطلبات، والفواتير.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+            },
+            distinctiveSection = new
+            {
+                title = "ما الذي يميزنا؟",
+                cards = new[] {
+                    new { title = "أمان وخصوصية عالية", description = "بياناتك مشفرة ومحمية بأعلى معايير الأمان العالمية." },
+                    new { title = "واجهات سهلة الاستخدام", description = "تصميم عصري وبسيط يسهل على الجميع استخدامه دون تعقيد." },
+                    new { title = "أدوات عديدة في نظام واحد", description = "المتجر، الفواتير، الكاشير، روابط الدفع، والمزيد في منصة واحدة." },
+                },
+                ctaText = "شاهد كل المزايا",
+                ctaHref = "#"
+            },
+            footer = new
+            {
+                description = "منصة متكاملة لإدارة متجرك الإلكتروني، الفواتير، روابط الدفع، الكاشير، والمزيد.",
+                copyright = "جميع الحقوق محفوظة.",
+                social = new { facebook = "#", instagram = "#", whatsapp = "#" }
+            }
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(defaultContent, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+        context.PlatformSettings.Add(new PlatformSetting
+        {
+            SettingKey = "landing_page_content",
+            SettingValue = json,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedAllSitePagesAsync(AppDbContext context)
+    {
+        var pages = new[]
+        {
+            new SitePage { PageKey = "about", TitleAr = "عن المنصة", TitleEn = "About Us", ContentAr = "<h2>فاتورة راحتك</h2><p>منصة سحابية متكاملة لإدارة المتاجر الإلكترونية، توفر حلولاً شاملة من إنشاء المتجر وإدارة المنتجات والمخزون إلى النظام المحاسبي الكامل والفواتير الإلكترونية.</p><p>نهدف إلى تمكين رواد الأعمال في المملكة العربية السعودية من إدارة أعمالهم بكفاءة واحترافية من خلال أدوات سهلة الاستخدام ومتكاملة.</p>", ContentEn = "<h2>FatooraRahatak</h2><p>A comprehensive SaaS platform for e-commerce management.</p>" },
+            new SitePage { PageKey = "help-center", TitleAr = "مركز المساعدة", TitleEn = "Help Center", ContentAr = "<h2>مرحبًا بك في مركز المساعدة</h2><p>هذا المركز قيد الإعداد حاليًا. سنوفر قريبًا أدلة وشروحات مفصلة لكل أجزاء المنصة.</p>", ContentEn = "<h2>Welcome to Help Center</h2><p>Coming soon.</p>" },
+            new SitePage { PageKey = "contact", TitleAr = "تواصل معنا", TitleEn = "Contact Us", ContentAr = "<h2>تواصل معنا</h2><p>نحن هنا لمساعدتك! أرسل لنا رسالة وسنرد عليك في أقرب وقت ممكن.</p>", ContentEn = "<h2>Contact Us</h2><p>We are here to help! Send us a message and we'll get back to you as soon as possible.</p>" },
+            new SitePage { PageKey = "terms-of-use", TitleAr = "شروط الاستخدام", TitleEn = "Terms of Use", ContentAr = "<h2>شروط الاستخدام</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر شروط الاستخدام قريبًا.</p>", ContentEn = "<h2>Terms of Use</h2><p>This page is under construction. Terms of use will be published soon.</p>" },
+            new SitePage { PageKey = "privacy-policy", TitleAr = "سياسة الخصوصية", TitleEn = "Privacy Policy", ContentAr = "<h2>سياسة الخصوصية</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر سياسة الخصوصية قريبًا.</p>", ContentEn = "<h2>Privacy Policy</h2><p>This page is under construction. Privacy policy will be published soon.</p>" },
+            new SitePage { PageKey = "affiliate-marketing", TitleAr = "التسويق بالعمولة", TitleEn = "Affiliate Marketing", ContentAr = "<h2>التسويق بالعمولة</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر تفاصيل برنامج التسويق بالعمولة قريبًا.</p>", ContentEn = "<h2>Affiliate Marketing</h2><p>This page is under construction. Affiliate program details will be published soon.</p>" },
+            new SitePage { PageKey = "careers", TitleAr = "التوظيف", TitleEn = "Careers", ContentAr = "<h2>التوظيف</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر الفرص الوظيفية قريبًا.</p>", ContentEn = "<h2>Careers</h2><p>This page is under construction. Job opportunities will be published soon.</p>" },
+            new SitePage { PageKey = "free-tools", TitleAr = "أدوات مجانية", TitleEn = "Free Tools", ContentAr = "<h2>أدوات مجانية</h2><p>هذه الصفحة قيد الإعداد. سيتم إطلاق الأدوات المجانية قريبًا.</p>", ContentEn = "<h2>Free Tools</h2><p>This page is under construction. Free tools will be launched soon.</p>" },
+            new SitePage { PageKey = "security-standards", TitleAr = "معايير الأمان", TitleEn = "Security Standards", ContentAr = "<h2>معايير الأمان</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر معايير الأمان قريبًا.</p>", ContentEn = "<h2>Security Standards</h2><p>This page is under construction. Security standards will be published soon.</p>" },
+            new SitePage { PageKey = "agency-program", TitleAr = "برنامج الوكالة", TitleEn = "Agency Program", ContentAr = "<h2>برنامج الوكالة</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر تفاصيل برنامج الوكالة قريبًا.</p>", ContentEn = "<h2>Agency Program</h2><p>This page is under construction. Agency program details will be published soon.</p>" },
+        };
+
+        var featurePages = new[]
+        {
+            new SitePage { PageKey = "ecommerce", TitleAr = "المتجر الإلكتروني", TitleEn = "E-Commerce", ContentAr = "<h2>المتجر الإلكتروني</h2><p>أنشئ متجرك الإلكتروني بكل سهولة وأطلق أعمالك على الإنترنت. تحكم في المنتجات، التصنيفات، والعروض، وادعم طرق دفع متعددة.</p>", ContentEn = "<h2>E-Commerce</h2><p>Create your online store easily and launch your business on the internet.</p>" },
+            new SitePage { PageKey = "invoicing", TitleAr = "نظام الفواتير", TitleEn = "Invoicing System", ContentAr = "<h2>نظام الفواتير</h2><p>نظام فواتير متكامل يدعم الفواتير الضريبية والإلكترونية حسب متطلبات هيئة الزكاة والضريبة والجمارك.</p>", ContentEn = "<h2>Invoicing System</h2><p>Integrated invoicing system supporting tax and electronic invoices.</p>" },
+            new SitePage { PageKey = "payment-links", TitleAr = "روابط الدفع", TitleEn = "Payment Links", ContentAr = "<h2>روابط الدفع</h2><p>أرسل روابط دفع احترافية لعملائك واستلم المدفوعات بسرعة وأمان عبر قنوات التواصل المفضلة لديهم.</p>", ContentEn = "<h2>Payment Links</h2><p>Send professional payment links to your customers and receive payments quickly and securely.</p>" },
+            new SitePage { PageKey = "pos", TitleAr = "الكاشير", TitleEn = "POS", ContentAr = "<h2>الكاشير ونقاط البيع</h2><p>نظام كاشير سريع وسهل لإدارة المبيعات في متجرك الفعلي. يدعم الباركود، الطلبات، والفواتير.</p>", ContentEn = "<h2>POS System</h2><p>Fast and easy POS system for managing sales in your physical store.</p>" },
+            new SitePage { PageKey = "payment-gateway", TitleAr = "بوابة الدفع", TitleEn = "Payment Gateway", ContentAr = "<h2>بوابة الدفع الإلكتروني</h2><p>بوابة دفع متكاملة تدعم جميع طرق الدفع المحلية والعالمية. استلم مدفوعاتك بأمان وسرعة فائقة.</p>", ContentEn = "<h2>Payment Gateway</h2><p>Integrated payment gateway supporting all local and global payment methods.</p>" },
+            new SitePage { PageKey = "website-integration", TitleAr = "الربط مع المواقع", TitleEn = "Website Integration", ContentAr = "<h2>الربط مع المواقع</h2><p>اربط متجرك بسهولة مع موقعك الإلكتروني الحالي واستفد من أدوات الدفع والفواتير المتكاملة.</p>", ContentEn = "<h2>Website Integration</h2><p>Easily integrate your store with your existing website.</p>" },
+        };
+
+        foreach (var page in pages.Concat(featurePages))
+        {
+            if (!await context.Set<SitePage>().AnyAsync(p => p.PageKey == page.PageKey))
+                context.Set<SitePage>().Add(page);
+        }
         await context.SaveChangesAsync();
     }
 }

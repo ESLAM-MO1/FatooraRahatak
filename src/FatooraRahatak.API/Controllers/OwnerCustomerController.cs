@@ -4,6 +4,7 @@ using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -14,11 +15,13 @@ public class OwnerCustomerController : ControllerBase
 {
     private readonly IOwnerCustomerService _ownerCustomerService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public OwnerCustomerController(IOwnerCustomerService ownerCustomerService, AppDbContext context)
+    public OwnerCustomerController(IOwnerCustomerService ownerCustomerService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _ownerCustomerService = ownerCustomerService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -37,6 +40,8 @@ public class OwnerCustomerController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "Customers.View"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         var result = await _ownerCustomerService.GetOwnerCustomersAsync(storeId.Value);
         return Ok(new { success = true, data = result });
     }
@@ -47,6 +52,8 @@ public class OwnerCustomerController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "Customers.View"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         var result = await _ownerCustomerService.GetOwnerCustomerDetailAsync(storeId.Value, identifier);
         if (result == null)
             return NotFound(new { success = false, message = "العميل غير موجود" });

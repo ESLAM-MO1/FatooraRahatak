@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
 
 interface ProductImage {
@@ -39,6 +41,7 @@ function getCartSessionKey(slug: string) {
 }
 
 export default function ProductDetailPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
@@ -78,7 +81,7 @@ export default function ProductDetailPage() {
         if (err.response?.status === 404) {
           setNotFound(true);
         } else {
-          setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المنتج");
+          setError(t("error.serverError"));
         }
       } finally {
         setLoading(false);
@@ -86,12 +89,12 @@ export default function ProductDetailPage() {
     };
 
     loadProduct();
-  }, [slug, productId]);
+  }, [slug, productId, t]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">جاري التحميل...</p>
+        <p className="text-gray-500">{t("common.loading")}</p>
       </div>
     );
   }
@@ -101,10 +104,10 @@ export default function ProductDetailPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            هذا المنتج غير متاح حاليًا
+            {t("productDetail.productNotAvailable")}
           </h1>
-          <Link href={`/store/${slug}`} className="text-blue-600 hover:underline">
-            العودة للمتجر
+          <Link href={`/store/${slug}`} className="store-link">
+            {t("productDetail.backToStore")}
           </Link>
         </div>
       </div>
@@ -144,9 +147,9 @@ export default function ProductDetailPage() {
         localStorage.setItem(getCartSessionKey(slug), returnedSessionId);
       }
 
-      setAddSuccess("تمت إضافة المنتج للسلة بنجاح");
+      setAddSuccess(t("cart.addSuccess"));
     } catch (err: any) {
-      setAddError(err.response?.data?.message || "حدث خطأ أثناء الإضافة للسلة");
+      setAddError(err.response?.data?.message || t("cart.addError"));
     } finally {
       setAddingToCart(false);
     }
@@ -154,15 +157,6 @@ export default function ProductDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <Link href={`/store/${slug}`} className="text-blue-600 hover:underline text-sm">
-          ← العودة للمتجر
-        </Link>
-        <Link href={`/store/${slug}/cart`} className="text-blue-600 hover:underline text-sm">
-          الذهاب للسلة
-        </Link>
-      </div>
-
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
       )}
@@ -179,7 +173,7 @@ export default function ProductDetailPage() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-300">
-                لا توجد صورة
+                {t("productDetail.noImage")}
               </div>
             )}
           </div>
@@ -190,8 +184,9 @@ export default function ProductDetailPage() {
                   key={idx}
                   onClick={() => setActiveImageIndex(idx)}
                   className={`w-16 h-16 rounded-md overflow-hidden border-2 flex-shrink-0 ${
-                    idx === activeImageIndex ? "border-blue-600" : "border-gray-200"
+                    idx === activeImageIndex ? "" : "border-gray-200"
                   }`}
+                  style={idx === activeImageIndex ? { borderColor: 'var(--theme)' } : undefined}
                 >
                   <img
                     src={img.imageUrl}
@@ -210,7 +205,7 @@ export default function ProductDetailPage() {
           <p className="text-sm text-gray-400 mb-4">SKU: {product.sku}</p>
 
           <div className="flex items-baseline gap-3 mb-4">
-            <span className="text-2xl font-bold text-blue-600">
+            <span className="text-2xl font-bold store-price">
               {finalPrice.toFixed(2)} ر.س
             </span>
             {product.discountPrice && (
@@ -231,17 +226,17 @@ export default function ProductDetailPage() {
           {product.hasVariants && product.variants.length > 0 && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                اختر النوع
+                {t("productDetail.selectVariant")}
               </label>
               <select
                 value={selectedVariantId ?? ""}
                 onChange={(e) => setSelectedVariantId(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
               >
                 {product.variants.map((v) => (
                   <option key={v.id} value={v.id} disabled={v.availableQuantity === 0}>
                     {v.variantName}
-                    {v.availableQuantity === 0 ? " (غير متوفر)" : ""}
+                    {v.availableQuantity === 0 ? ` (${t("productDetail.outOfStock")})` : ""}
                   </option>
                 ))}
               </select>
@@ -249,17 +244,17 @@ export default function ProductDetailPage() {
           )}
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">الكمية</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("productDetail.quantity")}</label>
             <input
               type="number"
               min={1}
               max={maxAvailable > 0 ? maxAvailable : 1}
               value={quantity}
               onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
-              className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
             />
             <p className="text-xs text-gray-400 mt-1">
-              {maxAvailable > 0 ? `متاح ${maxAvailable} قطعة` : "غير متوفر حاليًا"}
+              {maxAvailable > 0 ? t("productDetail.availableQuantity", { count: maxAvailable }) : t("productDetail.outOfStockCurrently")}
             </p>
           </div>
 
@@ -278,13 +273,13 @@ export default function ProductDetailPage() {
             type="button"
             onClick={handleAddToCart}
             disabled={maxAvailable === 0 || addingToCart}
-            className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition font-medium"
+            className="store-btn w-full disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {maxAvailable === 0
-              ? "غير متوفر"
+              ? t("productDetail.outOfStock")
               : addingToCart
-              ? "جاري الإضافة..."
-              : "أضف للسلة"}
+              ? t("cart.adding")
+              : t("cart.addToCart")}
           </button>
         </div>
       </div>

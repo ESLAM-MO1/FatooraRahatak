@@ -9,4 +9,6 @@ public class OwnerCustomerListDto
     public decimal TotalSpent { get; set; }
     public DateTime LastOrderDate { get; set; }
     public bool IsGuest { get; set; }
+    public long? CustomerId { get; set; }
+    
 }

@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface StoreCountByPackage {
   packageName: string;
@@ -17,6 +21,7 @@ interface ReportsOverview {
 }
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [data, setData] = useState<ReportsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -29,21 +34,16 @@ export default function ReportsPage() {
         const res = await api.get("/admin/reports/overview");
         setData(res.data.data);
       } catch (err: any) {
-        setError(err.response?.data?.message || "حدث خطأ أثناء تحميل التقارير");
+        setError(err.response?.data?.message || t("reports.loadError"));
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [t]);
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
@@ -53,16 +53,16 @@ export default function ReportsPage() {
   if (!data) return null;
 
   const cards = [
-    { label: "إجمالي المتاجر", value: data.totalStores },
-    { label: "المتاجر النشطة", value: data.activeStores },
-    { label: "المتاجر المعلّقة", value: data.suspendedStores },
-    { label: "إجمالي المستخدمين", value: data.totalUsers },
-    { label: "إجمالي المنتجات", value: data.totalProductsAcrossPlatform },
+    { label: t("reports.totalStores"), value: data.totalStores },
+    { label: t("reports.activeStores"), value: data.activeStores },
+    { label: t("reports.suspendedStores"), value: data.suspendedStores },
+    { label: t("reports.totalUsers"), value: data.totalUsers },
+    { label: t("reports.totalProducts"), value: data.totalProductsAcrossPlatform },
   ];
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <h1 className="text-2xl font-bold text-[var(--blue-deep)]">التقارير</h1>
+    <div className="space-y-6">
+      <PageHeader icon="chart" title={t("reports.title")} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {cards.map((card) => (
@@ -74,16 +74,16 @@ export default function ReportsPage() {
       </div>
 
       <div className="card p-5">
-        <h2 className="font-bold text-[var(--blue-deep)] mb-4">توزيع المتاجر حسب الباقة</h2>
+        <h2 className="font-bold text-[var(--blue-deep)] mb-4">{t("reports.storeDistributionByPackage")}</h2>
         {data.storesByPackage.length === 0 ? (
-          <p className="text-[var(--sub)] text-sm">لا توجد بيانات</p>
+          <p className="text-[var(--sub)] text-sm">{t("reports.noData")}</p>
         ) : (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>الباقة</th>
-                  <th>عدد المتاجر</th>
+                  <th>{t("reports.package")}</th>
+                  <th>{t("reports.storeCount")}</th>
                 </tr>
               </thead>
               <tbody>

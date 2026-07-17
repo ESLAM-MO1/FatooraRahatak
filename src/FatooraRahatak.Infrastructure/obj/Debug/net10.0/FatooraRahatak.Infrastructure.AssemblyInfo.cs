@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FatooraRahatak.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e865329c4e5049ce0368c6c8f0d30c818900f20e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+330db829ad16d4ad24d411c22aaf90c71e3648e1")]
 [assembly: System.Reflection.AssemblyProductAttribute("FatooraRahatak.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FatooraRahatak.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

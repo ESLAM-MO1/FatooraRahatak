@@ -10,10 +10,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class PayrollService : IPayrollService
 {
     private readonly AppDbContext _context;
+    private readonly IAccountingService _accountingService;
 
-    public PayrollService(AppDbContext context)
+    public PayrollService(AppDbContext context, IAccountingService accountingService)
     {
         _context = context;
+        _accountingService = accountingService;
     }
 
     public async Task<List<PayrollResponseDto>> GenerateMonthlyPayrollAsync(long storeId, GeneratePayrollDto dto)
@@ -78,10 +80,10 @@ public class PayrollService : IPayrollService
         return MapToDto(payroll, payroll.Employee.User.FullName);
     }
 
-    public async Task ApprovePayrollAsync(long storeId, long payrollId, long approvedByUserId)
+    public async Task<PayrollResponseDto> ApprovePayrollAsync(long storeId, long payrollId, long approvedByUserId)
     {
         var payroll = await _context.Payrolls
-            .Include(p => p.Employee)
+            .Include(p => p.Employee).ThenInclude(e => e.User)
             .FirstOrDefaultAsync(p => p.Id == payrollId && p.Employee.StoreId == storeId);
 
         if (payroll == null)
@@ -90,10 +92,40 @@ public class PayrollService : IPayrollService
         if (payroll.Status != PayrollStatus.Draft)
             throw new InvalidOperationException("تم اعتماد هذا الراتب بالفعل");
 
+        if (payroll.NetSalary <= 0)
+            throw new InvalidOperationException("لا يمكن اعتماد راتب بصافي صفري أو سالب");
+
+        // ===== تاسك 15: توليد قيد محاسبي تلقائي عند الاعتماد (وليس عند الصرف) =====
+        // مدين: مصروف الرواتب — دائن: رواتب مستحقة الدفع (2103). حالة القيد PendingApproval
+        // (القرار الهندسي رقم 1 المُلزم)، يحتاج اعتماد Owner منفصل لاحقًا من صفحة القيود اليومية.
+        var journalEntry = await _accountingService.CreatePayrollJournalEntryAsync(
+            storeId,
+            approvedByUserId,
+            payroll.Employee.User.FullName,
+            payroll.NetSalary,
+            payroll.PeriodMonth);
+
         payroll.Status = PayrollStatus.Approved;
         payroll.ApprovedByUserId = approvedByUserId;
+        payroll.JournalEntryId = journalEntry.Id;
 
         await _context.SaveChangesAsync();
+
+        return new PayrollResponseDto
+        {
+            Id = payroll.Id,
+            EmployeeId = payroll.EmployeeId,
+            EmployeeName = payroll.Employee.User.FullName,
+            PeriodMonth = payroll.PeriodMonth,
+            BasicSalary = payroll.BasicSalary,
+            Allowances = payroll.Allowances,
+            Deductions = payroll.Deductions,
+            Commission = payroll.Commission,
+            NetSalary = payroll.NetSalary,
+            Status = payroll.Status.ToString(),
+            JournalEntryId = journalEntry.Id,
+            JournalEntryNumber = journalEntry.EntryNumber
+        };
     }
 
     public async Task MarkAsPaidAsync(long storeId, long payrollId)
@@ -118,6 +150,7 @@ public class PayrollService : IPayrollService
     {
         var query = _context.Payrolls
             .Include(p => p.Employee).ThenInclude(e => e.User)
+            .Include(p => p.JournalEntry)
             .Where(p => p.Employee.StoreId == storeId);
 
         if (year.HasValue)
@@ -142,6 +175,8 @@ public class PayrollService : IPayrollService
         Deductions = p.Deductions,
         Commission = p.Commission,
         NetSalary = p.NetSalary,
-        Status = p.Status.ToString()
+        Status = p.Status.ToString(),
+        JournalEntryId = p.JournalEntryId,
+        JournalEntryNumber = p.JournalEntry?.EntryNumber
     };
 }

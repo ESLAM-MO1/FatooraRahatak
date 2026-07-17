@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Inventory;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,11 +16,13 @@ public class StockCountController : ControllerBase
 {
     private readonly IStockCountService _stockCountService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public StockCountController(IStockCountService stockCountService, AppDbContext context)
+    public StockCountController(IStockCountService stockCountService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _stockCountService = stockCountService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -55,6 +58,8 @@ public class StockCountController : ControllerBase
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
+        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "Warehouses.Edit"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             await _stockCountService.SubmitCountedQuantityAsync(storeId.Value, dto);

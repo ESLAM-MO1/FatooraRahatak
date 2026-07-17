@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import Icon from "@/components/Icon";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Employee {
   id: number;
@@ -18,17 +23,8 @@ interface AttendanceRecord {
   checkOutTime: string | null;
 }
 
-function Icon({ path, className = "" }: { path: string; className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} width="18" height="18">
-      <path d={path} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-const alertPath = "M12 9v4M12 17h.01M10.3 3.9 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z";
-const checkPath = "M20 6 9 17l-5-5";
-
 export default function AttendancePage() {
+  const { t } = useTranslation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
@@ -50,9 +46,9 @@ export default function AttendancePage() {
         res.data.data.filter((e: Employee) => e.status === "Active")
       );
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل الموظفين");
+      setError(err.response?.data?.message || t("attendance.loadEmployeesError"));
     }
-  }, []);
+  }, [t]);
 
   const fetchAttendance = useCallback(async () => {
     setRecordsLoading(true);
@@ -65,12 +61,12 @@ export default function AttendancePage() {
       setRecords(res.data.data);
     } catch (err: any) {
       setError(
-        err.response?.data?.message || "حدث خطأ أثناء تحميل سجل الحضور"
+        err.response?.data?.message || t("attendance.loadRecordsError")
       );
     } finally {
       setRecordsLoading(false);
     }
-  }, [filterEmployeeId, filterFrom, filterTo]);
+  }, [filterEmployeeId, filterFrom, filterTo, t]);
 
   useEffect(() => {
     const init = async () => {
@@ -87,7 +83,7 @@ export default function AttendancePage() {
 
   const handleCheckIn = async () => {
     if (!selectedEmployeeId) {
-      setActionError("اختر موظفًا أولاً");
+      setActionError(t("attendance.selectEmployeeFirst"));
       return;
     }
     setActionError("");
@@ -97,11 +93,11 @@ export default function AttendancePage() {
       await api.post("/attendance/check-in", {
         employeeId: Number(selectedEmployeeId),
       });
-      setActionSuccess("تم تسجيل الحضور بنجاح");
+      setActionSuccess(t("attendance.checkInSuccess"));
       await fetchAttendance();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء تسجيل الحضور"
+        err.response?.data?.message || t("attendance.checkInError")
       );
     } finally {
       setCheckingIn(false);
@@ -110,7 +106,7 @@ export default function AttendancePage() {
 
   const handleCheckOut = async () => {
     if (!selectedEmployeeId) {
-      setActionError("اختر موظفًا أولاً");
+      setActionError(t("attendance.selectEmployeeFirst"));
       return;
     }
     setActionError("");
@@ -120,11 +116,11 @@ export default function AttendancePage() {
       await api.post("/attendance/check-out", {
         employeeId: Number(selectedEmployeeId),
       });
-      setActionSuccess("تم تسجيل الانصراف بنجاح");
+      setActionSuccess(t("attendance.checkOutSuccess"));
       await fetchAttendance();
     } catch (err: any) {
       setActionError(
-        err.response?.data?.message || "حدث خطأ أثناء تسجيل الانصراف"
+        err.response?.data?.message || t("attendance.checkOutError")
       );
     } finally {
       setCheckingOut(false);
@@ -137,57 +133,35 @@ export default function AttendancePage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جاري التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
-    <div dir="rtl">
-      <h1 className="text-[22px] font-bold text-[var(--blue-deep)] mb-6">
-        الحضور والانصراف
-      </h1>
+    <div>
+      <PageHeader icon="clock" title={t("attendance.title")} />
 
-      {error && (
-        <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 mb-4 text-sm flex items-start gap-2">
-          <Icon path={alertPath} className="shrink-0 mt-0.5" />
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert--danger mb-4">{error}</div>}
 
       <div className="card p-6 mb-6">
         <h2 className="text-[13.5px] font-bold text-[var(--ink)] mb-3">
-          تسجيل حضور / انصراف
+          {t("attendance.record")}
         </h2>
 
-        {actionError && (
-          <div className="bg-[var(--danger-soft)] text-[var(--danger)] rounded-xl p-4 mb-4 text-sm flex items-start gap-2">
-            <Icon path={alertPath} className="shrink-0 mt-0.5" />
-            {actionError}
-          </div>
-        )}
+        {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
-        {actionSuccess && (
-          <div className="bg-[var(--green-soft)] text-[var(--green)] rounded-xl p-4 mb-4 text-sm flex items-start gap-2">
-            <Icon path={checkPath} className="shrink-0 mt-0.5" />
-            {actionSuccess}
-          </div>
-        )}
+        {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">
-              الموظف
+              {t("attendance.employee")}
             </label>
             <div className="field-shell">
               <select
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
               >
-                <option value="">اختر الموظف</option>
+                <option value="">{t("attendance.selectEmployee")}</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.fullName}
@@ -196,27 +170,27 @@ export default function AttendancePage() {
               </select>
             </div>
           </div>
-          <button onClick={handleCheckIn} disabled={checkingIn} className="btn-primary disabled:opacity-60">
-            {checkingIn ? "جاري التسجيل..." : "تسجيل حضور"}
+          <button onClick={handleCheckIn} disabled={checkingIn} className="btn btn-primary disabled:opacity-60">
+            {checkingIn ? t("attendance.checkingIn") : t("attendance.checkIn")}
           </button>
-          <button onClick={handleCheckOut} disabled={checkingOut} className="btn-secondary disabled:opacity-60">
-            {checkingOut ? "جاري التسجيل..." : "تسجيل انصراف"}
+          <button onClick={handleCheckOut} disabled={checkingOut} className="btn btn-secondary disabled:opacity-60">
+            {checkingOut ? t("attendance.checkingOut") : t("attendance.checkOut")}
           </button>
         </div>
       </div>
 
       <div className="card p-6">
-        <h2 className="text-[13.5px] font-bold text-[var(--ink)] mb-3">سجل الحضور</h2>
+        <h2 className="text-[13.5px] font-bold text-[var(--ink)] mb-3">{t("attendance.attendanceLog")}</h2>
 
         <div className="flex flex-wrap gap-3 mb-4">
           <div>
-            <label className="block text-[11.5px] text-[var(--sub)] mb-1">الموظف</label>
+            <label className="block text-[11.5px] text-[var(--sub)] mb-1">{t("attendance.employee")}</label>
             <div className="field-shell">
               <select
                 value={filterEmployeeId}
                 onChange={(e) => setFilterEmployeeId(e.target.value)}
               >
-                <option value="">الكل</option>
+                <option value="">{t("common.all")}</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
                     {emp.fullName}
@@ -226,7 +200,7 @@ export default function AttendancePage() {
             </div>
           </div>
           <div>
-            <label className="block text-[11.5px] text-[var(--sub)] mb-1">من</label>
+            <label className="block text-[11.5px] text-[var(--sub)] mb-1">{t("attendance.from")}</label>
             <div className="field-shell">
               <input
                 type="date"
@@ -236,7 +210,7 @@ export default function AttendancePage() {
             </div>
           </div>
           <div>
-            <label className="block text-[11.5px] text-[var(--sub)] mb-1">إلى</label>
+            <label className="block text-[11.5px] text-[var(--sub)] mb-1">{t("attendance.to")}</label>
             <div className="field-shell">
               <input
                 type="date"
@@ -247,24 +221,24 @@ export default function AttendancePage() {
           </div>
           <div className="flex items-end">
             <button onClick={fetchAttendance} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px] py-2">
-              تطبيق الفلتر
+              {t("attendance.applyFilter")}
             </button>
           </div>
         </div>
 
         {recordsLoading ? (
-          <p className="text-[var(--sub)] text-sm">جاري التحميل...</p>
+          <p className="text-[var(--sub)] text-sm">{t("common.loading")}</p>
         ) : records.length === 0 ? (
-          <p className="text-[var(--sub)] text-sm">لا توجد سجلات حضور.</p>
+          <p className="text-[var(--sub)] text-sm">{t("attendance.noRecords")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">الموظف</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">التاريخ</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">وقت الحضور</th>
-                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">وقت الانصراف</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("attendance.employee")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("attendance.date")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("attendance.timeIn")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("attendance.timeOut")}</th>
                 </tr>
               </thead>
               <tbody>

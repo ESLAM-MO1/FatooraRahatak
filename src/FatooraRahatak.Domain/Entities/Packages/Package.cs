@@ -19,6 +19,8 @@ public class Package : BaseEntity
     public bool HasCustomDomain { get; set; }
     public bool HasAffiliateMarketing { get; set; }
     public bool HasApiAccess { get; set; }
+    public int MaxThemes { get; set; } = 1;
+    public decimal CommissionPercentage { get; set; } = 0;
     public bool IsActive { get; set; } = true;
 
     public ICollection<Store> Stores { get; set; } = new List<Store>();

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 
 interface CartItem {
   id: number;
@@ -26,6 +28,7 @@ function getCartSessionKey(slug: string) {
 }
 
 export default function CartPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const slug = params.slug as string;
 
@@ -56,7 +59,7 @@ export default function CartPage() {
       if (err.response?.status === 404) {
         setCart(null);
       } else {
-        setError(err.response?.data?.message || "حدث خطأ أثناء تحميل السلة");
+        setError(err.response?.data?.message || t("cart.errorLoadingCart"));
       }
     } finally {
       setLoading(false);
@@ -73,7 +76,7 @@ export default function CartPage() {
         setStoreId(id);
         await loadCart(id);
       } catch (err: any) {
-        setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المتجر");
+        setError(err.response?.data?.message || t("cart.errorLoadingStore"));
         setLoading(false);
       }
     };
@@ -99,7 +102,7 @@ export default function CartPage() {
       setCart(res.data.data);
       resetCouponOnCartChange();
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحديث الكمية");
+      setError(err.response?.data?.message || t("cart.errorUpdatingQuantity"));
     } finally {
       setUpdatingItemId(null);
     }
@@ -114,7 +117,7 @@ export default function CartPage() {
       await loadCart(storeId);
       resetCouponOnCartChange();
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء حذف المنتج");
+      setError(err.response?.data?.message || t("cart.errorRemovingItem"));
     } finally {
       setUpdatingItemId(null);
     }
@@ -134,9 +137,9 @@ export default function CartPage() {
         code: couponCode.trim(),
       });
       setDiscountAmount(res.data.data.discountAmount);
-      setCouponSuccess(res.data.message || "تم تطبيق الكوبون بنجاح");
+      setCouponSuccess(res.data.message || t("cart.couponAppliedSuccess"));
     } catch (err: any) {
-      setCouponError(err.response?.data?.message || "حدث خطأ أثناء تطبيق الكوبون");
+      setCouponError(err.response?.data?.message || t("cart.errorApplyingCoupon"));
     } finally {
       setApplyingCoupon(false);
     }
@@ -145,7 +148,7 @@ export default function CartPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">جاري التحميل...</p>
+        <p className="text-gray-500">{t("common.loading")}</p>
       </div>
     );
   }
@@ -157,26 +160,18 @@ export default function CartPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="mb-4">
-        <Link href={`/store/${slug}`} className="text-blue-600 hover:underline text-sm">
-          ← العودة للمتجر
-        </Link>
-      </div>
-
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">سلة المشتريات</h1>
-
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
       )}
 
       {!cart || cart.items.length === 0 ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 text-center">
-          <p className="text-gray-500 mb-4">سلتك فارغة حاليًا</p>
+          <p className="text-gray-500 mb-4">{t("cart.empty")}</p>
           <Link
             href={`/store/${slug}`}
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition text-sm"
+            className="store-btn inline-block text-sm"
           >
-            تصفح المنتجات
+            {t("cart.browseProducts")}
           </Link>
         </div>
       ) : (
@@ -187,7 +182,7 @@ export default function CartPage() {
                 <div className="flex-1">
                   <p className="text-gray-800 font-medium">{item.productNameAr}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    {item.priceAtAdd.toFixed(2)} ر.س / قطعة
+                    {t("cart.pricePerUnit", { price: item.priceAtAdd.toFixed(2) })}
                   </p>
                 </div>
 
@@ -210,7 +205,7 @@ export default function CartPage() {
                 </div>
 
                 <p className="w-24 text-left font-bold text-gray-800">
-                  {item.lineTotal.toFixed(2)} ر.س
+                  {t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}
                 </p>
 
                 <button
@@ -218,7 +213,7 @@ export default function CartPage() {
                   disabled={updatingItemId === item.id}
                   className="text-red-600 hover:underline text-sm disabled:opacity-40"
                 >
-                  حذف
+                  {t("cart.remove")}
                 </button>
               </div>
             ))}
@@ -226,14 +221,14 @@ export default function CartPage() {
 
           {/* Coupon */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
-            <p className="text-sm font-medium text-gray-700 mb-2">لديك كود خصم؟</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">{t("cart.haveCoupon")}</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="أدخل كود الكوبون"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={t("cart.couponPlaceholder")}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
               />
               <button
                 type="button"
@@ -241,7 +236,7 @@ export default function CartPage() {
                 disabled={applyingCoupon || !couponCode.trim()}
                 className="bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 disabled:bg-gray-300 transition text-sm"
               >
-                {applyingCoupon ? "جاري التطبيق..." : "تطبيق"}
+                {applyingCoupon ? t("cart.applyingCoupon") : t("cart.applyCoupon")}
               </button>
             </div>
 
@@ -252,7 +247,7 @@ export default function CartPage() {
             )}
             {couponSuccess && discountAmount !== null && (
               <div className="bg-green-50 text-green-700 p-3 rounded mt-3 text-sm">
-                {couponSuccess} — قيمة الخصم: {discountAmount.toFixed(2)} ر.س
+                {couponSuccess} — {t("cart.discountValueLabel", { amount: discountAmount.toFixed(2) })}
               </div>
             )}
           </div>
@@ -260,30 +255,30 @@ export default function CartPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
             {discountAmount !== null && (
               <div className="flex items-center justify-between mb-2 text-sm">
-                <span className="text-gray-500">الإجمالي قبل الخصم</span>
-                <span className="text-gray-500">{cart.subtotal.toFixed(2)} ر.س</span>
+                <span className="text-gray-500">{t("cart.totalBeforeDiscount")}</span>
+                <span className="text-gray-500">{t("cart.priceSAR", { price: cart.subtotal.toFixed(2) })}</span>
               </div>
             )}
             {discountAmount !== null && (
               <div className="flex items-center justify-between mb-2 text-sm">
-                <span className="text-gray-500">قيمة الخصم</span>
-                <span className="text-green-600">− {discountAmount.toFixed(2)} ر.س</span>
+                <span className="text-gray-500">{t("cart.discountValue")}</span>
+                <span className="text-green-600">− {t("cart.priceSAR", { price: discountAmount.toFixed(2) })}</span>
               </div>
             )}
             <div className="flex items-center justify-between mb-4 pt-2 border-t border-gray-100">
               <span className="text-gray-600 font-medium">
-                {discountAmount !== null ? "الإجمالي بعد الخصم" : "الإجمالي"}
+                {discountAmount !== null ? t("cart.totalAfterDiscount") : t("cart.total")}
               </span>
-              <span className="text-xl font-bold text-blue-600">
-                {finalTotal.toFixed(2)} ر.س
+              <span className="text-xl font-bold store-price">
+                {t("cart.priceSAR", { price: finalTotal.toFixed(2) })}
               </span>
             </div>
 
             <Link
               href={`/store/${slug}/checkout`}
-              className="block w-full text-center bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition font-medium"
+              className="store-btn block w-full text-center"
             >
-              إتمام الشراء
+              {t("cart.checkout")}
             </Link>
           </div>
         </>

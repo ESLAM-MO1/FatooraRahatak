@@ -15,11 +15,13 @@ public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public ProductController(IProductService productService, AppDbContext context)
+    public ProductController(IProductService productService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _productService = productService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -35,6 +37,10 @@ public class ProductController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
     {
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Products.Add"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
+
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -78,6 +84,10 @@ public class ProductController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(long id, [FromBody] CreateProductDto dto)
     {
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Products.Edit"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
+
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -96,6 +106,10 @@ public class ProductController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)
     {
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Products.Delete"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
+
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -109,5 +123,35 @@ public class ProductController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    [HttpPost("upload-image"), DisableRequestSizeLimit]
+    public async Task<IActionResult> UploadImage(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, message = "الملف مطلوب" });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        if (!allowed.Contains(ext))
+            return BadRequest(new { success = false, message = "صيغة الملف غير مدعومة. استخدم JPG, PNG, WebP أو GIF" });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { success = false, message = "حجم الملف يتجاوز 5 ميجابايت" });
+
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        Directory.CreateDirectory(uploadsDir);
+
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var url = $"{baseUrl}/uploads/{fileName}";
+        return Ok(new { success = true, data = new { url } });
     }
 }

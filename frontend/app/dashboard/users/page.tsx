@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface AdminUser {
   id: number;
@@ -11,19 +15,20 @@ interface AdminUser {
   createdAt: string;
 }
 
-const USER_TYPE_LABELS: Record<string, string> = {
-  Owner: "صاحب متجر",
-  Employee: "موظف",
-  SuperAdmin: "سوبر أدمن",
-  SupportStaff: "دعم فني",
-};
-
 export default function UsersManagementPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
+
+  const userTypeLabels: Record<string, string> = {
+    Owner: t("users.storeOwners"),
+    Employee: t("users.employees"),
+    SuperAdmin: t("users.superAdmin"),
+    SupportStaff: t("users.supportStaff"),
+  };
 
   const loadUsers = async () => {
     setLoading(true);
@@ -32,7 +37,7 @@ export default function UsersManagementPage() {
       const res = await api.get("/admin/users");
       setUsers(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المستخدمين");
+      setError(err.response?.data?.message || t("users.loadError"));
     } finally {
       setLoading(false);
     }
@@ -54,7 +59,7 @@ export default function UsersManagementPage() {
         prev.map((u) => (u.id === user.id ? { ...u, isActive: !u.isActive } : u))
       );
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحديث حالة المستخدم");
+      setError(err.response?.data?.message || t("users.updateError"));
     } finally {
       setProcessingId(null);
     }
@@ -73,28 +78,22 @@ export default function UsersManagementPage() {
     filterType === "all" ? users : users.filter((u) => u.userType === filterType);
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--blue-deep)]">إدارة المستخدمين</h1>
+    <div className="space-y-6">
+      <PageHeader icon="userGroup" title={t("users.managementTitle")}>
         <div className="field-shell py-1.5 px-3 w-48">
           <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-            <option value="all">كل الأنواع</option>
-            <option value="Owner">أصحاب المتاجر</option>
-            <option value="Employee">الموظفين</option>
-            <option value="SuperAdmin">سوبر أدمن</option>
-            <option value="SupportStaff">دعم فني</option>
+            <option value="all">{t("users.allTypes")}</option>
+            <option value="Owner">{t("users.storeOwners")}</option>
+            <option value="Employee">{t("users.employees")}</option>
+            <option value="SuperAdmin">{t("users.superAdmin")}</option>
+            <option value="SupportStaff">{t("users.supportStaff")}</option>
           </select>
         </div>
-      </div>
+      </PageHeader>
 
       {error && <div className="alert alert--danger">{error}</div>}
 
@@ -102,12 +101,12 @@ export default function UsersManagementPage() {
         <table>
           <thead>
             <tr>
-              <th>الاسم</th>
-              <th>البريد الإلكتروني</th>
-              <th>النوع</th>
-              <th>تاريخ التسجيل</th>
-              <th>الحالة</th>
-              <th>إجراءات</th>
+              <th>{t("users.name")}</th>
+              <th>{t("users.email")}</th>
+              <th>{t("users.type")}</th>
+              <th>{t("users.registrationDate")}</th>
+              <th>{t("users.status")}</th>
+              <th>{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -116,25 +115,25 @@ export default function UsersManagementPage() {
                 <td className="font-bold">{user.fullName}</td>
                 <td className="text-[var(--sub)]">{user.email}</td>
                 <td className="text-[var(--sub)]">
-                  {USER_TYPE_LABELS[user.userType] || user.userType}
+                  {userTypeLabels[user.userType] || user.userType}
                 </td>
                 <td className="text-[var(--sub)]">{formatDate(user.createdAt)}</td>
                 <td>
-                  <span className={`status-badge ${user.isActive ? "status-badge--active" : "status-badge--suspended"}`}>
-                    {user.isActive ? "نشط" : "معطّل"}
+                  <span className={`badge ${user.isActive ? "badge--green" : "badge--red"}`}>
+                    {user.isActive ? t("users.active") : t("users.inactive")}
                   </span>
                 </td>
                 <td>
                   <button
                     onClick={() => handleToggleActive(user)}
                     disabled={processingId === user.id}
-                    className={user.isActive ? "btn-danger" : "btn-success"}
+                    className={user.isActive ? "btn btn-danger" : "btn btn-success"}
                   >
                     {processingId === user.id
-                      ? "جاري التحديث..."
+                      ? t("users.updating")
                       : user.isActive
-                      ? "تعطيل"
-                      : "تفعيل"}
+                      ? t("users.deactivate")
+                      : t("users.activate")}
                   </button>
                 </td>
               </tr>
@@ -143,7 +142,7 @@ export default function UsersManagementPage() {
         </table>
 
         {filteredUsers.length === 0 && (
-          <p className="text-center text-[var(--sub)] py-8">لا يوجد مستخدمون مطابقون</p>
+          <p className="text-center text-[var(--sub)] py-8">{t("users.noMatching")}</p>
         )}
       </div>
     </div>

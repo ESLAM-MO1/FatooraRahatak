@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Package {
   id: number;
@@ -21,26 +25,29 @@ interface Package {
   hasCustomDomain: boolean;
   hasAffiliateMarketing: boolean;
   hasApiAccess: boolean;
+  maxThemes: number;
+  commissionPercentage: number;
   isActive: boolean;
 }
 
 const FEATURE_LABELS: Record<string, string> = {
-  hasAccountingFull: "محاسبة كاملة",
-  hasPayroll: "رواتب",
-  hasZatcaInvoice: "فاتورة إلكترونية (ZATCA)",
-  hasCustomDomain: "دومين مخصص",
-  hasAffiliateMarketing: "تسويق بالعمولة",
-  hasApiAccess: "API",
+  hasAccountingFull: "packagesAdmin.featureAccounting",
+  hasPayroll: "packagesAdmin.featurePayroll",
+  hasZatcaInvoice: "packagesAdmin.featureZatcaInvoice",
+  hasCustomDomain: "packagesAdmin.featureCustomDomain",
+  hasAffiliateMarketing: "packagesAdmin.featureAffiliateMarketing",
+  hasApiAccess: "packagesAdmin.featureApiAccess",
 };
 
 const LIMIT_FIELDS = [
-  { key: "maxProducts" as keyof Package, label: "المنتجات" },
-  { key: "maxOrdersPerMonth" as keyof Package, label: "الطلبات/شهر" },
-  { key: "maxEmployees" as keyof Package, label: "الموظفين" },
-  { key: "maxWarehouses" as keyof Package, label: "المخازن" },
-  { key: "maxBranchesPOS" as keyof Package, label: "فروع POS" },
-  { key: "maxPaymentGateways" as keyof Package, label: "بوابات الدفع" },
-  { key: "maxShippingCompanies" as keyof Package, label: "شركات الشحن" },
+  { key: "maxProducts" as keyof Package, label: "packagesAdmin.limitProducts" },
+  { key: "maxOrdersPerMonth" as keyof Package, label: "packagesAdmin.limitOrdersPerMonth" },
+  { key: "maxEmployees" as keyof Package, label: "packagesAdmin.limitEmployees" },
+  { key: "maxWarehouses" as keyof Package, label: "packagesAdmin.limitWarehouses" },
+  { key: "maxBranchesPOS" as keyof Package, label: "packagesAdmin.limitBranchesPOS" },
+  { key: "maxPaymentGateways" as keyof Package, label: "packagesAdmin.limitPaymentGateways" },
+  { key: "maxShippingCompanies" as keyof Package, label: "packagesAdmin.limitShippingCompanies" },
+  { key: "maxThemes" as keyof Package, label: "packagesAdmin.limitThemes" },
 ];
 
 function CheckIcon() {
@@ -68,6 +75,7 @@ function CrossIcon() {
 }
 
 export default function PackagesPage() {
+  const { t } = useTranslation();
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -80,12 +88,12 @@ export default function PackagesPage() {
 
   useEffect(() => {
     if (userType !== "SuperAdmin") {
-      setError("غير مصرح لك - هذه الصفحة للمدراء العامين فقط");
+      setError(t("packagesAdmin.unauthorized"));
       setLoading(false);
       return;
     }
     fetchPackages();
-  }, [userType]);
+  }, [userType, t]);
 
   const fetchPackages = async () => {
     setLoading(true);
@@ -95,9 +103,9 @@ export default function PackagesPage() {
       setPackages(res.data.data);
     } catch (err: any) {
       if (err.response?.status === 403) {
-        setError("غير مصرح لك - يتطلب صلاحيات SuperAdmin");
+        setError(t("packagesAdmin.unauthorizedSuperAdmin"));
       } else {
-        setError(err.response?.data?.message || "حدث خطأ أثناء تحميل الباقات");
+        setError(err.response?.data?.message || t("packagesAdmin.loadError"));
       }
     } finally {
       setLoading(false);
@@ -121,6 +129,8 @@ export default function PackagesPage() {
       hasCustomDomain: pkg.hasCustomDomain,
       hasAffiliateMarketing: pkg.hasAffiliateMarketing,
       hasApiAccess: pkg.hasApiAccess,
+      maxThemes: pkg.maxThemes,
+      commissionPercentage: pkg.commissionPercentage,
       isActive: pkg.isActive,
     });
     setActionError("");
@@ -140,23 +150,23 @@ export default function PackagesPage() {
 
     try {
       await api.put(`/admin/packages/${pkg.id}`, editForm);
-      setActionSuccess(`تم تحديث باقة "${pkg.packageName}" بنجاح`);
+      setActionSuccess(t("packagesAdmin.updateSuccess", { name: pkg.packageName }));
       setEditingId(null);
       setEditForm({});
       await fetchPackages();
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء تحديث الباقة");
+      setActionError(err.response?.data?.message || t("packagesAdmin.updateError"));
     }
   };
 
   const getLimitDisplay = (value: number | null) => {
-    if (value === null) return "غير محدود";
-    if (value === -1) return "غير محدود";
+    if (value === null) return t("packagesAdmin.unlimited");
+    if (value === -1) return t("packagesAdmin.unlimited");
     return value.toString();
   };
 
   const getPriceDisplay = (price: number) => {
-    return price === 0 ? "مجاني" : `${price.toLocaleString("ar-SA")} ر.س/شهر`;
+    return price === 0 ? t("packagesAdmin.free") : `${price.toLocaleString("ar-SA")} ${t("packagesAdmin.perMonth")}`;
   };
 
   const renderLimitField = (pkg: Package, field: { key: keyof Package; label: string }) => {
@@ -167,7 +177,7 @@ export default function PackagesPage() {
     if (isEditing) {
       return (
         <div key={field.key} className="flex items-center justify-between text-[12.5px] mb-2 gap-3">
-          <label className="text-[var(--sub)] shrink-0">{field.label}</label>
+          <label className="text-[var(--sub)] shrink-0">{t(field.label)}</label>
           <div className="field-shell py-1 px-2.5 w-24">
             <input
               type="number"
@@ -178,7 +188,7 @@ export default function PackagesPage() {
               }}
               min={0}
               dir="ltr"
-              placeholder="غير محدود"
+              placeholder={t("packagesAdmin.unlimited")}
               className="text-left"
             />
           </div>
@@ -188,7 +198,7 @@ export default function PackagesPage() {
 
     return (
       <div key={field.key} className="flex justify-between text-[12.5px] mb-2">
-        <span className="text-[var(--sub)]">{field.label}</span>
+        <span className="text-[var(--sub)]">{t(field.label)}</span>
         <span className="font-bold text-[var(--ink)]">{getLimitDisplay(value)}</span>
       </div>
     );
@@ -209,7 +219,7 @@ export default function PackagesPage() {
             onChange={(e) => setEditForm({ ...editForm, [key]: e.target.checked })}
             className="w-4 h-4 accent-[var(--blue)]"
           />
-          <span className={active ? "text-[var(--green)]" : "text-[var(--sub)]"}>{label}</span>
+          <span className={active ? "text-[var(--green)]" : "text-[var(--sub)]"}>{t(label)}</span>
         </label>
       );
     }
@@ -217,18 +227,13 @@ export default function PackagesPage() {
     return (
       <span key={key} className={`feature-chip ${active ? "feature-chip--on" : "feature-chip--off"}`}>
         {active ? <CheckIcon /> : <CrossIcon />}
-        {label}
+        {t(label)}
       </span>
     );
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
@@ -236,10 +241,8 @@ export default function PackagesPage() {
   }
 
   return (
-    <div dir="rtl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[var(--blue-deep)]">إدارة الباقات</h1>
-      </div>
+    <div>
+      <PageHeader icon="package" title={t("packagesAdmin.title")} />
 
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
       {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
@@ -251,14 +254,14 @@ export default function PackagesPage() {
 
           return (
             <div key={pkg.id} className={`package-card ${isEditing ? "package-card--current" : ""}`}>
-              {isEditing && <span className="package-card__badge">قيد التعديل</span>}
+              {isEditing && <span className="package-card__badge">{t("packagesAdmin.editing")}</span>}
 
               <h3 className="text-[15px] font-bold text-[var(--blue-deep)] mb-2">{pkg.packageName}</h3>
 
               <div className="mb-4">
                 {isEditing ? (
                   <div className="flex items-center gap-2">
-                    <label className="text-[12.5px] text-[var(--sub)] shrink-0">السعر</label>
+                    <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.price")}</label>
                     <div className="field-shell py-1 px-2.5 w-28">
                       <input
                         type="number"
@@ -272,19 +275,36 @@ export default function PackagesPage() {
                         className="text-left"
                       />
                     </div>
-                    <span className="text-[12px] text-[var(--sub)]">ر.س/شهر</span>
+                    <span className="text-[12px] text-[var(--sub)]">{t("packagesAdmin.perMonth")}</span>
                   </div>
                 ) : (
                   <p className="text-[22px] font-bold text-[var(--blue)]">{getPriceDisplay(pkg.monthlyPrice)}</p>
                 )}
               </div>
 
+              {isEditing && (
+                <div className="flex items-center gap-2 mb-4">
+                  <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.commission")}</label>
+                  <div className="field-shell py-1 px-2.5 w-20">
+                    <input
+                      type="number"
+                      value={editForm.commissionPercentage ?? pkg.commissionPercentage}
+                      onChange={(e) =>
+                        setEditForm({ ...editForm, commissionPercentage: parseFloat(e.target.value) || 0 })
+                      }
+                      min={0} max={100} step="0.1"
+                      dir="ltr" className="text-left"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1 mb-4 border-t border-[var(--border)] pt-4">
                 {LIMIT_FIELDS.map((field) => renderLimitField(pkg, field))}
               </div>
 
               <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
-                <p className="text-[11.5px] text-[var(--sub)] mb-1">المميزات</p>
+                <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.features")}</p>
                 <div className="grid grid-cols-2 gap-1.5">
                   {(Object.entries(FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
                     renderFeatureField(pkg, key, label)
@@ -302,12 +322,12 @@ export default function PackagesPage() {
                       className="w-4 h-4 accent-[var(--blue)]"
                     />
                     <span className={activeNow ? "text-[var(--green)]" : "text-[var(--danger)]"}>
-                      {activeNow ? "باقة نشطة" : "باقة غير نشطة"}
+                      {activeNow ? t("packagesAdmin.active") : t("packagesAdmin.inactive")}
                     </span>
                   </label>
                 ) : (
                   <span className={`status-badge ${pkg.isActive ? "status-badge--active" : "status-badge--suspended"}`}>
-                    {pkg.isActive ? "باقة نشطة" : "باقة غير نشطة"}
+                    {pkg.isActive ? t("packagesAdmin.active") : t("packagesAdmin.inactive")}
                   </span>
                 )}
               </div>
@@ -316,15 +336,15 @@ export default function PackagesPage() {
                 {isEditing ? (
                   <>
                     <button onClick={() => handleSave(pkg)} className="btn-primary w-full">
-                      حفظ
+                      {t("common.save")}
                     </button>
                     <button onClick={handleCancelEdit} className="btn-outline w-full">
-                      إلغاء
+                      {t("common.cancel")}
                     </button>
                   </>
                 ) : (
                   <button onClick={() => handleEditClick(pkg)} className="btn-primary w-full">
-                    تعديل
+                    {t("common.edit")}
                   </button>
                 )}
               </div>

@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import Icon from "@/components/Icon";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Warehouse {
   id: number;
@@ -17,6 +22,7 @@ const emptyForm = {
 };
 
 export default function WarehousesPage() {
+  const { t } = useTranslation();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,11 +38,11 @@ export default function WarehousesPage() {
       const res = await api.get("/warehouses");
       setWarehouses(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المخازن");
+      setError(err.response?.data?.message || t("warehouse.loadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchWarehouses();
@@ -67,52 +73,38 @@ export default function WarehousesPage() {
       closeModal();
       await fetchWarehouses();
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء إنشاء المخزن");
+      setActionError(err.response?.data?.message || t("warehouse.createError"));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[22px] font-bold text-[var(--blue-deep)]">المخازن</h1>
-        <button onClick={openAddModal} className="btn-primary text-[13.5px]">
-          إضافة مخزن
+      <PageHeader icon="warehouse" title={t("warehouse.title")}>
+        <button onClick={openAddModal} className="btn btn-primary text-[13.5px]">
+          {t("warehouse.add")}
         </button>
-      </div>
+      </PageHeader>
 
-      {error && (
-        <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-          {error}
-        </div>
-      )}
+      {error && <div className="alert alert--danger mb-4">{error}</div>}
 
-      {actionError && !showModal && (
-        <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-          {actionError}
-        </div>
-      )}
+      {actionError && !showModal && <div className="alert alert--danger mb-4">{actionError}</div>}
 
       <div className="table-wrap">
         {warehouses.length === 0 ? (
-          <p className="p-6 text-[var(--sub)] text-[13.5px]">لا توجد مخازن بعد.</p>
+          <p className="p-6 text-[var(--sub)] text-[13.5px]">{t("warehouse.empty")}</p>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>اسم المخزن</th>
-                <th>العنوان</th>
-                <th>الحالة</th>
+                <th>{t("warehouse.name")}</th>
+                <th>{t("warehouse.address")}</th>
+                <th>{t("warehouse.status")}</th>
               </tr>
             </thead>
             <tbody>
@@ -121,13 +113,13 @@ export default function WarehousesPage() {
                   <td>
                     <span className="flex items-center gap-2">
                       {warehouse.warehouseName}
-                      {warehouse.isDefault && <span className="badge-info">افتراضي</span>}
+                      {warehouse.isDefault && <span className="badge badge--blue">{t("warehouse.defaultBadge")}</span>}
                     </span>
                   </td>
                   <td className="text-[var(--sub)]">{warehouse.address || "—"}</td>
                   <td>
-                    <span className={warehouse.isActive ? "text-[var(--green)] font-bold" : "text-[#A6AFB6]"}>
-                      {warehouse.isActive ? "نشط" : "غير نشط"}
+                    <span className={`badge ${warehouse.isActive ? "badge--green" : "badge--gray"}`}>
+                      {warehouse.isActive ? t("warehouse.active") : t("warehouse.inactive")}
                     </span>
                   </td>
                 </tr>
@@ -140,18 +132,14 @@ export default function WarehousesPage() {
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-card">
-            <h2 className="text-[17px] font-bold text-[var(--blue-deep)] mb-5">إضافة مخزن</h2>
+            <h2 className="text-[17px] font-bold text-[var(--blue-deep)] mb-5">{t("warehouse.addTitle")}</h2>
 
-            {actionError && (
-              <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-                {actionError}
-              </div>
-            )}
+            {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="warehouseName" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  اسم المخزن
+                  {t("warehouse.name")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -166,7 +154,7 @@ export default function WarehousesPage() {
 
               <div className="mb-6">
                 <label htmlFor="address" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                  العنوان (اختياري)
+                  {t("warehouse.addressOptional")}
                 </label>
                 <div className="field-shell">
                   <input
@@ -179,11 +167,11 @@ export default function WarehousesPage() {
               </div>
 
               <div className="flex gap-2.5">
-                <button type="submit" disabled={submitting} className="btn-primary flex-1 py-2.5">
-                  {submitting ? "جارٍ الحفظ..." : "حفظ"}
+                <button type="submit" disabled={submitting} className="btn btn-primary flex-1 py-2.5">
+                  {submitting ? t("common.saving") : t("common.save")}
                 </button>
-                <button type="button" onClick={closeModal} className="btn-outline flex-1 py-2.5">
-                  إلغاء
+                <button type="button" onClick={closeModal} className="btn btn-outline flex-1 py-2.5">
+                  {t("common.cancel")}
                 </button>
               </div>
             </form>

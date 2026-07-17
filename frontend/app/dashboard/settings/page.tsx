@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Setting {
   settingKey: string;
@@ -8,6 +12,7 @@ interface Setting {
 }
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<Setting[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -21,7 +26,7 @@ export default function SettingsPage() {
       const res = await api.get("/admin/settings");
       setSettings(res.data.data);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل الإعدادات");
+      setError(err.response?.data?.message || t("settings.loadError"));
     } finally {
       setLoading(false);
     }
@@ -58,39 +63,33 @@ export default function SettingsPage() {
     try {
       const validSettings = settings.filter((s) => s.settingKey.trim() !== "");
       await api.put("/admin/settings", { settings: validSettings });
-      setSuccess("تم حفظ الإعدادات بنجاح");
+      setSuccess(t("settings.saveSuccess"));
       await loadSettings();
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء حفظ الإعدادات");
+      setError(err.response?.data?.message || t("settings.saveError"));
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   return (
-    <div dir="rtl" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-[var(--blue-deep)]">الإعدادات العامة</h1>
-        <button onClick={handleAddRow} className="btn-secondary">
-          + إضافة إعداد جديد
+    <div className="space-y-6">
+      <PageHeader icon="settings" title={t("settings.title")}>
+        <button onClick={handleAddRow} className="btn btn-secondary">
+          + {t("settings.addNew")}
         </button>
-      </div>
+      </PageHeader>
 
       {error && <div className="alert alert--danger">{error}</div>}
       {success && <div className="alert alert--success">{success}</div>}
 
       <div className="card p-5 space-y-4">
         {settings.length === 0 && (
-          <p className="text-[var(--sub)] text-sm">لا توجد إعدادات بعد. اضغط "إضافة إعداد جديد" للبدء.</p>
+          <p className="text-[var(--sub)] text-sm">{t("settings.noSettings")}</p>
         )}
 
         {settings.map((setting, index) => (
@@ -98,7 +97,7 @@ export default function SettingsPage() {
             <div className="field-shell w-1/3">
               <input
                 type="text"
-                placeholder="اسم الإعداد (مثل platform_name)"
+                placeholder={t("settings.keyPlaceholder")}
                 value={setting.settingKey}
                 onChange={(e) => handleKeyChange(index, e.target.value)}
               />
@@ -106,7 +105,7 @@ export default function SettingsPage() {
             <div className="field-shell flex-1">
               <input
                 type="text"
-                placeholder="القيمة"
+                placeholder={t("settings.valuePlaceholder")}
                 value={setting.settingValue}
                 onChange={(e) => handleValueChange(index, e.target.value)}
               />
@@ -115,14 +114,14 @@ export default function SettingsPage() {
               onClick={() => handleRemoveRow(index)}
               className="px-3 py-1.5 text-sm rounded-md text-[var(--danger)] hover:bg-[var(--danger-soft)] transition"
             >
-              حذف
+              {t("common.delete")}
             </button>
           </div>
         ))}
 
         <div className="pt-2">
-          <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-40">
-            {saving ? "جاري الحفظ..." : "حفظ الإعدادات"}
+          <button onClick={handleSave} disabled={saving} className="btn btn-primary disabled:opacity-40">
+            {saving ? t("common.saving") : t("settings.save")}
           </button>
         </div>
       </div>

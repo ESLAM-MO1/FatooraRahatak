@@ -11,4 +11,5 @@ public class StoreResponseDto
     public string? CustomDomain { get; set; }
     public string CustomDomainStatus { get; set; } = string.Empty;
     public bool IsOnline { get; set; }
+    public bool IsVatRegistered { get; set; }
 }

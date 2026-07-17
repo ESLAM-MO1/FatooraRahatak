@@ -38,7 +38,8 @@ public class OwnerCustomerService : IOwnerCustomerService
                     OrdersCount = g.Count(),
                     TotalSpent = g.Sum(o => o.TotalAmount),
                     LastOrderDate = g.Max(o => o.CreatedAt),
-                    IsGuest = isGuest
+                    IsGuest = isGuest,
+                    CustomerId = isGuest ? null : first.CustomerId,
                 };
             })
             .OrderByDescending(c => c.LastOrderDate)
@@ -69,7 +70,9 @@ public class OwnerCustomerService : IOwnerCustomerService
             IsGuest = isGuest,
             OrdersCount = orders.Count,
             TotalSpent = orders.Sum(o => o.TotalAmount),
+            CustomerId = isGuest ? null : first.CustomerId,
             Orders = orders.Select(o => new OwnerCustomerOrderDto
+            
             {
                 Id = o.Id,
                 OrderNumber = o.OrderNumber,

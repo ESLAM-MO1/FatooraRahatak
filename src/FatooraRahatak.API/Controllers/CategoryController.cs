@@ -15,11 +15,13 @@ public class CategoryController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public CategoryController(ICategoryService categoryService, AppDbContext context)
+    public CategoryController(ICategoryService categoryService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _categoryService = categoryService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -35,6 +37,10 @@ public class CategoryController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
     {
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Categories.Add"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
+
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -78,6 +84,10 @@ public class CategoryController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(long id, [FromBody] CreateCategoryDto dto)
     {
+        var userId = GetUserId();
+        try { await _permCheck.EnsurePermissionAsync(userId, "Categories.Edit"); }
+        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
+
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });

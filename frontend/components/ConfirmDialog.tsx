@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 
 interface ConfirmOptions {
   title?: string;
@@ -27,6 +29,7 @@ const alertPath = "M12 9v4M12 17h.01M10.3 3.9 2.5 17a2 2 0 0 0 1.7 3h15.6a2 2 0 
 const helpPath = "M9.5 9a2.5 2.5 0 1 1 3.6 2.25c-.7.35-1.1.9-1.1 1.75M12 17h.01";
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const [state, setState] = useState<ConfirmState>({ open: false, message: "" });
   const resolver = useRef<((value: boolean) => void) | undefined>(undefined);
 
@@ -77,13 +80,13 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 onClick={() => handleClose(false)}
                 className="btn-secondary flex-1"
               >
-                {state.cancelLabel || "إلغاء"}
+                {state.cancelLabel || t("common.cancel")}
               </button>
               <button
                 onClick={() => handleClose(true)}
                 className={state.danger ? "btn-danger flex-1" : "btn-primary flex-1"}
               >
-                {state.confirmLabel || "تأكيد"}
+                {state.confirmLabel || t("common.confirm")}
               </button>
             </div>
           </div>
@@ -96,7 +99,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 export function useConfirm() {
   const ctx = useContext(ConfirmContext);
   if (!ctx) {
-    throw new Error("useConfirm لازم يتستخدم جوه ConfirmProvider");
+    throw new Error("useConfirm must be used within ConfirmProvider");
   }
   return ctx;
 }

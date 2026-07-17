@@ -12,4 +12,7 @@ public class PayrollResponseDto
     public decimal Commission { get; set; }
     public decimal NetSalary { get; set; }
     public string Status { get; set; } = string.Empty;
+    public long? JournalEntryId { get; set; }
+    public string? JournalEntryNumber { get; set; }
+
 }

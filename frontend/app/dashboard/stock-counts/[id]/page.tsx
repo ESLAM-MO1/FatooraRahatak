@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
+import LoadingState from "@/components/LoadingState";
 
 interface StockCountItem {
   id: number;
@@ -22,21 +25,15 @@ interface StockCount {
   items: StockCountItem[];
 }
 
-const statusLabels: Record<string, string> = {
-  InProgress: "قيد التنفيذ",
-  PendingApproval: "بانتظار الاعتماد",
-  Completed: "مكتمل",
-  Cancelled: "ملغي",
-};
-
-const statusStyles: Record<string, { bg: string; text: string }> = {
-  InProgress: { bg: "var(--blue-50)", text: "var(--blue)" },
-  PendingApproval: { bg: "var(--gold-soft)", text: "var(--gold-deep)" },
-  Completed: { bg: "var(--green-soft)", text: "var(--green)" },
-  Cancelled: { bg: "var(--danger-soft)", text: "var(--danger)" },
+const statusStyles: Record<string, string> = {
+  InProgress: "badge badge--blue",
+  PendingApproval: "badge badge--yellow",
+  Completed: "badge badge--green",
+  Cancelled: "badge badge--red",
 };
 
 export default function StockCountDetailPage() {
+  const { t } = useTranslation();
   const params = useParams();
   const stockCountId = params.id as string;
 
@@ -62,11 +59,11 @@ export default function StockCountDetailPage() {
       });
       setCountedInputs(inputs);
     } catch (err: any) {
-      setError(err.response?.data?.message || "حدث خطأ أثناء تحميل الجرد");
+      setError(err.response?.data?.message || t("stockCount.errorLoadingDetails"));
     } finally {
       setLoading(false);
     }
-  }, [stockCountId]);
+  }, [stockCountId, t]);
 
   useEffect(() => {
     fetchStockCount();
@@ -75,7 +72,7 @@ export default function StockCountDetailPage() {
   const handleSaveItem = async (itemId: number) => {
     const value = countedInputs[itemId];
     if (value === "" || value === undefined) {
-      setActionError("أدخل الكمية الفعلية أولاً");
+      setActionError(t("stockCount.enterActualQuantity"));
       return;
     }
 
@@ -88,14 +85,14 @@ export default function StockCountDetailPage() {
       });
       await fetchStockCount();
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء حفظ الكمية");
+      setActionError(err.response?.data?.message || t("stockCount.errorSavingQuantity"));
     } finally {
       setSavingItemId(null);
     }
   };
 
   const handleApprove = async () => {
-    if (!window.confirm("هل أنت متأكد من اعتماد الجرد؟")) return;
+    if (!window.confirm(t("stockCount.confirmApproval"))) return;
 
     setActionError("");
     setApproving(true);
@@ -103,7 +100,7 @@ export default function StockCountDetailPage() {
       await api.put(`/stock-counts/${stockCountId}/approve`);
       await fetchStockCount();
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء اعتماد الجرد");
+      setActionError(err.response?.data?.message || t("stockCount.errorApproving"));
     } finally {
       setApproving(false);
     }
@@ -113,64 +110,50 @@ export default function StockCountDetailPage() {
   const isInProgress = stockCount?.status === "InProgress";
 
   if (loading) {
-    return (
-      <div className="flex items-center gap-3 text-[var(--sub)]">
-        <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
-        جارٍ التحميل...
-      </div>
-    );
+    return <LoadingState />;
   }
 
   if (error || !stockCount) {
     return (
       <div>
         <Link href="/dashboard/stock-counts" className="text-[var(--blue)] font-bold hover:underline text-[13.5px] mb-4 inline-block">
-          ← رجوع لبدء جرد جديد
+          ← {t("stockCount.backToStart")}
         </Link>
-        <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px]">
-          {error || "الجرد غير موجود"}
+        <div className="alert alert--danger">
+          {error || t("stockCount.notFound")}
         </div>
       </div>
     );
   }
 
-  const statusStyle = statusStyles[stockCount.status] ?? { bg: "var(--border)", text: "var(--sub)" };
-
   return (
     <div>
       <Link href="/dashboard/stock-counts" className="text-[var(--blue)] font-bold hover:underline text-[13.5px] mb-4 inline-block">
-        ← رجوع لبدء جرد جديد
+        ← {t("stockCount.backToStart")}
       </Link>
 
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-[22px] font-bold text-[var(--blue-deep)]">تفاصيل الجرد</h1>
-        <span
-          className="text-[12.5px] font-bold px-3 py-1.5 rounded-full"
-          style={{ background: statusStyle.bg, color: statusStyle.text }}
-        >
-          {statusLabels[stockCount.status] ?? stockCount.status}
+        <h1 className="text-[22px] font-bold text-[var(--blue-deep)]">{t("stockCount.details")}</h1>
+        <span className={statusStyles[stockCount.status] ?? "badge badge--gray"}>
+          {t(`stockCount.status${stockCount.status}` as const)}
         </span>
       </div>
 
-      {actionError && (
-        <div className="bg-[var(--danger-soft)] border border-[#efc6c6] text-[var(--danger)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-          {actionError}
-        </div>
-      )}
+      {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
       <div className="table-wrap">
         {stockCount.items.length === 0 ? (
-          <p className="p-6 text-[var(--sub)] text-[13.5px]">لا توجد منتجات في هذا المخزن.</p>
+          <p className="p-6 text-[var(--sub)] text-[13.5px]">{t("stockCount.noProducts")}</p>
         ) : (
           <div className="overflow-x-auto">
             <table>
               <thead>
                 <tr>
-                  <th>المنتج</th>
-                  <th>الكمية المسجلة</th>
-                  <th>الكمية الفعلية</th>
-                  {isCompleted && <th>الفرق</th>}
-                  {isInProgress && <th>إجراء</th>}
+                  <th>{t("stockCount.product")}</th>
+                  <th>{t("stockCount.recordedQuantity")}</th>
+                  <th>{t("stockCount.actualQuantity")}</th>
+                  {isCompleted && <th>{t("stockCount.variance")}</th>}
+                  {isInProgress && <th>{t("stockCount.action")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -214,7 +197,7 @@ export default function StockCountDetailPage() {
                           disabled={savingItemId === item.id}
                           className="text-[var(--blue)] font-bold hover:underline text-[13px] disabled:opacity-50"
                         >
-                          {savingItemId === item.id ? "جارٍ الحفظ..." : "حفظ"}
+                          {savingItemId === item.id ? t("common.saving") : t("common.save")}
                         </button>
                       </td>
                     )}
@@ -228,8 +211,8 @@ export default function StockCountDetailPage() {
 
       {isInProgress && stockCount.items.length > 0 && (
         <div className="mt-6">
-          <button onClick={handleApprove} disabled={approving} className="btn-primary px-6">
-            {approving ? "جارٍ الاعتماد..." : "اعتماد الجرد"}
+          <button onClick={handleApprove} disabled={approving} className="btn btn-primary px-6">
+            {approving ? t("stockCount.approving") : t("stockCount.approve")}
           </button>
         </div>
       )}

@@ -15,15 +15,12 @@ public class PublicStoreService : IPublicStoreService
         _context = context;
     }
 
-    // يستخدم فقط في GetStoreBySlugAsync — يرجّع المتجر حتى لو IsOnline = false،
-    // عشان الواجهة تقدر تعرض "المتجر غير متاح حاليًا" بدل "المتجر غير موجود".
     private async Task<Domain.Entities.Stores.Store?> GetActiveStoreBySlugAsync(string slug)
     {
         return await _context.Stores
             .FirstOrDefaultAsync(s => s.StoreSlug == slug && s.Status == StoreStatus.Active);
     }
 
-    // يستخدم في كل باقي الـ Endpoints — بيقفل تمامًا لو المتجر معطّل (IsOnline = false).
     private async Task<Domain.Entities.Stores.Store?> GetOnlineStoreBySlugAsync(string slug)
     {
         return await _context.Stores
@@ -35,6 +32,16 @@ public class PublicStoreService : IPublicStoreService
         var store = await GetActiveStoreBySlugAsync(slug);
         if (store == null) return null;
 
+        var shippingMethods = await _context.StoreShippingMethods
+            .Where(m => m.StoreId == store.Id && m.IsEnabled)
+            .Select(m => new PublicShippingMethodDto { Type = m.Type.ToString() })
+            .ToListAsync();
+
+        var paymentMethods = await _context.StorePaymentMethods
+            .Where(m => m.StoreId == store.Id && m.IsEnabled)
+            .Select(m => new PublicPaymentMethodDto { Type = m.Type.ToString() })
+            .ToListAsync();
+
         return new PublicStoreDto
         {
             Id = store.Id,
@@ -42,7 +49,21 @@ public class PublicStoreService : IPublicStoreService
             StoreSlug = store.StoreSlug,
             Logo = store.Logo,
             DefaultLanguage = store.DefaultLanguage,
-            IsOnline = store.IsOnline
+            IsOnline = store.IsOnline,
+            ThemeName = store.ThemeName,
+            PrimaryColor = store.PrimaryColor,
+            CoverImage = store.CoverImage,
+            Currency = store.Currency,
+            ContactPhone = store.ContactPhone,
+            ContactEmail = store.ContactEmail,
+            ContactAddress = store.ContactAddress,
+            BioLink = store.BioLink,
+            FacebookUrl = store.FacebookUrl,
+            InstagramUrl = store.InstagramUrl,
+            WhatsappUrl = store.WhatsappUrl,
+            ReturnPolicyText = store.ReturnPolicyText,
+            ShippingMethods = shippingMethods,
+            PaymentMethods = paymentMethods
         };
     }
 

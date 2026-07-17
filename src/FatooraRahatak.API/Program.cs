@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
@@ -66,8 +68,18 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IPublicStoreSer
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOrderService, FatooraRahatak.Infrastructure.Services.OrderService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerCustomerService, FatooraRahatak.Infrastructure.Services.OwnerCustomerService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerDashboardService, FatooraRahatak.Infrastructure.Services.OwnerDashboardService>();
-
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerDashboardService, FatooraRahatak.Infrastructure.Services.OwnerDashboardService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAccountingService, FatooraRahatak.Infrastructure.Services.AccountingService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.INotificationService, FatooraRahatak.Infrastructure.Services.NotificationService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
+builder.Services.AddScoped<IInvitationService, InvitationService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IPermissionCheckService, PermissionCheckService>();
+builder.Services.AddScoped<ISiteService, SiteService>();
+builder.Services.AddDirectoryBrowser();
 var app = builder.Build();
+
+app.UseStaticFiles();
 
 using (var scope = app.Services.CreateScope())
 {

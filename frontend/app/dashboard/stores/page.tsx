@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
 
 interface Store {
   id: number;
@@ -16,16 +20,16 @@ interface Store {
   createdAt: string;
 }
 
-const statusLabel = (status: string) => {
+const statusLabel = (status: string, t: (key: string) => string) => {
   switch (status) {
     case "Active":
-      return "نشط";
+      return t("store.statusActive");
     case "Suspended":
-      return "معلق";
+      return t("store.statusSuspended");
     case "PendingApproval":
-      return "بانتظار الموافقة";
+      return t("store.statusPendingApproval");
     case "Closed":
-      return "مغلق";
+      return t("store.statusClosed");
     default:
       return status;
   }
@@ -34,19 +38,20 @@ const statusLabel = (status: string) => {
 const statusBadgeClass = (status: string) => {
   switch (status) {
     case "Active":
-      return "status-badge status-badge--active";
+      return "badge badge--green";
     case "Suspended":
-      return "status-badge status-badge--suspended";
+      return "badge badge--red";
     case "PendingApproval":
-      return "status-badge status-badge--pending";
+      return "badge badge--yellow";
     case "Closed":
-      return "status-badge status-badge--closed";
+      return "badge badge--gray";
     default:
-      return "status-badge";
+      return "badge badge--gray";
   }
 };
 
 export default function StoresPage() {
+  const { t } = useTranslation();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,7 +65,7 @@ export default function StoresPage() {
 
   useEffect(() => {
     if (userType !== "SuperAdmin") {
-      setError("غير مصرح لك - هذه الصفحة للمدراء العامين فقط");
+      setError(t("store.unauthorized"));
       setLoading(false);
       return;
     }
@@ -75,9 +80,9 @@ export default function StoresPage() {
       setStores(res.data.data);
     } catch (err: any) {
       if (err.response?.status === 403) {
-        setError("غير مصرح لك - يتطلب صلاحيات SuperAdmin");
+        setError(t("store.unauthorizedSuperAdmin"));
       } else {
-        setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المتاجر");
+        setError(err.response?.data?.message || t("store.loadError"));
       }
     } finally {
       setLoading(false);
@@ -85,34 +90,34 @@ export default function StoresPage() {
   };
 
   const handleSuspend = async (store: Store) => {
-    if (!window.confirm(`هل أنت متأكد من تعليق المتجر "${store.storeName}"؟`)) return;
+    if (!window.confirm(t("store.suspendConfirm", { name: store.storeName }))) return;
 
     setActionError("");
     setActionSuccess("");
     setProcessingId(store.id);
     try {
       await api.put(`/admin/stores/${store.id}/suspend`);
-      setActionSuccess(`تم تعليق المتجر "${store.storeName}" بنجاح`);
+      setActionSuccess(t("store.suspendSuccess", { name: store.storeName }));
       await fetchStores();
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء تعليق المتجر");
+      setActionError(err.response?.data?.message || t("store.suspendError"));
     } finally {
       setProcessingId(null);
     }
   };
 
   const handleActivate = async (store: Store) => {
-    if (!window.confirm(`هل أنت متأكد من تفعيل المتجر "${store.storeName}"؟`)) return;
+    if (!window.confirm(t("store.activateConfirm", { name: store.storeName }))) return;
 
     setActionError("");
     setActionSuccess("");
     setProcessingId(store.id);
     try {
       await api.put(`/admin/stores/${store.id}/activate`);
-      setActionSuccess(`تم تفعيل المتجر "${store.storeName}" بنجاح`);
+      setActionSuccess(t("store.activateSuccess", { name: store.storeName }));
       await fetchStores();
     } catch (err: any) {
-      setActionError(err.response?.data?.message || "حدث خطأ أثناء تفعيل المتجر");
+      setActionError(err.response?.data?.message || t("store.activateError"));
     } finally {
       setProcessingId(null);
     }
@@ -128,7 +133,7 @@ export default function StoresPage() {
   const packages = [...new Set(stores.map((s) => s.packageName))];
 
   if (loading) {
-    return <p className="text-[var(--sub)]">جاري التحميل...</p>;
+    return <LoadingState />;
   }
 
   if (error) {
@@ -136,41 +141,39 @@ export default function StoresPage() {
   }
 
   return (
-    <div dir="rtl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[var(--ink)]">إدارة المتاجر</h1>
-      </div>
+    <div>
+      <PageHeader icon="store" title={t("store.manage")} />
 
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
       {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
 
       <div className="card p-4 mb-4 flex flex-wrap gap-4">
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-[var(--ink)]">الحالة:</label>
+          <label className="text-sm font-medium text-[var(--ink)]">{t("store.filterStatus")}</label>
           <div className="field-shell">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2 text-sm bg-transparent w-full outline-none"
             >
-              <option value="">الكل</option>
+              <option value="">{t("common.all")}</option>
               {statuses.map((status) => (
                 <option key={status} value={status}>
-                  {statusLabel(status)}
+                  {statusLabel(status, t)}
                 </option>
               ))}
             </select>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-[var(--ink)]">الباقة:</label>
+          <label className="text-sm font-medium text-[var(--ink)]">{t("store.filterPackage")}</label>
           <div className="field-shell">
             <select
               value={packageFilter}
               onChange={(e) => setPackageFilter(e.target.value)}
               className="px-3 py-2 text-sm bg-transparent w-full outline-none"
             >
-              <option value="">الكل</option>
+              <option value="">{t("common.all")}</option>
               {packages.map((pkg) => (
                 <option key={pkg} value={pkg}>
                   {pkg}
@@ -184,21 +187,21 @@ export default function StoresPage() {
       <div className="card overflow-hidden">
         {filteredStores.length === 0 ? (
           <p className="p-5 text-[var(--sub)] text-sm text-center">
-            لا يوجد متاجر{statusFilter || packageFilter ? " تطابق الفلاتر" : ""}.
+            {t("store.noStores")}{statusFilter || packageFilter ? t("store.noStoresFilter") : ""}.
           </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-[var(--border)] border-b" style={{ borderColor: "var(--border)" }}>
                 <tr>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">الاسم</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">الرابط الفرعي</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">صاحب المتجر</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">الإيميل</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">الباقة</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">الحالة</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">تاريخ التسجيل</th>
-                  <th className="text-right p-3 font-medium text-[var(--sub)]">إجراءات</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.name")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.slug")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.owner")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.email")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.package")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.status")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.registrationDate")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,7 +221,7 @@ export default function StoresPage() {
                     </td>
                     <td className="p-3 text-[var(--sub)]">{store.packageName}</td>
                     <td className="p-3">
-                      <span className={statusBadgeClass(store.status)}>{statusLabel(store.status)}</span>
+                      <span className={statusBadgeClass(store.status)}>{statusLabel(store.status, t)}</span>
                     </td>
                     <td className="p-3 text-[var(--sub)]" dir="ltr">
                       {new Date(store.createdAt).toLocaleDateString("ar-SA")}
@@ -229,7 +232,7 @@ export default function StoresPage() {
                           href={`/dashboard/stores/${store.id}`}
                           className="text-[var(--blue)] hover:underline text-sm"
                         >
-                          التفاصيل
+                          {t("store.details")}
                         </Link>
                         {store.status === "Active" && (
                           <button
@@ -237,7 +240,7 @@ export default function StoresPage() {
                             disabled={processingId === store.id}
                             className="text-[var(--danger)] hover:underline text-sm disabled:opacity-50"
                           >
-                            {processingId === store.id ? "جاري التعليق..." : "تعليق"}
+                            {processingId === store.id ? t("store.suspending") : t("store.suspend")}
                           </button>
                         )}
                         {store.status === "Suspended" && (
@@ -246,7 +249,7 @@ export default function StoresPage() {
                             disabled={processingId === store.id}
                             className="text-[var(--green)] hover:underline text-sm disabled:opacity-50"
                           >
-                            {processingId === store.id ? "جاري التفعيل..." : "تفعيل"}
+                            {processingId === store.id ? t("store.activating") : t("store.activate")}
                           </button>
                         )}
                       </div>

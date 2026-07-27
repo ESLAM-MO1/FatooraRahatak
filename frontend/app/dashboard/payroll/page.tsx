@@ -332,11 +332,11 @@ export default function PayrollPage() {
         </div>
 
         {showEditModal && editingPayroll && (
-          <div className="modal-overlay">
-            <div className="card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-              <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">
+          <div className="modal-overlay" onClick={closeEditModal}>
+            <div className="card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">
                 {t("payroll.editSalary")} {editingPayroll.employeeName}
-              </h2>
+              </h2><button onClick={closeEditModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
 
               {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 

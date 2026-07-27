@@ -20,9 +20,22 @@ function RegisterForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const validateEmail = (email: string) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
+  const validateSaudiPhone = (phone: string) => /^(?:\+966|05)(5|0|3|6|4|9|1|2|7|8)\d{7}$/.test(phone);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!validateEmail(email)) {
+      setError(t("auth.invalidEmail"));
+      return;
+    }
+
+    if (!validateSaudiPhone(phone)) {
+      setError(t("auth.invalidPhone"));
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError(t("error.passwordMismatch"));
@@ -41,7 +54,7 @@ function RegisterForm() {
       if (invitationToken) {
         router.push("/dashboard");
       } else {
-        router.push("/dashboard/create-store");
+        router.push(`/verify-account?email=${encodeURIComponent(email)}`);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || t("error.serverError"));
@@ -220,7 +233,7 @@ function RegisterForm() {
           <div className="text-center mt-4">
             <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">{t("brand.name")}</p>
             <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
-              faturat rahatik
+              {t("brand.nameEn")}
             </p>
           </div>
           <div className="flex items-center justify-center gap-2 mt-5">

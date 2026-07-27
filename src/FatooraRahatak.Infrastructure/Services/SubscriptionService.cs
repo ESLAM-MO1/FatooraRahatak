@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using FatooraRahatak.Application.Common;
 using FatooraRahatak.Application.DTOs.Subscriptions;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Enums;
@@ -119,17 +120,17 @@ public class SubscriptionService : ISubscriptionService
             throw new InvalidOperationException("هذه ليست عملية تنزيل، استخدم الترقية بدلاً من ذلك");
 
         var productsCount = await _context.Products.CountAsync(p => p.StoreId == storeId);
-        if (newPackage.MaxProducts.HasValue && productsCount > newPackage.MaxProducts.Value)
+        if (PackageLimitHelper.ExceedsLimit(newPackage.MaxProducts, productsCount))
             throw new InvalidOperationException(
-                $"لا يمكن التنزيل، لديك {productsCount} منتج والباقة الجديدة تسمح بـ {newPackage.MaxProducts.Value} فقط. يرجى حذف المنتجات الزائدة أولاً.");
+                $"لا يمكن التنزيل، لديك {productsCount} منتج والباقة الجديدة تسمح بـ {newPackage.MaxProducts} فقط. يرجى حذف المنتجات الزائدة أولاً.");
 
         var employeesCount = await _context.Employees.CountAsync(e => e.StoreId == storeId && e.Status == "Active");
-        if (employeesCount > newPackage.MaxEmployees)
+        if (PackageLimitHelper.ExceedsLimit(newPackage.MaxEmployees, employeesCount))
             throw new InvalidOperationException(
                 $"لا يمكن التنزيل، لديك {employeesCount} موظف والباقة الجديدة تسمح بـ {newPackage.MaxEmployees} فقط. يرجى إنهاء خدمة الموظفين الزائدين أولاً.");
 
         var warehousesCount = await _context.Warehouses.CountAsync(w => w.StoreId == storeId);
-        if (warehousesCount > newPackage.MaxWarehouses)
+        if (PackageLimitHelper.ExceedsLimit(newPackage.MaxWarehouses, warehousesCount))
             throw new InvalidOperationException(
                 $"لا يمكن التنزيل، لديك {warehousesCount} مخزن والباقة الجديدة تسمح بـ {newPackage.MaxWarehouses} فقط. يرجى حذف المخازن الزائدة أولاً.");
 

@@ -130,9 +130,9 @@ export default function WarehousesPage() {
       </div>
 
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <h2 className="text-[17px] font-bold text-[var(--blue-deep)] mb-5">{t("warehouse.addTitle")}</h2>
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5"><h2 className="text-[17px] font-bold text-[var(--blue-deep)]">{t("warehouse.addTitle")}</h2><button onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
 
             {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 

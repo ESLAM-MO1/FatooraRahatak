@@ -1,8 +1,9 @@
 using FatooraRahatak.Domain.Common;
-using FatooraRahatak.Domain.Enums;
+using FatooraRahatak.Domain.Entities.Payments;
 using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Sales;
+using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Domain.Entities.Orders;
 
@@ -16,6 +17,7 @@ public class Order : BaseEntity
     public string? GuestEmail { get; set; }
     public string ShippingAddress { get; set; } = string.Empty;
     public OrderStatus Status { get; set; } = OrderStatus.New;
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; } = 0;
     public decimal TotalAmount { get; set; }
@@ -27,4 +29,5 @@ public class Order : BaseEntity
     public Coupon? Coupon { get; set; }
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
     public ICollection<OrderStatusHistory> StatusHistory { get; set; } = new List<OrderStatusHistory>();
+    public Payment? Payment { get; set; }
 }

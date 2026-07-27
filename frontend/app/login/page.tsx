@@ -194,7 +194,7 @@ export default function LoginPage() {
           <div className="text-center mt-4">
             <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">{t("brand.name")}</p>
             <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
-              faturat rahatik
+              {t("brand.nameEn")}
             </p>
           </div>
           <div className="flex items-center justify-center gap-2 mt-5">
@@ -202,10 +202,14 @@ export default function LoginPage() {
             <span className="w-[38px] h-[5px] rounded-[4px]" style={{ background: "var(--gold)" }} />
             <span className="w-[38px] h-[5px] rounded-[4px]" style={{ background: "var(--green)" }} />
           </div>
+
+          <div className="text-center mt-6 max-w-xs">
+            <p className="text-[15px] font-bold text-[var(--blue-deep)]">{t("auth.brandSubtitle")}</p>
+            <p className="text-[12.5px] leading-relaxed text-[var(--sub)] mt-2">{t("auth.brandDescription")}</p>
+          </div>
         </div>
 
-        <div className="relative z-[2] flex justify-between items-center border-t border-[var(--border)] pt-4.5">
-          <span className="text-[12.5px] text-[var(--sub)]">&copy; {new Date().getFullYear()} {t("brand.name")}</span>
+        <div className="relative z-[2] flex justify-center items-center border-t border-[var(--border)] pt-4.5">
           <span className="text-[12.5px] text-[var(--sub)]">{t("footer.copyright")}</span>
         </div>
       </div>

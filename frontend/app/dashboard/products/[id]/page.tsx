@@ -325,7 +325,7 @@ export default function ProductDetailsPage() {
             onSubmit={handleAddVariant}
             className="border border-[var(--border)] rounded-2xl p-4 mb-4 space-y-3"
           >
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">
                   {t("productDetail.variantName")}
@@ -344,7 +344,7 @@ export default function ProductDetailsPage() {
                   />
                 </div>
               </div>
-              <div>
+            <div>
                 <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">
                   {t("productDetail.priceDiff")}
                 </label>

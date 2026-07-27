@@ -2,7 +2,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
+import "@/lib/i18n/config";
 
 interface StoreInfo {
   id: number;
@@ -44,6 +46,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 };
 
 export default function StorePage() {
+  const { t } = useTranslation();
   const params = useParams();
   const slug = params.slug as string;
 
@@ -72,7 +75,7 @@ export default function StorePage() {
         if (err.response?.status === 404) {
           setNotFound(true);
         } else {
-          setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المتجر");
+          setError(err.response?.data?.message || t("store.loadError"));
         }
       } finally {
         setLoading(false);
@@ -92,7 +95,7 @@ export default function StorePage() {
         const res = await api.get(url);
         setProducts(res.data.data);
       } catch (err: any) {
-        setError(err.response?.data?.message || "حدث خطأ أثناء تحميل المنتجات");
+        setError(err.response?.data?.message || t("store.productsLoadError"));
       } finally {
         setProductsLoading(false);
       }
@@ -103,7 +106,7 @@ export default function StorePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">جاري التحميل...</p>
+        <p className="text-gray-500">{t("store.loading")}</p>
       </div>
     );
   }
@@ -112,8 +115,8 @@ export default function StorePage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">هذا المتجر غير متاح حاليًا</h1>
-          <p className="text-gray-500">تأكد من صحة الرابط أو حاول مرة أخرى لاحقًا</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t("store.notAvailable")}</h1>
+          <p className="text-gray-500">{t("store.checkLink")}</p>
         </div>
       </div>
     );
@@ -132,7 +135,7 @@ export default function StorePage() {
               onClick={() => setSelectedCategoryId(null)}
               className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition ${selectedCategoryId === null ? "text-white" : "bg-white text-gray-700 border border-gray-200 hover:border-gray-300"}`}
               style={selectedCategoryId === null ? { background: "var(--theme)" } : undefined}
-            >الكامل</button>
+            >{t("store.all")}</button>
             {categories.map((cat) => (
               <button
                 key={cat.id}
@@ -145,11 +148,11 @@ export default function StorePage() {
         )}
 
         {productsLoading ? (
-          <p className="text-gray-500">جاري تحميل المنتجات...</p>
+          <p className="text-gray-500">{t("store.loadingProducts")}</p>
         ) : null}
 
         {!productsLoading && products.length === 0 ? (
-          <p className="text-gray-500 text-center py-12">لا توجد منتجات حاليًا</p>
+          <p className="text-gray-500 text-center py-12">{t("store.noProducts")}</p>
         ) : null}
 
         {!productsLoading && products.length > 0 ? (
@@ -164,7 +167,7 @@ export default function StorePage() {
                   {product.primaryImageUrl ? (
                     <img src={product.primaryImageUrl} alt={product.nameAr} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">لا توجد صورة</div>
+                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">{t("store.noImage")}</div>
                   )}
                 </div>
                 <div className="p-3">

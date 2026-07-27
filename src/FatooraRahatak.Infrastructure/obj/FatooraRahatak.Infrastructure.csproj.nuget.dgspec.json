@@ -735,6 +735,10 @@
               "target": "Package",
               "version": "[4.2.0, )"
             },
+            "ClosedXML": {
+              "target": "Package",
+              "version": "[0.105.0, )"
+            },
             "Google.Apis.Auth": {
               "target": "Package",
               "version": "[1.75.0, )"

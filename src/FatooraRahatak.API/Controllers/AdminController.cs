@@ -179,6 +179,111 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, data = overview });
     }
 
+    [HttpGet("billing/revenue")]
+    public async Task<IActionResult> GetRevenueDashboard()
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetRevenueDashboardAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("billing/invoices")]
+    public async Task<IActionResult> GetPlatformInvoices([FromQuery] bool? overdueOnly)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetPlatformInvoicesAsync(overdueOnly);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("billing/invoices/export")]
+    public async Task<IActionResult> ExportPlatformInvoices()
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var bytes = await _adminService.ExportPlatformInvoicesExcelAsync();
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "platform-invoices.xlsx");
+    }
+
+    [HttpGet("users/owners")]
+    public async Task<IActionResult> GetOwnerUsers()
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetOwnerUsersAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("users/{id}/impersonate")]
+    public async Task<IActionResult> ImpersonateUser(long id)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var adminId = GetCurrentUserId();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        try
+        {
+            var result = await _adminService.ImpersonateUserAsync(adminId, id, ip);
+            return Ok(new { success = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("users/staff")]
+    public async Task<IActionResult> CreateStaffUser([FromBody] CreateStaffDto dto)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var result = await _adminService.CreateStaffUserAsync(dto);
+            return Ok(new { success = true, data = result, message = "تم إضافة الموظف بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("users/staff")]
+    public async Task<IActionResult> GetStaffUsers()
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetStaffUsersAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("audit-logs")]
+    public async Task<IActionResult> GetAuditLogs()
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetAuditLogsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("notifications/send")]
+    public async Task<IActionResult> SendPlatformNotification([FromBody] SendNotificationDto dto)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var adminId = GetCurrentUserId();
+            await _adminService.SendPlatformNotificationAsync(dto, adminId);
+            return Ok(new { success = true, message = "تم إرسال الإشعار بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()
     {
@@ -271,20 +376,61 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, message = "تم الحذف" });
     }
 
-    // === Contact Messages ===
-    [HttpGet("site/contact-messages")]
-    public async Task<IActionResult> GetContactMessages()
+    [HttpPut("site/faq/{id}/toggle-publish")]
+    public async Task<IActionResult> ToggleFaqPublish(long id)
     {
         var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
-        return Ok(new { success = true, data = await _siteService.GetContactMessagesAsync() });
+        await _siteService.ToggleFaqPublishAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Contact Messages (Tickets) ===
+    [HttpGet("site/contact-messages")]
+    public async Task<IActionResult> GetContactMessages([FromQuery] string? status, [FromQuery] string? search)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetContactMessagesAsync(status, search) });
+    }
+
+    [HttpGet("site/contact-messages/{id}")]
+    public async Task<IActionResult> GetContactMessageById(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var msg = await _siteService.GetContactMessageByIdAsync(id);
+        if (msg == null) return NotFound(new { success = false, message = "غير موجود" });
+        return Ok(new { success = true, data = msg });
     }
 
     [HttpPut("site/contact-messages/{id}/status")]
-    public async Task<IActionResult> UpdateContactMessageStatus(long id, [FromBody] string status)
+    public async Task<IActionResult> UpdateContactMessageStatus(long id, [FromBody] UpdateTicketStatusDto dto)
     {
         var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
-        await _siteService.UpdateContactMessageStatusAsync(id, status);
+        await _siteService.UpdateContactMessageStatusAsync(id, dto.Status);
         return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    [HttpPost("site/contact-messages/{id}/replies")]
+    public async Task<IActionResult> AddTicketReply(long id, [FromBody] CreateTicketReplyDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "المدير";
+        try
+        {
+            var reply = await _siteService.AddTicketReplyAsync(id, dto, GetCurrentUserId(), adminName);
+            return Ok(new { success = true, data = reply, message = "تم إضافة الرد" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("site/contact-messages/{id}")]
+    public async Task<IActionResult> DeleteContactMessage(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteService.DeleteContactMessageAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
     }
 
     // === Blog ===

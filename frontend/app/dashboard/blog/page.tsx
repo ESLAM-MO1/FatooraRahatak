@@ -214,9 +214,9 @@ export default function BlogManagementPage() {
       {modalOpen && (
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="modal-card max-w-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-bold text-[var(--ink)] mb-5">
+            <div className="flex items-center justify-between mb-5"><h2 className="text-lg font-bold text-[var(--ink)]">
               {editItem ? t("blog.editPost") : t("blog.addNewPost")}
-            </h2>
+            </h2><button onClick={() => setModalOpen(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
             <div className="space-y-4">
               <div>
                 <label>{t("blog.titleAr")}</label>

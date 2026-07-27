@@ -254,11 +254,11 @@ export default function AccountsPage() {
       </div>
 
       {showModal && (
-        <div className="modal-overlay">
-          <div className="card p-6 w-full max-w-md">
-            <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="card p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">
               {editingId ? t("accounts.editAccount") : t("accounts.addAccount")}
-            </h2>
+            </h2><button onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
 
             {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 

@@ -71,13 +71,11 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var code = await _authService.SendVerificationCodeAsync(email);
+            await _authService.SendVerificationCodeAsync(email);
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز التفعيل",
-                devNote = "مؤقتًا (قبل تفعيل SMTP في معلم 4): الرمز ظاهر هنا للاختبار",
-                code
+                message = "تم إرسال رمز التفعيل إلى بريدك الإلكتروني"
             });
         }
         catch (InvalidOperationException ex)
@@ -105,13 +103,11 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var code = await _authService.ForgotPasswordAsync(dto);
+            await _authService.ForgotPasswordAsync(dto);
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز استرجاع كلمة المرور",
-                devNote = "مؤقتًا (قبل تفعيل SMTP في معلم 4): الرمز ظاهر هنا للاختبار",
-                code
+                message = "تم إرسال رمز استرجاع كلمة المرور إلى بريدك الإلكتروني"
             });
         }
         catch (InvalidOperationException ex)

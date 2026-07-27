@@ -185,11 +185,11 @@ export default function DashboardHome() {
               <Icon name="alert" size={16} className="shrink-0 mt-0.5 text-[var(--gold)]" />
               <span>
                 {error}
-                {error.toLowerCase().includes("no store") && (
-                  <Link href="/dashboard/create-store" className="btn-primary inline-flex mr-3 px-4 py-2 text-sm">
-                    {t("dashboard.createStore")}
-                  </Link>
-                )}
+                  {(error.toLowerCase().includes("no store") || error.includes("لا يوجد متجر")) && (
+                    <Link href="/dashboard/create-store" className="btn-primary inline-flex mr-3 px-4 py-2 text-sm">
+                      {t("dashboard.createStore")}
+                    </Link>
+                  )}
               </span>
             </div>
           )}

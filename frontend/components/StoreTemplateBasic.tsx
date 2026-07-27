@@ -20,6 +20,7 @@ export default function StoreTemplateBasic({
   shippingMethods, paymentMethods,
 }: StoreTemplateProps) {
   const hasSocial = facebookUrl || instagramUrl || whatsappUrl;
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   return (
     <div dir="rtl" className="font-sans" style={{ fontFamily: "'Segoe UI', 'Tajawal', sans-serif" }}>
@@ -70,12 +71,32 @@ export default function StoreTemplateBasic({
             <a href={`/${slug}/categories`} className="hover:text-gray-900 transition-colors">التصنيفات</a>
             <a href={`/${slug}/contact`} className="hover:text-gray-900 transition-colors">تواصل معنا</a>
           </nav>
-          <button className="relative p-2" aria-label="Cart">
-            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="القائمة">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h16" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 18h16" /></>
+                )}
+              </svg>
+            </button>
+            <button className="relative p-2" aria-label="Cart">
+              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+              </svg>
+            </button>
+          </div>
         </div>
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-100 bg-white shadow-md">
+            <div className="px-4 py-3 space-y-1">
+              <a href={`/${slug}`} className="block px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileMenuOpen(false)}>الرئيسية</a>
+              <a href={`/${slug}/categories`} className="block px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileMenuOpen(false)}>التصنيفات</a>
+              <a href={`/${slug}/contact`} className="block px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors" onClick={() => setMobileMenuOpen(false)}>تواصل معنا</a>
+            </div>
+          </div>
+        )}
       </header>
 
       {showHero && (

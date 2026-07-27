@@ -90,6 +90,25 @@ function formatMoney(n: number) {
   return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function exportToExcel(tableHtml: string, filename: string) {
+  const style = `<style>td,th{border:1px solid #ccc;padding:6px 10px;text-align:right;font-size:12px}th{background:#f0e6d2;font-weight:bold}table{border-collapse:collapse;width:100%;font-family:Tahoma,Arial}</style>`;
+  const html = `<html><meta charset="utf-8">${style}<body>${tableHtml}</body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${filename}.xls`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function printHtml(title: string, tableHtml: string) {
+  const w = window.open("", "_blank");
+  if (!w) return;
+  const style = `<style>body{font-family:Tahoma,Arial;padding:30px;direction:rtl}table{width:100%;border-collapse:collapse;margin-bottom:20px}td,th{border:1px solid #ccc;padding:6px 10px;text-align:right;font-size:12px}th{background:#f0e6d2;font-weight:bold}h2{text-align:center;margin-bottom:20px}</style>`;
+  w.document.write(`<html><meta charset="utf-8">${style}<body><h2>${title}</h2>${tableHtml}<script>window.onload=function(){window.print();window.close()}<\/script></body></html>`);
+  w.document.close();
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -219,24 +238,72 @@ export default function FinancialReportsPage() {
           <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
           {t("accountingReport.loading")}
         </div>
+      ) : error ? (
+        <div className="alert alert--danger mb-4">{error}</div>
       ) : (
         <>
           {activeTab === "trial-balance" && trialBalance && (
-            <TrialBalanceView data={trialBalance} t={t} />
+            <>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button onClick={() => exportToExcel(buildTrialBalanceTable(trialBalance, t), `trial-balance-${from || "all"}-${to || "all"}`)} className="btn btn-outline btn-sm"><Icon name="download" /> Excel</button>
+                <button onClick={() => printHtml(t("accountingReport.trialBalance"), buildTrialBalanceTable(trialBalance, t))} className="btn btn-outline btn-sm"><Icon name="printer" /> PDF</button>
+              </div>
+              <TrialBalanceView data={trialBalance} t={t} />
+            </>
           )}
           {activeTab === "income-statement" && incomeStatement && (
-            <IncomeStatementView data={incomeStatement} t={t} />
+            <>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button onClick={() => exportToExcel(buildIncomeStatementTable(incomeStatement, t), `income-statement-${from || "all"}-${to || "all"}`)} className="btn btn-outline btn-sm"><Icon name="download" /> Excel</button>
+                <button onClick={() => printHtml(t("accountingReport.incomeStatement"), buildIncomeStatementTable(incomeStatement, t))} className="btn btn-outline btn-sm"><Icon name="printer" /> PDF</button>
+              </div>
+              <IncomeStatementView data={incomeStatement} t={t} />
+            </>
           )}
           {activeTab === "balance-sheet" && balanceSheet && (
-            <BalanceSheetView data={balanceSheet} t={t} />
+            <>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button onClick={() => exportToExcel(buildBalanceSheetTable(balanceSheet, t), `balance-sheet-${asOf}`)} className="btn btn-outline btn-sm"><Icon name="download" /> Excel</button>
+                <button onClick={() => printHtml(t("accountingReport.balanceSheet"), buildBalanceSheetTable(balanceSheet, t))} className="btn btn-outline btn-sm"><Icon name="printer" /> PDF</button>
+              </div>
+              <BalanceSheetView data={balanceSheet} t={t} />
+            </>
           )}
           {activeTab === "cash-flow" && cashFlow && (
-            <CashFlowView data={cashFlow} t={t} />
+            <>
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button onClick={() => exportToExcel(buildCashFlowTable(cashFlow, t), `cash-flow-${from || "all"}-${to || "all"}`)} className="btn btn-outline btn-sm"><Icon name="download" /> Excel</button>
+                <button onClick={() => printHtml(t("accountingReport.cashFlow"), buildCashFlowTable(cashFlow, t))} className="btn btn-outline btn-sm"><Icon name="printer" /> PDF</button>
+              </div>
+              <CashFlowView data={cashFlow} t={t} />
+            </>
           )}
         </>
       )}
     </div>
   );
+}
+
+function buildTrialBalanceTable(data: TrialBalanceResponse, t: (k: string) => string): string {
+  let rows = data.lines.map(l => `<tr><td>${l.accountCode}</td><td>${l.accountNameAr}</td><td>${l.accountType}</td><td>${l.debitBalance > 0 ? formatMoney(l.debitBalance) : "—"}</td><td>${l.creditBalance > 0 ? formatMoney(l.creditBalance) : "—"}</td></tr>`).join("");
+  return `<table><thead><tr><th>${t("accountingReport.code")}</th><th>${t("accountingReport.account")}</th><th>${t("accountingReport.type")}</th><th>${t("accountingReport.debit")}</th><th>${t("accountingReport.credit")}</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="3">${t("accountingReport.total")}</th><th>${formatMoney(data.totalDebit)}</th><th>${formatMoney(data.totalCredit)}</th></tr></tfoot></table>`;
+}
+
+function buildIncomeStatementTable(data: IncomeStatementResponse, t: (k: string) => string): string {
+  const revRows = data.revenueLines.map(l => `<tr><td>${l.accountCode}</td><td>${l.accountNameAr}</td><td>${formatMoney(l.amount)}</td></tr>`).join("");
+  const expRows = data.expenseLines.map(l => `<tr><td>${l.accountCode}</td><td>${l.accountNameAr}</td><td>${formatMoney(l.amount)}</td></tr>`).join("");
+  return `<table><caption style="font-weight:bold;margin:8px 0">${t("accountingReport.revenues")}</caption><thead><tr><th>${t("accountingReport.code")}</th><th>${t("accountingReport.account")}</th><th>${t("accountingReport.total")}</th></tr></thead><tbody>${revRows || `<tr><td colspan="3">${t("accountingReport.noRevenues")}</td></tr>`}</tbody><caption style="font-weight:bold;margin:8px 0">${t("accountingReport.expenses")}</caption><thead><tr><th>${t("accountingReport.code")}</th><th>${t("accountingReport.account")}</th><th>${t("accountingReport.total")}</th></tr></thead><tbody>${expRows || `<tr><td colspan="3">${t("accountingReport.noExpenses")}</td></tr>`}</tbody><table style="margin-top:12px"><tr><th>${t("accountingReport.totalRevenue")}</th><td>${formatMoney(data.totalRevenue)}</td></tr><tr><th>${t("accountingReport.totalExpenses")}</th><td>${formatMoney(data.totalExpenses)}</td></tr><tr><th>${t("accountingReport.netProfitLoss")}</th><td>${formatMoney(data.netProfit)}</td></tr></table>`;
+}
+
+function buildBalanceSheetTable(data: BalanceSheetResponse, t: (k: string) => string): string {
+  const section = (title: string, lines: BalanceSheetLine[], total: number) =>
+    `<caption style="font-weight:bold;margin:8px 0">${title} — ${formatMoney(total)}</caption><thead><tr><th>${t("accountingReport.code")}</th><th>${t("accountingReport.account")}</th><th>${t("accountingReport.total")}</th></tr></thead><tbody>${lines.map(l => `<tr><td>${l.accountCode}</td><td>${l.accountNameAr}</td><td>${formatMoney(l.amount)}</td></tr>`).join("")}</tbody>`;
+  return `<table>${section(t("accountingReport.assets"), data.assetLines, data.totalAssets)}${section(t("accountingReport.liabilities"), data.liabilityLines, data.totalLiabilities)}${section(t("accountingReport.equity"), data.equityLines, data.totalEquity)}</table>`;
+}
+
+function buildCashFlowTable(data: CashFlowResponse, t: (k: string) => string): string {
+  const rows = data.movementsBySource.map(m => `<tr><td>${t(sourceTypeLabels[m.sourceType] || m.sourceType)}</td><td>${formatMoney(m.netAmount)}</td></tr>`).join("");
+  return `<table><thead><tr><th>${t("accountingReport.source")}</th><th>${t("accountingReport.netMovement")}</th></tr></thead><tbody>${rows || `<tr><td colspan="2">${t("accountingReport.noCashMovements")}</td></tr>`}</tbody></table><table style="margin-top:12px"><tr><th>${t("accountingReport.openingCashBalance")}</th><td>${formatMoney(data.openingCashBalance)}</td></tr><tr><th>${t("accountingReport.netCashChange")}</th><td>${formatMoney(data.netChangeInCash)}</td></tr><tr><th>${t("accountingReport.closingCashBalance")}</th><td>${formatMoney(data.closingCashBalance)}</td></tr></table>`;
 }
 
 function BalancedBadge({ isBalanced, t }: { isBalanced: boolean; t: (key: string) => string }) {

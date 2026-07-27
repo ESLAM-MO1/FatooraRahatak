@@ -6,15 +6,16 @@ import Link from "next/link";
 import { isAuthenticated, getUserType, logout } from "@/lib/auth";
 import GlobalSearch from "@/components/GlobalSearch";
 import Icon, { ICONS } from "@/components/Icon";
+import QuickAddManager, { QuickAddType } from "@/components/QuickAdd";
 
 import api from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import LangSwitch from "@/components/LangSwitch";
 import "@/lib/i18n/config";
-type NavItem = { href: string; label: string; icon: keyof typeof ICONS };
+type NavItem = { href: string; label: string; icon: keyof typeof ICONS; quickAdd?: QuickAddType };
 type NavGroup = { title?: string; items: NavItem[] };
 
-type NavItemKey = { href: string; labelKey: string; icon: keyof typeof ICONS };
+type NavItemKey = { href: string; labelKey: string; icon: keyof typeof ICONS; quickAdd?: QuickAddType };
 type NavGroupKey = { titleKey?: string; items: NavItemKey[] };
 
 const ownerNavKeys: NavGroupKey[] = [
@@ -22,7 +23,7 @@ const ownerNavKeys: NavGroupKey[] = [
   {
     titleKey: "nav.store",
     items: [
-      { href: "/dashboard/products", labelKey: "nav.products", icon: "box" },
+      { href: "/dashboard/products", labelKey: "nav.products", icon: "box", quickAdd: "products" },
       { href: "/dashboard/categories", labelKey: "nav.categories", icon: "tag" },
       { href: "/dashboard/store-settings", labelKey: "nav.storeSettings", icon: "settings" },
     ],
@@ -39,7 +40,7 @@ const ownerNavKeys: NavGroupKey[] = [
   {
     titleKey: "nav.inventory",
     items: [
-      { href: "/dashboard/warehouses", labelKey: "nav.warehouses", icon: "warehouse" },
+      { href: "/dashboard/warehouses", labelKey: "nav.warehouses", icon: "warehouse", quickAdd: "warehouses" },
       { href: "/dashboard/inventory", labelKey: "nav.inventory", icon: "layers" },
       { href: "/dashboard/stock-counts", labelKey: "nav.stockCounts", icon: "clipboard" },
     ],
@@ -59,7 +60,7 @@ const ownerNavKeys: NavGroupKey[] = [
   {
     titleKey: "nav.hr",
     items: [
-      { href: "/dashboard/employees", labelKey: "nav.employees", icon: "users" },
+      { href: "/dashboard/employees", labelKey: "nav.employees", icon: "users", quickAdd: "employees" },
       { href: "/dashboard/attendance", labelKey: "nav.attendance", icon: "clock" },
       { href: "/dashboard/leave-requests", labelKey: "nav.leaveRequests", icon: "calendarOff" },
       { href: "/dashboard/payroll", labelKey: "nav.payroll", icon: "wallet" },
@@ -110,7 +111,9 @@ const superAdminNavKeys: NavGroupKey[] = [
     titleKey: "nav.system",
     items: [
       { href: "/dashboard/reports", labelKey: "nav.reports", icon: "chart" },
-      { href: "/dashboard/settings", labelKey: "nav.settings", icon: "settings" },
+      { href: "/dashboard/kpis",    labelKey: "nav.kpis",    icon: "chart" },
+      { href: "/dashboard/domains", labelKey: "nav.domains", icon: "settings" },
+      { href: "/dashboard/settings",labelKey: "nav.settings", icon: "settings" },
     ],
   },
   {
@@ -124,7 +127,9 @@ const superAdminNavKeys: NavGroupKey[] = [
 interface AppNotification {
   id: number;
   titleAr: string;
+  titleEn?: string;
   messageAr: string;
+  messageEn?: string;
   isRead: boolean;
   link: string | null;
   createdAt: string;
@@ -134,7 +139,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const [userType, setUserType] = useState<string | null>(null);
@@ -142,18 +147,28 @@ export default function DashboardLayout({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [collapsed, setCollapsed] = useState(false);
+  const [quickAddType, setQuickAddType] = useState<QuickAddType>(null);
+  const [actionSuccess, setActionSuccess] = useState("");
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<number, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const prevUnreadRef = useRef<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const helpRef = useRef<HTMLDivElement>(null);
+  const [impersonatedBy, setImpersonatedBy] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
+      }
+      if (helpRef.current && !helpRef.current.contains(e.target as Node)) {
+        setHelpOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -198,6 +213,7 @@ export default function DashboardLayout({
     setUserType(getUserType());
     setFullName(localStorage.getItem("fullName") || "");
     setEmail(localStorage.getItem("email") || "");
+    setImpersonatedBy(localStorage.getItem("impersonatedBy"));
     setReady(true);
   }, [router]);
 
@@ -213,6 +229,15 @@ export default function DashboardLayout({
       setOpenGroups({ 0: true });
     }
   }, [ready, userType]);
+
+  useEffect(() => {
+    if (mobileSidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileSidebarOpen]);
 
   if (!ready) {
     return (
@@ -230,7 +255,7 @@ export default function DashboardLayout({
   const resolveGroups = (navKeys: NavGroupKey[]): NavGroup[] =>
     navKeys.map((g) => ({
       title: g.titleKey ? t(g.titleKey) : undefined,
-      items: g.items.map((item) => ({ href: item.href, label: t(item.labelKey), icon: item.icon })),
+      items: g.items.map((item) => ({ href: item.href, label: t(item.labelKey), icon: item.icon, quickAdd: item.quickAdd })),
     }));
   const groups = resolveGroups(isSuperAdmin ? superAdminNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys);
 
@@ -240,6 +265,14 @@ export default function DashboardLayout({
   const toggleGroup = (index: number) => {
     setOpenGroups((prev) => ({ ...prev, [index]: !prev[index] }));
   };
+
+  const searchLower = searchQuery.trim().toLowerCase();
+  const isSearching = searchLower.length > 0;
+  const filteredGroups = isSearching
+    ? groups
+        .map(g => ({ ...g, items: g.items.filter(item => item.label.toLowerCase().includes(searchLower)) }))
+        .filter(g => (g.title?.toLowerCase().includes(searchLower) ?? false) || g.items.length > 0)
+    : groups;
 
   const handleNotifClick = async (n: AppNotification) => {
     if (!n.isRead) {
@@ -259,6 +292,16 @@ export default function DashboardLayout({
     if (n.link) router.push(n.link);
   };
 
+  const handleExitImpersonation = () => {
+    const originalToken = localStorage.getItem("originalAccessToken");
+    if (originalToken) {
+      localStorage.setItem("accessToken", originalToken);
+    }
+    localStorage.removeItem("originalAccessToken");
+    localStorage.removeItem("impersonatedBy");
+    window.location.href = "/dashboard";
+  };
+
   const handleMarkAllRead = async () => {
     try {
       await api.put("/notifications/read-all");
@@ -268,127 +311,387 @@ export default function DashboardLayout({
     } catch {}
   };
 
-  return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "var(--bg)" }} dir="rtl">
-      <div className="brand-strip" />
+  const renderSidebarContent = () => (
+    <>
+      <div
+        className="h-[4px] shrink-0"
+        style={{
+          background:
+            "linear-gradient(90deg, var(--blue) 0%, var(--blue) 33.33%, var(--gold) 33.33%, var(--gold) 66.66%, var(--green) 66.66%, var(--green) 100%)",
+        }}
+      />
 
-      <aside
-        className={`shrink-0 bg-white flex flex-col transition-all duration-200 border-l border-[var(--border)] ${
-          collapsed ? "w-16" : "w-[260px]"
-        }`}
-      >
-        <div
-          className="h-[4px] shrink-0"
-          style={{
-            background:
-              "linear-gradient(90deg, var(--blue) 0%, var(--blue) 33.33%, var(--gold) 33.33%, var(--gold) 66.66%, var(--green) 66.66%, var(--green) 100%)",
-          }}
-        />
-
-        <div className={`flex items-center gap-2.5 px-4 h-14 shrink-0 border-b border-[var(--border)] ${collapsed ? "justify-center px-0" : ""}`}>
-          <div className="brand-logo-frame" style={{ width: 34, height: 34 }}>
-            <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
-          </div>
-          {!collapsed && (
-            <div className="leading-tight">
-              <p className="text-[13px] font-bold text-[var(--ink)] tracking-tight">{t("brand.name")}</p>
-              <p className="text-[9px] text-[var(--sub)] mt-0.5">
-                {isSuperAdmin ? t("nav.dashboard") : isEmployee ? t("nav.dashboard") : t("nav.store")}
-              </p>
-            </div>
-          )}
+      <div className={`flex items-center gap-2.5 px-4 h-14 shrink-0 border-b border-[#1a3a4f] ${collapsed ? "justify-center px-0" : ""}`}>
+        <div className="brand-logo-frame" style={{ width: 34, height: 34 }}>
+          <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
         </div>
+        {!collapsed && (
+          <div className="leading-tight">
+            <p className="text-[13px] font-bold text-[#F5F5F5] tracking-tight">{t("brand.name")}</p>
+            <p className="text-[9px] text-[#9ca3af] mt-0.5">
+              {isSuperAdmin ? t("nav.dashboard") : isEmployee ? t("nav.dashboard") : t("nav.store")}
+            </p>
+          </div>
+        )}
+      </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {groups.map((group, gi) => {
-            const hasTitle = !!group.title;
-            const isOpen = openGroups[gi];
+      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+        {!collapsed && (
+          <div className="relative px-1 mb-2">
+            <svg
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9ca3af] pointer-events-none"
+              width="14" height="14" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+            <input
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t("common.search") || "بحث..."}
+              className="w-full bg-[#1a3a4f] text-[#F5F5F5] text-[12px] rounded-lg py-1.5 pr-8 pl-2 outline-none placeholder:text-[#6b8a9e] border border-[#1a3a4f] focus:border-[#C9A227]/50 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute left-2 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#F5F5F5] transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+        {isSearching && filteredGroups.length === 0 && (
+          <div className="text-center py-8 px-4">
+            <p className="text-[#9ca3af] text-[13px]">{t("common.noResults") || "لا توجد نتائج"}</p>
+          </div>
+        )}
+        {(isSearching ? filteredGroups : groups).map((group, gi) => {
+          const hasTitle = !!group.title;
+          const isOpen = openGroups[gi];
 
-            return (
-              <div key={gi} className={hasTitle ? "mb-1" : ""}>
-                {hasTitle && (
-                  <button
-                    onClick={() => toggleGroup(gi)}
-                    className={`w-full flex items-center gap-1 px-3 py-1.5 text-[11px] text-[var(--sub)] uppercase tracking-wider font-bold hover:text-[var(--ink)] transition-colors ${
-                      collapsed ? "justify-center" : ""
-                    }`}
-                  >
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 text-right">{group.title}</span>
-                        <svg
-                          className={`transition-transform duration-200 ${
-                            isOpen ? "rotate-90" : ""
-                          }`}
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M9 18l6-6-6-6" />
-                        </svg>
-                      </>
-                    )}
-                  </button>
-                )}
+          return (
+            <div key={gi} className={hasTitle ? "mb-1" : ""}>
+              {hasTitle && (
+                <button
+                  onClick={() => toggleGroup(gi)}
+                  className={`w-full flex items-center gap-1 px-3 py-1.5 text-[11px] text-[#C9A227] uppercase tracking-wider font-bold hover:bg-[#1EC8C8]/[0.15] transition-colors ${
+                    collapsed ? "justify-center" : ""
+                  }`}
+                >
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1 text-right">{group.title}</span>
+                      <svg
+                        className={`transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+                        width="16" height="16" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" strokeWidth="2"
+                        strokeLinecap="round" strokeLinejoin="round"
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              )}
 
-                {(isOpen || !hasTitle) && (
-                  <div className="space-y-0.5">
-                    {group.items.map((item) => {
-                      const active = isActive(item.href);
-                      return (
+              {(isSearching || isOpen || !hasTitle) && (
+                <div className="space-y-0.5">
+                  {group.items.map((item) => {
+                    const active = isActive(item.href);
+                    return (
+                      <div key={item.href} className={`flex items-center gap-1 ${collapsed ? "justify-center" : ""}`}>
                         <Link
-                          key={item.href}
                           href={item.href}
                           title={collapsed ? item.label : undefined}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] transition-all duration-150 border-r-3 border-r-transparent ${
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] transition-all duration-150 border-r-3 border-r-transparent flex-1 ${
                             collapsed ? "justify-center px-0 mx-1" : ""
                           } ${
                             active
-                              ? "font-bold text-[var(--blue)] border-r-[var(--blue)]"
-                              : "text-[var(--ink)] hover:bg-gray-50"
+                              ? "font-bold text-[#C9A227] border-r-[#C9A227]"
+                              : "text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15]"
                           }`}
                           style={
                             active
-                              ? { backgroundColor: "var(--blue-50)", borderRightWidth: "3px" }
+                              ? { backgroundColor: "rgba(138, 123, 31, 0.2)", borderRightWidth: "3px" }
                               : {}
                           }
                         >
                           <Icon
                             name={item.icon}
                             size={18}
-                            className={active ? "text-[var(--blue)]" : "text-[var(--sub-light)]"}
+                            className={active ? "text-[#C9A227]" : "text-[#FFFFFF]"}
                           />
                           {!collapsed && <span>{item.label}</span>}
                         </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+                        {!collapsed && item.quickAdd && (
+                          <button
+                            onClick={() => setQuickAddType(item.quickAdd!)}
+                            title={t("common.add")}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[#C9A227] hover:bg-[#C9A227]/20 transition-colors shrink-0"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 5v14M5 12h14" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+
+      {/* Help section pinned at bottom */}
+      <div className="relative shrink-0 border-t border-[#1a3a4f]" ref={helpRef}>
+        <button
+          onClick={() => setHelpOpen(!helpOpen)}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors ${
+            collapsed ? "justify-center px-0" : ""
+          }`}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <path d="M12 17h.01" />
+          </svg>
+          {!collapsed && (
+            <>
+              <span className="flex-1 text-right">{t("nav.help") || "مساعدة"}</span>
+              <svg className={`transition-transform duration-200 ${helpOpen ? "rotate-90" : ""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </>
+          )}
+        </button>
+
+        {helpOpen && !collapsed && (
+          <div className="border-t border-[#1a3a4f] bg-[#0a2535] py-1">
+            <a
+              href="/faq"
+              className="flex items-center gap-3 px-3 py-2 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#9ca3af]">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <path d="M12 17h.01" />
+              </svg>
+              <span>{t("page.faq") || "الأسئلة الشائعة"}</span>
+            </a>
+            <a
+              href="/contact"
+              className="flex items-center gap-3 px-3 py-2 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#9ca3af]">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <span>{t("nav.contact") || "تواصل معنا"}</span>
+            </a>
+            <a
+              href="/help-center"
+              className="flex items-center gap-3 px-3 py-2 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#9ca3af]">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+              <span>{t("page.helpCenter") || "مركز المساعدة"}</span>
+            </a>
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen flex" style={{ backgroundColor: "var(--bg)" }} dir={i18n.language === "ar" ? "rtl" : "ltr"}>
+      <div className="brand-strip" />
+
+      {/* Desktop sidebar */}
+      <aside
+        className={`hidden md:flex shrink-0 bg-[#0D2B3E] flex-col transition-all duration-200 border-l border-[#1a3a4f] ${
+          collapsed ? "w-16" : "w-[260px]"
+        }`}
+      >
+        {renderSidebarContent()}
       </aside>
 
+      {/* Mobile sidebar overlay */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside className="absolute top-0 right-0 bottom-0 w-[280px] bg-[#0D2B3E] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-4 h-14 shrink-0 border-b border-[#1a3a4f]">
+              <div className="flex items-center gap-2.5">
+                <div className="brand-logo-frame" style={{ width: 34, height: 34 }}>
+                  <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-[13px] font-bold text-[#F5F5F5] tracking-tight">{t("brand.name")}</p>
+                  <p className="text-[9px] text-[#9ca3af] mt-0.5">
+                    {isSuperAdmin ? t("nav.dashboard") : isEmployee ? t("nav.dashboard") : t("nav.store")}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileSidebarOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#9ca3af] hover:text-[#F5F5F5] hover:bg-white/10 transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto py-2 px-2 space-y-1">
+              {searchQuery.trim().length > 0 && filteredGroups.length === 0 && (
+                <div className="text-center py-8 px-4">
+                  <p className="text-[#9ca3af] text-[13px]">{t("common.noResults") || "لا توجد نتائج"}</p>
+                </div>
+              )}
+              {(searchQuery.trim().length > 0 ? filteredGroups : groups).map((group, gi) => {
+                const hasTitle = !!group.title;
+                const isOpen = openGroups[gi];
+                return (
+                  <div key={gi} className={hasTitle ? "mb-1" : ""}>
+                    {hasTitle && (
+                      <button
+                        onClick={() => toggleGroup(gi)}
+                        className="w-full flex items-center gap-1 px-3 py-1.5 text-[11px] text-[#C9A227] uppercase tracking-wider font-bold hover:bg-[#1EC8C8]/[0.15] transition-colors"
+                      >
+                        <span className="flex-1 text-right">{group.title}</span>
+                        <svg
+                          className={`transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+                          width="16" height="16" viewBox="0 0 24 24"
+                          fill="none" stroke="currentColor" strokeWidth="2"
+                          strokeLinecap="round" strokeLinejoin="round"
+                        >
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                    )}
+                    {(searchQuery.trim().length > 0 || isOpen || !hasTitle) && (
+                      <div className="space-y-0.5">
+                        {group.items.map((item) => {
+                          const active = isActive(item.href);
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={() => setMobileSidebarOpen(false)}
+                              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] transition-all duration-150 border-r-3 border-r-transparent ${
+                                active
+                                  ? "font-bold text-[#C9A227] border-r-[#C9A227]"
+                                  : "text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15]"
+                              }`}
+                              style={
+                                active
+                                  ? { backgroundColor: "rgba(138, 123, 31, 0.2)", borderRightWidth: "3px" }
+                                  : {}
+                              }
+                            >
+                              <Icon
+                                name={item.icon}
+                                size={18}
+                                className={active ? "text-[#C9A227]" : "text-[#FFFFFF]"}
+                              />
+                              <span>{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="shrink-0 border-t border-[#1a3a4f]">
+              <div className="flex flex-col">
+                <a href="/faq" onClick={() => setMobileSidebarOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#9ca3af]">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                    <path d="M12 17h.01" />
+                  </svg>
+                  <span>{t("page.faq") || "الأسئلة الشائعة"}</span>
+                </a>
+                <a href="/contact" onClick={() => setMobileSidebarOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#9ca3af]">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span>{t("nav.contact") || "تواصل معنا"}</span>
+                </a>
+                <a href="/help-center" onClick={() => setMobileSidebarOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-[13px] text-[#FFFFFF] hover:bg-[#1EC8C8]/[0.15] transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#9ca3af]">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                  <span>{t("page.helpCenter") || "مركز المساعدة"}</span>
+                </a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col overflow-hidden">
+          {actionSuccess && (
+            <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 text-[13px] font-bold text-green-800 bg-green-100 border-b border-green-200">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+              </svg>
+              <span className="flex-1">{actionSuccess}</span>
+              <button onClick={() => setActionSuccess("")} className="text-green-600 hover:text-green-900">✕</button>
+            </div>
+          )}
+          {impersonatedBy && (
+          <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 text-[13px] font-bold text-[#92400e] bg-[#fef3c7] border-b border-[#fde68a]">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <span className="flex-1">
+              {t("impersonation.banner.prefix")} <strong>{impersonatedBy}</strong> {t("impersonation.banner.suffix")}
+            </span>
+            <button
+              onClick={handleExitImpersonation}
+              className="px-3 py-1.5 rounded-lg bg-[#92400e] text-white text-[12px] font-bold hover:bg-[#78350f] transition-colors"
+            >
+              {t("impersonation.exit")}
+            </button>
+          </div>
+        )}
         <div
           className="h-[60px] shrink-0 border-b border-[var(--border)] flex items-center justify-between px-4 gap-3"
           style={{ backgroundColor: "var(--bg-card)" }}
         >
           <div className="flex items-center gap-2 flex-1">
+            {/* Mobile hamburger */}
+            <button
+              className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors shrink-0"
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label={t("common.open")}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" />
+              </svg>
+            </button>
+            {/* Desktop collapse toggle */}
             <button
               onClick={() => setCollapsed((c) => !c)}
               title={collapsed ? t("common.open") : t("common.close")}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors shrink-0"
+              className="hidden md:flex w-9 h-9 rounded-lg items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors shrink-0"
             >
               <Icon name="sidebarToggle" />
             </button>
-            <div className="hidden md:block flex-1 max-w-2xl">
+            <div className="hidden md:block flex-1 max-w-xl">
               <GlobalSearch />
             </div>
           </div>
@@ -452,10 +755,10 @@ export default function DashboardLayout({
                             {!n.isRead && (
                               <span className="w-1.5 h-1.5 rounded-full bg-[var(--blue)] shrink-0" />
                             )}
-                            {n.titleAr}
+                            {i18n.language === "en" && n.titleEn ? n.titleEn : n.titleAr}
                           </p>
                           <p className="text-[11.5px] text-[var(--sub)] mt-0.5 line-clamp-2">
-                            {n.messageAr}
+                            {i18n.language === "en" && n.messageEn ? n.messageEn : n.messageAr}
                           </p>
                         </button>
                       ))
@@ -501,18 +804,6 @@ export default function DashboardLayout({
                       </svg>
                       {t("dashboard.mySettings")}
                     </Link>
-                    <Link
-                      href="/help-center"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-[var(--ink)] hover:bg-gray-50 transition-colors"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                        <path d="M12 17h.01" />
-                      </svg>
-                      {t("dashboard.help")}
-                    </Link>
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
@@ -530,8 +821,17 @@ export default function DashboardLayout({
           </div>
         </div>
 
-        <main className="flex-1 p-8 overflow-auto">{children}</main>
+        <main className="flex-1 p-3 md:p-8 overflow-auto">{children}</main>
       </div>
+
+      <QuickAddManager
+        type={quickAddType}
+        onClose={() => setQuickAddType(null)}
+        onSuccess={(msg) => {
+          setActionSuccess(msg);
+          setTimeout(() => setActionSuccess(""), 4000);
+        }}
+      />
     </div>
   );
 }

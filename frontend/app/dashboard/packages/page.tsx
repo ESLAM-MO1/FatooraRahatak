@@ -30,6 +30,24 @@ interface Package {
   isActive: boolean;
 }
 
+interface RevenueData {
+  mrr: number;
+  arr: number;
+  churnRate: number;
+  ltv: number;
+}
+
+interface PlatformInvoice {
+  id: number;
+  storeId: number;
+  storeName: string;
+  storeSlug: string;
+  packageName: string;
+  amount: number;
+  dueDate: string;
+  status: string;
+}
+
 const FEATURE_LABELS: Record<string, string> = {
   hasAccountingFull: "packagesAdmin.featureAccounting",
   hasPayroll: "packagesAdmin.featurePayroll",
@@ -50,14 +68,16 @@ const LIMIT_FIELDS = [
   { key: "maxThemes" as keyof Package, label: "packagesAdmin.limitThemes" },
 ];
 
+const STATUS_STYLES: Record<string, { badge: string; labelKey: string }> = {
+  Paid: { badge: "badge badge--green", labelKey: "packagesAdmin.paid" },
+  Pending: { badge: "badge badge--yellow", labelKey: "packagesAdmin.pending" },
+  Overdue: { badge: "badge badge--red", labelKey: "packagesAdmin.overdue" },
+};
+
 function CheckIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
-      <path
-        fillRule="evenodd"
-        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-        clipRule="evenodd"
-      />
+      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
     </svg>
   );
 }
@@ -65,17 +85,14 @@ function CheckIcon() {
 function CrossIcon() {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" width="12" height="12">
-      <path
-        fillRule="evenodd"
-        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-        clipRule="evenodd"
-      />
+      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
     </svg>
   );
 }
 
 export default function PackagesPage() {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState("packages");
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -83,6 +100,11 @@ export default function PackagesPage() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Package>>({});
+
+  const [revenue, setRevenue] = useState<RevenueData | null>(null);
+  const [invoices, setInvoices] = useState<PlatformInvoice[]>([]);
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const userType = getUserType();
 
@@ -94,6 +116,12 @@ export default function PackagesPage() {
     }
     fetchPackages();
   }, [userType, t]);
+
+  useEffect(() => {
+    if (userType !== "SuperAdmin" || activeTab === "packages") return;
+    if (activeTab === "revenue") fetchRevenue();
+    if (activeTab === "invoices") fetchInvoices();
+  }, [activeTab, overdueOnly]);
 
   const fetchPackages = async () => {
     setLoading(true);
@@ -110,6 +138,34 @@ export default function PackagesPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchRevenue = async () => {
+    try {
+      const res = await api.get("/admin/billing/revenue");
+      setRevenue(res.data.data);
+    } catch { }
+  };
+
+  const fetchInvoices = async () => {
+    try {
+      const res = await api.get(`/admin/billing/invoices${overdueOnly ? "?overdueOnly=true" : ""}`);
+      setInvoices(res.data.data);
+    } catch { }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await api.get("/admin/billing/invoices/export", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "platform-invoices.xlsx";
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch { }
+    setExporting(false);
   };
 
   const handleEditClick = (pkg: Package) => {
@@ -147,7 +203,6 @@ export default function PackagesPage() {
   const handleSave = async (pkg: Package) => {
     setActionError("");
     setActionSuccess("");
-
     try {
       await api.put(`/admin/packages/${pkg.id}`, editForm);
       setActionSuccess(t("packagesAdmin.updateSuccess", { name: pkg.packageName }));
@@ -232,6 +287,68 @@ export default function PackagesPage() {
     );
   };
 
+  const KPI_ICONS: Record<string, { viewBox: string; paths: string[] }> = {
+    money: {
+      viewBox: "0 0 24 24",
+      paths: [
+        "M23 4v6h-6",
+        "M1 20v-6h6",
+        "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
+      ],
+    },
+    chart: {
+      viewBox: "0 0 24 24",
+      paths: [
+        "M3 4v16h18",
+        "M7 16v-4",
+        "M11 16v-8",
+        "M15 16v-2",
+        "M19 16v-6",
+      ],
+    },
+    users: {
+      viewBox: "0 0 24 24",
+      paths: [
+        "M23 18v-2a4 4 0 0 0-3-3.87",
+        "M16 18v-2a4 4 0 0 0-3-3.87",
+        "M3 18v-2a4 4 0 0 1 3-3.87",
+        "M12 2a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM8 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM16 10a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
+      ],
+    },
+    target: {
+      viewBox: "0 0 24 24",
+      paths: [
+        "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z",
+        "M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z",
+        "M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+      ],
+    },
+  };
+
+  const renderKpiCard = (label: string, value: string, icon: string, color: string, sub?: string) => {
+    const svg = KPI_ICONS[icon];
+    return (
+      <div className="stat-card flex items-start gap-4">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0"
+          style={{ backgroundColor: color }}
+        >
+          <svg viewBox={svg?.viewBox || "0 0 24 24"} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            {svg?.paths.map((d, i) => <path key={i} d={d} />)}
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[12px] text-[var(--sub)] font-medium">{label}</p>
+          <p className="text-[22px] font-bold text-[var(--ink)] mt-0.5">{value}</p>
+          {sub && <p className="text-[11px] text-[var(--sub)] mt-0.5">{sub}</p>}
+        </div>
+      </div>
+    );
+  };
+
+  const formatCurrency = (amount: number) =>
+    amount.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ر.س";
+
   if (loading) {
     return <LoadingState />;
   }
@@ -244,114 +361,242 @@ export default function PackagesPage() {
     <div>
       <PageHeader icon="package" title={t("packagesAdmin.title")} />
 
+      <div className="flex gap-1 mb-6 border-b border-[var(--border)]">
+        {["packages", "revenue", "invoices"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-5 py-3 text-[13px] font-bold border-b-2 transition-colors ${
+              activeTab === tab
+                ? "text-[var(--blue)] border-[var(--blue)]"
+                : "text-[var(--sub)] border-transparent hover:text-[var(--ink)]"
+            }`}
+          >
+            {t(`packagesAdmin.tab${tab.charAt(0).toUpperCase() + tab.slice(1)}`)}
+          </button>
+        ))}
+      </div>
+
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
       {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {packages.map((pkg) => {
-          const isEditing = editingId === pkg.id;
-          const activeNow = isEditing ? editForm.isActive ?? pkg.isActive : pkg.isActive;
+      {activeTab === "packages" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {packages.map((pkg) => {
+            const isEditing = editingId === pkg.id;
+            const activeNow = isEditing ? editForm.isActive ?? pkg.isActive : pkg.isActive;
 
-          return (
-            <div key={pkg.id} className={`package-card ${isEditing ? "package-card--current" : ""}`}>
-              {isEditing && <span className="package-card__badge">{t("packagesAdmin.editing")}</span>}
+            return (
+              <div key={pkg.id} className={`package-card ${isEditing ? "package-card--current" : ""}`}>
+                {isEditing && <span className="package-card__badge">{t("packagesAdmin.editing")}</span>}
 
-              <h3 className="text-[15px] font-bold text-[var(--blue-deep)] mb-2">{pkg.packageName}</h3>
+                <h3 className="text-[15px] font-bold text-[var(--blue-deep)] mb-2">{pkg.packageName}</h3>
 
-              <div className="mb-4">
-                {isEditing ? (
-                  <div className="flex items-center gap-2">
-                    <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.price")}</label>
-                    <div className="field-shell py-1 px-2.5 w-28">
+                <div className="mb-4">
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.price")}</label>
+                      <div className="field-shell py-1 px-2.5 w-28">
+                        <input
+                          type="number"
+                          value={editForm.monthlyPrice ?? pkg.monthlyPrice}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, monthlyPrice: parseFloat(e.target.value) || 0 })
+                          }
+                          min={0}
+                          step="0.01"
+                          dir="ltr"
+                          className="text-left"
+                        />
+                      </div>
+                      <span className="text-[12px] text-[var(--sub)]">{t("packagesAdmin.perMonth")}</span>
+                    </div>
+                  ) : (
+                    <p className="text-[22px] font-bold text-[var(--blue)]">{getPriceDisplay(pkg.monthlyPrice)}</p>
+                  )}
+                </div>
+
+                {isEditing && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.commission")}</label>
+                    <div className="field-shell py-1 px-2.5 w-20">
                       <input
                         type="number"
-                        value={editForm.monthlyPrice ?? pkg.monthlyPrice}
+                        value={editForm.commissionPercentage ?? pkg.commissionPercentage}
                         onChange={(e) =>
-                          setEditForm({ ...editForm, monthlyPrice: parseFloat(e.target.value) || 0 })
+                          setEditForm({ ...editForm, commissionPercentage: parseFloat(e.target.value) || 0 })
                         }
-                        min={0}
-                        step="0.01"
-                        dir="ltr"
-                        className="text-left"
+                        min={0} max={100} step="0.1"
+                        dir="ltr" className="text-left"
                       />
                     </div>
-                    <span className="text-[12px] text-[var(--sub)]">{t("packagesAdmin.perMonth")}</span>
                   </div>
-                ) : (
-                  <p className="text-[22px] font-bold text-[var(--blue)]">{getPriceDisplay(pkg.monthlyPrice)}</p>
                 )}
-              </div>
 
-              {isEditing && (
-                <div className="flex items-center gap-2 mb-4">
-                  <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.commission")}</label>
-                  <div className="field-shell py-1 px-2.5 w-20">
-                    <input
-                      type="number"
-                      value={editForm.commissionPercentage ?? pkg.commissionPercentage}
-                      onChange={(e) =>
-                        setEditForm({ ...editForm, commissionPercentage: parseFloat(e.target.value) || 0 })
-                      }
-                      min={0} max={100} step="0.1"
-                      dir="ltr" className="text-left"
-                    />
+                <div className="space-y-1 mb-4 border-t border-[var(--border)] pt-4">
+                  {LIMIT_FIELDS.map((field) => renderLimitField(pkg, field))}
+                </div>
+
+                <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
+                  <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.features")}</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(Object.entries(FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
+                      renderFeatureField(pkg, key, label)
+                    )}
                   </div>
                 </div>
-              )}
 
-              <div className="space-y-1 mb-4 border-t border-[var(--border)] pt-4">
-                {LIMIT_FIELDS.map((field) => renderLimitField(pkg, field))}
-              </div>
+                <div className="mb-4">
+                  {isEditing ? (
+                    <label className="flex items-center gap-2 text-[12.5px]">
+                      <input
+                        type="checkbox"
+                        checked={activeNow}
+                        onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
+                        className="w-4 h-4 accent-[var(--blue)]"
+                      />
+                      <span className={activeNow ? "text-[var(--green)]" : "text-[var(--danger)]"}>
+                        {activeNow ? t("packagesAdmin.active") : t("packagesAdmin.inactive")}
+                      </span>
+                    </label>
+                  ) : (
+                    <span className={`status-badge ${pkg.isActive ? "status-badge--active" : "status-badge--suspended"}`}>
+                      {pkg.isActive ? t("packagesAdmin.active") : t("packagesAdmin.inactive")}
+                    </span>
+                  )}
+                </div>
 
-              <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
-                <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.features")}</p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(Object.entries(FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
-                    renderFeatureField(pkg, key, label)
+                <div className="flex flex-col gap-2">
+                  {isEditing ? (
+                    <>
+                      <button onClick={() => handleSave(pkg)} className="btn-primary w-full">
+                        {t("common.save")}
+                      </button>
+                      <button onClick={handleCancelEdit} className="btn-outline w-full">
+                        {t("common.cancel")}
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => handleEditClick(pkg)} className="btn-primary w-full">
+                      {t("common.edit")}
+                    </button>
                   )}
                 </div>
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="mb-4">
-                {isEditing ? (
-                  <label className="flex items-center gap-2 text-[12.5px]">
-                    <input
-                      type="checkbox"
-                      checked={activeNow}
-                      onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })}
-                      className="w-4 h-4 accent-[var(--blue)]"
-                    />
-                    <span className={activeNow ? "text-[var(--green)]" : "text-[var(--danger)]"}>
-                      {activeNow ? t("packagesAdmin.active") : t("packagesAdmin.inactive")}
-                    </span>
-                  </label>
-                ) : (
-                  <span className={`status-badge ${pkg.isActive ? "status-badge--active" : "status-badge--suspended"}`}>
-                    {pkg.isActive ? t("packagesAdmin.active") : t("packagesAdmin.inactive")}
-                  </span>
-                )}
-              </div>
+      {activeTab === "revenue" && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[14px] text-[var(--sub)]">{t("packagesAdmin.revenueDesc")}</p>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="btn-primary btn-sm"
+            >
+              {exporting ? t("packagesAdmin.exporting") : t("packagesAdmin.exportExcel")}
+            </button>
+          </div>
 
-              <div className="flex flex-col gap-2">
-                {isEditing ? (
-                  <>
-                    <button onClick={() => handleSave(pkg)} className="btn-primary w-full">
-                      {t("common.save")}
-                    </button>
-                    <button onClick={handleCancelEdit} className="btn-outline w-full">
-                      {t("common.cancel")}
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => handleEditClick(pkg)} className="btn-primary w-full">
-                    {t("common.edit")}
-                  </button>
-                )}
-              </div>
+          {revenue ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {renderKpiCard(
+                t("packagesAdmin.mrr"),
+                formatCurrency(revenue.mrr),
+                "money",
+                "#12A8DB",
+                t("packagesAdmin.mrrDesc")
+              )}
+              {renderKpiCard(
+                t("packagesAdmin.arr"),
+                formatCurrency(revenue.arr),
+                "chart",
+                "#1EC8C8",
+                t("packagesAdmin.arrDesc")
+              )}
+              {renderKpiCard(
+                t("packagesAdmin.churnRate"),
+                `${revenue.churnRate}%`,
+                "users",
+                "#0b5e78",
+                t("packagesAdmin.churnDesc")
+              )}
+              {renderKpiCard(
+                t("packagesAdmin.ltv"),
+                formatCurrency(revenue.ltv),
+                "target",
+                "#8A7B1F",
+                t("packagesAdmin.ltvDesc")
+              )}
             </div>
-          );
-        })}
-      </div>
+          ) : (
+            <div className="text-center py-10 text-[var(--sub)]">{t("common.loading")}</div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "invoices" && (
+        <div>
+          <div className="card p-4 mb-4 flex items-center gap-4">
+            <label className="flex items-center gap-2 text-[13px] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={overdueOnly}
+                onChange={(e) => setOverdueOnly(e.target.checked)}
+                className="w-4 h-4 accent-[var(--blue)]"
+              />
+              {t("packagesAdmin.overdueFilter")}
+            </label>
+          </div>
+
+          <div className="card overflow-hidden">
+            {invoices.length === 0 ? (
+              <p className="p-5 text-center text-[var(--sub)] text-sm">{t("packagesAdmin.noInvoices")}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-[var(--border)] border-b" style={{ borderColor: "var(--border)" }}>
+                    <tr>
+                      <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.name")}</th>
+                      <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.slug")}</th>
+                      <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.package")}</th>
+                      <th className="text-right p-3 font-medium text-[var(--sub)]">{t("packagesAdmin.invoiceAmount")}</th>
+                      <th className="text-right p-3 font-medium text-[var(--sub)]">{t("packagesAdmin.dueDate")}</th>
+                      <th className="text-right p-3 font-medium text-[var(--sub)]">{t("packagesAdmin.invoiceStatus")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((inv, index) => {
+                      const st = STATUS_STYLES[inv.status] || STATUS_STYLES.Pending;
+                      return (
+                        <tr
+                          key={inv.id ?? `${inv.storeId}-${index}`}
+                          className="border-b hover:bg-[var(--border)]"
+                          style={{ borderColor: "var(--border)" }}
+                        >
+                          <td className="p-3 text-[var(--ink)] font-medium">{inv.storeName}</td>
+                          <td className="p-3 text-[var(--sub)]" dir="ltr">{inv.storeSlug}</td>
+                          <td className="p-3 text-[var(--sub)]">{inv.packageName}</td>
+                          <td className="p-3 text-[var(--ink)] font-bold">{formatCurrency(inv.amount)}</td>
+                          <td className="p-3 text-[var(--sub)]" dir="ltr">
+                            {new Date(inv.dueDate).toLocaleDateString("ar-SA")}
+                          </td>
+                          <td className="p-3">
+                            <span className={st.badge}>{t(st.labelKey)}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

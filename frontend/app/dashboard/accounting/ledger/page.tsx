@@ -54,6 +54,30 @@ function formatMoney(n: number) {
   return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function exportToExcel(tableHtml: string, filename: string) {
+  const style = `<style>td,th{border:1px solid #ccc;padding:6px 10px;text-align:right;font-size:12px}th{background:#f0e6d2;font-weight:bold}table{border-collapse:collapse;width:100%;font-family:Tahoma,Arial}</style>`;
+  const html = `<html><meta charset="utf-8">${style}<body>${tableHtml}</body></html>`;
+  const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${filename}.xls`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function printHtml(title: string, tableHtml: string) {
+  const w = window.open("", "_blank");
+  if (!w) return;
+  const style = `<style>body{font-family:Tahoma,Arial;padding:30px;direction:rtl}table{width:100%;border-collapse:collapse;margin-bottom:20px}td,th{border:1px solid #ccc;padding:6px 10px;text-align:right;font-size:12px}th{background:#f0e6d2;font-weight:bold}h2{text-align:center;margin-bottom:20px}</style>`;
+  w.document.write(`<html><meta charset="utf-8">${style}<body><h2>${title}</h2>${tableHtml}<script>window.onload=function(){window.print();window.close()}<\/script></body></html>`);
+  w.document.close();
+}
+
+function buildLedgerTable(ledger: LedgerResponse, from: string, to: string, t: (k: string) => string): string {
+  const movRows = ledger.movements.map(m => `<tr><td>${m.entryDate}</td><td>${m.entryNumber}</td><td>${m.lineDescription || m.description || "—"}</td><td>${m.debit > 0 ? formatMoney(m.debit) : "—"}</td><td>${m.credit > 0 ? formatMoney(m.credit) : "—"}</td><td>${formatMoney(m.runningBalance)}</td></tr>`).join("");
+  return `<table><tr><th colspan="5">${t("ledger.account")}: ${ledger.accountCode} - ${ledger.accountNameAr}</th><th>${t("ledger.openingBalance")}: ${formatMoney(ledger.openingBalance)}</th></tr><thead><tr><th>${t("ledger.date")}</th><th>${t("ledger.entryNumber")}</th><th>${t("ledger.description")}</th><th>${t("ledger.debit")}</th><th>${t("ledger.credit")}</th><th>${t("ledger.runningBalance")}</th></tr></thead><tbody><tr><td colspan="5"><em>${t("ledger.openingLabel")}</em></td><td>${formatMoney(ledger.openingBalance)}</td></tr>${movRows}</tbody></table>`;
+}
+
 export default function LedgerPage() {
   const { t } = useTranslation();
   const [accountsFlat, setAccountsFlat] = useState<{ account: Account; depth: number }[]>([]);
@@ -165,6 +189,10 @@ export default function LedgerPage() {
         <p className="text-[var(--sub)] text-sm py-8 text-center">{t("common.loading")}</p>
       ) : ledger ? (
         <>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={() => exportToExcel(buildLedgerTable(ledger, from, to, t), `ledger-${ledger.accountCode}-${from || "all"}-${to || "all"}`)} className="btn btn-outline btn-sm"><Icon name="download" /> Excel</button>
+            <button onClick={() => printHtml(`${t("ledger.title")} — ${ledger.accountCode} ${ledger.accountNameAr}`, buildLedgerTable(ledger, from, to, t))} className="btn btn-outline btn-sm"><Icon name="printer" /> PDF</button>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div className="card p-4">
               <p className="text-[12px] text-[var(--sub)] mb-1">{t("ledger.account")}</p>

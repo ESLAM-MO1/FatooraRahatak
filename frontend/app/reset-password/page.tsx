@@ -21,9 +21,9 @@ function BrandPanel() {
         </div>
         <div className="text-center mt-4">
           <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">{t("brand.name")}</p>
-          <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
-            faturat rahatik
-          </p>
+            <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
+              {t("brand.nameEn")}
+            </p>
         </div>
         <div className="flex items-center justify-center gap-2 mt-5">
           <span className="w-[38px] h-[5px] rounded-[4px]" style={{ background: "var(--blue)" }} />

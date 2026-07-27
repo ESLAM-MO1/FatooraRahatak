@@ -18,4 +18,20 @@ public interface IAdminService
     Task<AdminReportsOverviewDto> GetReportsOverviewAsync();
     Task<List<PlatformSettingDto>> GetSettingsAsync();
     Task UpdateSettingsAsync(UpdatePlatformSettingsDto dto);
+    Task<RevenueDashboardDto> GetRevenueDashboardAsync();
+    Task<List<PlatformInvoiceDto>> GetPlatformInvoicesAsync(bool? overdueOnly);
+    Task<byte[]> ExportPlatformInvoicesExcelAsync();
+
+    // --- إدارة المستخدمين الموسعة ---
+    Task<List<AdminUserListDto>> GetOwnerUsersAsync();
+    Task<ImpersonateResultDto> ImpersonateUserAsync(long adminUserId, long targetUserId, string ipAddress);
+    Task<StaffUserDto> CreateStaffUserAsync(CreateStaffDto dto);
+    Task<List<StaffUserDto>> GetStaffUsersAsync();
+
+    // --- سجل التدقيق ---
+    Task<List<AuditLogDto>> GetAuditLogsAsync();
+    Task LogAuditActionAsync(long adminUserId, string adminName, string action, string? targetType = null, string? targetId = null, string? details = null, string? ipAddress = null);
+
+    // --- الإشعارات المركزية ---
+    Task SendPlatformNotificationAsync(SendNotificationDto dto, long adminUserId);
 }

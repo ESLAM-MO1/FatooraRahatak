@@ -10,9 +10,11 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class StoreService : IStoreService
 {
     private readonly AppDbContext _context;
-    public StoreService(AppDbContext context)
+    private readonly IDomainService _domainService;
+    public StoreService(AppDbContext context, IDomainService domainService)
     {
         _context = context;
+        _domainService = domainService;
     }
     public async Task<StoreResponseDto> CreateStoreAsync(long ownerUserId, CreateStoreDto dto)
     {
@@ -67,6 +69,8 @@ public class StoreService : IStoreService
         );
         await _context.SaveChangesAsync();
         // =================================================================================
+
+        await _domainService.AutoCreateSubdomainAsync(store.Id, store.StoreSlug);
 
         return new StoreResponseDto
         {

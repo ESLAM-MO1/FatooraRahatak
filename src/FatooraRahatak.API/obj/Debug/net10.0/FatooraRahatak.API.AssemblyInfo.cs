@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FatooraRahatak.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+330db829ad16d4ad24d411c22aaf90c71e3648e1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+03439f76774c3753fb5e655ae7b3901b7c9ccb4a")]
 [assembly: System.Reflection.AssemblyProductAttribute("FatooraRahatak.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FatooraRahatak.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

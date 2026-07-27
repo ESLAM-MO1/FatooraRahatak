@@ -3,6 +3,8 @@ using FatooraRahatak.Application.DTOs.Platform;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Entities.Packages;
+using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 
 namespace FatooraRahatak.Infrastructure.Services;
@@ -10,7 +12,8 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class SiteService : ISiteService
 {
     private readonly AppDbContext _context;
-    public SiteService(AppDbContext context) { _context = context; }
+    private readonly INotificationService _notificationService;
+    public SiteService(AppDbContext context, INotificationService notificationService) { _context = context; _notificationService = notificationService; }
 
     // === Landing Page ===
     public async Task<LandingPageContentDto> GetLandingPageAsync()
@@ -75,12 +78,12 @@ public class SiteService : ISiteService
     }
 
     // === Pages ===
-    public async Task<SitePageDto?> GetPageByKeyAsync(string pageKey)
+    public async Task<SitePageDto> GetPageByKeyAsync(string pageKey)
     {
         return await _context.Set<SitePage>()
             .Where(p => p.PageKey == pageKey)
             .Select(p => new SitePageDto { Id = p.Id, PageKey = p.PageKey, TitleAr = p.TitleAr, TitleEn = p.TitleEn, ContentAr = p.ContentAr, ContentEn = p.ContentEn })
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync() ?? new SitePageDto { PageKey = pageKey };
     }
 
     public async Task UpdatePageAsync(long userId, string pageKey, UpdateSitePageDto dto)
@@ -97,23 +100,23 @@ public class SiteService : ISiteService
     public async Task<List<SiteFaqItemDto>> GetPublishedFaqAsync()
     {
         return await _context.Set<SiteFaqItem>().Where(f => f.IsPublished).OrderBy(f => f.DisplayOrder)
-            .Select(f => new SiteFaqItemDto { Id = f.Id, QuestionAr = f.QuestionAr, AnswerAr = f.AnswerAr, DisplayOrder = f.DisplayOrder, IsPublished = f.IsPublished }).ToListAsync();
+            .Select(f => new SiteFaqItemDto { Id = f.Id, QuestionAr = f.QuestionAr, QuestionEn = f.QuestionEn, AnswerAr = f.AnswerAr, AnswerEn = f.AnswerEn, DisplayOrder = f.DisplayOrder, IsPublished = f.IsPublished }).ToListAsync();
     }
     public async Task<List<SiteFaqItemDto>> GetAllFaqAsync()
     {
         return await _context.Set<SiteFaqItem>().OrderBy(f => f.DisplayOrder)
-            .Select(f => new SiteFaqItemDto { Id = f.Id, QuestionAr = f.QuestionAr, AnswerAr = f.AnswerAr, DisplayOrder = f.DisplayOrder, IsPublished = f.IsPublished }).ToListAsync();
+            .Select(f => new SiteFaqItemDto { Id = f.Id, QuestionAr = f.QuestionAr, QuestionEn = f.QuestionEn, AnswerAr = f.AnswerAr, AnswerEn = f.AnswerEn, DisplayOrder = f.DisplayOrder, IsPublished = f.IsPublished }).ToListAsync();
     }
     public async Task<SiteFaqItemDto> CreateFaqAsync(CreateFaqItemDto dto)
     {
-        var faq = new SiteFaqItem { QuestionAr = dto.QuestionAr, AnswerAr = dto.AnswerAr, DisplayOrder = dto.DisplayOrder };
+        var faq = new SiteFaqItem { QuestionAr = dto.QuestionAr, QuestionEn = dto.QuestionEn, AnswerAr = dto.AnswerAr, AnswerEn = dto.AnswerEn, DisplayOrder = dto.DisplayOrder, IsPublished = dto.IsPublished };
         _context.Set<SiteFaqItem>().Add(faq); await _context.SaveChangesAsync();
-        return new SiteFaqItemDto { Id = faq.Id, QuestionAr = faq.QuestionAr, AnswerAr = faq.AnswerAr, DisplayOrder = faq.DisplayOrder, IsPublished = faq.IsPublished };
+        return new SiteFaqItemDto { Id = faq.Id, QuestionAr = faq.QuestionAr, QuestionEn = faq.QuestionEn, AnswerAr = faq.AnswerAr, AnswerEn = faq.AnswerEn, DisplayOrder = faq.DisplayOrder, IsPublished = faq.IsPublished };
     }
     public async Task UpdateFaqAsync(long id, CreateFaqItemDto dto)
     {
         var faq = await _context.Set<SiteFaqItem>().FindAsync(id) ?? throw new InvalidOperationException("غير موجود");
-        faq.QuestionAr = dto.QuestionAr; faq.AnswerAr = dto.AnswerAr; faq.DisplayOrder = dto.DisplayOrder;
+        faq.QuestionAr = dto.QuestionAr; faq.QuestionEn = dto.QuestionEn; faq.AnswerAr = dto.AnswerAr; faq.AnswerEn = dto.AnswerEn; faq.DisplayOrder = dto.DisplayOrder; faq.IsPublished = dto.IsPublished;
         await _context.SaveChangesAsync();
     }
     public async Task DeleteFaqAsync(long id)
@@ -121,22 +124,177 @@ public class SiteService : ISiteService
         var faq = await _context.Set<SiteFaqItem>().FindAsync(id);
         if (faq != null) { _context.Set<SiteFaqItem>().Remove(faq); await _context.SaveChangesAsync(); }
     }
-
-    // === Contact ===
-    public async Task CreateContactMessageAsync(CreateContactMessageDto dto)
+    public async Task ToggleFaqPublishAsync(long id)
     {
-        _context.Set<ContactMessage>().Add(new ContactMessage { Name = dto.Name, Email = dto.Email, Phone = dto.Phone, Subject = dto.Subject, Message = dto.Message, Type = dto.Type });
+        var faq = await _context.Set<SiteFaqItem>().FindAsync(id) ?? throw new InvalidOperationException("غير موجود");
+        faq.IsPublished = !faq.IsPublished;
         await _context.SaveChangesAsync();
     }
-    public async Task<List<ContactMessageDto>> GetContactMessagesAsync()
+
+    // === Contact (Tickets) ===
+    private static readonly object _ticketLock = new();
+    private static long _lastTicketNum = 0;
+    private string GenerateTicketNumber()
     {
-        return await _context.Set<ContactMessage>().OrderByDescending(m => m.CreatedAt)
-            .Select(m => new ContactMessageDto { Id = m.Id, Name = m.Name, Email = m.Email, Phone = m.Phone, Subject = m.Subject, Message = m.Message, Type = m.Type, Status = m.Status, CreatedAt = m.CreatedAt }).ToListAsync();
+        lock (_ticketLock)
+        {
+            var now = DateTime.UtcNow;
+            var prefix = $"TCK-{now:yyyyMMdd}-";
+            var last = Interlocked.Increment(ref _lastTicketNum);
+            return $"{prefix}{last:D4}";
+        }
+    }
+    public async Task<ContactMessageDto> CreateContactMessageAsync(CreateContactMessageDto dto)
+    {
+        var ticketNum = GenerateTicketNumber();
+        long? userId = null;
+        var user = await _context.Set<User>().FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user != null) userId = user.Id;
+        var entity = new ContactMessage
+        {
+            Name = dto.Name, Email = dto.Email, Phone = dto.Phone,
+            Subject = dto.Subject, Message = dto.Message, Type = dto.Type,
+            TicketNumber = ticketNum, UserId = userId
+        };
+        _context.Set<ContactMessage>().Add(entity);
+        await _context.SaveChangesAsync();
+        return new ContactMessageDto
+        {
+            Id = entity.Id, Name = entity.Name, Email = entity.Email, Phone = entity.Phone,
+            Subject = entity.Subject, Message = entity.Message, Type = entity.Type,
+            Status = entity.Status, TicketNumber = entity.TicketNumber, CreatedAt = entity.CreatedAt, UpdatedAt = entity.UpdatedAt
+        };
+    }
+    public async Task<List<ContactMessageDto>> GetContactMessagesAsync(string? statusFilter = null, string? searchQuery = null)
+    {
+        var query = _context.Set<ContactMessage>().AsQueryable();
+        if (!string.IsNullOrWhiteSpace(statusFilter))
+            query = query.Where(m => m.Status == statusFilter);
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+            query = query.Where(m => m.Name.Contains(searchQuery) || m.Email.Contains(searchQuery) || m.Subject.Contains(searchQuery) || m.TicketNumber.Contains(searchQuery));
+        return await query.OrderByDescending(m => m.CreatedAt)
+            .Select(m => new ContactMessageDto
+            {
+                Id = m.Id, Name = m.Name, Email = m.Email, Phone = m.Phone,
+                Subject = m.Subject, Message = m.Message, Type = m.Type,
+                Status = m.Status, TicketNumber = m.TicketNumber,
+                CreatedAt = m.CreatedAt, UpdatedAt = m.UpdatedAt,
+                Replies = m.TicketReplies.OrderBy(r => r.CreatedAt).Select(r => new TicketReplyDto
+                {
+                    Id = r.Id, ReplyText = r.ReplyText, RepliedByName = r.RepliedByName,
+                    IsAdminReply = r.IsAdminReply, CreatedAt = r.CreatedAt
+                }).ToList()
+            }).ToListAsync();
+    }
+    public async Task<ContactMessageDto?> GetContactMessageByIdAsync(long id)
+    {
+        return await _context.Set<ContactMessage>()
+            .Where(m => m.Id == id)
+            .Select(m => new ContactMessageDto
+            {
+                Id = m.Id, Name = m.Name, Email = m.Email, Phone = m.Phone,
+                Subject = m.Subject, Message = m.Message, Type = m.Type,
+                Status = m.Status, TicketNumber = m.TicketNumber,
+                CreatedAt = m.CreatedAt, UpdatedAt = m.UpdatedAt,
+                Replies = m.TicketReplies.OrderBy(r => r.CreatedAt).Select(r => new TicketReplyDto
+                {
+                    Id = r.Id, ReplyText = r.ReplyText, RepliedByName = r.RepliedByName,
+                    IsAdminReply = r.IsAdminReply, CreatedAt = r.CreatedAt
+                }).ToList()
+            }).FirstOrDefaultAsync();
     }
     public async Task UpdateContactMessageStatusAsync(long id, string status)
     {
         var msg = await _context.Set<ContactMessage>().FindAsync(id);
-        if (msg != null) { msg.Status = status; await _context.SaveChangesAsync(); }
+        if (msg == null) return;
+        msg.Status = status;
+        msg.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        if (msg.UserId.HasValue)
+        {
+            try
+            {
+                var statusLabel = status switch
+                {
+                    "InProgress" => "قيد المعالجة",
+                    "Replied" => "تم الرد",
+                    "Closed" => "مغلقة",
+                    _ => status
+                };
+                await _notificationService.CreateAsync(
+                    msg.UserId.Value,
+                    "تحديث حالة التذكرة",
+                    $"تم تغيير حالة تذكرتك رقم {msg.TicketNumber} إلى \"{statusLabel}\"",
+                    NotificationType.TicketStatusChanged,
+                    $"/dashboard/tickets/{msg.Id}");
+            }
+            catch { }
+        }
+    }
+    public async Task<TicketReplyDto> AddTicketReplyAsync(long ticketId, CreateTicketReplyDto dto, long? adminUserId, string adminName)
+    {
+        var msg = await _context.Set<ContactMessage>().FindAsync(ticketId);
+        if (msg == null) throw new InvalidOperationException("التذكرة غير موجودة");
+        var reply = new TicketReply
+        {
+            TicketId = ticketId, ReplyText = dto.ReplyText,
+            RepliedByName = adminName, RepliedByUserId = adminUserId, IsAdminReply = true
+        };
+        _context.Set<TicketReply>().Add(reply);
+        msg.Status = "Replied";
+        msg.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        if (msg.UserId.HasValue)
+        {
+            try
+            {
+                await _notificationService.CreateAsync(
+                    msg.UserId.Value,
+                    "رد جديد على تذكرتك",
+                    $"تم الرد على تذكرتك رقم {msg.TicketNumber}",
+                    NotificationType.TicketReplied,
+                    $"/dashboard/tickets/{msg.Id}");
+            }
+            catch { }
+        }
+        return new TicketReplyDto { Id = reply.Id, ReplyText = reply.ReplyText, RepliedByName = reply.RepliedByName, IsAdminReply = reply.IsAdminReply, CreatedAt = reply.CreatedAt };
+    }
+    public async Task DeleteContactMessageAsync(long id)
+    {
+        var msg = await _context.Set<ContactMessage>().Include(m => m.TicketReplies).FirstOrDefaultAsync(m => m.Id == id);
+        if (msg != null) { _context.Set<TicketReply>().RemoveRange(msg.TicketReplies); _context.Set<ContactMessage>().Remove(msg); await _context.SaveChangesAsync(); }
+    }
+
+    public async Task<ContactMessageDto?> GetCustomerTicketByIdAsync(long ticketId, long userId)
+    {
+        return await _context.Set<ContactMessage>()
+            .Where(m => m.Id == ticketId && m.UserId == userId)
+            .Select(m => new ContactMessageDto
+            {
+                Id = m.Id, Name = m.Name, Email = m.Email, Phone = m.Phone,
+                Subject = m.Subject, Message = m.Message, Type = m.Type,
+                Status = m.Status, TicketNumber = m.TicketNumber,
+                CreatedAt = m.CreatedAt, UpdatedAt = m.UpdatedAt,
+                Replies = m.TicketReplies.OrderBy(r => r.CreatedAt).Select(r => new TicketReplyDto
+                {
+                    Id = r.Id, ReplyText = r.ReplyText, RepliedByName = r.RepliedByName,
+                    IsAdminReply = r.IsAdminReply, CreatedAt = r.CreatedAt
+                }).ToList()
+            }).FirstOrDefaultAsync();
+    }
+    public async Task<TicketReplyDto> AddCustomerTicketReplyAsync(long ticketId, CreateTicketReplyDto dto, long userId, string userName)
+    {
+        var msg = await _context.Set<ContactMessage>().FirstOrDefaultAsync(m => m.Id == ticketId && m.UserId == userId);
+        if (msg == null) throw new InvalidOperationException("التذكرة غير موجودة");
+        var reply = new TicketReply
+        {
+            TicketId = ticketId, ReplyText = dto.ReplyText,
+            RepliedByName = userName, RepliedByUserId = userId, IsAdminReply = false
+        };
+        _context.Set<TicketReply>().Add(reply);
+        msg.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return new TicketReplyDto { Id = reply.Id, ReplyText = reply.ReplyText, RepliedByName = reply.RepliedByName, IsAdminReply = reply.IsAdminReply, CreatedAt = reply.CreatedAt };
     }
 
     // === Blog ===

@@ -52,7 +52,18 @@ export default function EmployeesPage() {
   const [newRoleName, setNewRoleName] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const roleLabel = (name: string) => roles.find((r) => r.roleName === name)?.roleName ?? name;
+  useEffect(() => {
+    if (!showModal && !showInvModal && !editingRole && !showCreateModal) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowModal(false); setShowInvModal(false); setEditingRole(null); setShowCreateModal(false);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [showModal, showInvModal, editingRole, showCreateModal]);
+
+  const roleLabel = (name: string) => t(`role.${name}`, name);
 
   const moduleLabel = (mod: string) => t(`employee.module.${mod}`, mod);
   const actionLabel = (action: string) => t(`employee.action.${action}`, action);
@@ -76,7 +87,7 @@ export default function EmployeesPage() {
   const closeAddModal = () => { setShowModal(false); setForm(emptyForm); };
 
   const fetchEmployees = useCallback(async () => {
-    try { const res = await api.get("/owner/employees"); setEmployees(res.data.data); }
+    try { const res = await api.get("/employees"); setEmployees(res.data.data); }
     catch { }
   }, []);
 
@@ -98,7 +109,7 @@ export default function EmployeesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setActionError(""); setSubmitting(true);
     try {
-      await api.post("/owner/employees", { ...form, salary: parseFloat(form.salary) || 0 });
+      await api.post("/employees", { ...form, salary: parseFloat(form.salary) || 0 });
       closeAddModal(); setActionSuccess(t("employee.addSuccess")); await fetchEmployees();
     } catch (err: any) { setActionError(err.response?.data?.message || t("common.error")); }
     finally { setSubmitting(false); }
@@ -107,7 +118,7 @@ export default function EmployeesPage() {
   const handleDeactivate = async (employee: Employee) => {
     if (!window.confirm(t("employee.confirmDeactivate", { name: employee.fullName }))) return;
     setDeactivatingId(employee.id);
-    try { await api.put(`/owner/employees/${employee.id}/deactivate`); await fetchEmployees(); }
+    try { await api.put(`/employees/${employee.id}/deactivate`); await fetchEmployees(); }
     catch (err: any) { setActionError(err.response?.data?.message || t("common.error")); }
     finally { setDeactivatingId(null); }
   };
@@ -221,7 +232,7 @@ export default function EmployeesPage() {
               <tbody>{invitations.map(inv => (
                 <tr key={inv.id}>
                   <td className="text-[var(--sub)]" dir="ltr">{inv.email}</td>
-                  <td className="text-[var(--sub)]">{inv.roleName}</td>
+                  <td className="text-[var(--sub)]">{roleLabel(inv.roleName)}</td>
                   <td>{statusBadge(inv.status)}</td>
                   <td>{inv.status === "Pending" ? <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/register?token=${inv.token}`); setActionSuccess(t("employee.linkCopied")); setTimeout(() => setActionSuccess(""), 2000); }} className="text-[12px] font-bold text-[var(--blue)] hover:underline">{t("employee.copyLink")}</button> : <span className="text-[12px] text-[var(--sub)]">—</span>}</td>
                   <td className="text-[12px] text-[var(--sub)]">{new Date(inv.createdAt).toLocaleDateString("ar-SA")}</td>
@@ -238,7 +249,7 @@ export default function EmployeesPage() {
               <tbody>{roles.length === 0 ? <tr><td colSpan={4} className="text-center text-[var(--sub)] py-8">{t("employee.noRoles")}</td></tr>
                 : roles.map(role => (
                   <tr key={role.id}>
-                    <td className="font-bold text-[var(--ink)]">{role.roleName}</td>
+                    <td className="font-bold text-[var(--ink)]">{roleLabel(role.roleName)}</td>
                     <td>{role.employeesCount}</td>
                     <td>{role.isSystemRole ? <span className="badge badge--blue">{t("employee.systemRole")}</span> : <span className="badge badge--green">{t("employee.customRole")}</span>}</td>
                     <td><div className="flex gap-2"><button onClick={() => handleEditRole(role)} className="btn btn-outline btn-sm">{t("employee.editPermissions")}</button>{!role.isSystemRole && <button onClick={() => handleDeleteRole(role)} className="btn btn-danger btn-sm">{t("common.delete")}</button>}</div></td>
@@ -250,7 +261,7 @@ export default function EmployeesPage() {
 
       {/* Add Employee Modal */}
       {showModal && <div className="modal-overlay" onClick={closeAddModal}><div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
-        <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">{t("employee.add")}</h2>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.add")}</h2><button onClick={closeAddModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div><label>{t("employee.name")}</label><div className="field-shell"><input type="text" value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} required /></div></div>
           <div><label>{t("employee.email")}</label><div className="field-shell"><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required /></div></div>
@@ -258,7 +269,7 @@ export default function EmployeesPage() {
           <div><label>{t("employee.password")}</label><div className="field-shell"><input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required /></div></div>
           <div><label>{t("employee.jobRole")}</label><div className="field-shell"><select value={form.roleName} onChange={e => setForm(f => ({ ...f, roleName: e.target.value }))} required>
             <option value="">{t("common.select")}</option>
-            {roles.filter(r => r.roleName !== "SuperAdmin" && r.roleName !== "SupportStaff" && r.roleName !== "Owner").map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
+            {roles.map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
           </select></div></div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
           <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? t("common.loading") : t("employee.submitAdd")}</button>
@@ -267,12 +278,12 @@ export default function EmployeesPage() {
 
       {/* Invite Employee Modal */}
       {showInvModal && <div className="modal-overlay" onClick={() => setShowInvModal(false)}><div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
-        <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">{t("employee.inviteNew")}</h2>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.inviteNew")}</h2><button onClick={() => setShowInvModal(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
         <form onSubmit={handleInvSubmit} className="space-y-4">
           <div><label>{t("employee.inviteEmail")}</label><div className="field-shell"><input type="email" value={invForm.email} onChange={e => setInvForm(f => ({ ...f, email: e.target.value }))} required placeholder="employee@example.com" /></div></div>
           <div><label>{t("employee.jobTitle")}</label><div className="field-shell"><select value={invForm.roleId} onChange={e => setInvForm(f => ({ ...f, roleId: parseInt(e.target.value) || 0 }))} required>
             <option value="">{t("common.select")}</option>
-            {roles.filter(r => r.roleName !== "SuperAdmin" && r.roleName !== "SupportStaff" && r.roleName !== "Owner").map(r => <option key={r.id} value={r.id}>{r.roleName}</option>)}
+            {roles.map(r => <option key={r.id} value={r.id}>{roleLabel(r.roleName)}</option>)}
           </select></div></div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={invForm.salary} onChange={e => setInvForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
           <button type="submit" disabled={invSubmitting} className="btn btn-primary">{invSubmitting ? t("common.loading") : t("employee.sendInvite")}</button>
@@ -281,7 +292,7 @@ export default function EmployeesPage() {
 
       {/* Edit Permissions Modal */}
       {editingRole && <div className="modal-overlay" onClick={() => setEditingRole(null)}><div className="modal-card max-w-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.permissionsFor")} {editingRole.roleName}</h2><button onClick={() => setEditingRole(null)} className="text-[var(--sub)] hover:text-[var(--ink)]">✕</button></div>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.permissionsFor")} {roleLabel(editingRole.roleName)}</h2><button onClick={() => setEditingRole(null)} className="text-[var(--sub)] hover:text-[var(--ink)]">✕</button></div>
         <PermissionEditor />
         <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-[var(--border)]">
           <button onClick={() => setEditingRole(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>

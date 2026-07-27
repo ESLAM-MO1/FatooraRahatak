@@ -21,6 +21,7 @@ interface SubscriptionStatus {
 }
 
 interface PackageInfo {
+  id: number;
   name: string;
   monthlyPrice: number;
   maxProducts: number | null;
@@ -28,126 +29,45 @@ interface PackageInfo {
   maxWarehouses: number;
   maxThemes: number;
   commissionPercentage: number;
-  features: {
-    accountingFull: boolean;
-    payroll: boolean;
-    zatcaInvoice: boolean;
-    customDomain: boolean;
-    affiliateMarketing: boolean;
-    apiAccess: boolean;
-  };
+  hasAccountingFull: boolean;
+  hasPayroll: boolean;
+  hasZatcaInvoice: boolean;
+  hasCustomDomain: boolean;
+  hasAffiliateMarketing: boolean;
+  hasApiAccess: boolean;
 }
 
-const PACKAGE_ORDER = ["free", "starter", "growth", "enterprise"];
 
-const PACKAGES: PackageInfo[] = [
-  {
-    name: "free",
-    monthlyPrice: 0,
-    maxProducts: 20,
-    maxEmployees: 2,
-    maxWarehouses: 1,
-    maxThemes: 1,
-    commissionPercentage: 0,
-    features: {
-      accountingFull: false,
-      payroll: false,
-      zatcaInvoice: false,
-      customDomain: false,
-      affiliateMarketing: false,
-      apiAccess: false,
-    },
-  },
-  {
-    name: "starter",
-    monthlyPrice: 99,
-    maxProducts: 500,
-    maxEmployees: 10,
-    maxWarehouses: 3,
-    maxThemes: 2,
-    commissionPercentage: 5,
-    features: {
-      accountingFull: true,
-      payroll: false,
-      zatcaInvoice: true,
-      customDomain: false,
-      affiliateMarketing: false,
-      apiAccess: false,
-    },
-  },
-  {
-    name: "growth",
-    monthlyPrice: 299,
-    maxProducts: 2000,
-    maxEmployees: 25,
-    maxWarehouses: 10,
-    maxThemes: 3,
-    commissionPercentage: 3,
-    features: {
-      accountingFull: true,
-      payroll: true,
-      zatcaInvoice: true,
-      customDomain: true,
-      affiliateMarketing: true,
-      apiAccess: false,
-    },
-  },
-  {
-    name: "enterprise",
-    monthlyPrice: 799,
-    maxProducts: null,
-    maxEmployees: 999,
-    maxWarehouses: 999,
-    maxThemes: 3,
-    commissionPercentage: 5,
-    features: {
-      accountingFull: true,
-      payroll: true,
-      zatcaInvoice: true,
-      customDomain: true,
-      affiliateMarketing: true,
-      apiAccess: true,
-    },
-  },
-];
 
 export default function SubscriptionPage() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
+  const [packages, setPackages] = useState<PackageInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
 
-  const FEATURE_LIST: { key: keyof PackageInfo["features"]; label: string }[] = [
-    { key: "accountingFull", label: t("subscription.featureAccountingFull") },
-    { key: "payroll", label: t("subscription.featurePayroll") },
-    { key: "zatcaInvoice", label: t("subscription.featureZatcaInvoice") },
-    { key: "customDomain", label: t("subscription.featureCustomDomain") },
-    { key: "affiliateMarketing", label: t("subscription.featureAffiliateMarketing") },
-    { key: "apiAccess", label: t("subscription.featureApiAccess") },
+  const FEATURE_LIST: { key: keyof PackageInfo; label: string }[] = [
+    { key: "hasAccountingFull", label: t("subscription.featureAccountingFull") },
+    { key: "hasPayroll", label: t("subscription.featurePayroll") },
+    { key: "hasZatcaInvoice", label: t("subscription.featureZatcaInvoice") },
+    { key: "hasCustomDomain", label: t("subscription.featureCustomDomain") },
+    { key: "hasAffiliateMarketing", label: t("subscription.featureAffiliateMarketing") },
+    { key: "hasApiAccess", label: t("subscription.featureApiAccess") },
   ];
 
-  const packageNameMap: Record<string, string> = {
-    "free": t("subscription.packageFree"),
-    "starter": t("subscription.packageStarter"),
-    "growth": t("subscription.packageGrowth"),
-    "enterprise": t("subscription.packageEnterprise"),
-    "المجانية": t("subscription.packageFree"),
-    "الإنطلاق": t("subscription.packageStarter"),
-    "التوسع": t("subscription.packageGrowth"),
-    "الريادة": t("subscription.packageEnterprise"),
-  };
-
-  const tPackageName = (name: string) => packageNameMap[name] || name;
-
-  const fetchStatus = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await api.get("/subscriptions/status");
-      setStatus(res.data.data);
+      const [statusRes, packagesRes] = await Promise.all([
+        api.get("/subscriptions/status"),
+        api.get("/site/packages"),
+      ]);
+      setStatus(statusRes.data.data);
+      setPackages(packagesRes.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || t("subscription.loadError"));
     } finally {
@@ -156,30 +76,30 @@ export default function SubscriptionPage() {
   };
 
   useEffect(() => {
-    fetchStatus();
+    fetchData();
   }, []);
 
   const getCurrentPackageIndex = () => {
-    if (!status) return -1;
-    return PACKAGE_ORDER.indexOf(status.currentPackage);
+    if (!status || packages.length === 0) return -1;
+    return packages.findIndex((p) => p.name === status.currentPackage);
   };
 
-  const isHigherPackage = (packageName: string) => {
+  const isHigherPackage = (pkgName: string) => {
     const currentIndex = getCurrentPackageIndex();
-    const targetIndex = PACKAGE_ORDER.indexOf(packageName);
+    const targetIndex = packages.findIndex((p) => p.name === pkgName);
     return currentIndex >= 0 && targetIndex > currentIndex;
   };
 
-  const isLowerPackage = (packageName: string) => {
+  const isLowerPackage = (pkgName: string) => {
     const currentIndex = getCurrentPackageIndex();
-    const targetIndex = PACKAGE_ORDER.indexOf(packageName);
+    const targetIndex = packages.findIndex((p) => p.name === pkgName);
     return currentIndex >= 0 && targetIndex < currentIndex;
   };
 
   const handlePackageChange = async (packageName: string, isUpgrade: boolean) => {
     const confirmMsg = isUpgrade
-      ? `${t("subscription.confirmUpgrade")} "${tPackageName(packageName)}"؟`
-      : `${t("subscription.confirmDowngrade")} "${tPackageName(packageName)}"؟`;
+      ? `${t("subscription.confirmUpgrade")} "${packageName}"؟`
+      : `${t("subscription.confirmDowngrade")} "${packageName}"؟`;
     if (!window.confirm(confirmMsg)) return;
 
     setActionError("");
@@ -187,10 +107,24 @@ export default function SubscriptionPage() {
     setProcessing(packageName);
 
     try {
-      const endpoint = isUpgrade ? "/subscriptions/upgrade" : "/subscriptions/downgrade";
-      await api.post(endpoint, { packageName });
-      setActionSuccess(isUpgrade ? t("subscription.upgradeSuccess") : t("subscription.downgradeSuccess"));
-      await fetchStatus();
+      if (isUpgrade) {
+        // Create payment link for paid upgrade
+        const payRes = await api.post("/api/v1/payments/create-link", {
+          packageName,
+          amount: packages.find(p => p.name === packageName)?.monthlyPrice || 0,
+          currency: "SAR",
+          callbackUrl: window.location.href,
+        });
+        if (payRes.data.success && payRes.data.data.paymentUrl) {
+          window.open(payRes.data.data.paymentUrl, "_blank");
+          setActionSuccess(t("subscription.paymentInitiated"));
+        }
+      } else {
+        const endpoint = "/subscriptions/downgrade";
+        await api.post(endpoint, { packageName });
+        setActionSuccess(t("subscription.downgradeSuccess"));
+      }
+      await fetchData();
     } catch (err: any) {
       setActionError(err.response?.data?.message || (isUpgrade ? t("subscription.upgradeError") : t("subscription.downgradeError")));
     } finally {
@@ -208,7 +142,7 @@ export default function SubscriptionPage() {
     try {
       await api.post("/subscriptions/renew");
       setActionSuccess(t("subscription.renewSuccess"));
-      await fetchStatus();
+      await fetchData();
     } catch (err: any) {
       setActionError(err.response?.data?.message || t("subscription.renewError"));
     } finally {
@@ -226,7 +160,7 @@ export default function SubscriptionPage() {
     try {
       await api.post("/subscriptions/cancel");
       setActionSuccess(t("subscription.cancelSuccess"));
-      await fetchStatus();
+      await fetchData();
     } catch (err: any) {
       setActionError(err.response?.data?.message || t("subscription.cancelError"));
     } finally {
@@ -301,7 +235,7 @@ export default function SubscriptionPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h2 className="text-xl font-bold text-[var(--ink)]">
-                {t("subscription.currentPackage")}: <span className="text-[var(--blue)]">{tPackageName(status.currentPackage)}</span>
+                {t("subscription.currentPackage")}: <span className="text-[var(--blue)]">{status.currentPackage}</span>
               </h2>
               <p className="text-[var(--sub)] mt-1 flex items-center gap-2">
                 {t("subscription.status")}:
@@ -395,20 +329,20 @@ export default function SubscriptionPage() {
         {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {PACKAGES.map((pkg) => {
+          {packages.map((pkg) => {
             const isCurrent = pkg.name === status?.currentPackage;
             const isHigher = isHigherPackage(pkg.name);
             const isLower = isLowerPackage(pkg.name);
 
             return (
               <div
-                key={pkg.name}
+                key={pkg.id}
                 className={`package-card ${isCurrent ? "package-card--current" : ""}`}
               >
                 {isCurrent && <span className="package-card__badge">{t("subscription.currentBadge")}</span>}
 
                 <div className="text-center mb-4">
-                  <h4 className="text-lg font-bold text-[var(--ink)]">{tPackageName(pkg.name)}</h4>
+                  <h4 className="text-lg font-bold text-[var(--ink)]">{pkg.name}</h4>
                   <p className="text-2xl font-bold text-[var(--blue)] mt-1">
                     {pkg.monthlyPrice === 0 ? t("subscription.free") : `${pkg.monthlyPrice} ${t("subscription.perMonth")}`}
                   </p>
@@ -444,10 +378,10 @@ export default function SubscriptionPage() {
                       <span
                         key={feature.key}
                         className={`feature-chip ${
-                          pkg.features[feature.key] ? "feature-chip--on" : "feature-chip--off"
+                          pkg[feature.key] ? "feature-chip--on" : "feature-chip--off"
                         }`}
                       >
-                        {pkg.features[feature.key] ? (
+                        {pkg[feature.key] ? (
                           <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>

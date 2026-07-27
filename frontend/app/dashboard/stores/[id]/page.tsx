@@ -52,7 +52,7 @@ const domainStatusBadgeClass = (status: string) => {
 };
 
 export default function StoreDetailPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const params = useParams();
   const storeId = params.id as string;
   const [store, setStore] = useState<StoreDetail | null>(null);
@@ -201,46 +201,44 @@ export default function StoreDetailPage() {
       {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
 
       <div className="card p-5 mb-6">
-        <h2 className="text-lg font-medium text-[var(--ink)] mb-4">{t("storeDetail.basicInfo")}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.storeName")}</p>
-            <p className="font-medium text-[var(--ink)]">{store.storeName}</p>
+        <h2 className="text-lg font-bold text-[var(--ink)] mb-5 pb-3 border-b" style={{ borderColor: "var(--border)" }}>{t("storeDetail.basicInfo")}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+          <div className="p-4 border-b lg:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.storeName")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]">{store.storeName}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.subdomain")}</p>
-            <p className="font-medium text-[var(--ink)]" dir="ltr">{store.storeSlug}</p>
+          <div className="p-4 border-b lg:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.subdomain")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">{store.storeSlug}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.package")}</p>
-            <p className="font-medium text-[var(--blue)]">{store.packageName}</p>
+          <div className="p-4 border-b lg:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.package")}</p>
+            <p className="text-[15px] font-bold text-[var(--blue)]">{store.packageName}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.status")}</p>
-            <p className="font-medium">
-              <span className={statusBadgeClass(store.status)}>{statusLabel(store.status)}</span>
-            </p>
+          <div className="p-4 border-b border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.status")}</p>
+            <p><span className={statusBadgeClass(store.status)}>{statusLabel(store.status)}</span></p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.owner")}</p>
-            <p className="font-medium text-[var(--ink)]">{store.ownerName}</p>
+          <div className="p-4 border-b lg:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.owner")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]">{store.ownerName}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.ownerEmail")}</p>
-            <p className="font-medium text-[var(--ink)]" dir="ltr">{store.ownerEmail}</p>
+          <div className="p-4 border-b lg:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.ownerEmail")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">{store.ownerEmail}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.productsCount")}</p>
-            <p className="font-medium text-[var(--ink)]" dir="ltr">{store.productsCount}</p>
+          <div className="p-4 border-b lg:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.productsCount")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">{store.productsCount}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.employeesCount")}</p>
-            <p className="font-medium text-[var(--ink)]" dir="ltr">{store.employeesCount}</p>
+          <div className="p-4 border-b border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.employeesCount")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">{store.employeesCount}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.registrationDate")}</p>
-            <p className="font-medium text-[var(--ink)]" dir="ltr">
-              {new Date(store.createdAt).toLocaleDateString("ar-SA", {
+          <div className="p-4 md:col-span-2 lg:col-span-4">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.registrationDate")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">
+              {new Date(store.createdAt).toLocaleDateString(i18n.language === "ar" ? "ar-SA" : "en-US", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
@@ -251,15 +249,15 @@ export default function StoreDetailPage() {
       </div>
 
       <div className="card p-5 mb-6">
-        <h2 className="text-lg font-medium text-[var(--ink)] mb-4">{t("storeDetail.customDomain")}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.domain")}</p>
-            <p className="font-medium text-[var(--ink)]" dir="ltr">{store.customDomain || "—"}</p>
+        <h2 className="text-lg font-bold text-[var(--ink)] mb-5 pb-3 border-b" style={{ borderColor: "var(--border)" }}>{t("storeDetail.customDomain")}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="p-4 border-b md:border-b-0 md:border-l border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.domain")}</p>
+            <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">{store.customDomain || "—"}</p>
           </div>
-          <div>
-            <p className="text-sm text-[var(--sub)]">{t("storeDetail.domainStatusLabel")}</p>
-            <p className="font-medium">
+          <div className="p-4 border-b border-[var(--border)]">
+            <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.domainStatusLabel")}</p>
+            <p>
               <span className={domainStatusBadgeClass(store.customDomainStatus)}>
                 {domainStatusLabel(store.customDomainStatus)}
               </span>
@@ -267,9 +265,11 @@ export default function StoreDetailPage() {
           </div>
         </div>
         {store.customDomainStatus === "Pending" && (
-          <button onClick={handleActivateDomain} disabled={processing} className="btn-success">
-            {processing ? t("storeDetail.activatingDomain") : t("storeDetail.activateDomain")}
-          </button>
+          <div className="px-4 pt-1">
+            <button onClick={handleActivateDomain} disabled={processing} className="btn-success">
+              {processing ? t("storeDetail.activatingDomain") : t("storeDetail.activateDomain")}
+            </button>
+          </div>
         )}
       </div>
 

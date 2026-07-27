@@ -21,5 +21,7 @@ public enum NotificationType
     LeaveRequestCreated,
     LeaveRequestApproved,
     LeaveRequestRejected,
-    StockCountCompleted
+    StockCountCompleted,
+    TicketReplied,
+    TicketStatusChanged
 }

@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Platform;
 using FatooraRahatak.Application.Interfaces;
 
@@ -10,6 +12,8 @@ public class SiteController : ControllerBase
 {
     private readonly ISiteService _siteService;
     public SiteController(ISiteService siteService) { _siteService = siteService; }
+    private long GetCurrentUserId() =>
+        long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet("pages/{pageKey}")]
     public async Task<IActionResult> GetPage(string pageKey)
@@ -26,8 +30,8 @@ public class SiteController : ControllerBase
     [HttpPost("contact")]
     public async Task<IActionResult> SendContactMessage([FromBody] CreateContactMessageDto dto)
     {
-        await _siteService.CreateContactMessageAsync(dto);
-        return Ok(new { success = true, message = "تم إرسال رسالتك بنجاح" });
+        var result = await _siteService.CreateContactMessageAsync(dto);
+        return Ok(new { success = true, data = result, message = "تم إرسال رسالتك بنجاح" });
     }
 
     [HttpGet("blog")]
@@ -54,5 +58,32 @@ public class SiteController : ControllerBase
     {
         var packages = await _siteService.GetAllActivePackagesAsync();
         return Ok(new { success = true, data = packages });
+    }
+
+    [Authorize]
+    [HttpGet("tickets/{id}")]
+    public async Task<IActionResult> GetMyTicket(long id)
+    {
+        var userId = GetCurrentUserId();
+        var msg = await _siteService.GetCustomerTicketByIdAsync(id, userId);
+        if (msg == null) return NotFound(new { success = false, message = "التذكرة غير موجودة" });
+        return Ok(new { success = true, data = msg });
+    }
+
+    [Authorize]
+    [HttpPost("tickets/{id}/replies")]
+    public async Task<IActionResult> AddMyTicketReply(long id, [FromBody] CreateTicketReplyDto dto)
+    {
+        var userId = GetCurrentUserId();
+        var userName = User.FindFirstValue(ClaimTypes.Name) ?? "عميل";
+        try
+        {
+            var reply = await _siteService.AddCustomerTicketReplyAsync(id, dto, userId, userName);
+            return Ok(new { success = true, data = reply, message = "تم إضافة ردك" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
     }
 }

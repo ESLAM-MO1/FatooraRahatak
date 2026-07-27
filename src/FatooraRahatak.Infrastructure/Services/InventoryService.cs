@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using FatooraRahatak.Application.Common;
 using FatooraRahatak.Application.DTOs.Inventory;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Inventory;
@@ -23,7 +24,7 @@ public class InventoryService : IInventoryService
             throw new InvalidOperationException("المتجر غير موجود");
 
         var currentCount = await _context.Warehouses.CountAsync(w => w.StoreId == storeId);
-        if (currentCount >= store.Package.MaxWarehouses)
+        if (!PackageLimitHelper.IsWithinLimit(store.Package.MaxWarehouses, currentCount))
             throw new InvalidOperationException($"وصلت للحد الأقصى لعدد المخازن في باقتك ({store.Package.MaxWarehouses}). قم بترقية باقتك.");
 
         var warehouse = new Warehouse

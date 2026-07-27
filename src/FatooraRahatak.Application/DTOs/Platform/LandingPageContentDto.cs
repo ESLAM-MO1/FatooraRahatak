@@ -19,10 +19,10 @@ public class LandingPageContentDto
 
 public class HeroContent
 {
-    public string Title { get; set; } = "منصة متكاملة لإدارة\nمتجرك بالكامل";
-    public string Description { get; set; } = "الفواتير، روابط الدفع، الكاشير، المتجر الإلكتروني، بوابة الدفع — كل ما تحتاجه في نظام واحد لتنمية أعمالك.";
+    public string Title { get; set; } = "فاتورة راحتك\nنمِّ عملك بذكاء";
+    public string Description { get; set; } = "اخترنا لك أفضل أدوات التجارة الإلكترونية تحت سقف واحد. من المتجر الإلكتروني، إلى فواتير المبيعات والمشتريات، والقسائم الإلكترونية، ونظام نقاط البيع، والمدفوعات عبر الإنترنت.";
     public string BackgroundImage { get; set; } = "";
-    public string PrimaryCta { get; set; } = "ابدأ الآن مجانًا";
+    public string PrimaryCta { get; set; } = "ابدأ مجاناً";
     public string PrimaryCtaHref { get; set; } = "/register";
     public string SecondaryCta { get; set; } = "اعرف أكثر";
     public string SecondaryCtaHref { get; set; } = "#";
@@ -42,7 +42,8 @@ public class StatItem
 
 public class VideoSectionContent
 {
-    public string Title { get; set; } = "كل ما تحتاجه في منصة واحدة";
+    public string Title { get; set; } = "كل احتياجات تجارتك في منصة واحدة";
+    public string Description { get; set; } = "تواصل مع عملائك بسهولة وأبقهم على اطلاع دائم. أرسل روابط الدفع والفواتير عبر وسائل التواصل الاجتماعي لتوفير تجربة دفع سلسة.";
     public string VideoUrl { get; set; } = "";
 }
 
@@ -57,15 +58,15 @@ public class FeatureContent
 
 public class DistinctiveSectionContent
 {
-    public string Title { get; set; } = "ما الذي يميزنا؟";
+    public string Title { get; set; } = "لماذا تختار فاتورة راحتك Faturat Rahatik؟";
     public List<DistinctiveCard> Cards { get; set; } = new()
     {
-        new(){ Title = "أمان وخصوصية عالية", Description = "بياناتك مشفرة ومحمية بأعلى معايير الأمان العالمية." },
+        new(){ Title = "أدوات متعددة في نظام واحد", Description = "المتجر، الفواتير، الكاشير، روابط الدفع، والمزيد في منصة واحدة." },
         new(){ Title = "واجهات سهلة الاستخدام", Description = "تصميم عصري وبسيط يسهل على الجميع استخدامه دون تعقيد." },
-        new(){ Title = "أدوات عديدة في نظام واحد", Description = "المتجر، الفواتير، الكاشير، روابط الدفع، والمزيد في منصة واحدة." },
+        new(){ Title = "أمان وخصوصية عاليتان", Description = "بياناتك مشفرة ومحمية بأعلى معايير الأمان العالمية." },
     };
-    public string CtaText { get; set; } = "شاهد كل المزايا";
-    public string CtaHref { get; set; } = "#";
+    public string CtaText { get; set; } = "";
+    public string CtaHref { get; set; } = "";
 }
 
 public class DistinctiveCard

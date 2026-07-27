@@ -47,7 +47,6 @@ function VerifyAccountContent() {
 
   const [email, setEmail] = useState(emailFromQuery);
   const [code, setCode] = useState("");
-  const [devCode, setDevCode] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [verified, setVerified] = useState(false);
@@ -57,7 +56,6 @@ function VerifyAccountContent() {
   const handleSendCode = async () => {
     setError("");
     setSuccessMessage("");
-    setDevCode("");
 
     if (!email) {
       setError(t("auth.enterEmailFirst"));
@@ -68,9 +66,6 @@ function VerifyAccountContent() {
     try {
       const response = await api.post(`/auth/send-verification-code?email=${encodeURIComponent(email)}`);
       setSuccessMessage(response.data.message || t("auth.codeSent"));
-      if (response.data.code) {
-        setDevCode(response.data.code);
-      }
     } catch (err: any) {
       setError(err.response?.data?.message || t("error.serverError"));
     } finally {
@@ -116,12 +111,6 @@ function VerifyAccountContent() {
           {successMessage && (
             <div className="bg-[var(--green-soft)] border border-[#bfe8d7] text-[var(--green)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
               {successMessage}
-            </div>
-          )}
-
-          {devCode && (
-            <div className="bg-[var(--gold-soft)] border border-[#e3d9ad] text-[var(--gold-deep)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-              {t("auth.devModeCode")} <span className="font-bold">{devCode}</span>
             </div>
           )}
 

@@ -10,7 +10,16 @@ using FatooraRahatak.Domain.Entities.Sales;
 using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Entities.Orders;
 using FatooraRahatak.Domain.Entities.Notifications;
+using FatooraRahatak.Domain.Entities.Packages;
+using FatooraRahatak.Domain.Entities.Payments;
+using FatooraRahatak.Domain.Entities.Products;
 using FatooraRahatak.Domain.Entities.Accounting;
+using FatooraRahatak.Domain.Entities.Audit;
+using FatooraRahatak.Domain.Entities.Platform;
+using FatooraRahatak.Domain.Entities.Platform.Domains;
+using FatooraRahatak.Domain.Entities.Roles;
+using FatooraRahatak.Domain.Entities.Sales;
+using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Infrastructure.Data;
@@ -50,6 +59,7 @@ public class AppDbContext : DbContext
     public DbSet<StockTransferItem> StockTransferItems => Set<StockTransferItem>();
     public DbSet<DamagedStock> DamagedStocks => Set<DamagedStock>();
     public DbSet<VerificationCode> VerificationCodes => Set<VerificationCode>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<StockCount> StockCounts => Set<StockCount>();
     public DbSet<StockCountItem> StockCountItems => Set<StockCountItem>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
@@ -76,7 +86,16 @@ public class AppDbContext : DbContext
     public DbSet<SitePage> SitePages => Set<SitePage>();
     public DbSet<SiteFaqItem> SiteFaqItems => Set<SiteFaqItem>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
+    public DbSet<TicketReply> TicketReplies => Set<TicketReply>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ManagedDomain> ManagedDomains => Set<ManagedDomain>();
+    public DbSet<SslCertificate> SslCertificates => Set<SslCertificate>();
+    public DbSet<DnsRecord> DnsRecords => Set<DnsRecord>();
+    public DbSet<RedirectRule> RedirectRules => Set<RedirectRule>();
+    public DbSet<ProfessionalEmailSetup> ProfessionalEmailSetups => Set<ProfessionalEmailSetup>();
+    public DbSet<DomainRegistrationRequest> DomainRegistrationRequests => Set<DomainRegistrationRequest>();
+    public DbSet<DomainBlacklistEntry> DomainBlacklistEntries => Set<DomainBlacklistEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -532,6 +551,18 @@ public class AppDbContext : DbContext
             .HasIndex(p => p.SlugAr)
             .IsUnique();
 
+        modelBuilder.Entity<TicketReply>()
+            .HasOne(r => r.Ticket)
+            .WithMany(t => t.TicketReplies)
+            .HasForeignKey(r => r.TicketId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ContactMessage>()
+            .HasOne(m => m.User)
+            .WithMany()
+            .HasForeignKey(m => m.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Order>()
             .HasIndex(o => o.OrderNumber)
             .IsUnique();
@@ -724,6 +755,28 @@ public class AppDbContext : DbContext
             .Property(it => it.UnitPrice).HasPrecision(14, 2);
         modelBuilder.Entity<InvoiceItem>()
             .Property(it => it.LineTotal).HasPrecision(14, 2);
+
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.Invoice)
+            .WithOne(i => i.Payment)
+            .HasForeignKey<Payment>(p => p.InvoiceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.Order)
+            .WithOne(o => o.Payment)
+            .HasForeignKey<Payment>(p => p.OrderId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.Subscription)
+            .WithOne(s => s.Payment)
+            .HasForeignKey<Payment>(p => p.SubscriptionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Payment>()
+            .Property(p => p.Amount)
+            .HasPrecision(14, 2);
 
         modelBuilder.Entity<Voucher>()
             .HasOne(v => v.Store)

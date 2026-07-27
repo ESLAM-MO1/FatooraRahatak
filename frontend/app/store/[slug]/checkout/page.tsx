@@ -118,6 +118,22 @@ export default function CheckoutPage() {
       if (guestPhone.trim()) {
         sessionStorage.setItem(`order_phone_${orderNumber}`, guestPhone.trim());
       }
+
+      // Create payment link and redirect
+      try {
+        const payRes = await api.post("/api/v1/payments/create-link", {
+          orderNumber,
+          amount: cart.subtotal,
+          currency: "SAR",
+          callbackUrl: `${window.location.origin}/store/${slug}/orders/${orderNumber}`,
+        });
+        if (payRes.data.success && payRes.data.data.paymentUrl) {
+          window.location.href = payRes.data.data.paymentUrl;
+          return;
+        }
+      } catch {
+        // Payment creation failed, still redirect to order page
+      }
       router.push(`/store/${slug}/orders/${orderNumber}`);
     } catch (err: any) {
       setError(err.response?.data?.message || t("checkout.errorPlacingOrder"));

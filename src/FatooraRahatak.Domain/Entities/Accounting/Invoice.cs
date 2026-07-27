@@ -1,7 +1,8 @@
 using FatooraRahatak.Domain.Common;
-using FatooraRahatak.Domain.Enums;
+using FatooraRahatak.Domain.Entities.Payments;
 using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Domain.Entities.Accounting;
 
@@ -18,6 +19,7 @@ public class Invoice : BaseEntity
     public string? PartyName { get; set; }
 
     public InvoicePaymentMethod PaymentMethod { get; set; }
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 
     public decimal SubTotal { get; set; }
     public decimal TaxAmount { get; set; }
@@ -34,4 +36,5 @@ public class Invoice : BaseEntity
     public User CreatedBy { get; set; } = null!;
     public JournalEntry? JournalEntry { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();
+    public Payment? Payment { get; set; }
 }

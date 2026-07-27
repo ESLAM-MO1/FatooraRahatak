@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useParams, usePathname } from "next/navigation";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
 import { StoreProvider, StoreData, StoreMethodInfo } from "@/components/StoreContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
@@ -35,11 +37,12 @@ const TEMPLATES: Record<string, React.ComponentType<StoreTemplateProps>> = {
 };
 
 function LoadingFallback() {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#f7f8fa" }} dir="rtl">
       <div className="flex flex-col items-center gap-3">
         <span className="w-7 h-7 rounded-full border-[3px] border-[var(--blue)] border-t-transparent animate-spin" />
-        <p className="text-sm text-gray-500">جاري تحميل المتجر...</p>
+        <p className="text-sm text-gray-500">{t("store.loadingStore") || "جاري تحميل المتجر..."}</p>
       </div>
     </div>
   );

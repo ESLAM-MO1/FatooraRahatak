@@ -50,6 +50,7 @@ export const ICONS = {
   filter: "M4 6h16M4 12h12M4 18h8",
   hash: "M9 3 5 21M19 3l-4 18M2 9h20M2 15h20",
   share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
+  printer: "M6 9V3h12v6M6 13h12v8H6v-8ZM6 15H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2M10 17h4",
 };
 
 export default function Icon({

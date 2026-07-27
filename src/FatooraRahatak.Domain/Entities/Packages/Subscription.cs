@@ -1,6 +1,7 @@
 using FatooraRahatak.Domain.Common;
-using FatooraRahatak.Domain.Enums;
+using FatooraRahatak.Domain.Entities.Payments;
 using FatooraRahatak.Domain.Entities.Stores;
+using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Domain.Entities.Packages;
 
@@ -17,4 +18,5 @@ public class Subscription : BaseEntity
 
     public Store Store { get; set; } = null!;
     public Package Package { get; set; } = null!;
+    public Payment? Payment { get; set; }
 }

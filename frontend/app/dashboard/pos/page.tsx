@@ -231,7 +231,7 @@ export default function CashierPage() {
 
       {showOpenShift && <div className="modal-overlay" onClick={() => setShowOpenShift(false)}>
         <div className="modal-card max-w-sm" onClick={e => e.stopPropagation()}>
-          <h2 className="text-[18px] font-bold mb-4">{t("pos.openShiftTitle")}</h2>
+          <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold">{t("pos.openShiftTitle")}</h2><button onClick={() => setShowOpenShift(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
           <div className="mb-4">
             <label>{t("pos.startingCash")}</label>
             <div className="field-shell mt-1"><input type="number" value={startingCash} onChange={e => setStartingCash(e.target.value)} /></div>
@@ -245,7 +245,7 @@ export default function CashierPage() {
 
       {showCloseShift && <div className="modal-overlay" onClick={() => setShowCloseShift(false)}>
         <div className="modal-card max-w-sm" onClick={e => e.stopPropagation()}>
-          <h2 className="text-[18px] font-bold mb-4">{t("pos.closeShiftTitle")}</h2>
+          <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold">{t("pos.closeShiftTitle")}</h2><button onClick={() => setShowCloseShift(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
           <div className="mb-2 text-[13px]"><span className="text-[var(--sub)]">{t("pos.sales")}: </span>{shift?.totalSales} ر.س</div>
           <div className="mb-4">
             <label>{t("pos.actualCash")}</label>

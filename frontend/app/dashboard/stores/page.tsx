@@ -18,6 +18,7 @@ interface Store {
   packageName: string;
   status: string;
   createdAt: string;
+  packageConsumptionPercent: number;
 }
 
 const statusLabel = (status: string, t: (key: string) => string) => {
@@ -199,6 +200,7 @@ export default function StoresPage() {
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.owner")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.email")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.package")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.consumption")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.status")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.registrationDate")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("common.actions")}</th>
@@ -220,6 +222,37 @@ export default function StoresPage() {
                       {store.ownerEmail}
                     </td>
                     <td className="p-3 text-[var(--sub)]">{store.packageName}</td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${Math.min(store.packageConsumptionPercent, 100)}%`,
+                              backgroundColor:
+                                store.packageConsumptionPercent > 90
+                                  ? "#ef4444"
+                                  : store.packageConsumptionPercent >= 70
+                                  ? "#f59e0b"
+                                  : "#10b981",
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="text-[12px] font-bold shrink-0"
+                          style={{
+                            color:
+                              store.packageConsumptionPercent > 90
+                                ? "#ef4444"
+                                : store.packageConsumptionPercent >= 70
+                                ? "#f59e0b"
+                                : "#10b981",
+                          }}
+                        >
+                          {store.packageConsumptionPercent}%
+                        </span>
+                      </div>
+                    </td>
                     <td className="p-3">
                       <span className={statusBadgeClass(store.status)}>{statusLabel(store.status, t)}</span>
                     </td>

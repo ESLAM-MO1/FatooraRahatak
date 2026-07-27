@@ -11,7 +11,14 @@ D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\AutoMapper.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Azure.Core.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Azure.Identity.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\BCrypt-Net-Next.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\ClosedXML.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\ClosedXML.Parser.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\DocumentFormat.OpenXml.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\DocumentFormat.OpenXml.Framework.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\ExcelNumberFormat.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\FluentValidation.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\FluentValidation.AspNetCore.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\FluentValidation.DependencyInjectionExtensions.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Google.Apis.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Google.Apis.Auth.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Google.Apis.Core.dll
@@ -46,6 +53,8 @@ D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.SqlServer.Server.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Microsoft.VisualStudio.SolutionPersistence.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Mono.TextTemplating.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Newtonsoft.Json.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\RBush.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\SixLabors.Fonts.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.Swagger.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerGen.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\Swashbuckle.AspNetCore.SwaggerUI.dll
@@ -58,6 +67,7 @@ D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Composition.Runtime.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Composition.TypedParts.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Configuration.ConfigurationManager.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
+D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.IO.Packaging.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Management.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Memory.Data.dll
 D:\SAAS\src\FatooraRahatak.API\bin\Debug\net10.0\System.Security.Cryptography.ProtectedData.dll

@@ -178,6 +178,10 @@ export default function PackagesPage() {
           {packages.length === 0 && (
             <p className="text-center text-[var(--sub)] py-12">{t("packages.noPackages")}</p>
           )}
+
+          <p className="text-center text-[12px] text-[var(--sub)] mt-12 max-w-2xl mx-auto leading-relaxed">
+            {t("packages.refundPolicy")}
+          </p>
         </div>
       </div>
     </SiteLayout>

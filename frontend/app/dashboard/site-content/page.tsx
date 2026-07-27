@@ -10,18 +10,23 @@ import "@/lib/i18n/config";
 
 import type { TFunction } from "i18next";
 
-type TabKey = "homepage" | "features" | "about" | "contact";
+type TabKey = "homepage" | "features" | "about" | "faq" | "contact";
 
 const TABS: { key: TabKey; labelKey: string }[] = [
   { key: "homepage", labelKey: "admin.homepage" },
   { key: "features", labelKey: "admin.features" },
   { key: "about", labelKey: "admin.about" },
+  { key: "faq", labelKey: "admin.faq" },
   { key: "contact", labelKey: "admin.contact" },
 ];
 
 const FEATURE_PAGES = [
-  { key: "ecommerce", labelKey: "page.ecommerce" },
+  { key: "accounting-system", labelKey: "page.accountingSystem" },
+  { key: "pos-system", labelKey: "page.posSystem" },
   { key: "invoicing", labelKey: "page.invoicing" },
+  { key: "ecommerce", labelKey: "page.ecommerce" },
+  { key: "inventory-management", labelKey: "page.inventoryManagement" },
+  { key: "smart-reports", labelKey: "page.smartReports" },
   { key: "payment-links", labelKey: "page.paymentLinks" },
   { key: "pos", labelKey: "page.pos" },
   { key: "payment-gateway", labelKey: "page.paymentGateway" },
@@ -33,8 +38,10 @@ const ABOUT_PAGES = [
   { key: "careers", labelKey: "page.careers" },
   { key: "affiliate-marketing", labelKey: "page.affiliate" },
   { key: "free-tools", labelKey: "page.freeTools" },
-  { key: "security-standards", labelKey: "page.security" },
-  { key: "agency-program", labelKey: "page.agency" },
+  { key: "terms-of-use", labelKey: "page.terms" },
+  { key: "privacy-policy", labelKey: "page.privacy" },
+  { key: "shipping-policy", labelKey: "page.shippingPolicy" },
+  { key: "return-policy", labelKey: "page.returnPolicy" },
 ];
 
 const HELP_PAGES = [
@@ -43,7 +50,10 @@ const HELP_PAGES = [
   { key: "terms-of-use", labelKey: "page.terms" },
 ];
 
-interface ContactMessage { id: number; name: string; email: string; phone: string | null; subject: string; message: string; status: string; createdAt: string }
+interface TicketReply { id: number; replyText: string; repliedByName: string; isAdminReply: boolean; createdAt: string }
+interface ContactMessage { id: number; name: string; email: string; phone: string | null; subject: string; message: string; status: string; ticketNumber: string; createdAt: string; updatedAt: string; replies: TicketReply[] }
+
+const STATUS_OPTIONS = ["New", "InProgress", "Replied", "Closed"];
 
 export default function SiteContentPage() {
   const { t } = useTranslation();
@@ -78,6 +88,7 @@ export default function SiteContentPage() {
       {activeTab === "homepage" && <HomepageEditor />}
       {activeTab === "features" && <FeaturesManager />}
       {activeTab === "about" && <AboutManager />}
+      {activeTab === "faq" && <FaqManager />}
       {activeTab === "contact" && <ContactManager />}
     </div>
   );
@@ -283,7 +294,7 @@ function HomepageEditor() {
   );
 }
 
-/* ── Page Editor (reusable, robust) ── */
+/* ── Page Editor ── */
 function PageEditor({ pageKey }: { pageKey: string }) {
   const { t } = useTranslation();
   const [titleAr, setTitleAr] = useState("");
@@ -298,9 +309,9 @@ function PageEditor({ pageKey }: { pageKey: string }) {
   useEffect(() => {
     setLoading(true); setError("");
     api.get(`/admin/site/pages/${pageKey}`).then(r => {
-      const d = r.data.data;
-      setTitleAr(d.titleAr || ""); setContentAr(d.contentAr || "");
-      setTitleEn(d.titleEn || ""); setContentEn(d.contentEn || "");
+      const d = r?.data?.data;
+      setTitleAr(d?.titleAr ?? ""); setContentAr(d?.contentAr ?? "");
+      setTitleEn(d?.titleEn ?? ""); setContentEn(d?.contentEn ?? "");
     }).catch(() => setError(t("error.serverError"))).finally(() => setLoading(false));
   }, [pageKey]);
 
@@ -368,7 +379,131 @@ function AboutManager() {
   );
 }
 
-/* ── Contact Manager ── */
+/* ── FAQ Manager ── */
+function FaqManager() {
+  const { t } = useTranslation();
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try { const r = await api.get("/admin/site/faq"); setItems(r.data.data || []); }
+    catch { setError(t("error.serverError")); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const save = async () => {
+    if (!editing) return;
+    setSaving(true); setSuccess(""); setError("");
+    try {
+      const body = { questionAr: editing.questionAr, questionEn: editing.questionEn, answerAr: editing.answerAr, answerEn: editing.answerEn, displayOrder: editing.displayOrder, isPublished: editing.isPublished };
+      if (editing.id) {
+        await api.put(`/admin/site/faq/${editing.id}`, body);
+      } else {
+        await api.post("/admin/site/faq", body);
+      }
+      setSuccess(t("admin.saveSuccess"));
+      setEditing(null);
+      load();
+    } catch { setError(t("admin.saveError")); }
+    finally { setSaving(false); }
+  };
+
+  const togglePublish = async (id: number) => {
+    try { await api.put(`/admin/site/faq/${id}/toggle-publish`); load(); }
+    catch { setError(t("error.serverError")); }
+  };
+
+  const remove = async (id: number) => {
+    if (!confirm(t("common.confirmDelete"))) return;
+    try { await api.delete(`/admin/site/faq/${id}`); load(); }
+    catch { setError(t("error.serverError")); }
+  };
+
+  if (loading) return <LoadingState />;
+
+  return (
+    <div className="card p-6 space-y-5">
+      {success && <div className="alert alert--success">{success}</div>}
+      {error && <div className="alert alert--danger">{error}</div>}
+      <p className="text-[13px] text-[var(--sub)]">{t("admin.manageFaq")}</p>
+
+      <div className="space-y-4">
+        {items.map((item: any) => (
+          <div key={item.id} className="border rounded-lg p-4" style={{ borderColor: "var(--border)" }}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <p className="text-[14px] font-bold">{item.questionAr}</p>
+                <p className="text-[12px] text-[var(--sub)] mt-1 line-clamp-2">{item.answerAr}</p>
+                <p className="text-[11px] text-[var(--sub)] mt-1">EN: {item.questionEn}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => togglePublish(item.id)} className={`btn btn-sm ${item.isPublished ? "btn-outline" : "btn-warning"}`} title={item.isPublished ? t("common.hide") : t("common.show")}>
+                  {item.isPublished ? t("common.show") : t("common.hide")}
+                </button>
+                <button onClick={() => setEditing({ ...item })} className="btn btn-outline btn-sm">{t("common.edit")}</button>
+                <button onClick={() => remove(item.id)} className="btn btn-danger btn-sm">{t("common.delete")}</button>
+              </div>
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && <p className="text-center text-[var(--sub)] py-4">{t("common.noData")}</p>}
+      </div>
+
+      <button onClick={() => setEditing({ questionAr: "", questionEn: "", answerAr: "", answerEn: "", displayOrder: items.length + 1, isPublished: true })} className="btn btn-primary btn-sm">
+        + {t("admin.addFaq")}
+      </button>
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditing(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[16px] font-bold">{editing.id ? t("common.edit") : t("admin.addFaq")}</h3>
+            <div>
+              <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.questionAr")}</label>
+              <input dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={editing.questionAr} onChange={e => setEditing({...editing, questionAr: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.answerAr")}</label>
+              <textarea dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',minHeight:'100px'}} value={editing.answerAr} onChange={e => setEditing({...editing, answerAr: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.questionEn")}</label>
+              <input dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={editing.questionEn} onChange={e => setEditing({...editing, questionEn: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.answerEn")}</label>
+              <textarea dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',minHeight:'100px'}} value={editing.answerEn} onChange={e => setEditing({...editing, answerEn: e.target.value})} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.displayOrder")}</label>
+                <input type="number" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={editing.displayOrder} onChange={e => setEditing({...editing, displayOrder: parseInt(e.target.value) || 0})} />
+              </div>
+              <div className="flex items-end pb-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={editing.isPublished} onChange={e => setEditing({...editing, isPublished: e.target.checked})} />
+                  <span className="text-[13px]">{t("common.published")}</span>
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? t("admin.saving") : t("common.save")}</button>
+              <button onClick={() => setEditing(null)} className="btn btn-outline">{t("common.cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Contact / Support Tickets Manager ── */
 function ContactManager() {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(HELP_PAGES[0].key);
@@ -389,55 +524,229 @@ function ContactManager() {
   );
 }
 
-/* ── Messages List ── */
+/* ── Status Helpers ── */
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  New: "contact.statusNew",
+  InProgress: "contact.statusInProgress",
+  Replied: "contact.statusReplied",
+  Closed: "contact.statusClosed"
+};
+const STATUS_BADGES: Record<string, string> = {
+  New: "badge badge--blue",
+  InProgress: "badge badge--yellow",
+  Replied: "badge badge--green",
+  Closed: "badge badge--gray"
+};
+
+function fmtDate(s: string, locale: string) {
+  return new Date(s).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+/* ── Ticket Detail Modal ── */
+function TicketDetailModal({ ticket, onClose, onStatusChange, onReply }: { ticket: ContactMessage; onClose: () => void; onStatusChange: (id: number, status: string) => void; onReply: (id: number, text: string) => void }) {
+  const { t, i18n } = useTranslation();
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const handleReply = async () => {
+    if (!replyText.trim()) return;
+    setSending(true);
+    await onReply(ticket.id, replyText);
+    setReplyText("");
+    setSending(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b" style={{ borderColor: "var(--border)" }}>
+          <h3 className="text-[16px] font-bold text-[var(--ink)]">{t("admin.ticketDetails")} <span className="text-[var(--blue)]" dir="ltr">{ticket.ticketNumber}</span></h3>
+          <button onClick={onClose} className="btn btn-outline btn-sm">×</button>
+        </div>
+        <div className="p-6 space-y-5">
+          <div className="grid grid-cols-2 gap-4 text-[13px]">
+            <div><span className="text-[var(--sub)]">{t("auth.name")}:</span> <span className="font-medium">{ticket.name}</span></div>
+            <div><span className="text-[var(--sub)]">{t("auth.email")}:</span> <span>{ticket.email}</span></div>
+            <div><span className="text-[var(--sub)]">{t("auth.phone")}:</span> <span>{ticket.phone || "-"}</span></div>
+            <div><span className="text-[var(--sub)]">{t("common.status")}:</span> <span className={STATUS_BADGES[ticket.status] || "badge badge--gray"}>{t(STATUS_LABEL_KEYS[ticket.status] || ticket.status)}</span></div>
+            <div className="col-span-2"><span className="text-[var(--sub)]">{t("admin.messageSubject")}:</span> <span className="font-medium">{ticket.subject}</span></div>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4 text-[13px] leading-relaxed whitespace-pre-wrap">{ticket.message}</div>
+
+          {/* Replies */}
+          {ticket.replies && ticket.replies.length > 0 && (
+            <div>
+              <h4 className="text-[14px] font-bold mb-3">{t("admin.ticketReplies")}</h4>
+              <div className="space-y-3">
+                {ticket.replies.map(r => (
+                  <div key={r.id} className={`p-3 rounded-lg text-[13px] ${r.isAdminReply ? "bg-[var(--blue-50)] mr-8" : "bg-gray-50 ml-8"}`}>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-bold text-[12px]">{r.repliedByName}</span>
+                      <span className="text-[11px] text-[var(--sub)]">{fmtDate(r.createdAt, i18n.language)}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap">{r.replyText}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Reply Form */}
+          <div>
+            <h4 className="text-[14px] font-bold mb-2">{t("admin.addReply")}</h4>
+            <textarea className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} rows={3} value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={t("admin.writeReply")} />
+            <div className="flex gap-2 mt-2">
+              <button onClick={handleReply} disabled={sending || !replyText.trim()} className="btn btn-primary btn-sm">{sending ? t("common.loading") : t("common.send")}</button>
+              <select className="rounded-lg border px-3 py-1.5 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={ticket.status} onChange={e => onStatusChange(ticket.id, e.target.value)}>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{t(STATUS_LABEL_KEYS[s] || s)}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Messages / Tickets List ── */
 function MessagesList() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTicket, setSelectedTicket] = useState<ContactMessage | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
-  useEffect(() => {
+  const loadMessages = useCallback(async (status?: string, search?: string) => {
     setLoading(true); setError("");
-    api.get("/admin/site/contact").then(r => setMessages(r.data.data || [])).catch(() => setError(t("error.serverError"))).finally(() => setLoading(false));
+    try {
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      if (search) params.set("search", search);
+      const qs = params.toString();
+      const res = await api.get(`/admin/site/contact-messages${qs ? `?${qs}` : ""}`);
+      setMessages(res.data.data || []);
+    } catch { setError(t("error.serverError")); }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { loadMessages(statusFilter, searchQuery); }, [statusFilter, searchQuery, loadMessages]);
 
   const updateStatus = async (id: number, status: string) => {
     setUpdatingId(id); setError("");
-    try { await api.put(`/admin/site/contact/${id}/status`, { status }); setMessages(prev => prev.map(m => m.id === id ? { ...m, status } : m)); }
-    catch { setError(t("error.serverError")); } finally { setUpdatingId(null); }
+    try {
+      await api.put(`/admin/site/contact-messages/${id}/status`, { status });
+      setMessages(prev => prev.map(m => m.id === id ? { ...m, status } : m));
+      if (selectedTicket?.id === id) setSelectedTicket(prev => prev ? { ...prev, status } : null);
+    } catch { setError(t("error.serverError")); } finally { setUpdatingId(null); }
   };
 
-  const fmt = (s: string) => new Date(s).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const handleReply = async (id: number, replyText: string) => {
+    setError("");
+    try {
+      const res = await api.post(`/admin/site/contact-messages/${id}/replies`, { replyText });
+      const newReply = res.data.data;
+      setMessages(prev => prev.map(m =>
+        m.id === id
+          ? { ...m, status: "Replied", replies: [...(m.replies || []), newReply] }
+          : m
+      ));
+      if (selectedTicket?.id === id) {
+        setSelectedTicket(prev => prev ? { ...prev, status: "Replied", replies: [...(prev.replies || []), newReply] } : null);
+      }
+    } catch { setError(t("error.serverError")); }
+  };
 
-  const STATUS_LABELS: Record<string, string> = { New: t("admin.statusNew"), Read: t("admin.statusRead"), Resolved: t("admin.statusResolved") };
-  const STATUS_BADGES: Record<string, string> = { New: "badge badge--yellow", Read: "badge badge--blue", Resolved: "badge badge--green" };
+  const handleDelete = async (id: number) => {
+    setUpdatingId(id); setError("");
+    try {
+      await api.delete(`/admin/site/contact-messages/${id}`);
+      setMessages(prev => prev.filter(m => m.id !== id));
+      if (selectedTicket?.id === id) setSelectedTicket(null);
+      setDeleteConfirmId(null);
+    } catch { setError(t("error.serverError")); } finally { setUpdatingId(null); }
+  };
 
-  if (loading) return <LoadingState />;
+  const openDetails = async (msg: ContactMessage) => {
+    try {
+      const res = await api.get(`/admin/site/contact-messages/${msg.id}`);
+      setSelectedTicket(res.data.data);
+    } catch {
+      setSelectedTicket(msg);
+    }
+  };
+
+  if (loading && messages.length === 0) return <LoadingState />;
+
   return (
     <>
       {error && <div className="alert alert--danger mb-4">{error}</div>}
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select className="rounded-lg border px-3 py-2 text-[13px] outline-none" style={{ borderColor: "var(--border)" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="">{t("admin.allStatuses")}</option>
+          {STATUS_OPTIONS.map(s => <option key={s} value={s}>{t(STATUS_LABEL_KEYS[s] || s)}</option>)}
+        </select>
+        <input className="rounded-lg border px-3 py-2 text-[13px] outline-none flex-1 min-w-[200px]" style={{ borderColor: "var(--border)" }} placeholder={t("admin.searchTickets")} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+      </div>
+
       <div className="table-wrap">
         <table>
-          <thead><tr><th>{t("admin.messageId")}</th><th>{t("admin.messageName")}</th><th>{t("admin.messageEmail")}</th><th>{t("admin.messagePhone")}</th><th>{t("admin.messageSubject")}</th><th>{t("admin.messageBody")}</th><th>{t("common.status")}</th><th>{t("admin.messageDate")}</th><th>{t("common.actions")}</th></tr></thead>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>{t("admin.ticketNumber")}</th>
+              <th>{t("admin.messageName")}</th>
+              <th>{t("admin.messageEmail")}</th>
+              <th>{t("admin.messagePhone")}</th>
+              <th>{t("admin.messageSubject")}</th>
+              <th>{t("common.status")}</th>
+              <th>{t("admin.messageDate")}</th>
+              <th>{t("common.actions")}</th>
+            </tr>
+          </thead>
           <tbody>
             {messages.map(msg => (
               <tr key={msg.id}>
                 <td className="text-[var(--sub)]">{msg.id}</td>
+                <td className="font-mono text-[12px] text-[var(--blue)]" dir="ltr">{msg.ticketNumber || "-"}</td>
                 <td className="font-medium">{msg.name}</td>
                 <td className="text-[var(--sub)]">{msg.email}</td>
                 <td className="text-[var(--sub)]">{msg.phone || "-"}</td>
                 <td className="text-[var(--sub)] max-w-[120px] truncate">{msg.subject}</td>
-                <td className="text-[var(--sub)] max-w-[160px] truncate">{msg.message}</td>
-                <td><span className={STATUS_BADGES[msg.status] || "badge badge--gray"}>{STATUS_LABELS[msg.status] || msg.status}</span></td>
-                <td className="text-[var(--sub)] text-[12px] whitespace-nowrap">{fmt(msg.createdAt)}</td>
-                <td><div className="flex gap-1">{msg.status !== "Read" && <button onClick={() => updateStatus(msg.id, "Read")} disabled={updatingId === msg.id} className="btn btn-outline btn-sm">{t("admin.markRead")}</button>}{msg.status !== "Resolved" && <button onClick={() => updateStatus(msg.id, "Resolved")} disabled={updatingId === msg.id} className="btn btn-success btn-sm">{t("admin.markResolved")}</button>}</div></td>
+                <td><span className={STATUS_BADGES[msg.status] || "badge badge--gray"}>{t(STATUS_LABEL_KEYS[msg.status] || msg.status)}</span></td>
+                <td className="text-[var(--sub)] text-[12px] whitespace-nowrap">{fmtDate(msg.createdAt, i18n.language)}</td>
+                <td>
+                  <div className="flex gap-1">
+                    <button onClick={() => openDetails(msg)} className="btn btn-outline btn-sm">{t("admin.view")}</button>
+                    <select className="rounded-lg border px-2 py-1 text-[12px] outline-none" style={{borderColor:'var(--border)'}} value={msg.status} disabled={updatingId === msg.id} onChange={e => updateStatus(msg.id, e.target.value)}>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{t(STATUS_LABEL_KEYS[s] || s)}</option>)}
+          
+                    </select>
+                    {deleteConfirmId === msg.id ? (
+                      <div className="flex gap-1">
+                        <button onClick={() => handleDelete(msg.id)} disabled={updatingId === msg.id} className="btn btn-danger btn-sm">{t("common.confirm")}</button>
+                        <button onClick={() => setDeleteConfirmId(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setDeleteConfirmId(msg.id)} className="btn btn-danger btn-sm">{t("common.delete")}</button>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {messages.length === 0 && <p className="text-center text-[var(--sub)] py-8">{t("admin.noMessages")}</p>}
       </div>
+
+      {selectedTicket && (
+        <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onStatusChange={updateStatus} onReply={handleReply} />
+      )}
     </>
   );
 }

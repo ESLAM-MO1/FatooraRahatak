@@ -1,4 +1,4 @@
-using FatooraRahatak.Domain.Entities.Roles;
+﻿using FatooraRahatak.Domain.Entities.Roles;
 using FatooraRahatak.Domain.Entities.Packages;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Platform;
@@ -306,11 +306,11 @@ public static class DataSeeder
         );
 
         context.Set<SiteFaqItem>().AddRange(
-            new SiteFaqItem { QuestionAr = "هل الباقة المجانية مجانية للأبد؟", AnswerAr = "نعم، الباقة المجانية مجانية مدى الحياة بدون أي رسوم مخفية.", DisplayOrder = 1 },
-            new SiteFaqItem { QuestionAr = "هل يمكنني تغيير باقتي في أي وقت؟", AnswerAr = "نعم، يمكنك الترقية في أي وقت فوريًا. الترقية من باقة أعلى إلى أقل تتطلب خفض استخدامك أولاً.", DisplayOrder = 2 },
-            new SiteFaqItem { QuestionAr = "هل النظام متوافق مع الفاتورة الإلكترونية ZATCA؟", AnswerAr = "نعم، المنصة تدعم الفاتورة الإلكترونية (المرحلة الثانية) مع QR Code والتوقيع الرقمي.", DisplayOrder = 3 },
-            new SiteFaqItem { QuestionAr = "كيف أضيف موظفين لحسابي؟", AnswerAr = "يمكنك دعوة موظفين من لوحة التحكم عبر قسم الموظفين. ستحدد صلاحيات كل موظف حسب دوره.", DisplayOrder = 4 },
-            new SiteFaqItem { QuestionAr = "هل يمكنني استخدام دومين خاص لمتجري؟", AnswerAr = "نعم، يتوفر ربط دومين خاص في باقة التوسع والريادة.", DisplayOrder = 5 }
+            new SiteFaqItem { QuestionAr = "هل الباقة المجانية مجانية للأبد؟", QuestionEn = "Is the free plan free forever?", AnswerAr = "نعم، الباقة المجانية مجانية مدى الحياة بدون أي رسوم مخفية.", AnswerEn = "Yes, the free plan is free forever with no hidden fees.", DisplayOrder = 1 },
+            new SiteFaqItem { QuestionAr = "هل يمكنني تغيير باقتي في أي وقت؟", QuestionEn = "Can I change my plan anytime?", AnswerAr = "نعم، يمكنك الترقية في أي وقت فوريًا. الترقية من باقة أعلى إلى أقل تتطلب خفض استخدامك أولاً.", AnswerEn = "Yes, you can upgrade anytime instantly. Downgrading requires reducing your usage first.", DisplayOrder = 2 },
+            new SiteFaqItem { QuestionAr = "هل النظام متوافق مع الفاتورة الإلكترونية ZATCA؟", QuestionEn = "Is the system ZATCA compliant?", AnswerAr = "نعم، المنصة تدعم الفاتورة الإلكترونية (المرحلة الثانية) مع QR Code والتوقيع الرقمي.", AnswerEn = "Yes, the platform supports e-invoicing (phase 2) with QR Code and digital signature.", DisplayOrder = 3 },
+            new SiteFaqItem { QuestionAr = "كيف أضيف موظفين لحسابي؟", QuestionEn = "How do I add employees to my account?", AnswerAr = "يمكنك دعوة موظفين من لوحة التحكم عبر قسم الموظفين. ستحدد صلاحيات كل موظف حسب دوره.", AnswerEn = "You can invite employees from the dashboard. Set permissions for each employee based on their role.", DisplayOrder = 4 },
+            new SiteFaqItem { QuestionAr = "هل يمكنني استخدام دومين خاص لمتجري؟", QuestionEn = "Can I use a custom domain?", AnswerAr = "نعم، يتوفر ربط دومين خاص في باقة التوسع والريادة.", AnswerEn = "Yes, custom domain is available in the Growth and Enterprise plans.", DisplayOrder = 5 }
         );
 
         context.Set<BlogPost>().AddRange(
@@ -323,18 +323,16 @@ public static class DataSeeder
 
     private static async Task SeedLandingPageContentAsync(AppDbContext context)
     {
-        if (await context.PlatformSettings.AnyAsync(s => s.SettingKey == "landing_page_content")) return;
-
-        var defaultContent = new
+        var newContent = new
         {
             siteName = "فاتورة راحتك",
             siteDescription = "منصة إدارة المتاجر",
             hero = new
             {
-                title = "منصة متكاملة لإدارة\nمتجرك بالكامل",
-                description = "الفواتير، روابط الدفع، الكاشير، المتجر الإلكتروني، بوابة الدفع — كل ما تحتاجه في نظام واحد لتنمية أعمالك.",
+                title = "فاتورة راحتك\nنمِّ عملك بذكاء",
+                description = "اخترنا لك أفضل أدوات التجارة الإلكترونية تحت سقف واحد. من المتجر الإلكتروني، إلى فواتير المبيعات والمشتريات، والقسائم الإلكترونية، ونظام نقاط البيع، والمدفوعات عبر الإنترنت.",
                 backgroundImage = "",
-                primaryCta = "ابدأ الآن مجانًا",
+                primaryCta = "ابدأ مجاناً",
                 primaryCtaHref = "/register",
                 secondaryCta = "اعرف أكثر",
                 secondaryCtaHref = "#",
@@ -344,23 +342,24 @@ public static class DataSeeder
                     new { number = "99.9%", label = "وقت تشغيل" },
                 }
             },
-            videoSection = new { title = "كل ما تحتاجه في منصة واحدة", videoUrl = "" },
+            videoSection = new { title = "كل احتياجات تجارتك في منصة واحدة", description = "تواصل مع عملائك بسهولة وأبقهم على اطلاع دائم. أرسل روابط الدفع والفواتير عبر وسائل التواصل الاجتماعي لتوفير تجربة دفع سلسة.", videoUrl = "" },
             features = new[] {
-                new { title = "المتجر الإلكتروني الخاص بك", description = "أنشئ متجرك الإلكتروني بكل سهولة وأطلق أعمالك على الإنترنت. تحكم في المنتجات، التصنيفات، والعروض.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+                new { title = "متجرك الإلكتروني", description = "حل يتيح لك بيع جميع منتجاتك عن بُعد. اربط متجرك بوسائل التواصل الاجتماعي وحقق نجاح مشروعك بسهولة.", image = "", knowMoreText = "", knowMoreHref = "" },
                 new { title = "روابط الدفع", description = "أرسل روابط دفع احترافية لعملائك واستلم المدفوعات بسرعة وأمان عبر قنوات التواصل المفضلة لديهم.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
-                new { title = "بوابة الدفع الإلكتروني", description = "بوابة دفع متكاملة تدعم جميع طرق الدفع المحلية والعالمية. استلم مدفوعاتك بأمان وسرعة فائقة.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+                new { title = "اجمع المدفوعات بشكل أسرع باستخدام بوابة الدفع", description = "استقبل مدفوعاتك بأمان ووسّع نشاطك محلياً وعالمياً مع أفضل بوابات الدفع في الشرق الأوسط.", image = "", knowMoreText = "", knowMoreHref = "" },
                 new { title = "الكاشير ونقاط البيع", description = "نظام كاشير سريع وسهل لإدارة المبيعات في متجرك الفعلي. يدعم الباركود، الطلبات، والفواتير.", image = "", knowMoreText = "اعرف المزيد", knowMoreHref = "#" },
+                new { title = "استخدم الذكاء الاصطناعي", description = "استفد من أدوات الذكاء الاصطناعي في Faturat Rahatik لإعداد الصور، وإنشاء المحتوى التسويقي، وتطوير متجرك بذكاء.", image = "", knowMoreText = "", knowMoreHref = "" },
             },
             distinctiveSection = new
             {
-                title = "ما الذي يميزنا؟",
+                title = "لماذا تختار فاتورة راحتك Faturat Rahatik؟",
                 cards = new[] {
-                    new { title = "أمان وخصوصية عالية", description = "بياناتك مشفرة ومحمية بأعلى معايير الأمان العالمية." },
+                    new { title = "أدوات متعددة في نظام واحد", description = "المتجر، الفواتير، الكاشير، روابط الدفع، والمزيد في منصة واحدة." },
                     new { title = "واجهات سهلة الاستخدام", description = "تصميم عصري وبسيط يسهل على الجميع استخدامه دون تعقيد." },
-                    new { title = "أدوات عديدة في نظام واحد", description = "المتجر، الفواتير، الكاشير، روابط الدفع، والمزيد في منصة واحدة." },
+                    new { title = "أمان وخصوصية عاليتان", description = "بياناتك مشفرة ومحمية بأعلى معايير الأمان العالمية." },
                 },
-                ctaText = "شاهد كل المزايا",
-                ctaHref = "#"
+                ctaText = "",
+                ctaHref = ""
             },
             footer = new
             {
@@ -370,13 +369,37 @@ public static class DataSeeder
             }
         };
 
-        var json = System.Text.Json.JsonSerializer.Serialize(defaultContent, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
-        context.PlatformSettings.Add(new PlatformSetting
+        var json = System.Text.Json.JsonSerializer.Serialize(newContent, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+
+        // Check if setting already exists
+        var existing = await context.PlatformSettings.FirstOrDefaultAsync(s => s.SettingKey == "landing_page_content");
+        if (existing == null)
         {
-            SettingKey = "landing_page_content",
-            SettingValue = json,
-            UpdatedAt = DateTime.UtcNow
-        });
+            context.PlatformSettings.Add(new PlatformSetting
+            {
+                SettingKey = "landing_page_content",
+                SettingValue = json,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            // Only overwrite if content hasn't been customized (still has old default hero title)
+            try
+            {
+                var old = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(existing.SettingValue);
+                var oldTitle = old.TryGetProperty("hero", out var h) && h.TryGetProperty("title", out var t) ? t.GetString() : "";
+                if (oldTitle == "منصة متكاملة لإدارة\nمتجرك بالكامل")
+                {
+                    existing.SettingValue = json;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            catch
+            {
+                // if parsing fails, leave existing content untouched
+            }
+        }
         await context.SaveChangesAsync();
     }
 
@@ -394,12 +417,18 @@ public static class DataSeeder
             new SitePage { PageKey = "free-tools", TitleAr = "أدوات مجانية", TitleEn = "Free Tools", ContentAr = "<h2>أدوات مجانية</h2><p>هذه الصفحة قيد الإعداد. سيتم إطلاق الأدوات المجانية قريبًا.</p>", ContentEn = "<h2>Free Tools</h2><p>This page is under construction. Free tools will be launched soon.</p>" },
             new SitePage { PageKey = "security-standards", TitleAr = "معايير الأمان", TitleEn = "Security Standards", ContentAr = "<h2>معايير الأمان</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر معايير الأمان قريبًا.</p>", ContentEn = "<h2>Security Standards</h2><p>This page is under construction. Security standards will be published soon.</p>" },
             new SitePage { PageKey = "agency-program", TitleAr = "برنامج الوكالة", TitleEn = "Agency Program", ContentAr = "<h2>برنامج الوكالة</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر تفاصيل برنامج الوكالة قريبًا.</p>", ContentEn = "<h2>Agency Program</h2><p>This page is under construction. Agency program details will be published soon.</p>" },
+            new SitePage { PageKey = "shipping-policy", TitleAr = "سياسة الشحن", TitleEn = "Shipping Policy", ContentAr = "<h2>سياسة الشحن</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر سياسة الشحن قريبًا.</p>", ContentEn = "<h2>Shipping Policy</h2><p>This page is under construction. Shipping policy will be published soon.</p>" },
+            new SitePage { PageKey = "return-policy", TitleAr = "سياسة الاستبدال والاسترجاع", TitleEn = "Return Policy", ContentAr = "<h2>سياسة الاستبدال والاسترجاع</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر سياسة الاستبدال والاسترجاع قريبًا.</p>", ContentEn = "<h2>Return Policy</h2><p>This page is under construction. Return policy will be published soon.</p>" },
         };
 
         var featurePages = new[]
         {
+            new SitePage { PageKey = "accounting-system", TitleAr = "النظام المحاسبي المتكامل", TitleEn = "Integrated Accounting System", ContentAr = "<h2>النظام المحاسبي المتكامل</h2><p>نظام محاسبي متكامل يدير جميع القيود المحاسبية، الحسابات، دفتر الأستاذ، ميزان المراجعة، قائمة الدخل، والميزانية العمومية. يتكامل مع الفواتير والمبيعات والمشتريات لتقديم تقارير مالية دقيقة في الوقت الفعلي.</p>", ContentEn = "<h2>Integrated Accounting System</h2><p>A comprehensive accounting system managing journal entries, accounts, general ledger, trial balance, income statement, and balance sheet. Integrates with invoices, sales, and purchases for real-time financial reporting.</p>" },
+            new SitePage { PageKey = "pos-system", TitleAr = "نظام نقاط البيع POS", TitleEn = "POS System", ContentAr = "<h2>نظام نقاط البيع POS</h2><p>نظام نقاط بيع متطور لإدارة المبيعات في المتاجر الفعلية. يدعم الباركود، إدارة الطلبات، الفواتير الضريبية، طرق دفع متعددة، وتقارير المبيعات اليومية.</p>", ContentEn = "<h2>POS System</h2><p>Advanced point-of-sale system for managing sales in physical stores. Supports barcode scanning, order management, tax invoices, multiple payment methods, and daily sales reports.</p>" },
             new SitePage { PageKey = "ecommerce", TitleAr = "المتجر الإلكتروني", TitleEn = "E-Commerce", ContentAr = "<h2>المتجر الإلكتروني</h2><p>أنشئ متجرك الإلكتروني بكل سهولة وأطلق أعمالك على الإنترنت. تحكم في المنتجات، التصنيفات، والعروض، وادعم طرق دفع متعددة.</p>", ContentEn = "<h2>E-Commerce</h2><p>Create your online store easily and launch your business on the internet.</p>" },
-            new SitePage { PageKey = "invoicing", TitleAr = "نظام الفواتير", TitleEn = "Invoicing System", ContentAr = "<h2>نظام الفواتير</h2><p>نظام فواتير متكامل يدعم الفواتير الضريبية والإلكترونية حسب متطلبات هيئة الزكاة والضريبة والجمارك.</p>", ContentEn = "<h2>Invoicing System</h2><p>Integrated invoicing system supporting tax and electronic invoices.</p>" },
+            new SitePage { PageKey = "invoicing", TitleAr = "نظام الفواتير الإلكترونية", TitleEn = "E-Invoicing System", ContentAr = "<h2>نظام الفواتير الإلكترونية</h2><p>نظام فواتير متكامل يدعم الفواتير الضريبية والإلكترونية حسب متطلبات هيئة الزكاة والضريبة والجمارك (ZATCA).</p>", ContentEn = "<h2>E-Invoicing System</h2><p>Integrated invoicing system supporting tax and electronic invoices compliant with ZATCA requirements.</p>" },
+            new SitePage { PageKey = "inventory-management", TitleAr = "إدارة المخزون", TitleEn = "Inventory Management", ContentAr = "<h2>إدارة المخزون</h2><p>نظام متكامل لإدارة المخزون والمخازن. تتبع الكميات، إعادة الطلب، التحويلات بين المخازن، جرد المخزون، وإدارة التلفيات. تكامل كامل مع المشتريات والمبيعات.</p>", ContentEn = "<h2>Inventory Management</h2><p>Integrated inventory and warehouse management system. Track quantities, reorder levels, inter-warehouse transfers, stock counts, and damage management. Full integration with purchases and sales.</p>" },
+            new SitePage { PageKey = "smart-reports", TitleAr = "التقارير الذكية", TitleEn = "Smart Reports", ContentAr = "<h2>التقارير الذكية</h2><p>مجموعة متكاملة من التقارير الذكية لتحليل أداء متجرك. تقارير المبيعات، المشتريات، المخزون، العملاء، والموظفين مع إمكانية التصدير والطباعة.</p>", ContentEn = "<h2>Smart Reports</h2><p>A comprehensive suite of smart reports to analyze your store's performance. Sales, purchases, inventory, customer, and employee reports with export and print capabilities.</p>" },
             new SitePage { PageKey = "payment-links", TitleAr = "روابط الدفع", TitleEn = "Payment Links", ContentAr = "<h2>روابط الدفع</h2><p>أرسل روابط دفع احترافية لعملائك واستلم المدفوعات بسرعة وأمان عبر قنوات التواصل المفضلة لديهم.</p>", ContentEn = "<h2>Payment Links</h2><p>Send professional payment links to your customers and receive payments quickly and securely.</p>" },
             new SitePage { PageKey = "pos", TitleAr = "الكاشير", TitleEn = "POS", ContentAr = "<h2>الكاشير ونقاط البيع</h2><p>نظام كاشير سريع وسهل لإدارة المبيعات في متجرك الفعلي. يدعم الباركود، الطلبات، والفواتير.</p>", ContentEn = "<h2>POS System</h2><p>Fast and easy POS system for managing sales in your physical store.</p>" },
             new SitePage { PageKey = "payment-gateway", TitleAr = "بوابة الدفع", TitleEn = "Payment Gateway", ContentAr = "<h2>بوابة الدفع الإلكتروني</h2><p>بوابة دفع متكاملة تدعم جميع طرق الدفع المحلية والعالمية. استلم مدفوعاتك بأمان وسرعة فائقة.</p>", ContentEn = "<h2>Payment Gateway</h2><p>Integrated payment gateway supporting all local and global payment methods.</p>" },

@@ -327,11 +327,11 @@ export default function ProductsPage() {
       </div>
 
       {showModal && (
-        <div className="modal-overlay">
-          <div className="card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">
               {editingId ? t("product.edit") : t("product.add")}
-            </h2>
+            </h2><button onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
 
             {actionError && (
               <div className="alert alert--danger">
@@ -362,7 +362,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("product.nameAr")}</label>
                   <div className="field-shell">
@@ -447,7 +447,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("product.basePrice")}</label>
                   <div className="field-shell">
@@ -487,9 +487,7 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("product.weight")}</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="field-shell">
                     <input
                       type="number"
@@ -513,9 +511,8 @@ export default function ProductsPage() {
                     </div>
                   </div>
                 )}
-              </div>
 
-              <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">
                   {submitting ? t("product.saving") : t("common.save")}
                 </button>

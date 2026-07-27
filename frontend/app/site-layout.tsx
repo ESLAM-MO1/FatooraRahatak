@@ -1,16 +1,22 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import Icon from "@/components/Icon";
+import LangSwitch from "@/components/LangSwitch";
 import "@/lib/i18n/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
 const FEATURES_LINKS = [
-  { labelKey: "page.ecommerce", href: "/ecommerce" },
+  { labelKey: "page.accountingSystem", href: "/accounting-system" },
+  { labelKey: "page.posSystem", href: "/pos-system" },
   { labelKey: "page.invoicing", href: "/invoicing" },
+  { labelKey: "page.ecommerce", href: "/ecommerce" },
+  { labelKey: "page.inventoryManagement", href: "/inventory-management" },
+  { labelKey: "page.smartReports", href: "/smart-reports" },
   { labelKey: "page.paymentLinks", href: "/payment-links" },
   { labelKey: "page.pos", href: "/pos" },
   { labelKey: "page.paymentGateway", href: "/payment-gateway" },
@@ -26,10 +32,14 @@ const ABOUT_LINKS = [
 ] as const;
 
 const FOOTER_TOOLS = [
+  { labelKey: "page.accountingSystem", href: "/accounting-system" },
+  { labelKey: "page.posSystem", href: "/pos-system" },
   { labelKey: "page.invoicing", href: "/invoicing" },
+  { labelKey: "page.ecommerce", href: "/ecommerce" },
+  { labelKey: "page.inventoryManagement", href: "/inventory-management" },
+  { labelKey: "page.smartReports", href: "/smart-reports" },
   { labelKey: "page.paymentLinks", href: "/payment-links" },
   { labelKey: "page.pos", href: "/pos" },
-  { labelKey: "page.ecommerce", href: "/ecommerce" },
   { labelKey: "page.paymentGateway", href: "/payment-gateway" },
   { labelKey: "page.websiteIntegration", href: "/website-integration" },
 ] as const;
@@ -37,8 +47,10 @@ const FOOTER_TOOLS = [
 const FOOTER_ABOUT = [
   { labelKey: "page.about", href: "/about" },
   { labelKey: "page.pricing", href: "/packages" },
-  { labelKey: "page.agency", href: "/agency" },
-  { labelKey: "page.security", href: "/security" },
+  { labelKey: "page.terms", href: "/terms" },
+  { labelKey: "page.privacy", href: "/privacy" },
+  { labelKey: "page.shippingPolicy", href: "/shipping-policy" },
+  { labelKey: "page.returnPolicy", href: "/return-policy" },
   { labelKey: "page.affiliate", href: "/affiliate" },
   { labelKey: "page.careers", href: "/careers" },
   { labelKey: "page.freeTools", href: "/free-tools" },
@@ -54,7 +66,9 @@ const FOOTER_HELP = [
 interface BlogPost {
   id: number;
   titleAr: string;
+  titleEn?: string;
   slugAr: string;
+  slugEn?: string;
 }
 
 interface FooterData {
@@ -68,13 +82,19 @@ const DEFAULT_FOOTER: Omit<FooterData, "description" | "copyright"> = {
 };
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [featuresOpen, setFeaturesOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const featuresRef = useRef<HTMLDivElement>(null);
   const aboutRef = useRef<HTMLDivElement>(null);
+  const featuresBtnRef = useRef<HTMLButtonElement>(null);
+  const featuresDropdownRef = useRef<HTMLDivElement>(null);
+  const aboutBtnRef = useRef<HTMLButtonElement>(null);
+  const aboutDropdownRef = useRef<HTMLDivElement>(null);
+  const [featuresPos, setFeaturesPos] = useState<{ top: number; right: number } | null>(null);
+  const [aboutPos, setAboutPos] = useState<{ top: number; right: number } | null>(null);
   const [footer, setFooter] = useState<FooterData>({ description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#" } });
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 
@@ -94,12 +114,53 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (featuresRef.current && !featuresRef.current.contains(e.target as Node)) setFeaturesOpen(false);
-      if (aboutRef.current && !aboutRef.current.contains(e.target as Node)) setAboutOpen(false);
+      const target = e.target as Node;
+      const insideFeaturesBtn = featuresRef.current?.contains(target);
+      const insideFeaturesDropdown = featuresDropdownRef.current?.contains(target);
+      const insideAboutBtn = aboutRef.current?.contains(target);
+      const insideAboutDropdown = aboutDropdownRef.current?.contains(target);
+      if (featuresOpen && !insideFeaturesBtn && !insideFeaturesDropdown) setFeaturesOpen(false);
+      if (aboutOpen && !insideAboutBtn && !insideAboutDropdown) setAboutOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+  }, [featuresOpen, aboutOpen]);
+
+  useLayoutEffect(() => {
+    if (!featuresOpen || !featuresBtnRef.current) return;
+    const update = () => {
+      const btn = featuresBtnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      setFeaturesPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      setFeaturesPos(null);
+    };
+  }, [featuresOpen]);
+
+  useLayoutEffect(() => {
+    if (!aboutOpen || !aboutBtnRef.current) return;
+    const update = () => {
+      const btn = aboutBtnRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      setAboutPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      setAboutPos(null);
+    };
+  }, [aboutOpen]);
 
   return (
     <div>
@@ -120,6 +181,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
           <div className="hidden lg:flex items-center gap-1">
             <div className="relative" ref={featuresRef}>
               <button
+                ref={featuresBtnRef}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-gray-100"
                 style={{ color: "var(--ink)" }}
                 onClick={() => { setFeaturesOpen(!featuresOpen); setAboutOpen(false); }}
@@ -129,27 +191,35 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
-              {featuresOpen && (
+              {featuresOpen && featuresPos && typeof document === "object" && createPortal(
                 <div
-                  ref={featuresRef}
-                  className="absolute top-full right-0 mt-2 w-[580px] rounded-xl border shadow-lg bg-white overflow-hidden z-50"
-                  style={{ borderColor: "var(--border)" }}
+                  ref={featuresDropdownRef}
+                  className="rounded-xl border shadow-lg bg-white overflow-hidden"
+                  style={{
+                    position: "fixed",
+                    top: featuresPos.top,
+                    right: featuresPos.right,
+                    width: "640px",
+                    maxHeight: "calc(100vh - 100px)",
+                    zIndex: 9999,
+                    borderColor: "var(--border)",
+                  }}
                 >
                   <div className="flex">
-                    <div className="flex-1 p-3">
+                    <div className="flex-1 grid grid-cols-2 gap-1.5 p-2">
                       {FEATURES_LINKS.map((link, i) => (
                         <Link
                           key={link.href + i}
                           href={link.href}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-bold transition-colors hover:bg-gray-50"
+                          className="flex items-center gap-2 px-2 py-2 rounded-lg text-[12px] font-bold transition-colors hover:bg-gray-50"
                           style={{ color: "var(--ink)" }}
                           onClick={() => setFeaturesOpen(false)}
                         >
                           <span
-                            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                             style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}
                           >
-                            <Icon name="store" size={18} />
+                            <Icon name="store" size={16} />
                           </span>
                           {t(link.labelKey)}
                         </Link>
@@ -162,21 +232,23 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                       <p className="text-white text-[13px] font-bold mb-2">
                         {t("nav.featuresDropdownTitle")}
                       </p>
-                      <Link
-                        href="#"
+                      <a
+                        href="/features"
                         className="text-white text-[12px] font-bold underline underline-offset-2 opacity-80 hover:opacity-100"
                         onClick={() => setFeaturesOpen(false)}
                       >
                         {t("nav.featuresDropdownBtn")}
-                      </Link>
+                      </a>
                     </div>
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 
             <div className="relative" ref={aboutRef}>
               <button
+                ref={aboutBtnRef}
                 className="flex items-center gap-1 px-3 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-gray-100"
                 style={{ color: "var(--ink)" }}
                 onClick={() => { setAboutOpen(!aboutOpen); setFeaturesOpen(false); }}
@@ -186,11 +258,19 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <path d="M6 9l6 6 6-6" />
                 </svg>
               </button>
-              {aboutOpen && (
+              {aboutOpen && aboutPos && typeof document === "object" && createPortal(
                 <div
-                  ref={aboutRef}
-                  className="absolute top-full right-0 mt-2 w-52 rounded-xl border shadow-lg bg-white overflow-hidden z-50"
-                  style={{ borderColor: "var(--border)" }}
+                  ref={aboutDropdownRef}
+                  className="rounded-xl border shadow-lg bg-white overflow-hidden"
+                  style={{
+                    position: "fixed",
+                    top: aboutPos.top,
+                    right: aboutPos.right,
+                    width: "208px",
+                    maxHeight: "calc(100vh - 100px)",
+                    zIndex: 9999,
+                    borderColor: "var(--border)",
+                  }}
                 >
                   <div className="p-2">
                     {ABOUT_LINKS.map((link, i) => (
@@ -205,7 +285,8 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                       </Link>
                     ))}
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 
@@ -219,6 +300,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="hidden lg:flex items-center gap-2">
+            <LangSwitch />
             <Link
               href="/login"
               className="px-5 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-gray-100"
@@ -287,6 +369,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
               >
                 {t("nav.contact")}
               </Link>
+              <div className="px-3 pt-2">
+                <LangSwitch />
+              </div>
               <hr style={{ borderColor: "var(--border)" }} />
               <div className="flex items-center gap-2 px-3 pt-2">
                 <Link
@@ -370,9 +455,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div className="mt-12 pt-10 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
               <h3 className="text-[17px] font-bold text-white mb-6">{t("footer.blog")}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                {blogPosts.map((post) => (
-                  <Link key={post.id} href={`/blog/${post.slugAr}`} className="block p-5 rounded-xl transition-colors" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
-                    <h4 className="text-[14px] font-bold text-white mb-1">{post.titleAr}</h4>
+                  {blogPosts.map((post) => (
+                  <Link key={post.id} href={i18n.language === "en" && post.slugEn ? `/blog/${post.slugEn}` : `/blog/${post.slugAr}`} className="block p-5 rounded-xl transition-colors" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+                    <h4 className="text-[14px] font-bold text-white mb-1">{i18n.language === "en" && post.titleEn ? post.titleEn : post.titleAr}</h4>
                   </Link>
                 ))}
               </div>

@@ -11,7 +11,6 @@ export default function ForgotPasswordPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [devCode, setDevCode] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -20,15 +19,11 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
-    setDevCode("");
 
     setSending(true);
     try {
-      const response = await api.post("/auth/forgot-password", { email });
-      setSuccessMessage(response.data.message || t("auth.forgotSendSuccess"));
-      if (response.data.code) {
-        setDevCode(response.data.code);
-      }
+      await api.post("/auth/forgot-password", { email });
+      setSuccessMessage(t("auth.forgotSendSuccess"));
     } catch (err: any) {
       setError(err.response?.data?.message || t("error.serverError"));
     } finally {
@@ -64,16 +59,12 @@ export default function ForgotPasswordPage() {
             </div>
           )}
 
-          {devCode && (
-            <div className="bg-[var(--gold-soft)] border border-[#e3d9ad] text-[var(--gold-deep)] px-3.5 py-2.5 rounded-[10px] text-[13.5px] mb-4">
-              {t("auth.devModeCode")} <span className="font-bold">{devCode}</span>
-            </div>
-          )}
-
-          {devCode ? (
-            <button type="button" onClick={goToReset} className="btn-primary w-full py-3.5 text-[15px]">
-              {t("auth.continueReset")}
-            </button>
+          {successMessage ? (
+            <>
+              <button type="button" onClick={goToReset} className="btn-primary w-full py-3.5 text-[15px]">
+                {t("auth.continueReset")}
+              </button>
+            </>
           ) : (
             <form onSubmit={handleSubmit} noValidate>
               <div className="mb-6">
@@ -121,7 +112,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center mt-4">
             <p className="text-[27px] font-extrabold text-[var(--blue-deep)] leading-snug">{t("brand.name")}</p>
             <p className="mt-1.5 text-[13.5px] tracking-[2.5px] uppercase text-[var(--gold)] font-bold">
-              faturat rahatik
+              {t("brand.nameEn")}
             </p>
           </div>
           <div className="flex items-center justify-center gap-2 mt-5">

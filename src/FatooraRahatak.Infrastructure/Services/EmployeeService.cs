@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using FatooraRahatak.Application.Common;
 using FatooraRahatak.Application.DTOs.Employees;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Users;
@@ -24,7 +25,7 @@ public class EmployeeService : IEmployeeService
             throw new InvalidOperationException("المتجر غير موجود");
 
         var currentCount = await _context.Employees.CountAsync(e => e.StoreId == storeId);
-        if (currentCount >= store.Package.MaxEmployees)
+        if (!PackageLimitHelper.IsWithinLimit(store.Package.MaxEmployees, currentCount))
             throw new InvalidOperationException($"وصلت للحد الأقصى لعدد الموظفين في باقتك ({store.Package.MaxEmployees}). قم بترقية باقتك.");
 
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == dto.RoleName && r.RoleScope == RoleScope.Store);

@@ -394,36 +394,6 @@ public static class DataSeeder
                     IsActive = true
                 });
             }
-            else
-            {
-                existing.MonthlyPrice = spec.MonthlyPrice;
-                existing.MaxProducts = spec.MaxProducts;
-                existing.MaxOrdersPerMonth = spec.MaxOrdersPerMonth;
-                existing.MaxEmployees = spec.MaxEmployees;
-                existing.MaxWarehouses = spec.MaxWarehouses;
-                existing.MaxBranchesPOS = spec.MaxBranchesPOS;
-                existing.MaxPaymentGateways = spec.MaxPaymentGateways;
-                existing.MaxShippingCompanies = spec.MaxShippingCompanies;
-                existing.HasAccountingFull = spec.HasAccountingFull;
-                existing.HasPayroll = spec.HasPayroll;
-                existing.HasZatcaInvoice = spec.HasZatcaInvoice;
-                existing.HasCustomDomain = spec.HasCustomDomain;
-                existing.HasAffiliateMarketing = spec.HasAffiliateMarketing;
-                existing.HasApiAccess = spec.HasApiAccess;
-                existing.HasPos = spec.HasPos;
-                existing.HasLogo = spec.HasLogo;
-                existing.MaxThemes = spec.MaxThemes;
-                existing.CommissionPercentage = spec.CommissionPercentage;
-                existing.Color = spec.Color;
-                existing.HasShippingIntegration = spec.HasShippingIntegration;
-                existing.HasShippingCalculator = spec.HasShippingCalculator;
-                existing.HasShippingTracking = spec.HasShippingTracking;
-                existing.HasShippingLabelPrinting = spec.HasShippingLabelPrinting;
-                existing.HasFreeShipping = spec.HasFreeShipping;
-                existing.HasCashOnDelivery = spec.HasCashOnDelivery;
-                existing.HasShippingDiscounts = spec.HasShippingDiscounts;
-                existing.IsActive = true;
-            }
         }
 
         await context.SaveChangesAsync();

@@ -44,9 +44,10 @@ function ResetPasswordContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const emailFromQuery = searchParams.get("email") || "";
+  const codeFromQuery = searchParams.get("code") || "";
 
   const [email, setEmail] = useState(emailFromQuery);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(codeFromQuery);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");

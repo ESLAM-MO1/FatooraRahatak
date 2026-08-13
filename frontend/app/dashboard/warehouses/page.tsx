@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import Can from "@/components/Can";
 
 interface Warehouse {
   id: number;
@@ -86,9 +87,11 @@ export default function WarehousesPage() {
   return (
     <div>
       <PageHeader icon="warehouse" title={t("warehouse.title")}>
-        <button onClick={openAddModal} className="btn btn-primary text-[13.5px]">
-          {t("warehouse.add")}
-        </button>
+        <Can code="Warehouses.Add">
+          <button onClick={openAddModal} className="btn btn-primary text-[13.5px]">
+            {t("warehouse.add")}
+          </button>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}

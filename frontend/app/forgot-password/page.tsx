@@ -13,17 +13,20 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [devCode, setDevCode] = useState("");
   const [sending, setSending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccessMessage("");
+    setDevCode("");
 
     setSending(true);
     try {
-      await api.post("/auth/forgot-password", { email });
-      setSuccessMessage(t("auth.forgotSendSuccess"));
+      const response = await api.post("/auth/forgot-password", { email });
+      setSuccessMessage(response.data.message || t("auth.forgotSendSuccess"));
+      setDevCode(response.data.code || "");
     } catch (err: any) {
       setError(err.response?.data?.message || t("error.serverError"));
     } finally {
@@ -32,7 +35,9 @@ export default function ForgotPasswordPage() {
   };
 
   const goToReset = () => {
-    router.push(`/reset-password?email=${encodeURIComponent(email)}`);
+    const query = new URLSearchParams({ email });
+    if (devCode) query.set("code", devCode);
+    router.push(`/reset-password?${query.toString()}`);
   };
 
   return (

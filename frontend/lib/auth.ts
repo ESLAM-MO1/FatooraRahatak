@@ -1,4 +1,5 @@
 import api from "./api";
+import { clearPermissions } from "./permissions";
 
 export interface LoginData {
   email: string;
@@ -11,40 +12,48 @@ export interface RegisterData {
   phone: string;
   password: string;
   invitationToken?: string;
+  referralCode?: string;
 }
 
 export async function login(data: LoginData) {
   const response = await api.post("/auth/login", data);
-  const { accessToken, refreshToken, userType, fullName, email } = response.data.data;
+  const { accessToken, refreshToken, userType, fullName, email, userId } = response.data.data;
 
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
   localStorage.setItem("userType", userType);
   localStorage.setItem("fullName", fullName);
   localStorage.setItem("email", email);
+  if (userId) localStorage.setItem("userId", String(userId));
 
   return response.data.data;
 }
 
 export async function register(data: RegisterData) {
   const response = await api.post("/auth/register", data);
-  const { accessToken, refreshToken, userType, fullName, email } = response.data.data;
+  const { accessToken, refreshToken, userType, fullName, email, userId } = response.data.data;
 
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
   localStorage.setItem("userType", userType);
   localStorage.setItem("fullName", fullName);
   localStorage.setItem("email", email);
+  if (userId) localStorage.setItem("userId", String(userId));
 
   return response.data.data;
 }
 
 export function logout() {
+  const userId = localStorage.getItem("userId");
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("userType");
   localStorage.removeItem("fullName");
   localStorage.removeItem("email");
+  localStorage.removeItem("userId");
+  localStorage.removeItem("profileImage");
+  if (userId) localStorage.removeItem(`profileImage_${userId}`);
+  clearPermissions();
   window.location.href = "/login";
 }
 
@@ -59,13 +68,14 @@ export function getUserType(): string | null {
 }
 export async function googleAuth(idToken: string) {
   const response = await api.post("/auth/google", { idToken });
-  const { accessToken, refreshToken, userType, fullName, email } = response.data.data;
+  const { accessToken, refreshToken, userType, fullName, email, userId } = response.data.data;
 
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
   localStorage.setItem("userType", userType);
   localStorage.setItem("fullName", fullName);
   localStorage.setItem("email", email);
+  if (userId) localStorage.setItem("userId", String(userId));
 
   return response.data.data;
 }

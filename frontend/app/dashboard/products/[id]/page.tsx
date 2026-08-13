@@ -8,6 +8,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface Product {
   id: number;
@@ -62,6 +63,7 @@ const emptyImageForm = {
 
 export default function ProductDetailsPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const productId = params.id as string;
 
@@ -157,7 +159,7 @@ export default function ProductDetailsPage() {
   };
 
   const handleDeleteVariant = async (variantId: number) => {
-    if (!window.confirm(t("productDetail.variantDeleteConfirm"))) return;
+    if (!(await confirm(t("productDetail.variantDeleteConfirm")))) return;
 
     setVariantError("");
     try {
@@ -177,7 +179,7 @@ export default function ProductDetailsPage() {
   };
 
   const handleDeactivateVariant = async (variantId: number) => {
-    if (!window.confirm(t("productDetail.hideVariantConfirm"))) return;
+    if (!(await confirm(t("productDetail.hideVariantConfirm")))) return;
 
     setVariantError("");
     setDeactivatingVariantId(variantId);
@@ -221,7 +223,7 @@ export default function ProductDetailsPage() {
   };
 
   const handleDeleteImage = async (imageId: number) => {
-    if (!window.confirm(t("productDetail.imageDeleteConfirm"))) return;
+    if (!(await confirm(t("productDetail.imageDeleteConfirm")))) return;
 
     setImageError("");
     try {
@@ -280,14 +282,14 @@ export default function ProductDetailsPage() {
           <div>
             <p className="text-[var(--sub)] mb-1 text-[12.5px]">{t("productDetail.basePrice")}</p>
             <p className="font-bold text-[var(--ink)]">
-              {product.basePrice.toLocaleString("ar-SA")} {t("common.sar")}
+              {product.basePrice.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
             </p>
           </div>
           <div>
             <p className="text-[var(--sub)] mb-1 text-[12.5px]">{t("productDetail.discountPrice")}</p>
             <p className="font-bold text-[var(--ink)]">
               {product.discountPrice != null
-                ? `${product.discountPrice.toLocaleString("ar-SA")} ${t("common.sar")}`
+                ? `${product.discountPrice.toLocaleString("ar-SA-u-nu-latn")} ${t("common.sar")}`
                 : "—"}
             </p>
           </div>
@@ -462,7 +464,7 @@ export default function ProductDetailsPage() {
                     <td className="p-3 text-[var(--sub)]" dir="ltr">{variant.sku}</td>
                     <td className="p-3 text-[var(--sub)]">
                       {variant.priceAdjustment >= 0 ? "+" : ""}
-                      {variant.priceAdjustment.toLocaleString("ar-SA")} {t("common.sar")}
+                      {variant.priceAdjustment.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-3 text-[var(--sub)]">{variant.availableQuantity}</td>
                     <td className="p-3 text-[var(--sub)]">

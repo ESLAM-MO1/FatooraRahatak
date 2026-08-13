@@ -23,6 +23,6 @@ public partial class ResetPasswordDtoValidator : AbstractValidator<ResetPassword
 
         RuleFor(x => x.NewPassword)
             .NotEmpty().WithMessage("كلمة المرور الجديدة مطلوبة")
-            .MinimumLength(6).WithMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+            .MinimumLength(6).WithMessage("كلمة المرور يجب ألا تقل عن 6 رموز (أحرف أو أرقام)");
     }
 }

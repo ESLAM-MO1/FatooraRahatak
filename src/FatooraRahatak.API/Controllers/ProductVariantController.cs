@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Products;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,23 +15,21 @@ public class ProductVariantController : ControllerBase
 {
     private readonly IProductVariantService _variantService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public ProductVariantController(IProductVariantService variantService, AppDbContext context)
+    public ProductVariantController(IProductVariantService variantService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _variantService = variantService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Products.Add")]
     [HttpPost("variants")]
     public async Task<IActionResult> CreateVariant(long productId, [FromBody] CreateVariantDto dto)
     {
@@ -49,6 +47,7 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.View")]
     [HttpGet("variants")]
     public async Task<IActionResult> GetVariants(long productId)
     {
@@ -66,6 +65,7 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Delete")]
     [HttpDelete("variants/{variantId}")]
     public async Task<IActionResult> DeleteVariant(long productId, long variantId)
     {
@@ -83,6 +83,7 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Edit")]
     [HttpPut("variants/{variantId}/deactivate")]
     public async Task<IActionResult> DeactivateVariant(long productId, long variantId)
     {
@@ -100,6 +101,7 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Edit")]
     [HttpPost("images")]
     public async Task<IActionResult> AddImage(long productId, [FromBody] AddProductImageDto dto)
     {
@@ -117,6 +119,7 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.View")]
     [HttpGet("images")]
     public async Task<IActionResult> GetImages(long productId)
     {
@@ -134,6 +137,7 @@ public class ProductVariantController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Delete")]
     [HttpDelete("images/{imageId}")]
     public async Task<IActionResult> DeleteImage(long productId, long imageId)
     {

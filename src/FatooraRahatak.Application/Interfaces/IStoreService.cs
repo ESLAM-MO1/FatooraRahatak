@@ -9,6 +9,7 @@ public interface IStoreService
     Task<StoreContactResponseDto> UpdateContactAsync(long ownerUserId, UpdateStoreContactDto dto);
     Task<bool> ToggleStoreOnlineAsync(long ownerUserId);
     Task<VatRegistrationResponseDto> ToggleVatRegistrationAsync(long ownerUserId);
+    Task<StoreInfoDto> UpdateVatNumberAsync(long ownerUserId, string? vatNumber);
     Task<StoreInfoDto> GetStoreInfoAsync(long ownerUserId);
     Task<List<ShippingMethodDto>> UpdateShippingMethodsAsync(long ownerUserId, UpdateShippingMethodsDto dto);
     Task<List<PaymentMethodDto>> UpdatePaymentMethodsAsync(long ownerUserId, UpdatePaymentMethodsDto dto);
@@ -17,4 +18,7 @@ public interface IStoreService
     Task<StoreThemeResponseDto> UpdateThemeAsync(long ownerUserId, UpdateStoreThemeDto dto);
     Task<StoreInfoDto> UpdateStoreSettingsAsync(long ownerUserId, UpdateStoreSettingsDto dto);
     Task<StoreThemeResponseDto> GetThemeAsync(long ownerUserId);
+    Task<StoreInfoDto> UpdateLogoAsync(long ownerUserId, UpdateStoreLogoDto dto);
+    Task<StoreInfoDto> DeleteLogoAsync(long ownerUserId);
+    Task<StoreInfoDto> UpdateShippingDiscountsAsync(long ownerUserId, UpdateShippingDiscountsDto dto);
 }

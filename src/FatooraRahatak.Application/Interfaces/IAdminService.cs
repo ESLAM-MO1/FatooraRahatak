@@ -34,4 +34,8 @@ public interface IAdminService
 
     // --- الإشعارات المركزية ---
     Task SendPlatformNotificationAsync(SendNotificationDto dto, long adminUserId);
+
+    // --- إدارة الثيمات ---
+    Task<List<AdminThemeDto>> GetThemesAsync();
+    Task SetThemeEnabledAsync(long id, bool isEnabled);
 }

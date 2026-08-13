@@ -6,3 +6,46 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+/* Phone input with country selector (react-phone-number-input) */
+.PhoneInput {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-inline-end: 8px;
+  border-inline-end: 1px solid var(--border, #e5e7eb);
+  flex-shrink: 0;
+  position: relative;
+}
+.PhoneInputCountrySelect {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: 0;
+}
+.PhoneInputCountryIcon {
+  width: 22px;
+  height: 16px;
+  box-shadow: none !important;
+}
+.PhoneInputCountrySelectArrow {
+  opacity: 0.5;
+  margin-inline-start: 4px;
+}
+.PhoneInputInput {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: inherit;
+  color: inherit;
+  padding: 0 !important;
+  direction: ltr;
+  text-align: left;
+}

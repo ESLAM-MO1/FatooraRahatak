@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Products;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -27,20 +27,12 @@ public class ProductController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Products.Add")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateProductDto dto)
     {
-        var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Products.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
-
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -56,17 +48,19 @@ public class ProductController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.View")]
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
-        var result = await _productService.GetAllAsync(storeId.Value);
+        var result = await _productService.GetAllAsync(storeId.Value, page, pageSize);
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("Products.View")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(long id)
     {
@@ -81,13 +75,10 @@ public class ProductController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("Products.Edit")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(long id, [FromBody] CreateProductDto dto)
     {
-        var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Products.Edit"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
-
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -103,13 +94,10 @@ public class ProductController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)
     {
-        var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Products.Delete"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
-
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -125,6 +113,45 @@ public class ProductController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Edit")]
+    [HttpPost("{id}/restore")]
+    public async Task<IActionResult> Restore(long id)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _productService.RestoreAsync(storeId.Value, id);
+            return Ok(new { success = true, data = result, message = "تم استرجاع المنتج بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Products.Delete")]
+    [HttpDelete("{id}/permanent")]
+    public async Task<IActionResult> DeletePermanent(long id)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            await _productService.DeletePermanentAsync(storeId.Value, id);
+            return Ok(new { success = true, message = "تم حذف المنتج نهائيًا" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Products.Edit")]
     [HttpPost("upload-image"), DisableRequestSizeLimit]
     public async Task<IActionResult> UploadImage(IFormFile file)
     {

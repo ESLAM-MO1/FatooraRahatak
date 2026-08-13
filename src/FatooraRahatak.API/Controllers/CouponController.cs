@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Sales;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,23 +15,21 @@ public class CouponController : ControllerBase
 {
     private readonly ICouponService _couponService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public CouponController(ICouponService couponService, AppDbContext context)
+    public CouponController(ICouponService couponService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _couponService = couponService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Coupons.Add")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCouponDto dto)
     {
@@ -49,6 +47,7 @@ public class CouponController : ControllerBase
         }
     }
 
+    [RequirePermission("Coupons.View")]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -59,6 +58,7 @@ public class CouponController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("Coupons.Edit")]
     [HttpPut("{id}/deactivate")]
     public async Task<IActionResult> Deactivate(long id)
     {

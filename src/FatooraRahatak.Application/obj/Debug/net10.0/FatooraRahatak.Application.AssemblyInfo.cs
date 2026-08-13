@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FatooraRahatak.Application")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+03439f76774c3753fb5e655ae7b3901b7c9ccb4a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec55cf69953d53d34ae80e33d40bc40f8fd14eeb")]
 [assembly: System.Reflection.AssemblyProductAttribute("FatooraRahatak.Application")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FatooraRahatak.Application")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

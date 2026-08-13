@@ -30,7 +30,7 @@ function SealBadge({ eyebrow, title, sub }: { eyebrow: string; title: string; su
 
 function UsageBar({ current, max }: { current: number; max: number | null }) {
   const { t } = useTranslation();
-  if (max === null) {
+  if (max === null || max === -1 || max === 0) {
     return (
       <span className="badge-unlimited mt-3">
         <span className="dot" />
@@ -225,14 +225,20 @@ export default function DashboardHome() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
                   <p className="text-[11px] text-[var(--sub)]">{t("dashboard.totalSales")}</p>
-                  <p className="text-[18px] font-bold text-[var(--blue-deep)]">{stats.totalSales.toLocaleString("ar-SA")} {t("common.currency")}</p>
+                  <p className="text-[18px] font-bold text-[var(--blue-deep)]">{stats.totalSales.toLocaleString("ar-SA-u-nu-latn")} {t("common.currency")}</p>
                 </div>
-                {stats.ordersCountByStatus?.map((s: any) => (
-                  <div key={s.status}>
-                    <p className="text-[11px] text-[var(--sub)]">{s.status === "New" ? t("order.statusNew") : s.status === "Processing" ? t("order.statusProcessing") : s.status === "Shipped" ? t("order.statusShipped") : s.status === "Delivered" ? t("order.statusDelivered") : s.status === "Returned" ? t("order.statusReturned") : s.status}</p>
-                    <p className="text-[18px] font-bold text-[var(--ink)]">{s.count}</p>
-                  </div>
-                ))}
+                <div>
+                  <p className="text-[11px] text-[var(--sub)]">{t("dashboard.totalPosSales")}</p>
+                  <p className="text-[18px] font-bold text-[var(--blue-deep)]">{Number(stats.totalPosSales ?? 0).toLocaleString("ar-SA-u-nu-latn")} {t("common.currency")}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-[var(--sub)]">{t("dashboard.invoicesCount")}</p>
+                  <p className="text-[18px] font-bold text-[var(--ink)]">{stats.invoicesCount ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-[var(--sub)]">{t("dashboard.newOrdersCount")}</p>
+                  <p className="text-[18px] font-bold text-[var(--ink)]">{stats.newOrdersCount ?? 0}</p>
+                </div>
               </div>
             </div>
           )}

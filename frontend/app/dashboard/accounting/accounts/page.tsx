@@ -7,6 +7,9 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import InfoTooltip from "@/components/InfoTooltip";
+import Can from "@/components/Can";
 
 interface Account {
   id: number;
@@ -204,23 +207,27 @@ export default function AccountsPage() {
               {t(accountTypeLabels[account.accountType] ?? "common.noData")}
             </span>
             <span className="text-[13px] text-[var(--ink)] w-24 text-left" dir="ltr">
-              {account.balance.toLocaleString("ar-SA")} ر.س
+              {account.balance.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
             </span>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => openAddModal(account.id)}
-                title={t("accounts.addSubAccount")}
-                className="text-[var(--blue)] hover:text-[var(--blue-deep)]"
-              >
-                <Icon name="plus" />
-              </button>
-              <button
-                onClick={() => openEditModal(account)}
-                title={t("common.edit")}
-                className="text-[var(--sub)] hover:text-[var(--ink)]"
-              >
-                <Icon name="edit" />
-              </button>
+              <Can code="ChartOfAccounts.Add">
+                <button
+                  onClick={() => openAddModal(account.id)}
+                  title={t("accounts.addSubAccount")}
+                  className="text-[var(--blue)] hover:text-[var(--blue-deep)]"
+                >
+                  <Icon name="plus" />
+                </button>
+              </Can>
+              <Can code="ChartOfAccounts.Edit">
+                <button
+                  onClick={() => openEditModal(account)}
+                  title={t("common.edit")}
+                  className="text-[var(--sub)] hover:text-[var(--ink)]"
+                >
+                  <Icon name="edit" />
+                </button>
+              </Can>
             </div>
           </div>
         </div>
@@ -233,15 +240,17 @@ export default function AccountsPage() {
   return (
     <div>
       <PageHeader icon="ledger" title={t("accounts.title")}>
-        <button onClick={() => openAddModal()} className="btn btn-primary">
-          <Icon name="plus" />
-          {t("accounts.addAccount")}
-        </button>
+        <Can code="ChartOfAccounts.Add">
+          <button onClick={() => openAddModal()} className="btn btn-primary">
+            <Icon name="plus" />
+            {t("accounts.addAccount")}
+          </button>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
 
-      {successMessage && <div className="alert alert--success mb-4">{successMessage}</div>}
+      <SuccessToast message={successMessage} fixed className="mb-4" />
 
       {actionError && !showModal && <div className="alert alert--danger mb-4">{actionError}</div>}
 
@@ -264,7 +273,7 @@ export default function AccountsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("accounts.accountCode")}</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.accountCode")}<InfoTooltip messageKey="accounts.accountCodeTooltip" /></label>
                 <div className="field-shell">
                   <input
                     type="text"
@@ -289,7 +298,7 @@ export default function AccountsPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("accounts.accountType")}</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.accountType")}<InfoTooltip messageKey="accounts.accountTypeTooltip" /></label>
                 <div className="field-shell">
                   <select
                     value={form.accountType}
@@ -305,7 +314,7 @@ export default function AccountsPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("accounts.parentAccount")}</label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.parentAccount")}<InfoTooltip messageKey="accounts.parentAccountTooltip" /></label>
                 <div className="field-shell">
                   <select
                     value={form.parentAccountId}

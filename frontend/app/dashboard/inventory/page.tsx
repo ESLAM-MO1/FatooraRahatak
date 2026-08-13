@@ -7,6 +7,9 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import InfoTooltip from "@/components/InfoTooltip";
+import Can from "@/components/Can";
 
 interface Warehouse {
   id: number;
@@ -89,9 +92,12 @@ export default function InventoryPage() {
     setLoading(true);
     setError("");
     try {
-      const [warehousesRes, productsRes] = await Promise.all([api.get("/warehouses"), api.get("/products")]);
+      const [warehousesRes, productsRes] = await Promise.all([
+        api.get("/warehouses"),
+        api.get("/products", { params: { page: 1, pageSize: 500 } }),
+      ]);
       setWarehouses(warehousesRes.data.data);
-      setProducts(productsRes.data.data);
+      setProducts(productsRes.data.data.items || productsRes.data.data || []);
       await fetchStock();
     } catch (err: any) {
       setError(err.response?.data?.message || t("inventory.dataLoadError"));
@@ -278,7 +284,7 @@ export default function InventoryPage() {
                     <th>{t("inventory.warehouse")}</th>
                     <th>{t("inventory.availableQty")}</th>
                     <th>{t("inventory.reservedQty")}</th>
-                    <th>{t("inventory.reorderLevel")}</th>
+                    <th>{t("inventory.reorderLevel")} <span className="inline-flex align-middle"><InfoTooltip messageKey="inventory.reorderLevelTooltip" /></span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,14 +308,14 @@ export default function InventoryPage() {
         <div className="card p-6">
           {transferError && <div className="alert alert--danger mb-4">{transferError}</div>}
 
-          {transferSuccess && (
-            <div className="alert alert--success mb-4 flex items-center justify-between">
-              <span>{transferSuccess}</span>
-              {pendingTransferId && (
+          <SuccessToast message={transferSuccess} fixed className="mb-4" />
+          {transferSuccess && pendingTransferId && (
+            <div className="mb-4">
+              <Can code="StockTransfer.Approve">
                 <button onClick={handleApproveTransfer} disabled={approvingTransfer} className="btn btn-primary py-1.5 px-3 text-[12.5px]">
                   {approvingTransfer ? t("inventory.approving") : t("inventory.approveNow")}
                 </button>
-              )}
+              </Can>
             </div>
           )}
 
@@ -389,9 +395,11 @@ export default function InventoryPage() {
               ))}
             </div>
 
-            <button type="submit" disabled={submittingTransfer} className="btn btn-primary">
-              {submittingTransfer ? t("inventory.submitting") : t("inventory.submitTransfer")}
-            </button>
+            <Can code="StockTransfer.Add">
+              <button type="submit" disabled={submittingTransfer} className="btn btn-primary">
+                {submittingTransfer ? t("inventory.submitting") : t("inventory.submitTransfer")}
+              </button>
+            </Can>
           </form>
         </div>
       )}
@@ -400,7 +408,7 @@ export default function InventoryPage() {
         <div className="card p-6">
           {damageError && <div className="alert alert--danger mb-4">{damageError}</div>}
 
-          {damageSuccess && <div className="alert alert--success mb-4">{damageSuccess}</div>}
+          <SuccessToast message={damageSuccess} fixed className="mb-4" />
 
           <form onSubmit={handleReportDamage} className="max-w-lg">
             <div className="mb-5">
@@ -476,16 +484,20 @@ export default function InventoryPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={submittingDamage} className="btn btn-primary">
-              {submittingDamage ? t("inventory.registering") : t("inventory.registerDamage")}
-            </button>
+            <Can code="DamagedStock.Add">
+              <button type="submit" disabled={submittingDamage} className="btn btn-primary">
+                {submittingDamage ? t("inventory.registering") : t("inventory.registerDamage")}
+              </button>
+            </Can>
           </form>
 
           {pendingDamageId && (
             <div className="mt-5 pt-5 border-t border-[var(--border)]">
-              <button onClick={handleApproveDamage} disabled={approvingDamage} className="btn btn-primary">
-                {approvingDamage ? t("inventory.approving") : t("inventory.approveDamage")}
-              </button>
+              <Can code="DamagedStock.Approve">
+                <button onClick={handleApproveDamage} disabled={approvingDamage} className="btn btn-primary">
+                  {approvingDamage ? t("inventory.approving") : t("inventory.approveDamage")}
+                </button>
+              </Can>
             </div>
           )}
         </div>

@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { isAuthenticated, getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
 import "@/lib/i18n/config";
 
 import type { TFunction } from "i18next";
@@ -31,6 +32,17 @@ const FEATURE_PAGES = [
   { key: "pos", labelKey: "page.pos" },
   { key: "payment-gateway", labelKey: "page.paymentGateway" },
   { key: "website-integration", labelKey: "page.websiteIntegration" },
+  { key: "users-permissions", labelKey: "page.usersPermissions" },
+  { key: "packages-domains", labelKey: "page.packagesDomains" },
+  { key: "general-accounts", labelKey: "page.generalAccounts" },
+  { key: "affiliate-marketing", labelKey: "page.affiliate" },
+  { key: "product-management", labelKey: "page.productManagement" },
+  { key: "customer-management", labelKey: "page.customerManagement" },
+  { key: "purchases", labelKey: "page.purchases" },
+  { key: "pricing", labelKey: "page.pricing" },
+  { key: "suppliers", labelKey: "page.suppliers" },
+  { key: "sales", labelKey: "page.sales" },
+  { key: "reports", labelKey: "page.reports" },
 ];
 
 const ABOUT_PAGES = [
@@ -98,26 +110,31 @@ export default function SiteContentPage() {
 function ImageUpload({ value, onChange, accept = "image/*", labelKey = "admin.uploadImage" }: { value: string; onChange: (url: string) => void; accept?: string; labelKey?: string }) {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setError("");
     try {
       const form = new FormData();
       form.append("file", file);
       const res = await api.post("/admin/site/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
       onChange(res.data.data.url);
-    } catch { alert(t("error.serverError")); }
+    } catch { setError(t("error.serverError")); }
     finally { setUploading(false); }
   };
   return (
-    <div className="flex items-center gap-3">
-      {value && <img src={value} alt="" className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: "var(--border)" }} />}
-      <label className="btn btn-outline btn-sm cursor-pointer">
-        {uploading ? t("common.loading") : t(labelKey)}
-        <input type="file" accept={accept} onChange={handleFile} className="hidden" />
-      </label>
-      {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">×</button>}
+    <div className="flex flex-col gap-2">
+      {error && <p className="text-[12px] font-bold" style={{ color: "var(--danger)" }}>{error}</p>}
+      <div className="flex items-center gap-3">
+        {value && <img src={value} alt="" className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: "var(--border)" }} />}
+        <label className="btn btn-outline btn-sm cursor-pointer">
+          {uploading ? t("common.loading") : t(labelKey)}
+          <input type="file" accept={accept} onChange={handleFile} className="hidden" />
+        </label>
+        {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">×</button>}
+      </div>
     </div>
   );
 }
@@ -196,7 +213,7 @@ function HomepageEditor() {
 
   return (
     <div className="card p-6">
-      {success && <div className="alert alert--success">{success}</div>}
+      <SuccessToast message={success} fixed className="mb-4" />
       {error && <div className="alert alert--danger">{error}</div>}
       <p className="text-[13px] text-[var(--sub)] mb-5">{t("admin.homepage")}</p>
 
@@ -326,7 +343,7 @@ function PageEditor({ pageKey }: { pageKey: string }) {
   if (loading) return <LoadingState />;
   return (
     <div className="space-y-4">
-      {success && <div className="alert alert--success">{success}</div>}
+      <SuccessToast message={success} fixed className="mb-4" />
       {error && <div className="alert alert--danger">{error}</div>}
       <div>
         <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleAr")}</label>
@@ -430,7 +447,7 @@ function FaqManager() {
 
   return (
     <div className="card p-6 space-y-5">
-      {success && <div className="alert alert--success">{success}</div>}
+      <SuccessToast message={success} fixed className="mb-4" />
       {error && <div className="alert alert--danger">{error}</div>}
       <p className="text-[13px] text-[var(--sub)]">{t("admin.manageFaq")}</p>
 
@@ -539,7 +556,7 @@ const STATUS_BADGES: Record<string, string> = {
 };
 
 function fmtDate(s: string, locale: string) {
-  return new Date(s).toLocaleDateString(locale === "ar" ? "ar-SA" : "en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(s).toLocaleDateString(locale === "ar" ? "ar-SA-u-nu-latn" : "en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 /* ── Ticket Detail Modal ── */

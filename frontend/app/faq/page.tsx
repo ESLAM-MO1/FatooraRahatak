@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SiteLayout } from "../site-layout";
+import Hero from "@/components/Hero";
 import LoadingState from "@/components/LoadingState";
 import "@/lib/i18n/config";
 
@@ -71,13 +72,7 @@ export default function FaqPage() {
   return (
     <SiteLayout>
       <div>
-        <section
-          className="py-16 text-center text-white"
-          style={{ backgroundColor: "var(--blue-deep)" }}
-        >
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">{t("page.faq")}</h1>
-          <p className="text-[15px] opacity-80">{t("common.help")}</p>
-        </section>
+        <Hero title={t("page.faq")} subtitle={t("common.help")} />
         <div className="max-w-3xl mx-auto px-4 py-12">
           <div className="relative mb-8">
             <svg

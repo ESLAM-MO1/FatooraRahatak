@@ -6,18 +6,22 @@ using FatooraRahatak.Infrastructure.Data;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Payments;
 using FatooraRahatak.Infrastructure.Services;
+using FatooraRahatak.Infrastructure.Services.Shipping;
 using FatooraRahatak.Domain.Entities.Accounting;
 using FatooraRahatak.Domain.Enums;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using FatooraRahatak.Application.Validators;
+using FatooraRahatak.API.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
+var corsOrigins = (builder.Configuration["App:CorsOrigins"] ?? "http://localhost:3000")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -44,7 +48,9 @@ builder.Services.Configure<FatooraRahatak.Application.Common.JwtSettings>(
     builder.Configuration.GetSection("JwtSettings"));
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"]!;
+// سر JWT يُؤخذ من متغير البيئة JWT_SECRET أولًا (للإنتاج)،
+// مع fallback لقيمة الإعدادات المحلية للتطوير فقط.
+var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET") ?? jwtSettings["SecretKey"]!;
 
 builder.Services.AddAuthentication(options =>
 {
@@ -70,8 +76,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAuthService, FatooraRahatak.Infrastructure.Services.AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<MoyasarPaymentProvider>();
+builder.Services.AddScoped<PayPalPaymentProvider>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<ICustomerSessionService, CustomerSessionService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStoreService, FatooraRahatak.Infrastructure.Services.StoreService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICategoryService, FatooraRahatak.Infrastructure.Services.CategoryService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductService, FatooraRahatak.Infrastructure.Services.ProductService>();
@@ -87,8 +96,8 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICouponService,
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAdminService, FatooraRahatak.Infrastructure.Services.AdminService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IPublicStoreService, FatooraRahatak.Infrastructure.Services.PublicStoreService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOrderService, FatooraRahatak.Infrastructure.Services.OrderService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOrderStockService, FatooraRahatak.Infrastructure.Services.OrderStockService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerCustomerService, FatooraRahatak.Infrastructure.Services.OwnerCustomerService>();
-builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerDashboardService, FatooraRahatak.Infrastructure.Services.OwnerDashboardService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOwnerDashboardService, FatooraRahatak.Infrastructure.Services.OwnerDashboardService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAccountingService, FatooraRahatak.Infrastructure.Services.AccountingService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.INotificationService, FatooraRahatak.Infrastructure.Services.NotificationService>();
@@ -99,7 +108,28 @@ builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionCheckService, PermissionCheckService>();
 builder.Services.AddScoped<ISiteService, SiteService>();
+builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<ICustomerNotificationService, CustomerNotificationService>();
+builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
+builder.Services.AddScoped<IQuickLoginService, QuickLoginService>();
 builder.Services.AddDirectoryBrowser();
+builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
+builder.Services.AddScoped<IShippingProvider, SmsaShippingProvider>();
+builder.Services.AddScoped<IShippingProvider, AramexShippingProvider>();
+builder.Services.AddScoped<IShippingProvider, ZajilShippingProvider>();
+builder.Services.AddScoped<IShippingProvider, NaqelShippingProvider>();
+builder.Services.AddScoped<IShippingProvider, ManualShippingProvider>();
+builder.Services.AddScoped<ShippingProviderFactory>();
+builder.Services.AddScoped<IShippingService, ShippingService>();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<ISettlementService, SettlementService>();
+builder.Services.AddHostedService<SettlementBackgroundService>();
+builder.Services.Configure<FatooraRahatak.Infrastructure.Services.Zatca.ZatcaSettings>(
+    builder.Configuration.GetSection("Zatca"));
+builder.Services.AddHttpClient<FatooraRahatak.Infrastructure.Services.Zatca.ZatcaClient>();
+builder.Services.AddScoped<IZatcaService, FatooraRahatak.Infrastructure.Services.Zatca.ZatcaService>();
 var app = builder.Build();
 
 app.UseStaticFiles();

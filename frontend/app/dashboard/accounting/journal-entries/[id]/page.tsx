@@ -9,6 +9,9 @@ import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
 import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
+import Can from "@/components/Can";
 
 interface JournalEntryLine {
   id: number;
@@ -54,6 +57,7 @@ const statusStyles: Record<string, string> = {
 
 export default function JournalEntryDetailPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
@@ -105,7 +109,7 @@ export default function JournalEntryDetailPage() {
   };
 
   const handleReject = async () => {
-    if (!window.confirm(t("journalEntry.rejectConfirm"))) return;
+    if (!(await confirm(t("journalEntry.rejectConfirm")))) return;
     setActionError("");
     setSuccessMessage("");
     setActionLoading(true);
@@ -121,7 +125,7 @@ export default function JournalEntryDetailPage() {
   };
 
   const handleReverse = async () => {
-    if (!window.confirm(t("journalEntry.reverseConfirm"))) return;
+    if (!(await confirm(t("journalEntry.reverseConfirm")))) return;
     setActionError("");
     setSuccessMessage("");
     setActionLoading(true);
@@ -177,35 +181,39 @@ export default function JournalEntryDetailPage() {
           <div className="flex gap-2">
             {entry.status === "PendingApproval" && (
               <>
-                <button
-                  onClick={handleApprove}
-                  disabled={actionLoading}
-                  className="btn btn-primary disabled:opacity-60 flex items-center gap-1.5"
-                >
-                  <Icon name="check" />
-                  {t("journalEntry.approve")}
-                </button>
-                <button
-                  onClick={handleReject}
-                  disabled={actionLoading}
-                  className="btn btn-danger disabled:opacity-60 flex items-center gap-1.5"
-                >
-                  <Icon name="close" />
-                  {t("journalEntry.reject")}
-                </button>
+                <Can code="JournalEntries.Approve">
+                  <button
+                    onClick={handleApprove}
+                    disabled={actionLoading}
+                    className="btn btn-primary disabled:opacity-60 flex items-center gap-1.5"
+                  >
+                    <Icon name="check" />
+                    {t("journalEntry.approve")}
+                  </button>
+                  <button
+                    onClick={handleReject}
+                    disabled={actionLoading}
+                    className="btn btn-danger disabled:opacity-60 flex items-center gap-1.5"
+                  >
+                    <Icon name="close" />
+                    {t("journalEntry.reject")}
+                  </button>
+                </Can>
               </>
             )}
             {entry.status === "Approved" && (
-              <button
-                onClick={handleReverse}
-                disabled={actionLoading}
-                className="btn btn-secondary disabled:opacity-60 flex items-center gap-1.5"
-              >
-                <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+              <Can code="JournalEntries.Edit">
+                <button
+                  onClick={handleReverse}
+                  disabled={actionLoading}
+                  className="btn btn-secondary disabled:opacity-60 flex items-center gap-1.5"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
                   <path d="M9 14 4 9l5-5M4 9h11a4 4 0 0 1 4 4v1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 {t("journalEntry.reverse")}
               </button>
+              </Can>
             )}
           </div>
         )}
@@ -213,7 +221,7 @@ export default function JournalEntryDetailPage() {
 
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
-      {successMessage && <div className="alert alert--success mb-4">{successMessage}</div>}
+      <SuccessToast message={successMessage} fixed className="mb-4" />
 
       {entry.reversalOfEntryId && (
         <div className="bg-[var(--blue-50)] text-[var(--blue-deep)] rounded-xl p-4 mb-4 text-sm">
@@ -273,10 +281,10 @@ export default function JournalEntryDetailPage() {
                   </td>
                   <td className="p-3 text-[var(--sub)]">{line.lineDescription || "—"}</td>
                   <td className="p-3 text-[var(--ink)]" dir="ltr">
-                    {line.debit > 0 ? line.debit.toLocaleString("ar-SA") : "—"}
+                    {line.debit > 0 ? line.debit.toLocaleString("ar-SA-u-nu-latn") : "—"}
                   </td>
                   <td className="p-3 text-[var(--ink)]" dir="ltr">
-                    {line.credit > 0 ? line.credit.toLocaleString("ar-SA") : "—"}
+                    {line.credit > 0 ? line.credit.toLocaleString("ar-SA-u-nu-latn") : "—"}
                   </td>
                 </tr>
               ))}
@@ -287,10 +295,10 @@ export default function JournalEntryDetailPage() {
                   {t("journalEntry.total")}
                 </td>
                 <td className="p-3 text-[var(--ink)]" dir="ltr">
-                  {entry.totalDebit.toLocaleString("ar-SA")}
+                  {entry.totalDebit.toLocaleString("ar-SA-u-nu-latn")}
                 </td>
                 <td className="p-3 text-[var(--ink)]" dir="ltr">
-                  {entry.totalCredit.toLocaleString("ar-SA")}
+                  {entry.totalCredit.toLocaleString("ar-SA-u-nu-latn")}
                 </td>
               </tr>
             </tfoot>

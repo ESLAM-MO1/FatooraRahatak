@@ -24,6 +24,13 @@ public class EmailService : IEmailService
         _fromName = configuration["Smtp:FromName"] ?? "فاتورة راحتك";
     }
 
+    public bool IsConfigured()
+    {
+        return !string.IsNullOrWhiteSpace(_smtpHost)
+            && !string.IsNullOrWhiteSpace(_smtpUsername)
+            && !string.IsNullOrWhiteSpace(_fromAddress);
+    }
+
     public async Task SendEmailAsync(string to, string subject, string body)
     {
         if (string.IsNullOrWhiteSpace(_smtpHost) || string.IsNullOrWhiteSpace(_smtpUsername) || string.IsNullOrWhiteSpace(_fromAddress))

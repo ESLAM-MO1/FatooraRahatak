@@ -5,6 +5,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
 
 interface AdminUser {
   id: number;
@@ -55,13 +56,13 @@ const ACTION_LABEL_KEYS: Record<string, string> = {
 };
 
 const ROLE_OPTIONS = [
-  { value: "Support", labelAr: "دعم", labelEn: "Support" },
-  { value: "Finance", labelAr: "مالية", labelEn: "Finance" },
-  { value: "Technical", labelAr: "تقني", labelEn: "Technical" },
+  { value: "Support", labelKey: "users.roleSupport" },
+  { value: "Finance", labelKey: "users.roleFinance" },
+  { value: "Technical", labelKey: "users.roleTechnical" },
 ];
 
 export default function UsersManagementPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("all");
 
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -166,7 +167,7 @@ export default function UsersManagementPage() {
       localStorage.setItem("impersonatedBy", localStorage.getItem("fullName") || "");
       window.location.href = "/dashboard";
     } catch (err: any) {
-      setError(err.response?.data?.message || "فشلت عملية انتحال الشخصية");
+      setError(err.response?.data?.message || t("users.impersonateFailed"));
     } finally {
       setImpersonating(null);
     }
@@ -178,11 +179,11 @@ export default function UsersManagementPage() {
     setStaffSuccess("");
     try {
       await api.post("/admin/users/staff", staffForm);
-      setStaffSuccess("تم إضافة الموظف بنجاح");
+      setStaffSuccess(t("users.staffAdded"));
       setStaffForm({ fullName: "", email: "", password: "", roleType: "Support" });
       loadStaff();
     } catch (err: any) {
-      setStaffError(err.response?.data?.message || "فشل إضافة الموظف");
+      setStaffError(err.response?.data?.message || t("users.staffAddError"));
     }
   };
 
@@ -196,10 +197,10 @@ export default function UsersManagementPage() {
         ...notifForm,
         storeId: notifForm.storeId ? parseInt(notifForm.storeId) : null,
       });
-      setNotifSuccess("تم إرسال الإشعار بنجاح");
+      setNotifSuccess(t("users.notifSent"));
       setNotifForm({ recipientType: "All", storeId: "", type: "Update", title: "", message: "" });
     } catch (err: any) {
-      setNotifError(err.response?.data?.message || "فشل إرسال الإشعار");
+      setNotifError(err.response?.data?.message || t("users.notifSendError"));
     } finally {
       setSending(false);
     }
@@ -207,14 +208,14 @@ export default function UsersManagementPage() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ar-SA", {
+    return date.toLocaleDateString("ar-SA-u-nu-latn", {
       year: "numeric", month: "long", day: "numeric",
     });
   };
 
   const formatDateTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ar-SA", {
+    return date.toLocaleDateString("ar-SA-u-nu-latn", {
       year: "numeric", month: "long", day: "numeric",
       hour: "2-digit", minute: "2-digit",
     });
@@ -369,7 +370,7 @@ export default function UsersManagementPage() {
             <h3 className="text-[15px] font-bold text-[var(--ink)] mb-4">{t("users.addStaff")}</h3>
 
             {staffError && <div className="alert alert--danger mb-3">{staffError}</div>}
-            {staffSuccess && <div className="alert alert--success mb-3">{staffSuccess}</div>}
+            <SuccessToast message={staffSuccess} fixed className="mb-3" />
 
             <form onSubmit={handleCreateStaff} className="space-y-4">
               <div>
@@ -415,7 +416,7 @@ export default function UsersManagementPage() {
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r.value} value={r.value}>
-                        {i18n.language === "ar" ? r.labelAr : r.labelEn}
+                        {t(r.labelKey)}
                       </option>
                     ))}
                   </select>
@@ -443,9 +444,7 @@ export default function UsersManagementPage() {
                     <td className="text-[var(--sub)]">{s.email}</td>
                     <td className="text-[var(--sub)]">
                       {ROLE_OPTIONS.find((r) => r.value === s.roleType)
-                        ? (i18n.language === "ar"
-                          ? ROLE_OPTIONS.find((r) => r.value === s.roleType)!.labelAr
-                          : ROLE_OPTIONS.find((r) => r.value === s.roleType)!.labelEn)
+                        ? t(ROLE_OPTIONS.find((r) => r.value === s.roleType)!.labelKey)
                         : s.roleType}
                     </td>
                     <td>
@@ -511,7 +510,7 @@ export default function UsersManagementPage() {
             <h3 className="text-[15px] font-bold text-[var(--ink)] mb-4">{t("users.sendNotification")}</h3>
 
             {notifError && <div className="alert alert--danger mb-3">{notifError}</div>}
-            {notifSuccess && <div className="alert alert--success mb-3">{notifSuccess}</div>}
+            <SuccessToast message={notifSuccess} fixed className="mb-3" />
 
             <form onSubmit={handleSendNotification} className="space-y-4">
               <div>

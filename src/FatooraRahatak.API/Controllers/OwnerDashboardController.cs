@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -14,23 +14,21 @@ public class OwnerDashboardController : ControllerBase
 {
     private readonly IOwnerDashboardService _ownerDashboardService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public OwnerDashboardController(IOwnerDashboardService ownerDashboardService, AppDbContext context)
+    public OwnerDashboardController(IOwnerDashboardService ownerDashboardService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _ownerDashboardService = ownerDashboardService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Dashboard.View")]
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats([FromQuery] string period = "daily")
     {

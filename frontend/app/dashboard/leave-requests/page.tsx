@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import Can from "@/components/Can";
 import "@/lib/i18n/config";
 
 interface Employee {
@@ -67,9 +68,9 @@ export default function LeaveRequestsPage() {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const res = await api.get("/employees");
+      const res = await api.get("/employees", { params: { page: 1, pageSize: 500 } });
       setEmployees(
-        res.data.data.filter((e: Employee) => e.status === "Active")
+        (res.data.data.items || res.data.data || []).filter((e: Employee) => e.status === "Active")
       );
     } catch (err: any) {
       setError(err.response?.data?.message || t("leaveRequest.loadEmployeesError"));
@@ -194,10 +195,12 @@ export default function LeaveRequestsPage() {
   return (
     <div>
       <PageHeader icon="calendarOff" title={t("leaveRequest.title")}>
-        <button onClick={openModal} className="btn btn-primary">
-          <Icon name="plus" />
-          {t("leaveRequest.newRequest")}
-        </button>
+        <Can code="LeaveRequests.Add">
+          <button onClick={openModal} className="btn btn-primary">
+            <Icon name="plus" />
+            {t("leaveRequest.newRequest")}
+          </button>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
@@ -261,20 +264,22 @@ export default function LeaveRequestsPage() {
                     <td className="p-4">
                       {request.status === "Pending" && (
                         <div className="flex gap-3">
-                          <button
-                            onClick={() => handleApprove(request)}
-                            disabled={processingId === request.id}
-                            className="text-[var(--green)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
-                          >
-                            {processingId === request.id ? t("leaveRequest.processing") : t("leaveRequest.approve")}
-                          </button>
-                          <button
-                            onClick={() => handleReject(request)}
-                            disabled={processingId === request.id}
-                            className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
-                          >
-                            {t("leaveRequest.reject")}
-                          </button>
+                          <Can code="LeaveRequests.Approve">
+                            <button
+                              onClick={() => handleApprove(request)}
+                              disabled={processingId === request.id}
+                              className="text-[var(--green)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
+                            >
+                              {processingId === request.id ? t("leaveRequest.processing") : t("leaveRequest.approve")}
+                            </button>
+                            <button
+                              onClick={() => handleReject(request)}
+                              disabled={processingId === request.id}
+                              className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
+                            >
+                              {t("leaveRequest.reject")}
+                            </button>
+                          </Can>
                         </div>
                       )}
                     </td>

@@ -7,6 +7,9 @@ public class WebhookPayload
     [JsonPropertyName("id")]
     public string? PaymentId { get; set; }
 
+    [JsonPropertyName("invoice_id")]
+    public string? InvoiceId { get; set; }
+
     [JsonPropertyName("amount")]
     public decimal Amount { get; set; }
 

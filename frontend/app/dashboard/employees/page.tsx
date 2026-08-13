@@ -5,11 +5,14 @@ import { getInvitations, createInvitation } from "@/lib/invitations";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
+import Can from "@/components/Can";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 
 interface Employee {
-  id: number; fullName: string; email: string; roleName: string;
+  id: number; fullName: string; email: string; phone: string; roleName: string;
   salary: number; status: string; hireDate: string;
 }
 interface Invitation {
@@ -25,9 +28,11 @@ interface Permission {
 }
 
 const emptyForm = { fullName: "", email: "", phone: "", password: "", roleName: "", salary: "" };
+const emptyEditForm = { fullName: "", phone: "", roleName: "", salary: "" };
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState<"employees" | "invitations" | "roles">("employees");
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +43,9 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [showInvModal, setShowInvModal] = useState(false);
@@ -87,7 +95,7 @@ export default function EmployeesPage() {
   const closeAddModal = () => { setShowModal(false); setForm(emptyForm); };
 
   const fetchEmployees = useCallback(async () => {
-    try { const res = await api.get("/employees"); setEmployees(res.data.data); }
+    try { const res = await api.get("/employees", { params: { page: 1, pageSize: 500 } }); setEmployees(res.data.data.items || []); }
     catch { }
   }, []);
 
@@ -116,11 +124,41 @@ export default function EmployeesPage() {
   };
 
   const handleDeactivate = async (employee: Employee) => {
-    if (!window.confirm(t("employee.confirmDeactivate", { name: employee.fullName }))) return;
+    if (!(await confirm(t("employee.confirmDeactivate", { name: employee.fullName })))) return;
     setDeactivatingId(employee.id);
     try { await api.put(`/employees/${employee.id}/deactivate`); await fetchEmployees(); }
     catch (err: any) { setActionError(err.response?.data?.message || t("common.error")); }
     finally { setDeactivatingId(null); }
+  };
+
+  const openEditModal = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setEditForm({
+      fullName: employee.fullName,
+      phone: employee.phone || "",
+      roleName: employee.roleName,
+      salary: employee.salary === 0 ? "" : String(employee.salary),
+    });
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEmployee) return;
+    setActionError("");
+    setEditSubmitting(true);
+    try {
+      await api.put(`/employees/${editingEmployee.id}`, {
+        ...editForm,
+        phone: editForm.phone.trim() || null,
+        salary: parseFloat(editForm.salary) || 0,
+        status: "Active",
+      });
+      setEditingEmployee(null);
+      setEditForm(emptyEditForm);
+      setActionSuccess(t("employee.updateSuccess"));
+      await fetchEmployees();
+    } catch (err: any) { setActionError(err.response?.data?.message || t("common.error")); }
+    finally { setEditSubmitting(false); }
   };
 
   const handleInvSubmit = async (e: React.FormEvent) => {
@@ -153,7 +191,7 @@ export default function EmployeesPage() {
     finally { setSaving(false); }
   };
   const handleDeleteRole = async (role: Role) => {
-    if (!window.confirm(t("employee.confirmDeleteRole", { name: role.roleName }))) return;
+    if (!(await confirm(t("employee.confirmDeleteRole", { name: role.roleName })))) return;
     try { await api.delete(`/roles/${role.id}`); setActionSuccess(t("employee.roleDeleted", { name: role.roleName })); await fetchRoles(); }
     catch (err: any) { setActionError(err.response?.data?.message || t("common.error")); }
   };
@@ -193,12 +231,12 @@ export default function EmployeesPage() {
   return (
     <div>
       <PageHeader icon="users" title={t("employee.title")}>
-        {activeTab === "employees" && <><button onClick={openAddModal} className="btn btn-primary btn-sm"><Icon name="plus" /> {t("employee.add")}</button></>}
-        {activeTab === "invitations" && <button onClick={() => { setShowInvModal(true); setInvForm({ email: "", roleId: 0, salary: "" }); }} className="btn btn-primary btn-sm"><Icon name="plus" /> {t("employee.invite")}</button>}
-        {activeTab === "roles" && <button onClick={() => { setShowCreateModal(true); setSelectedCodes([]); setNewRoleName(""); }} className="btn btn-primary btn-sm"><Icon name="plus" /> {t("employee.addRole")}</button>}
+        {activeTab === "employees" && <Can code="EmployeeManagement.Add"><button onClick={openAddModal} className="btn btn-primary btn-sm"><Icon name="plus" /> {t("employee.add")}</button></Can>}
+        {activeTab === "invitations" && <Can code="EmployeeManagement.Add"><button onClick={() => { setShowInvModal(true); setInvForm({ email: "", roleId: 0, salary: "" }); }} className="btn btn-primary btn-sm"><Icon name="plus" /> {t("employee.invite")}</button></Can>}
+        {activeTab === "roles" && <Can code="EmployeeManagement.Edit"><button onClick={() => { setShowCreateModal(true); setSelectedCodes([]); setNewRoleName(""); }} className="btn btn-primary btn-sm"><Icon name="plus" /> {t("employee.addRole")}</button></Can>}
       </PageHeader>
 
-      {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
+      <SuccessToast message={actionSuccess} fixed className="mb-4" />
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
       <div className="tabs-bar">
@@ -218,7 +256,7 @@ export default function EmployeesPage() {
                 <td className="text-[var(--sub)]">{roleLabel(emp.roleName)}</td>
                 <td>{emp.salary === 0 ? "—" : `${emp.salary} ${t("common.sar")}`}</td>
                 <td>{emp.status === "Active" ? <span className="badge badge--green">{t("employee.statusActive")}</span> : <span className="badge badge--red">{t("employee.statusInactive")}</span>}</td>
-                <td>{emp.status === "Active" && <button onClick={() => handleDeactivate(emp)} disabled={deactivatingId === emp.id} className="text-[12px] text-[var(--danger)] hover:underline">{t("employee.deactivate")}</button>}</td>
+                <td><div className="flex gap-3 items-center"><Can code="EmployeeManagement.Edit"><button onClick={() => openEditModal(emp)} className="text-[12px] font-bold text-[var(--blue)] hover:underline">{t("employee.edit")}</button></Can>{emp.status === "Active" && <button onClick={() => handleDeactivate(emp)} disabled={deactivatingId === emp.id} className="text-[12px] text-[var(--danger)] hover:underline">{t("employee.deactivate")}</button>}</div></td>
               </tr>
             ))}</tbody></table>}
         </div>
@@ -235,7 +273,7 @@ export default function EmployeesPage() {
                   <td className="text-[var(--sub)]">{roleLabel(inv.roleName)}</td>
                   <td>{statusBadge(inv.status)}</td>
                   <td>{inv.status === "Pending" ? <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/register?token=${inv.token}`); setActionSuccess(t("employee.linkCopied")); setTimeout(() => setActionSuccess(""), 2000); }} className="text-[12px] font-bold text-[var(--blue)] hover:underline">{t("employee.copyLink")}</button> : <span className="text-[12px] text-[var(--sub)]">—</span>}</td>
-                  <td className="text-[12px] text-[var(--sub)]">{new Date(inv.createdAt).toLocaleDateString("ar-SA")}</td>
+                  <td className="text-[12px] text-[var(--sub)]">{new Date(inv.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}</td>
                 </tr>
               ))}</tbody></table>}
           </div>
@@ -310,6 +348,24 @@ export default function EmployeesPage() {
           <button onClick={() => setShowCreateModal(false)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
           <button onClick={handleCreateRole} disabled={saving} className="btn btn-primary btn-sm">{saving ? t("common.loading") : t("employee.create")}</button>
         </div>
+      </div></div>}
+
+      {/* Edit Employee Modal */}
+      {editingEmployee && <div className="modal-overlay" onClick={() => setEditingEmployee(null)}><div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.editTitle")}</h2><button onClick={() => setEditingEmployee(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div><label>{t("employee.name")}</label><div className="field-shell"><input type="text" value={editForm.fullName} onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))} required /></div></div>
+          <div><label>{t("employee.phone")}</label><div className="field-shell"><input type="text" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} /></div></div>
+          <div><label>{t("employee.jobRole")}</label><div className="field-shell"><select value={editForm.roleName} onChange={e => setEditForm(f => ({ ...f, roleName: e.target.value }))} required>
+            <option value="">{t("common.select")}</option>
+            {roles.map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
+          </select></div></div>
+          <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={editForm.salary} onChange={e => setEditForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setEditingEmployee(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
+            <button type="submit" disabled={editSubmitting} className="btn btn-primary btn-sm">{editSubmitting ? t("common.loading") : t("employee.saveChanges")}</button>
+          </div>
+        </form>
       </div></div>}
     </div>
   );

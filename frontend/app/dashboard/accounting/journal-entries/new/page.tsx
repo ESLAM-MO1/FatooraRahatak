@@ -228,10 +228,10 @@ export default function NewJournalEntryPage() {
                 <tr className="bg-[#FAFBFC] font-bold">
                   <td className="p-3 text-[var(--ink)] text-[13px]">{t("journalEntry.total")}</td>
                   <td className="p-3 text-[var(--ink)]" dir="ltr">
-                    {totals.totalDebit.toLocaleString("ar-SA")}
+                    {totals.totalDebit.toLocaleString("ar-SA-u-nu-latn")}
                   </td>
                   <td className="p-3 text-[var(--ink)]" dir="ltr">
-                    {totals.totalCredit.toLocaleString("ar-SA")}
+                    {totals.totalCredit.toLocaleString("ar-SA-u-nu-latn")}
                   </td>
                   <td colSpan={2} className="p-3">
                     {totals.totalDebit > 0 || totals.totalCredit > 0 ? (
@@ -239,7 +239,7 @@ export default function NewJournalEntryPage() {
                         <span className="text-[var(--green)] text-[12px] font-bold">✓ {t("journalEntry.balanced")}</span>
                       ) : (
                         <span className="text-[var(--danger)] text-[12px] font-bold">
-                          {t("journalEntry.unbalancedWithDiff", { diff: Math.abs(totals.diff).toLocaleString("ar-SA") })}
+                          {t("journalEntry.unbalancedWithDiff", { diff: Math.abs(totals.diff).toLocaleString("ar-SA-u-nu-latn") })}
                         </span>
                       )
                     ) : null}

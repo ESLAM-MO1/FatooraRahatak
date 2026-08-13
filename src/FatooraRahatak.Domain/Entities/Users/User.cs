@@ -17,6 +17,7 @@ public class User : BaseEntity
     public bool IsVerified { get; set; } = false;
     public string? ProfileImage { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public decimal AffiliateBalance { get; set; } = 0m;
 
     public Store? OwnedStore { get; set; }
     public Employee? EmployeeProfile { get; set; }

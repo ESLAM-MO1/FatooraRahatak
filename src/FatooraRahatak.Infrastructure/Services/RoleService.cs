@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Admin;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Roles;
+using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 
@@ -14,6 +15,15 @@ public class RoleService : IRoleService
     public RoleService(AppDbContext context)
     {
         _context = context;
+    }
+
+    private async Task<Store?> ResolveStoreAsync(long userId)
+    {
+        var ownedStore = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
+        if (ownedStore != null) return ownedStore;
+        var employee = await _context.Employees.FirstOrDefaultAsync(e => e.UserId == userId && e.Status == "Active");
+        if (employee == null) return null;
+        return await _context.Stores.FirstOrDefaultAsync(s => s.Id == employee.StoreId);
     }
 
     public async Task<List<PermissionDto>> GetAllPermissionsAsync()
@@ -32,13 +42,14 @@ public class RoleService : IRoleService
 
     public async Task<List<RoleDto>> GetStoreRolesAsync(long ownerUserId)
     {
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == ownerUserId);
+        var store = await ResolveStoreAsync(ownerUserId);
         if (store == null) return new();
 
         var roles = await _context.Roles
             .Include(r => r.RolePermissions)
             .ThenInclude(rp => rp.Permission)
-            .Where(r => r.RoleScope == RoleScope.Store)
+            .Where(r => r.RoleScope == RoleScope.Store
+                        && (r.StoreId == null || r.StoreId == store.Id))
             .OrderBy(r => r.RoleName)
             .ToListAsync();
 
@@ -54,14 +65,16 @@ public class RoleService : IRoleService
 
     public async Task<RoleDto> CreateRoleAsync(long ownerUserId, CreateRoleDto dto)
     {
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == ownerUserId);
+        var store = await ResolveStoreAsync(ownerUserId);
         if (store == null)
             throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك");
 
         if (string.IsNullOrWhiteSpace(dto.RoleName))
             throw new InvalidOperationException("اسم المسمى الوظيفي مطلوب");
 
-        var exists = await _context.Roles.AnyAsync(r => r.RoleName == dto.RoleName && r.RoleScope == RoleScope.Store);
+        var exists = await _context.Roles.AnyAsync(r => r.RoleName == dto.RoleName
+            && r.RoleScope == RoleScope.Store
+            && (r.StoreId == null || r.StoreId == store.Id));
         if (exists)
             throw new InvalidOperationException("يوجد مسمى وظيفي بنفس الاسم بالفعل");
 
@@ -69,6 +82,7 @@ public class RoleService : IRoleService
         {
             RoleName = dto.RoleName.Trim(),
             RoleScope = RoleScope.Store,
+            StoreId = store.Id,
             IsSystemRole = false
         };
 
@@ -100,8 +114,16 @@ public class RoleService : IRoleService
 
     public async Task UpdateRolePermissionsAsync(long ownerUserId, long roleId, UpdateRolePermissionsDto dto)
     {
+        var store = await ResolveStoreAsync(ownerUserId);
+        if (store == null)
+            throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك");
+
         var role = await _context.Roles.FindAsync(roleId);
         if (role == null)
+            throw new InvalidOperationException("المسمى الوظيفي غير موجود");
+
+        // ⚠️ إغلاق تسريب الأدوار بين المتاجر: لا يجوز تعديل مسمى وظيفي يخص متجرًا آخر
+        if (role.StoreId.HasValue && role.StoreId.Value != store.Id)
             throw new InvalidOperationException("المسمى الوظيفي غير موجود");
 
         if (role.IsSystemRole && role.RoleName == "Owner")
@@ -128,8 +150,16 @@ public class RoleService : IRoleService
 
     public async Task DeleteRoleAsync(long ownerUserId, long roleId)
     {
+        var store = await ResolveStoreAsync(ownerUserId);
+        if (store == null)
+            throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك");
+
         var role = await _context.Roles.FindAsync(roleId);
         if (role == null)
+            throw new InvalidOperationException("المسمى الوظيفي غير موجود");
+
+        // ⚠️ إغلاق تسريب الأدوار بين المتاجر: لا يجوز حذف مسمى وظيفي يخص متجرًا آخر
+        if (role.StoreId.HasValue && role.StoreId.Value != store.Id)
             throw new InvalidOperationException("المسمى الوظيفي غير موجود");
 
         if (role.IsSystemRole)

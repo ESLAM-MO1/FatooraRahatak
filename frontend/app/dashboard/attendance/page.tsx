@@ -7,6 +7,8 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import Can from "@/components/Can";
 
 interface Employee {
   id: number;
@@ -41,9 +43,9 @@ export default function AttendancePage() {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const res = await api.get("/employees");
+      const res = await api.get("/employees", { params: { page: 1, pageSize: 500 } });
       setEmployees(
-        res.data.data.filter((e: Employee) => e.status === "Active")
+        (res.data.data.items || res.data.data || []).filter((e: Employee) => e.status === "Active")
       );
     } catch (err: any) {
       setError(err.response?.data?.message || t("attendance.loadEmployeesError"));
@@ -149,7 +151,7 @@ export default function AttendancePage() {
 
         {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
-        {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
+        <SuccessToast message={actionSuccess} fixed className="mb-4" />
 
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[200px]">
@@ -170,12 +172,14 @@ export default function AttendancePage() {
               </select>
             </div>
           </div>
-          <button onClick={handleCheckIn} disabled={checkingIn} className="btn btn-primary disabled:opacity-60">
-            {checkingIn ? t("attendance.checkingIn") : t("attendance.checkIn")}
-          </button>
-          <button onClick={handleCheckOut} disabled={checkingOut} className="btn btn-secondary disabled:opacity-60">
-            {checkingOut ? t("attendance.checkingOut") : t("attendance.checkOut")}
-          </button>
+          <Can code="Attendance.Add">
+            <button onClick={handleCheckIn} disabled={checkingIn} className="btn btn-primary disabled:opacity-60">
+              {checkingIn ? t("attendance.checkingIn") : t("attendance.checkIn")}
+            </button>
+            <button onClick={handleCheckOut} disabled={checkingOut} className="btn btn-secondary disabled:opacity-60">
+              {checkingOut ? t("attendance.checkingOut") : t("attendance.checkOut")}
+            </button>
+          </Can>
         </div>
       </div>
 

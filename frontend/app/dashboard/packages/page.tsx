@@ -7,6 +7,9 @@ import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import { formatNumber } from "@/lib/formatNumber";
+import InfoTooltip from "@/components/InfoTooltip";
 
 interface Package {
   id: number;
@@ -25,8 +28,18 @@ interface Package {
   hasCustomDomain: boolean;
   hasAffiliateMarketing: boolean;
   hasApiAccess: boolean;
+  hasPos: boolean;
+  hasLogo: boolean;
   maxThemes: number;
   commissionPercentage: number;
+  color: string;
+  hasShippingIntegration: boolean;
+  hasShippingCalculator: boolean;
+  hasShippingTracking: boolean;
+  hasShippingLabelPrinting: boolean;
+  hasFreeShipping: boolean;
+  hasCashOnDelivery: boolean;
+  hasShippingDiscounts: boolean;
   isActive: boolean;
 }
 
@@ -50,22 +63,35 @@ interface PlatformInvoice {
 
 const FEATURE_LABELS: Record<string, string> = {
   hasAccountingFull: "packagesAdmin.featureAccounting",
-  hasPayroll: "packagesAdmin.featurePayroll",
   hasZatcaInvoice: "packagesAdmin.featureZatcaInvoice",
+  hasPos: "packagesAdmin.featurePos",
+  hasPayroll: "packagesAdmin.featurePayroll",
   hasCustomDomain: "packagesAdmin.featureCustomDomain",
-  hasAffiliateMarketing: "packagesAdmin.featureAffiliateMarketing",
   hasApiAccess: "packagesAdmin.featureApiAccess",
+  hasAffiliateMarketing: "packagesAdmin.featureAffiliateMarketing",
+  hasLogo: "packagesAdmin.featureLogo",
 };
 
+const SHIPPING_FEATURE_LABELS: Record<string, string> = {
+  hasShippingCalculator: "packagesAdmin.featureShippingCalculator",
+  hasShippingTracking: "packagesAdmin.featureShippingTracking",
+  hasShippingLabelPrinting: "packagesAdmin.featureShippingLabelPrinting",
+  hasCashOnDelivery: "packagesAdmin.featureCashOnDelivery",
+  hasFreeShipping: "packagesAdmin.featureFreeShipping",
+  hasShippingDiscounts: "packagesAdmin.featureShippingDiscounts",
+};
+
+const PACKAGE_COLORS = [
+  { value: "#6B7280", labelKey: "packagesAdmin.colorGray" },
+  { value: "#12A8DB", labelKey: "packagesAdmin.colorBlue" },
+  { value: "#1FB983", labelKey: "packagesAdmin.colorGreen" },
+  { value: "#C9A227", labelKey: "packagesAdmin.colorGold" },
+];
+
 const LIMIT_FIELDS = [
-  { key: "maxProducts" as keyof Package, label: "packagesAdmin.limitProducts" },
-  { key: "maxOrdersPerMonth" as keyof Package, label: "packagesAdmin.limitOrdersPerMonth" },
-  { key: "maxEmployees" as keyof Package, label: "packagesAdmin.limitEmployees" },
-  { key: "maxWarehouses" as keyof Package, label: "packagesAdmin.limitWarehouses" },
-  { key: "maxBranchesPOS" as keyof Package, label: "packagesAdmin.limitBranchesPOS" },
-  { key: "maxPaymentGateways" as keyof Package, label: "packagesAdmin.limitPaymentGateways" },
-  { key: "maxShippingCompanies" as keyof Package, label: "packagesAdmin.limitShippingCompanies" },
-  { key: "maxThemes" as keyof Package, label: "packagesAdmin.limitThemes" },
+  { key: "maxProducts" as keyof Package, label: "packagesAdmin.limitProducts", tooltipKey: "packagesAdmin.limitProductsTooltip" },
+  { key: "maxEmployees" as keyof Package, label: "packagesAdmin.limitEmployees", tooltipKey: "packagesAdmin.limitEmployeesTooltip" },
+  { key: "maxWarehouses" as keyof Package, label: "packagesAdmin.limitWarehouses", tooltipKey: "packagesAdmin.limitWarehousesTooltip" },
 ];
 
 const STATUS_STYLES: Record<string, { badge: string; labelKey: string }> = {
@@ -173,20 +199,26 @@ export default function PackagesPage() {
     setEditForm({
       monthlyPrice: pkg.monthlyPrice,
       maxProducts: pkg.maxProducts,
-      maxOrdersPerMonth: pkg.maxOrdersPerMonth,
       maxEmployees: pkg.maxEmployees,
       maxWarehouses: pkg.maxWarehouses,
-      maxBranchesPOS: pkg.maxBranchesPOS,
-      maxPaymentGateways: pkg.maxPaymentGateways,
-      maxShippingCompanies: pkg.maxShippingCompanies,
       hasAccountingFull: pkg.hasAccountingFull,
       hasPayroll: pkg.hasPayroll,
       hasZatcaInvoice: pkg.hasZatcaInvoice,
       hasCustomDomain: pkg.hasCustomDomain,
       hasAffiliateMarketing: pkg.hasAffiliateMarketing,
       hasApiAccess: pkg.hasApiAccess,
+      hasPos: pkg.hasPos,
+      hasLogo: pkg.hasLogo,
       maxThemes: pkg.maxThemes,
       commissionPercentage: pkg.commissionPercentage,
+      color: pkg.color,
+      hasShippingIntegration: pkg.hasShippingIntegration,
+      hasShippingCalculator: pkg.hasShippingCalculator,
+      hasShippingTracking: pkg.hasShippingTracking,
+      hasShippingLabelPrinting: pkg.hasShippingLabelPrinting,
+      hasFreeShipping: pkg.hasFreeShipping,
+      hasCashOnDelivery: pkg.hasCashOnDelivery,
+      hasShippingDiscounts: pkg.hasShippingDiscounts,
       isActive: pkg.isActive,
     });
     setActionError("");
@@ -221,10 +253,10 @@ export default function PackagesPage() {
   };
 
   const getPriceDisplay = (price: number) => {
-    return price === 0 ? t("packagesAdmin.free") : `${price.toLocaleString("ar-SA")} ${t("packagesAdmin.perMonth")}`;
+    return `${formatNumber(price)} ${t("packagesAdmin.perMonth")}`;
   };
 
-  const renderLimitField = (pkg: Package, field: { key: keyof Package; label: string }) => {
+  const renderLimitField = (pkg: Package, field: { key: keyof Package; label: string; tooltipKey?: string }) => {
     const isEditing = editingId === pkg.id;
     const value = pkg[field.key] as number | null;
     const editValue = editForm[field.key] as number | null | undefined;
@@ -232,7 +264,7 @@ export default function PackagesPage() {
     if (isEditing) {
       return (
         <div key={field.key} className="flex items-center justify-between text-[12.5px] mb-2 gap-3">
-          <label className="text-[var(--sub)] shrink-0">{t(field.label)}</label>
+          <label className="text-[var(--sub)] shrink-0 flex items-center gap-1">{t(field.label)}{field.tooltipKey && <InfoTooltip messageKey={field.tooltipKey} />}</label>
           <div className="field-shell py-1 px-2.5 w-24">
             <input
               type="number"
@@ -253,7 +285,7 @@ export default function PackagesPage() {
 
     return (
       <div key={field.key} className="flex justify-between text-[12.5px] mb-2">
-        <span className="text-[var(--sub)]">{t(field.label)}</span>
+        <span className="text-[var(--sub)] flex items-center gap-1">{t(field.label)}{field.tooltipKey && <InfoTooltip messageKey={field.tooltipKey} />}</span>
         <span className="font-bold text-[var(--ink)]">{getLimitDisplay(value)}</span>
       </div>
     );
@@ -285,6 +317,115 @@ export default function PackagesPage() {
         {t(label)}
       </span>
     );
+  };
+
+  const renderThemesField = (pkg: Package) => {
+    const isEditing = editingId === pkg.id;
+    const value = pkg.maxThemes;
+    const editValue = editForm.maxThemes;
+    const themesValue = isEditing ? (editValue !== undefined ? editValue : value) : value;
+    const active = themesValue > 0;
+
+    if (isEditing) {
+      return (
+        <div key="maxThemes" className="flex items-center gap-2 text-[11.5px]">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setEditForm({ ...editForm, maxThemes: e.target.checked ? (themesValue > 0 ? themesValue : 1) : 0 })}
+            className="w-4 h-4 accent-[var(--blue)]"
+          />
+          <span className={active ? "text-[var(--green)]" : "text-[var(--sub)]"}>{t("packagesAdmin.featureThemes")}</span>
+          {active && (
+            <div className="field-shell py-1 px-2 w-16">
+              <input
+                type="number"
+                value={themesValue}
+                onChange={(e) => setEditForm({ ...editForm, maxThemes: parseInt(e.target.value) || 0 })}
+                min={1}
+                dir="ltr"
+                className="text-left"
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <span key="maxThemes" className={`feature-chip ${active ? "feature-chip--on" : "feature-chip--off"}`}>
+        {active ? <CheckIcon /> : <CrossIcon />}
+        {getThemesAdminLabel(themesValue)}
+      </span>
+    );
+  };
+
+  const getThemesAdminLabel = (v: number) => {
+    if (v <= 0) return t("packagesAdmin.featureThemes");
+    return `${v} ${t("packagesAdmin.themes")}`;
+  };
+
+  const renderShippingCompaniesField = (pkg: Package) => {
+    const isEditing = editingId === pkg.id;
+    const value = pkg.maxShippingCompanies;
+    const editValue = editForm.maxShippingCompanies;
+    const compValue = isEditing ? (editValue !== undefined ? editValue : value) : value;
+    const active = compValue !== 0;
+    const isUnlimited = compValue === -1;
+
+    if (isEditing) {
+      return (
+        <div key="maxShippingCompanies" className="flex items-center gap-2 text-[11.5px]">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={(e) => setEditForm({ ...editForm, maxShippingCompanies: e.target.checked ? (compValue !== 0 ? compValue : 2) : 0 })}
+            className="w-4 h-4 accent-[var(--blue)]"
+          />
+          <span className={active ? "text-[var(--green)]" : "text-[var(--sub)]"}>
+            {t("packagesAdmin.featureShippingIntegration")}
+          </span>
+          {active && !isUnlimited && (
+            <>
+              <div className="field-shell py-1 px-2 w-16">
+                <input
+                  type="number"
+                  value={compValue}
+                  onChange={(e) => setEditForm({ ...editForm, maxShippingCompanies: e.target.value === "" ? 0 : parseInt(e.target.value) || 0 })}
+                  min={1}
+                  dir="ltr"
+                  className="text-left"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditForm({ ...editForm, maxShippingCompanies: -1 })}
+                className="text-[10.5px] text-[var(--blue)] underline"
+              >
+                {t("packagesAdmin.shippingUnlimited")}
+              </button>
+            </>
+          )}
+          {active && isUnlimited && (
+            <span className="font-bold text-[var(--green)]">{t("packagesAdmin.shippingUnlimited")}</span>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <span key="maxShippingCompanies" className={`feature-chip ${active ? "feature-chip--on" : "feature-chip--off"}`}>
+        {active ? <CheckIcon /> : <CrossIcon />}
+        {getShippingCompaniesAdminLabel(compValue)}
+      </span>
+    );
+  };
+
+  const getShippingCompaniesAdminLabel = (v: number) => {
+    if (v === -1) return t("packagesAdmin.shippingUnlimited");
+    if (v === 0) return t("packagesAdmin.featureShippingIntegration");
+    if (v === 2) return t("packagesAdmin.shippingTwo");
+    return `${v} ${t("packagesAdmin.shippingCompanies")}`;
   };
 
   const KPI_ICONS: Record<string, { viewBox: string; paths: string[] }> = {
@@ -347,7 +488,7 @@ export default function PackagesPage() {
   };
 
   const formatCurrency = (amount: number) =>
-    amount.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ر.س";
+    formatNumber(amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + t("common.sar");
 
   if (loading) {
     return <LoadingState />;
@@ -378,19 +519,26 @@ export default function PackagesPage() {
       </div>
 
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
-      {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
+      <SuccessToast message={actionSuccess} fixed className="mb-4" />
 
       {activeTab === "packages" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {packages.map((pkg) => {
             const isEditing = editingId === pkg.id;
             const activeNow = isEditing ? editForm.isActive ?? pkg.isActive : pkg.isActive;
+            const cardColor = isEditing ? editForm.color ?? pkg.color : pkg.color;
 
             return (
               <div key={pkg.id} className={`package-card ${isEditing ? "package-card--current" : ""}`}>
                 {isEditing && <span className="package-card__badge">{t("packagesAdmin.editing")}</span>}
 
-                <h3 className="text-[15px] font-bold text-[var(--blue-deep)] mb-2">{pkg.packageName}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="inline-block w-3.5 h-3.5 rounded-full shrink-0"
+                    style={{ backgroundColor: cardColor }}
+                  />
+                  <h3 className="text-[15px] font-bold text-[var(--blue-deep)]">{pkg.packageName}</h3>
+                </div>
 
                 <div className="mb-4">
                   {isEditing ? (
@@ -412,13 +560,33 @@ export default function PackagesPage() {
                       <span className="text-[12px] text-[var(--sub)]">{t("packagesAdmin.perMonth")}</span>
                     </div>
                   ) : (
-                    <p className="text-[22px] font-bold text-[var(--blue)]">{getPriceDisplay(pkg.monthlyPrice)}</p>
+                    <p className="text-[22px] font-bold" style={{ color: cardColor }}>{getPriceDisplay(pkg.monthlyPrice)}</p>
                   )}
                 </div>
 
                 {isEditing && (
                   <div className="flex items-center gap-2 mb-4">
-                    <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.commission")}</label>
+                    <label className="text-[12.5px] text-[var(--sub)] shrink-0">{t("packagesAdmin.color")}</label>
+                    <div className="flex items-center gap-2">
+                      {PACKAGE_COLORS.map((c) => (
+                        <button
+                          key={c.value}
+                          type="button"
+                          onClick={() => setEditForm({ ...editForm, color: c.value })}
+                          title={t(c.labelKey)}
+                          className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                            (editForm.color ?? pkg.color) === c.value ? "border-[var(--blue)] scale-110" : "border-transparent hover:scale-105"
+                          }`}
+                          style={{ backgroundColor: c.value }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isEditing && (
+                  <div className="flex items-center gap-2 mb-4">
+                    <label className="text-[12.5px] text-[var(--sub)] shrink-0 flex items-center gap-1">{t("packagesAdmin.commission")}<InfoTooltip messageKey="packagesAdmin.commissionTooltip" /></label>
                     <div className="field-shell py-1 px-2.5 w-20">
                       <input
                         type="number"
@@ -433,6 +601,13 @@ export default function PackagesPage() {
                   </div>
                 )}
 
+                {!isEditing && (
+                  <div className="flex justify-between text-[12.5px] mb-4">
+                    <span className="text-[var(--sub)] flex items-center gap-1">{t("packagesAdmin.commission")}<InfoTooltip messageKey="packagesAdmin.commissionTooltip" /></span>
+                    <span className="font-bold text-[var(--ink)]">{pkg.commissionPercentage}%</span>
+                  </div>
+                )}
+
                 <div className="space-y-1 mb-4 border-t border-[var(--border)] pt-4">
                   {LIMIT_FIELDS.map((field) => renderLimitField(pkg, field))}
                 </div>
@@ -441,6 +616,21 @@ export default function PackagesPage() {
                   <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.features")}</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {(Object.entries(FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
+                      renderFeatureField(pkg, key, label)
+                    )}
+                  </div>
+                  <div className="mt-1.5">
+                    {renderThemesField(pkg)}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
+                  <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.shipping")}</p>
+                  <div className="mt-1.5 mb-1.5">
+                    {renderShippingCompaniesField(pkg)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(Object.entries(SHIPPING_FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
                       renderFeatureField(pkg, key, label)
                     )}
                   </div>
@@ -582,7 +772,7 @@ export default function PackagesPage() {
                           <td className="p-3 text-[var(--sub)]">{inv.packageName}</td>
                           <td className="p-3 text-[var(--ink)] font-bold">{formatCurrency(inv.amount)}</td>
                           <td className="p-3 text-[var(--sub)]" dir="ltr">
-                            {new Date(inv.dueDate).toLocaleDateString("ar-SA")}
+                            {new Date(inv.dueDate).toLocaleDateString("ar-SA-u-nu-latn")}
                           </td>
                           <td className="p-3">
                             <span className={st.badge}>{t(st.labelKey)}</span>

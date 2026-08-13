@@ -22,9 +22,10 @@ interface Line {
   productId: string;
   quantity: string;
   unitPrice: string;
+  discount: string;
 }
 
-const emptyLine: Line = { productId: "", quantity: "1", unitPrice: "" };
+const emptyLine: Line = { productId: "", quantity: "1", unitPrice: "", discount: "" };
 const VAT_RATE = 0.15;
 
 export default function NewPurchaseInvoicePage() {
@@ -37,6 +38,9 @@ export default function NewPurchaseInvoicePage() {
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [supplierName, setSupplierName] = useState("");
+  const [supplierPhone, setSupplierPhone] = useState("");
+  const [supplierCity, setSupplierCity] = useState("");
+  const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([{ ...emptyLine }]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -85,8 +89,10 @@ export default function NewPurchaseInvoicePage() {
     const price = parseFloat(l.unitPrice) || 0;
     return sum + qty * price;
   }, 0);
-  const estimatedTax = isVatRegistered ? Math.round(subTotal * VAT_RATE * 100) / 100 : 0;
-  return { subTotal, estimatedTax, estimatedTotal: subTotal + estimatedTax };
+  const totalDiscount = lines.reduce((sum, l) => sum + (parseFloat(l.discount) || 0), 0);
+  const net = subTotal - totalDiscount;
+  const estimatedTax = isVatRegistered ? Math.round(net * VAT_RATE * 100) / 100 : 0;
+  return { subTotal, totalDiscount, net, estimatedTax, estimatedTotal: net + estimatedTax };
 }, [lines, isVatRegistered]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,23 +109,39 @@ export default function NewPurchaseInvoicePage() {
       return;
     }
 
+    const invalidDiscount = validLines.find((l) => {
+      const qty = parseFloat(l.quantity) || 0;
+      const price = parseFloat(l.unitPrice) || 0;
+      const disc = parseFloat(l.discount) || 0;
+      return disc < 0 || disc > qty * price;
+    });
+    if (invalidDiscount) {
+      setError(t("invoice.invalidDiscount"));
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
         invoiceDate,
         supplierName: supplierName.trim(),
+        supplierPhone: supplierPhone || null,
+        supplierCity: supplierCity || null,
+        notes: notes || null,
         paymentMethod,
         items: validLines.map((l) => ({
           productId: Number(l.productId),
           variantId: null,
           quantity: Number(l.quantity),
           unitPrice: parseFloat(l.unitPrice),
+          discountAmount: parseFloat(l.discount) || 0,
         })),
       };
       const res = await api.post("/invoices/purchase", payload);
       router.push(`/dashboard/accounting/invoices/${res.data.data.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("invoice.savePurchaseError"));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || t("invoice.savePurchaseError"));
     } finally {
       setSubmitting(false);
     }
@@ -171,6 +193,31 @@ export default function NewPurchaseInvoicePage() {
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div>
+              <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.supplierPhone")}</label>
+              <div className="field-shell">
+                <input
+                  type="text"
+                  value={supplierPhone}
+                  onChange={(e) => setSupplierPhone(e.target.value)}
+                  placeholder="+9665XXXXXXXX"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.supplierCity")}</label>
+              <div className="field-shell">
+                <input
+                  type="text"
+                  value={supplierCity}
+                  onChange={(e) => setSupplierCity(e.target.value)}
+                  placeholder={t("invoice.guestCityPlaceholder")}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="card overflow-hidden mb-4">
@@ -181,13 +228,17 @@ export default function NewPurchaseInvoicePage() {
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px] w-2/5">{t("invoice.product")}</th>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.quantity")}</th>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.purchaseUnitPrice")}</th>
+                  <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.discount")}</th>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.lineTotal")}</th>
+                  <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.lineAfterDiscount")}</th>
                   <th className="p-3 w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {lines.map((line, i) => {
                   const lineTotal = (parseFloat(line.quantity) || 0) * (parseFloat(line.unitPrice) || 0);
+                  const lineDiscount = parseFloat(line.discount) || 0;
+                  const lineAfterDiscount = lineTotal - lineDiscount;
                   return (
                     <tr key={i} className="border-b border-[var(--border)]">
                       <td className="p-2">
@@ -230,8 +281,23 @@ export default function NewPurchaseInvoicePage() {
                           />
                         </div>
                       </td>
+                      <td className="p-2 w-28">
+                        <div className="field-shell">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={line.discount}
+                            onChange={(e) => updateLine(i, "discount", e.target.value)}
+                            dir="ltr"
+                          />
+                        </div>
+                      </td>
                       <td className="p-2 text-[var(--ink)] font-medium" dir="ltr">
-                        {lineTotal.toLocaleString("ar-SA")}
+                        {lineTotal.toLocaleString("ar-SA-u-nu-latn")}
+                      </td>
+                      <td className="p-2 text-[var(--blue-deep)] font-bold" dir="ltr">
+                        {lineAfterDiscount.toLocaleString("ar-SA-u-nu-latn")}
                       </td>
                       <td className="p-2 text-center">
                         <button
@@ -249,27 +315,43 @@ export default function NewPurchaseInvoicePage() {
               </tbody>
               <tfoot>
                 <tr className="bg-[#FAFBFC]">
-                  <td colSpan={3} className="p-3 text-[var(--sub)] text-[12.5px]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
                     {t("invoice.subTotal")}
                   </td>
                   <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
-                    {totals.subTotal.toLocaleString("ar-SA")} ر.س
+                    {totals.subTotal.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                   </td>
                 </tr>
                 <tr className="bg-[#FAFBFC]">
-                  <td colSpan={3} className="p-3 text-[var(--sub)] text-[12.5px]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
+                    {t("invoice.totalDiscount")}
+                  </td>
+                  <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
+                    {totals.totalDiscount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                  </td>
+                </tr>
+                <tr className="bg-[#FAFBFC]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
+                    {t("invoice.net")}
+                  </td>
+                  <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
+                    {totals.net.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                  </td>
+                </tr>
+                <tr className="bg-[#FAFBFC]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
                     {isVatRegistered ? t("invoice.taxEstimated") : t("invoice.taxNotRegistered")}
                   </td>
                   <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
-                    {totals.estimatedTax.toLocaleString("ar-SA")} ر.س
+                    {totals.estimatedTax.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                   </td>
                 </tr>
                 <tr className="bg-[#FAFBFC] font-bold">
-                  <td colSpan={3} className="p-3 text-[var(--ink)] text-[13px]">
+                  <td colSpan={5} className="p-3 text-[var(--ink)] text-[13px]">
                     {t("invoice.totalEstimated")}
                   </td>
                   <td colSpan={2} className="p-3 text-[var(--blue-deep)] text-[15px]" dir="ltr">
-                    {totals.estimatedTotal.toLocaleString("ar-SA")} ر.س
+                    {totals.estimatedTotal.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                   </td>
                 </tr>
               </tfoot>
@@ -284,6 +366,18 @@ export default function NewPurchaseInvoicePage() {
               <Icon name="plus" />
               {t("invoice.addLine")}
             </button>
+          </div>
+        </div>
+
+        <div className="card p-5 mb-4">
+          <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.notes")}</label>
+          <div className="field-shell">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t("invoice.notesPlaceholder")}
+              rows={3}
+            />
           </div>
         </div>
 

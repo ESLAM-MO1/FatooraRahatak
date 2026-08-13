@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
+using FatooraRahatak.Application.DTOs.Payment;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -26,26 +27,73 @@ public class OwnerPaymentController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Payments.View")]
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string? status)
+    public async Task<IActionResult> GetAll([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
-        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "Payments.View"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
+        try
+        {
+            var result = await _paymentService.GetPaymentsAsync(storeId.Value, status, page, pageSize);
+            return Ok(new { success = true, data = result });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Payments.View")]
+    [HttpGet("account")]
+    public async Task<IActionResult> GetAccount()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var result = await _paymentService.GetStorePaymentAccountAsync(storeId.Value);
+        if (result == null) return NotFound(new { success = false, message = "المتجر غير موجود" });
+        return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("Payments.Edit")]
+    [HttpPost("account")]
+    public async Task<IActionResult> SubmitAccount([FromBody] SubmitStorePaymentAccountDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         try
         {
-            var result = await _paymentService.GetPaymentsAsync(storeId.Value, status);
-            return Ok(new { success = true, data = result });
+            var result = await _paymentService.SubmitStorePaymentAccountAsync(storeId.Value, dto);
+            return Ok(new { success = true, data = result, message = "تم إرسال بيانات حساب الدفع للمراجعة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Payments.View")]
+    [HttpPost("refund")]
+    public async Task<IActionResult> Refund([FromBody] RefundPaymentDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _paymentService.RefundPaymentAsync(storeId.Value, dto.PaymentReference);
+            if (result.Status == "not_found")
+                return NotFound(new { success = false, message = result.Message });
+
+            if (result.Status != "Refunded")
+                return BadRequest(new { success = false, message = result.Message });
+
+            return Ok(new { success = true, data = result, message = "تم استرداد الدفعة بنجاح" });
         }
         catch (Exception ex)
         {

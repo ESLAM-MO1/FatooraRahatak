@@ -40,7 +40,22 @@ public class CartService : ICartService
 
         var existingItem = cart.Items.FirstOrDefault(i => i.ProductId == dto.ProductId && i.VariantId == dto.VariantId);
 
+        // ⚠️ إصلاح سعر المتغيرات: كان يُتجاهل سعر المتغير (PriceAdjustment) ويُستخدم سعر المنتج
+        // الأساسي فقط، فتدفع السلة سعرًا أقل/أعلى من الفعلي للمنتجات ذات المتغيرات.
         var effectivePrice = product.DiscountPrice ?? product.BasePrice;
+
+        if (product.HasVariants)
+        {
+            if (!dto.VariantId.HasValue)
+                throw new InvalidOperationException("هذا المنتج له متغيرات — يرجى اختيار المتغير المطلوب");
+
+            var variant = await _context.ProductVariants
+                .FirstOrDefaultAsync(v => v.Id == dto.VariantId.Value && v.ProductId == product.Id && v.IsActive);
+            if (variant == null)
+                throw new InvalidOperationException("المتغير المحدد غير موجود أو غير متاح");
+
+            effectivePrice += variant.PriceAdjustment;
+        }
 
         if (existingItem != null)
         {
@@ -110,6 +125,10 @@ public class CartService : ICartService
 
     public async Task<decimal> ApplyCouponAsync(long storeId, ApplyCouponDto dto)
     {
+        var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
+        if (store != null && !store.IsCouponsEnabled)
+            throw new InvalidOperationException("الخصومات غير مفعّلة في هذا المتجر حاليًا");
+
         var cart = await _context.Carts
             .Include(c => c.Items)
             .FirstOrDefaultAsync(c => c.Id == dto.CartId && c.StoreId == storeId);
@@ -148,7 +167,8 @@ public class CartService : ICartService
             ? subtotal * (coupon.DiscountValue / 100)
             : coupon.DiscountValue;
 
-        return Math.Min(discount, subtotal); 
+        // ⚠️ دفاع إضافي: حتى لو وُجد كوبون بخصم سالب قديم في قاعدة البيانات، لا نسمح له برفع السعر
+        return Math.Min(Math.Max(discount, 0m), subtotal); 
     }
 
     public async Task MarkAbandonedCartsAsync()
@@ -161,7 +181,14 @@ public class CartService : ICartService
             .ToListAsync();
 
         foreach (var cart in abandonedCarts)
+        {
             cart.Status = CartStatus.Abandoned;
+
+            // ⚠️ إصلاح استهلاك حد الكوبون: سلة مهجورة كان الكوبون مطبقًا عليها كانت تحجز من
+            // حد الاستخدام الكلي حتى بعد التخلي عنها. حذف استخداماتها يعيد الحد للعملاء الفعليين.
+            var usages = await _context.CouponUsages.Where(u => u.CartId == cart.Id).ToListAsync();
+            _context.CouponUsages.RemoveRange(usages);
+        }
 
         await _context.SaveChangesAsync();
     }
@@ -181,7 +208,8 @@ public class CartService : ICartService
                 VariantId = i.VariantId,
                 Quantity = i.Quantity,
                 PriceAtAdd = i.PriceAtAdd,
-                LineTotal = i.PriceAtAdd * i.Quantity
+                LineTotal = i.PriceAtAdd * i.Quantity,
+                Weight = i.Product.Weight
             })
             .ToListAsync();
 
@@ -190,7 +218,8 @@ public class CartService : ICartService
             Id = cart.Id,
             Status = cart.Status.ToString(),
             Items = items,
-            Subtotal = items.Sum(i => i.LineTotal)
+            Subtotal = items.Sum(i => i.LineTotal),
+            TotalWeightKg = items.Sum(i => i.Quantity * (i.Weight ?? 1))
         };
     }
 }

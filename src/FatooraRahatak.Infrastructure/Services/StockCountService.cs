@@ -11,11 +11,13 @@ public class StockCountService : IStockCountService
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IAccountingService _accountingService;
 
-    public StockCountService(AppDbContext context, INotificationService notificationService)
+    public StockCountService(AppDbContext context, INotificationService notificationService, IAccountingService accountingService)
     {
         _context = context;
         _notificationService = notificationService;
+        _accountingService = accountingService;
     }
 
     public async Task<StockCountResponseDto> StartAsync(long storeId, long userId, StartStockCountDto dto)
@@ -73,6 +75,9 @@ public class StockCountService : IStockCountService
         if (item.StockCount.Status != StockCountStatus.InProgress)
             throw new InvalidOperationException("لا يمكن تعديل جرد غير قيد التنفيذ");
 
+        if (dto.CountedQuantity < 0)
+            throw new InvalidOperationException("الكمية المعدودة لا يمكن أن تكون سالبة");
+
         item.CountedQuantity = dto.CountedQuantity;
         await _context.SaveChangesAsync();
     }
@@ -105,9 +110,22 @@ public class StockCountService : IStockCountService
         if (uncounted)
             throw new InvalidOperationException("لا يمكن الاعتماد قبل إدخال الكميات الفعلية لجميع المنتجات");
 
+        var productIds = stockCount.Items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await _context.Products
+            .Where(p => productIds.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, p => p);
+
+        decimal shortageAmount = 0m, overageAmount = 0m;
+
         foreach (var item in stockCount.Items)
         {
-            if (item.Variance == 0) continue; 
+            if (item.Variance == 0) continue;
+
+            var cost = products.TryGetValue(item.ProductId, out var p) ? p.CostPrice : 0m;
+            if (item.Variance < 0)
+                shortageAmount += Math.Abs(item.Variance) * cost;
+            else
+                overageAmount += item.Variance * cost;
 
             var stock = await _context.InventoryStocks.FirstOrDefaultAsync(s =>
                 s.WarehouseId == stockCount.WarehouseId && s.ProductId == item.ProductId && s.VariantId == item.VariantId);
@@ -121,7 +139,7 @@ public class StockCountService : IStockCountService
                 ProductId = item.ProductId,
                 VariantId = item.VariantId,
                 TransactionType = InventoryTransactionType.Adjustment,
-                Quantity = item.Variance, 
+                Quantity = item.Variance,
                 ReferenceType = "StockCount",
                 ReferenceId = stockCount.Id,
                 CreatedByUserId = approvedByUserId
@@ -133,6 +151,12 @@ public class StockCountService : IStockCountService
         stockCount.CompletedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        if (shortageAmount > 0 || overageAmount > 0)
+            await _accountingService.CreateStockCountVarianceEntryAsync(
+                stockCount.Warehouse.StoreId, shortageAmount, overageAmount,
+                $"قيد تلقائي — فرق جرد مخزن {stockCount.Warehouse.WarehouseName}",
+                approvedByUserId);
 
         try
         {
@@ -147,6 +171,25 @@ public class StockCountService : IStockCountService
             }
         }
         catch { }
+    }
+
+    public async Task<List<StockCountListDto>> GetAllAsync(long storeId)
+    {
+        return await _context.StockCounts
+            .Include(s => s.Warehouse)
+            .Include(s => s.Items)
+            .Where(s => s.Warehouse.StoreId == storeId)
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new StockCountListDto
+            {
+                Id = s.Id,
+                WarehouseName = s.Warehouse.WarehouseName,
+                Status = s.Status.ToString(),
+                ItemsCount = s.Items.Count,
+                CreatedAt = s.CreatedAt,
+                CompletedAt = s.CompletedAt
+            })
+            .ToListAsync();
     }
 
     private async Task<StockCountResponseDto> BuildResponseAsync(long stockCountId)

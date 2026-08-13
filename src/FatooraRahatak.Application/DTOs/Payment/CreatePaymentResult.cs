@@ -6,5 +6,6 @@ public class CreatePaymentResult
     public string? PaymentReference { get; set; }
     public string? PaymentLinkUrl { get; set; }
     public string? ProviderPaymentId { get; set; }
+    public BankTransferInfoDto? BankTransfer { get; set; }
     public string Message { get; set; } = string.Empty;
 }

@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import Can from "@/components/Can";
 
 interface FixedAsset {
   id: number;
@@ -83,20 +84,24 @@ export default function FixedAssetsPage() {
     <div>
       <PageHeader icon="fixedAsset" title={t("fixedAsset.title")}>
         <div className="flex gap-2">
-          <button
-            onClick={() => runDepreciation(null)}
-            disabled={runningAll || assets.length === 0}
-            className="btn btn-secondary disabled:opacity-50 flex items-center gap-1.5"
-          >
-            <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
-              <path d="M8 5v14l11-7-11-7Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            {runningAll ? t("fixedAsset.runningAll") : t("fixedAsset.runAll")}
-          </button>
-          <Link href="/dashboard/accounting/fixed-assets/new" className="btn btn-primary">
-            <Icon name="plus" />
-            {t("fixedAsset.newAsset")}
-          </Link>
+          <Can code="FixedAssets.Edit">
+            <button
+              onClick={() => runDepreciation(null)}
+              disabled={runningAll || assets.length === 0}
+              className="btn btn-secondary disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <svg viewBox="0 0 24 24" fill="none" width="16" height="16">
+                <path d="M8 5v14l11-7-11-7Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {runningAll ? t("fixedAsset.runningAll") : t("fixedAsset.runAll")}
+            </button>
+          </Can>
+          <Can code="FixedAssets.Add">
+            <Link href="/dashboard/accounting/fixed-assets/new" className="btn btn-primary">
+              <Icon name="plus" />
+              {t("fixedAsset.newAsset")}
+            </Link>
+          </Can>
         </div>
       </PageHeader>
 
@@ -118,7 +123,7 @@ export default function FixedAssetsPage() {
               >
                 <span>{r.fixedAssetNameAr}</span>
                 <span dir="ltr">
-                  {r.depreciationAmount.toLocaleString("ar-SA")} ر.س —{" "}
+                  {r.depreciationAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")} —{" "}
                   <Link
                     href={`/dashboard/accounting/journal-entries/${r.journalEntryId}`}
                     className="text-[var(--blue)] hover:underline"
@@ -164,19 +169,19 @@ export default function FixedAssetsPage() {
                       {a.purchaseDate}
                     </td>
                     <td className="p-4 text-[var(--ink)]" dir="ltr">
-                      {a.purchaseCost.toLocaleString("ar-SA")} ر.س
+                      {a.purchaseCost.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4 text-[var(--sub)]" dir="ltr">
                       {t("fixedAsset.years", { count: a.usefulLifeYears })}
                     </td>
                     <td className="p-4 text-[var(--sub)]" dir="ltr">
-                      {a.monthlyDepreciationAmount.toLocaleString("ar-SA")} ر.س
+                      {a.monthlyDepreciationAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4 text-[var(--sub)]" dir="ltr">
-                      {a.accumulatedDepreciation.toLocaleString("ar-SA")} ر.س
+                      {a.accumulatedDepreciation.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">
-                      {a.currentBookValue.toLocaleString("ar-SA")} ر.س
+                      {a.currentBookValue.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4">
                       <span className={`badge ${a.isFullyDepreciated ? "badge--gray" : "badge--green"}`}>

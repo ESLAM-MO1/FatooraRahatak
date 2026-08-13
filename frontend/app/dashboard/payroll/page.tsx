@@ -8,6 +8,9 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import { useConfirm } from "@/components/ConfirmDialog";
+import InfoTooltip from "@/components/InfoTooltip";
+import Can from "@/components/Can";
 
 interface Payroll {
   id: number;
@@ -32,6 +35,7 @@ const emptyEditForm = {
 
 export default function PayrollPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -125,9 +129,9 @@ export default function PayrollPage() {
 
   const handleApprove = async (payroll: Payroll) => {
     if (
-      !window.confirm(
+      !(await confirm(
         t("payroll.confirmApprove", { employeeName: payroll.employeeName })
-      )
+      ))
     ) {
       return;
     }
@@ -148,9 +152,9 @@ export default function PayrollPage() {
 
   const handleMarkPaid = async (payroll: Payroll) => {
     if (
-      !window.confirm(
+      !(await confirm(
         t("payroll.confirmPaid", { employeeName: payroll.employeeName })
-      )
+      ))
     ) {
       return;
     }
@@ -231,13 +235,15 @@ export default function PayrollPage() {
                 </select>
               </div>
             </div>
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="btn btn-primary whitespace-nowrap disabled:opacity-60"
-            >
-              {generating ? t("payroll.generating") : t("payroll.generate")}
-            </button>
+            <Can code="Payroll.Add">
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="btn btn-primary whitespace-nowrap disabled:opacity-60"
+              >
+                {generating ? t("payroll.generating") : t("payroll.generate")}
+              </button>
+            </Can>
           </div>
         </div>
 
@@ -270,11 +276,11 @@ export default function PayrollPage() {
                   {payrolls.map((payroll) => (
                     <tr key={payroll.id} className="border-b border-[var(--border)] hover:bg-[var(--blue-50)]/40 transition-colors">
                       <td className="p-4 text-[var(--ink)] font-bold">{payroll.employeeName}</td>
-                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.basicSalary.toLocaleString("ar-SA")} ر.س</td>
-                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.allowances.toLocaleString("ar-SA")} ر.س</td>
-                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.deductions.toLocaleString("ar-SA")} ر.س</td>
-                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.commission.toLocaleString("ar-SA")} ر.س</td>
-                      <td className="p-4 text-[var(--blue-deep)] font-bold" dir="ltr">{payroll.netSalary.toLocaleString("ar-SA")} ر.س</td>
+                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.basicSalary.toLocaleString("ar-SA")} {t("common.sar")}</td>
+                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.allowances.toLocaleString("ar-SA")} {t("common.sar")}</td>
+                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.deductions.toLocaleString("ar-SA")} {t("common.sar")}</td>
+                      <td className="p-4 text-[var(--ink)]" dir="ltr">{payroll.commission.toLocaleString("ar-SA")} {t("common.sar")}</td>
+                      <td className="p-4 text-[var(--blue-deep)] font-bold" dir="ltr">{payroll.netSalary.toLocaleString("ar-SA")} {t("common.sar")}</td>
                       <td className="p-4">
                         <span className={statusColor(payroll.status)}>
                           {statusLabel(payroll.status)}
@@ -297,26 +303,32 @@ export default function PayrollPage() {
                         <div className="flex items-center gap-3">
                           {payroll.status === "Draft" && (
                             <>
-                              <button onClick={() => openEditModal(payroll)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
-                                {t("common.edit")}
-                              </button>
-                              <button
-                                onClick={() => handleApprove(payroll)}
-                                disabled={approvingId === payroll.id}
-                                className="text-[var(--green)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
-                              >
-                                {approvingId === payroll.id ? t("payroll.approving") : t("payroll.approve")}
-                              </button>
+                              <Can code="Payroll.Edit">
+                                <button onClick={() => openEditModal(payroll)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
+                                  {t("common.edit")}
+                                </button>
+                              </Can>
+                              <Can code="Payroll.Approve">
+                                <button
+                                  onClick={() => handleApprove(payroll)}
+                                  disabled={approvingId === payroll.id}
+                                  className="text-[var(--green)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
+                                >
+                                  {approvingId === payroll.id ? t("payroll.approving") : t("payroll.approve")}
+                                </button>
+                              </Can>
                             </>
                           )}
                           {payroll.status === "Approved" && (
-                            <button
-                              onClick={() => handleMarkPaid(payroll)}
-                              disabled={payingId === payroll.id}
-                              className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px] disabled:opacity-50"
-                            >
-                              {payingId === payroll.id ? t("payroll.markingPaid") : t("payroll.markPaid")}
-                            </button>
+                            <Can code="Payroll.Edit">
+                              <button
+                                onClick={() => handleMarkPaid(payroll)}
+                                disabled={payingId === payroll.id}
+                                className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px] disabled:opacity-50"
+                              >
+                                {payingId === payroll.id ? t("payroll.markingPaid") : t("payroll.markPaid")}
+                              </button>
+                            </Can>
                           )}
                           {payroll.status === "Paid" && (
                             <span className="text-[var(--sub)] text-[13px]">{t("payroll.paid")}</span>
@@ -348,7 +360,7 @@ export default function PayrollPage() {
                   <div className="field-shell bg-[#F7F8F9]">
                     <input
                       type="text"
-                      value={editingPayroll.basicSalary.toLocaleString("ar-SA") + " ر.س"}
+                      value={editingPayroll.basicSalary.toLocaleString("ar-SA-u-nu-latn") + " " + t("common.sar")}
                       disabled
                       className="text-[var(--sub)]"
                     />
@@ -356,7 +368,7 @@ export default function PayrollPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.allowances")}</label>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("payroll.allowances")}<InfoTooltip messageKey="payroll.allowancesTooltip" /></label>
                   <div className="field-shell">
                     <input
                       type="number"
@@ -369,7 +381,7 @@ export default function PayrollPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("payroll.deductions")}</label>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("payroll.deductions")}<InfoTooltip messageKey="payroll.deductionsTooltip" /></label>
                   <div className="field-shell">
                     <input
                       type="number"
@@ -403,9 +415,9 @@ export default function PayrollPage() {
                         (parseFloat(editForm.allowances) || 0) +
                         (parseFloat(editForm.commission) || 0) -
                         (parseFloat(editForm.deductions) || 0)
-                      ).toLocaleString("ar-SA")}
+                      ).toLocaleString("ar-SA-u-nu-latn")}
                     </span>{" "}
-                    ر.س
+                    {t("common.sar")}
                   </p>
                 </div>
 

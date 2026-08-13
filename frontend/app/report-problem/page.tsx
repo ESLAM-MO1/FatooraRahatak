@@ -3,7 +3,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import { SiteLayout } from "../site-layout";
-
+import Hero from "@/components/Hero";
+import PhoneInputField from "@/components/PhoneInputField";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
 export default function ReportProblemPage() {
@@ -77,13 +78,7 @@ export default function ReportProblemPage() {
   return (
     <SiteLayout>
       <div>
-        <section
-          className="py-16 text-center text-white"
-          style={{ backgroundColor: "var(--blue-deep)" }}
-        >
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">{t("common.report")}</h1>
-          <p className="text-[15px] opacity-80">{t("reportProblem.subtitle")}</p>
-        </section>
+        <Hero title={t("common.report")} subtitle={t("reportProblem.subtitle")} />
         <div className="max-w-6xl mx-auto px-4 py-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
@@ -106,11 +101,12 @@ export default function ReportProblemPage() {
                       </div>
                     </div>
                     <div>
-                      <label>{t("auth.phone")}</label>
-                      <div className="field-shell">
-                        <input name="phone" value={form.phone} onChange={handleChange} placeholder={t("reportProblem.phonePlaceholder")} />
-                      </div>
-                    </div>
+  <label>{t("auth.phone")}</label>
+  <PhoneInputField
+    value={form.phone}
+    onChange={(v) => setForm((prev) => ({ ...prev, phone: v }))}
+  />
+</div>
                     <div>
                       <label>{t("reportProblem.type")}</label>
                       <div className="field-shell">

@@ -7,5 +7,6 @@ public class PaymentStatusResult
     public string Status { get; set; } = "Pending";
     public decimal Amount { get; set; }
     public string? PaidAt { get; set; }
+    public string? RefundedAt { get; set; }
     public string Message { get; set; } = string.Empty;
 }

@@ -6,22 +6,26 @@ import { useTranslation } from "react-i18next";
 import { register, googleAuth } from "@/lib/auth";
 import LangSwitch from "@/components/LangSwitch";
 import "@/lib/i18n/config";
+import PhoneInputField from "@/components/PhoneInputField";
+import { isValidPhone, normalizePhone } from "@/lib/phone";
 
 function RegisterForm() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const invitationToken = searchParams.get("token");
+  const referralParam = searchParams.get("ref");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState(referralParam || "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const validateEmail = (email: string) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email);
-  const validateSaudiPhone = (phone: string) => /^(?:\+966|05)(5|0|3|6|4|9|1|2|7|8)\d{7}$/.test(phone);
+  const validatePhone = (phone: string) => isValidPhone(phone, "SA");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +36,13 @@ function RegisterForm() {
       return;
     }
 
-    if (!validateSaudiPhone(phone)) {
+    if (!validatePhone(phone)) {
       setError(t("auth.invalidPhone"));
+      return;
+    }
+
+    if (password.length < 6) {
+      setError(t("error.passwordLength"));
       return;
     }
 
@@ -44,17 +53,22 @@ function RegisterForm() {
 
     setLoading(true);
     try {
-      await register({
+      const result = await register({
         fullName,
         email,
-        phone,
+        phone: normalizePhone(phone, "SA") || phone,
         password,
         ...(invitationToken ? { invitationToken } : {}),
+        ...(referralCode ? { referralCode: referralCode.trim().toUpperCase() } : {}),
       });
       if (invitationToken) {
         router.push("/dashboard");
       } else {
-        router.push(`/verify-account?email=${encodeURIComponent(email)}`);
+        if (result?.verificationCode) {
+          router.push(`/verify-account?email=${encodeURIComponent(email)}&code=${result.verificationCode}`);
+        } else {
+          router.push(`/verify-account?email=${encodeURIComponent(email)}`);
+        }
       }
     } catch (err: any) {
       setError(err.response?.data?.message || t("error.serverError"));
@@ -150,16 +164,7 @@ function RegisterForm() {
               <label htmlFor="phone" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
                 {t("auth.phone")}
               </label>
-              <div className="field-shell">
-                <input
-                  id="phone"
-                  type="tel"
-                  placeholder="01xxxxxxxxx"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-              </div>
+              <PhoneInputField id="phone" value={phone} onChange={setPhone} required />
             </div>
 
             <div className="mb-5">
@@ -192,6 +197,24 @@ function RegisterForm() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={6}
+                />
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label htmlFor="referralCode" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
+                {t("register.referralCode")}
+              </label>
+              <p className="text-[11.5px] text-[var(--sub)] mb-2">{t("register.referralCodeHint")}</p>
+              <div className="field-shell">
+                <input
+                  id="referralCode"
+                  type="text"
+                  placeholder={t("register.referralCodePlaceholder")}
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  dir="ltr"
+                  className="text-left"
                 />
               </div>
             </div>

@@ -8,10 +8,24 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
+import Can from "@/components/Can";
+import Pagination from "@/components/Pagination";
 
 interface Category {
   id: number;
   nameAr: string;
+}
+
+interface OwnerReview {
+  id: number;
+  productId: number;
+  productName: string;
+  customerName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
 }
 
 interface Product {
@@ -70,6 +84,7 @@ const statusStyles: Record<string, string> = {
 
 export default function ProductsPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +96,14 @@ export default function ProductsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"products" | "archive" | "reviews">("products");
+  const [reviews, setReviews] = useState<OwnerReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
 
   const statusLabels: Record<string, string> = {
     Active: t("product.statusActive"),
@@ -94,21 +117,43 @@ export default function ProductsPage() {
     setError("");
     try {
       const [productsRes, categoriesRes] = await Promise.all([
-        api.get("/products"),
+        api.get("/products", { params: { page, pageSize } }),
         api.get("/categories"),
       ]);
-      setProducts(productsRes.data.data);
+      setProducts(productsRes.data.data.items || []);
+      setTotalPages(productsRes.data.data.totalPages || 1);
+      setTotalCount(productsRes.data.data.totalCount || 0);
       setCategories(categoriesRes.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || t("product.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, page, pageSize]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const fetchReviews = useCallback(async () => {
+    setReviewsLoading(true);
+    setReviewsError("");
+    try {
+      const res = await api.get("/owner/orders/reviews");
+      setReviews(res.data.data);
+    } catch (err: unknown) {
+      const err2 = err as { response?: { data?: { message?: string } } };
+      setReviewsError(err2.response?.data?.message || t("reviews.loadError"));
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (activeTab === "reviews") {
+      fetchReviews(); // eslint-disable-line react-hooks/set-state-in-effect
+    }
+  }, [activeTab, fetchReviews]);
 
   const filteredProducts = useMemo(() => {
     if (!search.trim()) return products;
@@ -120,6 +165,18 @@ export default function ProductsPage() {
         p.sku.toLowerCase().includes(q)
     );
   }, [products, search]);
+
+  const activeProducts = useMemo(
+    () => filteredProducts.filter((p) => p.status !== "Archived"),
+    [filteredProducts]
+  );
+
+  const archivedProducts = useMemo(
+    () => filteredProducts.filter((p) => p.status === "Archived"),
+    [filteredProducts]
+  );
+
+  const tabProducts = activeTab === "archive" ? archivedProducts : activeProducts;
 
   const openAddModal = () => {
     setEditingId(null);
@@ -212,9 +269,9 @@ export default function ProductsPage() {
 
   const handleArchive = async (product: Product) => {
     if (
-      !window.confirm(
+      !(await confirm(
         `${t("product.archiveConfirm")} "${product.nameAr}"؟`
-      )
+      ))
     ) {
       return;
     }
@@ -232,6 +289,52 @@ export default function ProductsPage() {
     }
   };
 
+  const handleRestore = async (product: Product) => {
+    if (
+      !(await confirm(
+        `${t("product.restoreConfirm")} "${product.nameAr}"؟`
+      ))
+    ) {
+      return;
+    }
+
+    setActionError("");
+    setSuccessMessage("");
+    try {
+      await api.post(`/products/${product.id}/restore`);
+      setSuccessMessage(t("product.restoreSuccess"));
+      await fetchData();
+    } catch (err: unknown) {
+      const err2 = err as { response?: { data?: { message?: string } } };
+      setActionError(
+        err2.response?.data?.message || t("product.restoreError")
+      );
+    }
+  };
+
+  const handlePermanentDelete = async (product: Product) => {
+    if (
+      !(await confirm(
+        `${t("product.deletePermanentConfirm")} "${product.nameAr}"؟`
+      ))
+    ) {
+      return;
+    }
+
+    setActionError("");
+    setSuccessMessage("");
+    try {
+      await api.delete(`/products/${product.id}/permanent`);
+      setSuccessMessage(t("product.deletePermanentSuccess"));
+      await fetchData();
+    } catch (err: unknown) {
+      const err2 = err as { response?: { data?: { message?: string } } };
+      setActionError(
+        err2.response?.data?.message || t("product.deletePermanentError")
+      );
+    }
+  };
+
   const isPackageLimitError =
     actionError.toLowerCase().includes("limit") ||
     actionError.toLowerCase().includes("upgrade");
@@ -243,16 +346,85 @@ export default function ProductsPage() {
   return (
     <div>
       <PageHeader icon="box" title={t("product.title")}>
-        <button onClick={openAddModal} className="btn btn-primary">
-          <Icon name="plus" />
-          {t("product.add")}
-        </button>
+        <Can code="Products.Add">
+          <button onClick={openAddModal} className="btn btn-primary">
+            <Icon name="plus" />
+            {t("product.add")}
+          </button>
+        </Can>
       </PageHeader>
+
+      <div className="mb-5 inline-flex rounded-xl bg-gray-100 p-1 gap-1">
+        <button
+          onClick={() => setActiveTab("products")}
+          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-colors ${activeTab === "products" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
+        >
+          {t("product.title")}
+        </button>
+        <button
+          onClick={() => setActiveTab("archive")}
+          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-colors ${activeTab === "archive" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
+        >
+          {t("product.tabArchive")}
+        </button>
+        <button
+          onClick={() => setActiveTab("reviews")}
+          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-colors ${activeTab === "reviews" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
+        >
+          ★ {t("reviews.title")}
+        </button>
+      </div>
 
       {error && <div className="alert alert--danger">{error}</div>}
 
-      {successMessage && <div className="alert alert--success">{successMessage}</div>}
+      <SuccessToast message={successMessage} fixed className="mb-4" />
 
+      {activeTab === "reviews" ? (
+        reviewsLoading && reviews.length === 0 ? (
+          <LoadingState />
+        ) : (
+          <div className="space-y-3">
+            {reviewsError && <div className="alert alert--danger">{reviewsError}</div>}
+            {reviews.length === 0 ? (
+              <div className="card p-10 text-center">
+                <p className="text-[40px] mb-3">⭐</p>
+                <p className="text-[15px] font-bold text-[var(--ink)] mb-1">{t("reviews.emptyTitle")}</p>
+                <p className="text-[13px] text-[var(--sub)]">{t("reviews.emptyDesc")}</p>
+              </div>
+            ) : (
+              reviews.map((review) => (
+                <div key={review.id} className="card p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-[16px] font-bold" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
+                        {review.customerName.charAt(0) || "؟"}
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-bold text-[var(--ink)]">{review.customerName}</p>
+                        <div className="flex items-center gap-2">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <span key={i} style={{ color: i < review.rating ? "#F59E0B" : "#D1D5DB", fontSize: 14 }}>★</span>
+                          ))}
+                          <span className="text-[11px] text-[var(--sub)]">
+                            {new Date(review.createdAt).toLocaleDateString("ar-SA")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Link href={`/dashboard/products/${review.productId}`} className="text-[12px] font-medium text-[var(--blue)] hover:underline">
+                      {review.productName}
+                    </Link>
+                  </div>
+                  {review.comment && (
+                    <p className="text-[13px] text-[var(--sub)] leading-relaxed">{review.comment}</p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )
+      ) : (
+      <>
       {actionError && !showModal && <div className="alert alert--danger">{actionError}</div>}
 
       <div className="mb-4 max-w-sm">
@@ -268,9 +440,19 @@ export default function ProductsPage() {
       </div>
 
       <div className="card overflow-hidden">
-        {filteredProducts.length === 0 ? (
+        {activeTab === "archive" && archivedProducts.length > 0 && (
+          <div className="px-4 pt-4 text-[12.5px] text-[var(--sub)] flex items-center gap-2">
+            <Icon name="alert" className="shrink-0" />
+            <span>{t("product.archivedHint")}</span>
+          </div>
+        )}
+        {tabProducts.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">
-            {search ? t("product.noResults") : t("product.noProducts")}
+            {search
+              ? t("product.noResults")
+              : activeTab === "archive"
+                ? t("product.noArchived")
+                : t("product.noProducts")}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -287,14 +469,14 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map((product) => (
+                {tabProducts.map((product) => (
                   <tr key={product.id} className="border-b border-[var(--border)] hover:bg-[var(--blue-50)]/40 transition-colors">
                     <td className="p-4 text-[var(--ink)] font-medium">{product.nameAr}</td>
                     <td className="p-4 text-[var(--sub)]" dir="ltr">{product.sku}</td>
-                    <td className="p-4 text-[var(--ink)]">{product.basePrice.toLocaleString("ar-SA")} ر.س</td>
+                    <td className="p-4 text-[var(--ink)]">{product.basePrice.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</td>
                     <td className="p-4 text-[var(--sub)]">
                       {product.discountPrice != null
-                        ? `${product.discountPrice.toLocaleString("ar-SA")} ر.س`
+                        ? `${product.discountPrice.toLocaleString("ar-SA-u-nu-latn")} ${t("common.sar")}`
                         : "—"}
                     </td>
                     <td className="p-4 text-[var(--sub)]">{product.availableQuantity}</td>
@@ -304,19 +486,36 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td className="p-4">
-                      <div className="flex flex-wrap gap-3">
-                        <button onClick={() => openEditModal(product)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
-                          {t("product.edit")}
-                        </button>
-                        <Link href={`/dashboard/products/${product.id}`} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
-                          {t("product.variants")}
-                        </Link>
-                        {product.status !== "Archived" && (
-                          <button onClick={() => handleArchive(product)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]">
-                            {t("product.archive")}
-                          </button>
-                        )}
-                      </div>
+                      {activeTab === "archive" ? (
+                        <div className="flex flex-wrap gap-3">
+                          <Can code="Products.Edit">
+                            <button onClick={() => handleRestore(product)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
+                              {t("product.restore")}
+                            </button>
+                          </Can>
+                          <Can code="Products.Delete">
+                            <button onClick={() => handlePermanentDelete(product)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]">
+                              {t("product.deletePermanent")}
+                            </button>
+                          </Can>
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-3">
+                          <Can code="Products.Edit">
+                            <button onClick={() => openEditModal(product)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
+                              {t("product.edit")}
+                            </button>
+                          </Can>
+                          <Link href={`/dashboard/products/${product.id}`} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
+                            {t("product.variants")}
+                          </Link>
+                          <Can code="Products.Delete">
+                            <button onClick={() => handleArchive(product)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]">
+                              {t("product.archive")}
+                            </button>
+                          </Can>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -324,9 +523,20 @@ export default function ProductsPage() {
             </table>
           </div>
         )}
+        {activeTab === "products" && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
+        )}
       </div>
+      </>
+      )}
 
-      {showModal && (
+      {showModal && activeTab === "products" && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="card p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">
@@ -488,6 +698,8 @@ export default function ProductsPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("product.weight")}</label>
                   <div className="field-shell">
                     <input
                       type="number"
@@ -498,6 +710,7 @@ export default function ProductsPage() {
                     />
                   </div>
                 </div>
+              </div>
                 {!editingId && (
                   <div>
                     <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("product.initialQuantity")}</label>

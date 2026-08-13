@@ -56,7 +56,7 @@ export default function TransactionsPage() {
       const res = await api.get("/owner/payments", {
         params: status ? { status } : undefined,
       });
-      setTransactions(res.data.data);
+      setTransactions(res.data.data.items || []);
     } catch (err: any) {
       setError(err.response?.data?.message || t("payment.loadError"));
     } finally {
@@ -70,7 +70,7 @@ export default function TransactionsPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("ar-SA", {
+    return new Date(dateStr).toLocaleDateString("ar-SA-u-nu-latn", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -128,7 +128,7 @@ export default function TransactionsPage() {
                     {tx.paymentReference}
                   </td>
                   <td className="p-3 text-[var(--ink)] font-medium">
-                    {tx.amount.toLocaleString("ar-SA")} {tx.currency}
+                    {tx.amount.toLocaleString("ar-SA-u-nu-latn")} {tx.currency}
                   </td>
                   <td className="p-3">
                     <span className={statusStyles[tx.status] || "badge badge--gray"}>

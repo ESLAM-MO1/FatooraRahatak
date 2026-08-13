@@ -1,3 +1,32 @@
+const SOLID = {
+  home: "M12 3 4 9v4h2v6h4v-4h4v4h4v-6h2V9Z",
+  box: "M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z",
+  tag: "M20 12.5 12.5 20 3 10.5V3h7.5Z",
+  warehouse: "M3 21V9l9-6 9 6v12Z",
+  layers: "M12 3 3 8l9 5 9-5-9-5Z",
+  clipboard: "M9 3h6v3H9ZM6 6h12v15H6Z",
+  users: "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0M17 11a3 3 0 1 0 0-6M15 14a5 5 0 0 1 6 6H17",
+  clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7v5l3.5 2",
+  calendarOff: "M3 5h18v16H3Z",
+  wallet: "M3 7h15a3 3 0 0 1 3 3v8a1 1 0 0 1-1 1H6a3 3 0 0 1-3-3V7Z",
+  crown: "M4 18h16l-1-9-4 3-3-6-3 6-4-3-1 9Z",
+  store: "M4 9h16l-1-5H5L4 9ZM9 21v-6h6v6",
+  package: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z",
+  userGroup: "M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a6 6 0 0 1 12 0M17 11a3 3 0 1 0 0-6M15 14a5 5 0 0 1 6 6H17",
+  chart: "M4 21V9h4v12ZM10 21V4h4v17ZM16 21v-7h4v7Z",
+  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z",
+  cashier: "M2 8h20v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8Z",
+  receipt: "M6 2h12v20l-3-2-3 2-3-2-3 2V2Z",
+  ledger: "M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4Z",
+  journal: "M6 4h9l3 3v13H6V4Z",
+  book: "M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15Z",
+  fixedAsset: "M5 21V7l7-4 7 4v14M3 21h18",
+  edit: "M15.23 3.23a2 2 0 0 1 2.82 0l2.76 2.76a2 2 0 0 1 0 2.83L8 21H3v-5L15.23 3.23Z",
+  bell: "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z",
+  logOut: "M15 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1M10 12h10",
+  star: "M12 3.5 14.5 8.5l5.5.8-4 3.9.9 5.5L12 16l-4.9 2.7.9-5.5-4-3.9 5.5-.8L12 3.5Z",
+};
+
 export const ICONS = {
   home: "M4 11.5 12 4l8 7.5M6 10v9h12v-9",
   box: "M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9ZM12 21v-9M3.5 7.5 12 12l8.5-4.5",
@@ -45,35 +74,38 @@ export const ICONS = {
   bell: "M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9ZM13.73 21a2 2 0 0 1-3.46 0",
   logOut: "M15 17v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1M10 12h10m0 0-3-3m3 3-3 3",
   user: "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0",
-  download: "M12 5v10m0 0-3-3m3 3 3-3M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2",
-  edit: "M15.23 3.23a2 2 0 0 1 2.82 0l2.76 2.76a2 2 0 0 1 0 2.83L8 21H3v-5L15.23 3.23Z",
+  download: "M12 5v10m0 0-3-3m3 3 3-3M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2",  edit: "M15.23 3.23a2 2 0 0 1 2.82 0l2.76 2.76a2 2 0 0 1 0 2.83L8 21H3v-5L15.23 3.23Z",
   filter: "M4 6h16M4 12h12M4 18h8",
   hash: "M9 3 5 21M19 3l-4 18M2 9h20M2 15h20",
   share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
   printer: "M6 9V3h12v6M6 13h12v8H6v-8ZM6 15H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2M10 17h4",
+  star: "M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.8-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3Z",
+  lock: "M6 10V8a6 6 0 0 1 12 0v2M6 10h12v10H6V10Zm5 4v2M14 14v2",
 };
-
 export default function Icon({
   name,
   className = "",
   size = 20,
+  variant = "outline",
 }: {
   name: keyof typeof ICONS;
   className?: string;
   size?: number;
+  variant?: "outline" | "solid";
 }) {
+  const paths = variant === "solid" && name in SOLID ? SOLID[name as keyof typeof SOLID] : ICONS[name];
   return (
     <svg
       viewBox="0 0 24 24"
-      fill="none"
+      fill={variant === "solid" ? "currentColor" : "none"}
       className={className}
       width={size}
       height={size}
     >
       <path
-        d={ICONS[name]}
+        d={paths}
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth={variant === "solid" ? "1.0" : "1.6"}
         strokeLinecap="round"
         strokeLinejoin="round"
       />

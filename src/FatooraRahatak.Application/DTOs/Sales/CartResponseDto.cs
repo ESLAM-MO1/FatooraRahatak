@@ -6,6 +6,7 @@ public class CartResponseDto
     public string Status { get; set; } = string.Empty;
     public List<CartItemDto> Items { get; set; } = new();
     public decimal Subtotal { get; set; }
+    public decimal TotalWeightKg { get; set; }
 }
 
 public class CartItemDto
@@ -17,4 +18,5 @@ public class CartItemDto
     public int Quantity { get; set; }
     public decimal PriceAtAdd { get; set; }
     public decimal LineTotal { get; set; }
+    public decimal? Weight { get; set; }
 }

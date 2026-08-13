@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { SiteLayout } from "./site-layout";
 import "@/lib/i18n/config";
+import PackageCard from "@/components/PackageCard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
@@ -21,7 +22,21 @@ interface PackageItem {
   hasPayroll: boolean;
   hasZatcaInvoice: boolean;
   hasCustomDomain: boolean;
+  hasAffiliateMarketing: boolean;
+  hasApiAccess: boolean;
+  hasPos: boolean;
+  hasLogo: boolean;
   maxThemes: number;
+  maxShippingCompanies: number;
+  commissionPercentage: number;
+  color: string;
+  hasShippingIntegration: boolean;
+  hasShippingCalculator: boolean;
+  hasShippingTracking: boolean;
+  hasShippingLabelPrinting: boolean;
+  hasFreeShipping: boolean;
+  hasCashOnDelivery: boolean;
+  hasShippingDiscounts: boolean;
 }
 
 interface FaqItem { id: number; questionAr: string; questionEn: string; answerAr: string; answerEn: string; displayOrder: number }
@@ -69,29 +84,11 @@ function getDefaultContent(t: (s: string) => string): LandingContent {
   };
 }
 
-function getFeatureConfig(t: (s: string) => string) {
-  return [
-    { key: "maxProducts" as const, label: t("packages.products"), format: (v: number | null) => v === null ? t("packages.unlimited") : String(v) },
-    { key: "maxEmployees" as const, label: t("packages.employees"), format: (v: number) => String(v) },
-    { key: "maxWarehouses" as const, label: t("packages.warehouses"), format: (v: number) => String(v) },
-    { key: "hasAccountingFull" as const, label: t("packages.accounting"), format: () => "" },
-    { key: "hasPayroll" as const, label: t("packages.payroll"), format: () => "" },
-    { key: "hasZatcaInvoice" as const, label: t("packages.zatcaInvoice"), format: () => "" },
-    { key: "hasCustomDomain" as const, label: t("packages.customDomain"), format: () => "" },
-    { key: "maxThemes" as const, label: t("packages.templates"), format: (v: number) => String(v) },
-  ];
-}
-
-function isCheckItem(key: string): boolean {
-  return ["hasAccountingFull", "hasPayroll", "hasZatcaInvoice", "hasCustomDomain"].includes(key);
-}
-
 const FAQ_INITIAL_COUNT = 5;
 
 export default function HomePage() {
   const { t, i18n } = useTranslation();
   const defaultContent = getDefaultContent(t);
-  const featureConfig = getFeatureConfig(t);
   const [content, setContent] = useState<LandingContent>(defaultContent);
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
@@ -304,46 +301,16 @@ export default function HomePage() {
             <p className="text-[15px] text-white/80 mb-10 max-w-3xl mx-auto">{t("packages.subtitle")}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {packages.map((pkg) => (
-                <div key={pkg.id} className="card p-6 sm:p-8 text-right flex flex-col">
-                  <h3 className="text-[16px] font-extrabold mb-4" style={{ color: "var(--ink)" }}>{pkg.name}</h3>
-                  <p className="text-[32px] sm:text-[36px] font-extrabold mb-5" style={{ color: "var(--ink)" }}>
-                    {pkg.monthlyPrice.toLocaleString("ar-SA")}
-                    <span className="text-[14px] font-bold mr-1" style={{ color: "var(--sub)" }}>{t("packages.month")}</span>
-                  </p>
-                  <ul className="space-y-2.5 mb-6 flex-1">
-                    {featureConfig.map((feat) => {
-                      const val = (pkg as any)[feat.key];
-                      if (isCheckItem(feat.key)) {
-                        return (
-                          <li key={feat.key} className="flex items-center gap-2 text-[13px]" style={{ color: "var(--ink-light)" }}>
-                            {val ? (
-                              <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4 text-red-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            )}
-                            {feat.label}
-                          </li>
-                        );
-                      }
-                      return (
-                        <li key={feat.key} className="flex items-center gap-2 text-[13px]" style={{ color: "var(--ink-light)" }}>
-                          <svg className="w-4 h-4 text-[var(--blue)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {feat.label}: <span className="font-bold" style={{ color: "var(--ink)" }}>{feat.format(val)}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <Link href="/register" className="btn btn-primary w-full !text-[13px] !py-3 justify-center">{t("packages.start")}</Link>
-                </div>
+                <PackageCard
+                  key={pkg.id}
+                  pkg={pkg}
+                  footer={
+                    <Link href="/register" className="btn-primary w-full">{t("packages.start")}</Link>
+                  }
+                />
               ))}
             </div>
-            <p className="text-center text-[12px] text-white/60 mt-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-center text-[12px] text-white/80 mt-10 max-w-2xl mx-auto leading-relaxed">
               {t("packages.refundPolicy")}
             </p>
           </div>

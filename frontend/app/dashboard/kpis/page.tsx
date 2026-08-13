@@ -118,13 +118,13 @@ export default function KpisPage() {
 
   if (!data) return null;
 
-  const formatCurrency = (v: number) => v.toLocaleString("ar-SA") + " " + t("common.currency");
+  const formatCurrency = (v: number) => v.toLocaleString("ar-SA-u-nu-latn") + " " + t("common.currency");
 
   const donutColors = ["#12A8DB", "#1EC8C8", "#C9A227", "#8A7B1F"];
 
   const formatDate = (d: string | null) => {
     if (!d) return "-";
-    return new Date(d).toLocaleDateString("ar-SA", { year: "numeric", month: "short", day: "numeric" });
+    return new Date(d).toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "short", day: "numeric" });
   };
 
   const safeDisplay = (val: string | null | undefined) => {

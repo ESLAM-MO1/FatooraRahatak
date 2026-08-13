@@ -18,13 +18,20 @@ interface Product {
   availableQuantity: number;
 }
 
+interface RegisteredCustomer {
+  customerId: number;
+  name: string;
+  phone: string;
+}
+
 interface Line {
   productId: string;
   quantity: string;
   unitPrice: string;
+  discount: string;
 }
 
-const emptyLine: Line = { productId: "", quantity: "1", unitPrice: "" };
+const emptyLine: Line = { productId: "", quantity: "1", unitPrice: "", discount: "" };
 const VAT_RATE = 0.15;
 
 export default function NewSalesInvoicePage() {
@@ -38,6 +45,9 @@ export default function NewSalesInvoicePage() {
   const [paymentMethod, setPaymentMethod] = useState("Cash");
   const [customerMode, setCustomerMode] = useState<"guest" | "registered">("guest");
   const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestCity, setGuestCity] = useState("");
+  const [notes, setNotes] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [registeredCustomers, setRegisteredCustomers] = useState<{ customerId: number; name: string; phone: string }[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
@@ -66,8 +76,8 @@ useEffect(() => {
     .then((res) =>
       setRegisteredCustomers(
         res.data.data
-          .filter((c: any) => !c.isGuest && c.customerId != null)
-          .map((c: any) => ({ customerId: c.customerId, name: c.name, phone: c.phone }))
+          .filter((c: RegisteredCustomer) => c.customerId != null)
+          .map((c: RegisteredCustomer) => ({ customerId: c.customerId, name: c.name, phone: c.phone }))
       )
     )
     .catch(() => {})
@@ -102,8 +112,10 @@ useEffect(() => {
     const price = parseFloat(l.unitPrice) || 0;
     return sum + qty * price;
   }, 0);
-  const estimatedTax = isVatRegistered ? Math.round(subTotal * VAT_RATE * 100) / 100 : 0;
-  return { subTotal, estimatedTax, estimatedTotal: subTotal + estimatedTax };
+  const totalDiscount = lines.reduce((sum, l) => sum + (parseFloat(l.discount) || 0), 0);
+  const net = subTotal - totalDiscount;
+  const estimatedTax = isVatRegistered ? Math.round(net * VAT_RATE * 100) / 100 : 0;
+  return { subTotal, totalDiscount, net, estimatedTax, estimatedTotal: net + estimatedTax };
 }, [lines, isVatRegistered]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,24 +144,40 @@ useEffect(() => {
       return;
     }
 
+    const invalidDiscount = validLines.find((l) => {
+      const qty = parseFloat(l.quantity) || 0;
+      const price = parseFloat(l.unitPrice) || 0;
+      const disc = parseFloat(l.discount) || 0;
+      return disc < 0 || disc > qty * price;
+    });
+    if (invalidDiscount) {
+      setError(t("invoice.invalidDiscount"));
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
         invoiceDate,
         customerId: customerMode === "registered" ? Number(customerId) : null,
         guestName: customerMode === "guest" ? guestName || null : null,
+        guestPhone: customerMode === "guest" ? guestPhone || null : null,
+        guestCity: customerMode === "guest" ? guestCity || null : null,
+        notes: notes || null,
         paymentMethod,
         items: validLines.map((l) => ({
           productId: Number(l.productId),
           variantId: null,
           quantity: Number(l.quantity),
           unitPrice: parseFloat(l.unitPrice),
+          discountAmount: parseFloat(l.discount) || 0,
         })),
       };
       const res = await api.post("/invoices/sales", payload);
       router.push(`/dashboard/accounting/invoices/${res.data.data.id}`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("invoice.saveSaleError"));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || t("invoice.saveSaleError"));
     } finally {
       setSubmitting(false);
     }
@@ -211,13 +239,34 @@ useEffect(() => {
               </label>
             </div>
             {customerMode === "guest" ? (
-              <div className="field-shell">
-                <input
-                  type="text"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder={t("invoice.guestNamePlaceholder")}
-                />
+              <div className="space-y-2">
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder={t("invoice.guestNamePlaceholder")}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="field-shell">
+                    <input
+                      type="text"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      placeholder={t("invoice.guestPhonePlaceholder")}
+                      dir="ltr"
+                    />
+                  </div>
+                  <div className="field-shell">
+                    <input
+                      type="text"
+                      value={guestCity}
+                      onChange={(e) => setGuestCity(e.target.value)}
+                      placeholder={t("invoice.guestCityPlaceholder")}
+                    />
+                  </div>
+                </div>
               </div>
             ) : (
   <div className="field-shell">
@@ -247,7 +296,9 @@ useEffect(() => {
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px] w-2/5">{t("invoice.product")}</th>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.quantity")}</th>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.unitPrice")}</th>
+                  <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.discount")}</th>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.lineTotal")}</th>
+                  <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.lineAfterDiscount")}</th>
                   <th className="p-3 w-10"></th>
                 </tr>
               </thead>
@@ -255,6 +306,8 @@ useEffect(() => {
                 {lines.map((line, i) => {
                   const product = productMap.get(line.productId);
                   const lineTotal = (parseFloat(line.quantity) || 0) * (parseFloat(line.unitPrice) || 0);
+                  const lineDiscount = parseFloat(line.discount) || 0;
+                  const lineAfterDiscount = lineTotal - lineDiscount;
                   return (
                     <tr key={i} className="border-b border-[var(--border)]">
                       <td className="p-2">
@@ -300,8 +353,23 @@ useEffect(() => {
                           />
                         </div>
                       </td>
+                      <td className="p-2 w-28">
+                        <div className="field-shell">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={line.discount}
+                            onChange={(e) => updateLine(i, "discount", e.target.value)}
+                            dir="ltr"
+                          />
+                        </div>
+                      </td>
                       <td className="p-2 text-[var(--ink)] font-medium" dir="ltr">
-                        {lineTotal.toLocaleString("ar-SA")}
+                        {lineTotal.toLocaleString("ar-SA-u-nu-latn")}
+                      </td>
+                      <td className="p-2 text-[var(--blue-deep)] font-bold" dir="ltr">
+                        {lineAfterDiscount.toLocaleString("ar-SA-u-nu-latn")}
                       </td>
                       <td className="p-2 text-center">
                         <button
@@ -319,27 +387,43 @@ useEffect(() => {
               </tbody>
               <tfoot>
                 <tr className="bg-[#FAFBFC]">
-                  <td colSpan={3} className="p-3 text-[var(--sub)] text-[12.5px]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
                     {t("invoice.subTotal")}
                   </td>
                   <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
-                    {totals.subTotal.toLocaleString("ar-SA")} ر.س
+                    {totals.subTotal.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                   </td>
                 </tr>
                 <tr className="bg-[#FAFBFC]">
-                  <td colSpan={3} className="p-3 text-[var(--sub)] text-[12.5px]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
+                    {t("invoice.totalDiscount")}
+                  </td>
+                  <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
+                    {totals.totalDiscount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                  </td>
+                </tr>
+                <tr className="bg-[#FAFBFC]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
+                    {t("invoice.net")}
+                  </td>
+                  <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
+                    {totals.net.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                  </td>
+                </tr>
+                <tr className="bg-[#FAFBFC]">
+                  <td colSpan={5} className="p-3 text-[var(--sub)] text-[12.5px]">
                     {isVatRegistered ? t("invoice.taxEstimated") : t("invoice.taxNotRegistered")}
                   </td>
                   <td colSpan={2} className="p-3 text-[var(--ink)] font-medium" dir="ltr">
-                    {totals.estimatedTax.toLocaleString("ar-SA")} ر.س
+                    {totals.estimatedTax.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                   </td>
                 </tr>
                 <tr className="bg-[#FAFBFC] font-bold">
-                  <td colSpan={3} className="p-3 text-[var(--ink)] text-[13px]">
+                  <td colSpan={5} className="p-3 text-[var(--ink)] text-[13px]">
                     {t("invoice.totalEstimated")}
                   </td>
                   <td colSpan={2} className="p-3 text-[var(--blue-deep)] text-[15px]" dir="ltr">
-                    {totals.estimatedTotal.toLocaleString("ar-SA")} ر.س
+                    {totals.estimatedTotal.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                   </td>
                 </tr>
               </tfoot>
@@ -354,6 +438,18 @@ useEffect(() => {
               <Icon name="plus" />
               {t("invoice.addLine")}
             </button>
+          </div>
+        </div>
+
+        <div className="card p-5 mb-4">
+          <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.notes")}</label>
+          <div className="field-shell">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t("invoice.notesPlaceholder")}
+              rows={3}
+            />
           </div>
         </div>
 

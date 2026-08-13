@@ -5,15 +5,22 @@ export interface StoreMethodInfo {
   type: string;
 }
 
+export interface StoreTrustBadge {
+  icon: string;
+  text: string;
+  isEnabled: boolean;
+}
+
 export interface StoreData {
   storeName: string;
   storeSlug: string;
   isOnline: boolean;
   themeName: string;
-  primaryColor: string;
+  colorsJson: string | null;
   coverImage: string | null;
   logo: string | null;
   currency: string;
+  defaultLanguage: string;
   contactPhone: string | null;
   contactEmail: string | null;
   contactAddress: string | null;
@@ -24,6 +31,9 @@ export interface StoreData {
   returnPolicyText: string | null;
   shippingMethods: StoreMethodInfo[];
   paymentMethods: StoreMethodInfo[];
+  isSearchEnabled: boolean;
+  isReviewsEnabled: boolean;
+  trustBadges: StoreTrustBadge[];
 }
 
 const StoreCtx = createContext<StoreData | null>(null);

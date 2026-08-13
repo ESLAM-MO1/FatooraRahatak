@@ -44,9 +44,10 @@ function VerifyAccountContent() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
   const emailFromQuery = searchParams.get("email") || "";
+  const codeFromQuery = searchParams.get("code") || "";
 
   const [email, setEmail] = useState(emailFromQuery);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(codeFromQuery);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [verified, setVerified] = useState(false);
@@ -65,7 +66,12 @@ function VerifyAccountContent() {
     setSending(true);
     try {
       const response = await api.post(`/auth/send-verification-code?email=${encodeURIComponent(email)}`);
-      setSuccessMessage(response.data.message || t("auth.codeSent"));
+      if (response.data.code) {
+        setCode(response.data.code);
+        setSuccessMessage(`${response.data.message || t("auth.codeSent")} — ${response.data.code}`);
+      } else {
+        setSuccessMessage(response.data.message || t("auth.codeSent"));
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || t("error.serverError"));
     } finally {

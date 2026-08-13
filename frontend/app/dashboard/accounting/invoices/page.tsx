@@ -8,6 +8,8 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import Can from "@/components/Can";
+import Pagination from "@/components/Pagination";
 
 interface InvoiceRow {
   id: number;
@@ -37,6 +39,10 @@ export default function InvoicesPage() {
   const [invoiceType, setInvoiceType] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
 
   const typeLabels: Record<string, string> = {
     Sales: t("invoice.sales"),
@@ -52,36 +58,46 @@ export default function InvoicesPage() {
     setLoading(true);
     setError("");
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, any> = { page, pageSize };
       if (invoiceType) params.invoiceType = invoiceType;
       if (from) params.from = from;
       if (to) params.to = to;
       const res = await api.get("/invoices", { params });
-      setInvoices(res.data.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("invoice.loadError"));
+      setInvoices(res.data.data.items || []);
+      setTotalPages(res.data.data.totalPages || 1);
+      setTotalCount(res.data.data.totalCount || 0);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || t("invoice.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [invoiceType, from, to, t]);
+  }, [invoiceType, from, to, page, pageSize, t]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [invoiceType, from, to]);
 
   return (
     <div>
       <PageHeader icon="receipt" title={t("invoice.title")}>
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard/accounting/invoices/new-purchase" className="btn btn-secondary">
-            <Icon name="plus" />
-            {t("invoice.newPurchase")}
-          </Link>
-          <Link href="/dashboard/accounting/invoices/new-sale" className="btn btn-primary">
-            <Icon name="plus" />
-            {t("invoice.newSale")}
-          </Link>
-        </div>
+        <Can code="Invoices.Add">
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/accounting/invoices/new-purchase" className="btn btn-secondary">
+              <Icon name="plus" />
+              {t("invoice.newPurchase")}
+            </Link>
+            <Link href="/dashboard/accounting/invoices/new-sale" className="btn btn-primary">
+              <Icon name="plus" />
+              {t("invoice.newSale")}
+            </Link>
+          </div>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
@@ -168,7 +184,7 @@ export default function InvoicesPage() {
                       {paymentLabels[inv.paymentMethod] ?? inv.paymentMethod}
                     </td>
                     <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">
-                      {inv.totalAmount.toLocaleString("ar-SA")} ر.س
+                      {inv.totalAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4">
                       {inv.journalEntryId ? (
@@ -189,6 +205,13 @@ export default function InvoicesPage() {
             </table>
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          pageSize={pageSize}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Products;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -27,20 +27,12 @@ public class CategoryController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Categories.Add")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCategoryDto dto)
     {
-        var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Categories.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
-
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -56,6 +48,7 @@ public class CategoryController : ControllerBase
         }
     }
 
+    [RequirePermission("Categories.View")]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -67,6 +60,7 @@ public class CategoryController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("Categories.View")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(long id)
     {
@@ -81,13 +75,10 @@ public class CategoryController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("Categories.Edit")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(long id, [FromBody] CreateCategoryDto dto)
     {
-        var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Categories.Edit"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية لتنفيذ هذا الإجراء" }); }
-
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
@@ -103,6 +94,7 @@ public class CategoryController : ControllerBase
         }
     }
 
+    [RequirePermission("Categories.Delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)
     {

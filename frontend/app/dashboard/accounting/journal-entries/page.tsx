@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import Can from "@/components/Can";
 
 interface JournalEntry {
   id: number;
@@ -70,10 +71,12 @@ export default function JournalEntriesPage() {
   return (
     <div>
       <PageHeader icon="journal" title={t("journalEntry.title")}>
-        <Link href="/dashboard/accounting/journal-entries/new" className="btn btn-primary">
-          <Icon name="plus" />
-          {t("journalEntry.newEntry")}
-        </Link>
+        <Can code="JournalEntries.Add">
+          <Link href="/dashboard/accounting/journal-entries/new" className="btn btn-primary">
+            <Icon name="plus" />
+            {t("journalEntry.newEntry")}
+          </Link>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
@@ -154,7 +157,7 @@ export default function JournalEntriesPage() {
                     <td className="p-4 text-[var(--ink)]">{entry.entryDate}</td>
                     <td className="p-4 text-[var(--sub)] max-w-xs truncate">{entry.description || "—"}</td>
                     <td className="p-4 text-[var(--ink)]" dir="ltr">
-                      {entry.totalDebit.toLocaleString("ar-SA")} ر.س
+                      {entry.totalDebit.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4 text-[var(--sub)]">{entry.createdByName}</td>
                     <td className="p-4">

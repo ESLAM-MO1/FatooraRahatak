@@ -170,7 +170,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       >
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="brand-logo-frame" style={{ width: 34, height: 34 }}>
+            <div className="brand-logo-frame" style={{ width: 44, height: 44 }}>
               <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
             </div>
             <span className="text-[17px] font-extrabold" style={{ color: "var(--blue-deep)" }}>
@@ -401,7 +401,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10">
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="brand-logo-frame" style={{ width: 42, height: 42 }}>
+                <div className="brand-logo-frame" style={{ width: 54, height: 54 }}>
                   <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
                 </div>
                 <span className="text-[18px] font-bold text-white">{t("brand.name")}</span>

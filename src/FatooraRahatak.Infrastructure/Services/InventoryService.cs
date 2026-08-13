@@ -11,10 +11,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class InventoryService : IInventoryService
 {
     private readonly AppDbContext _context;
+    private readonly IAccountingService _accountingService;
 
-    public InventoryService(AppDbContext context)
+    public InventoryService(AppDbContext context, IAccountingService accountingService)
     {
         _context = context;
+        _accountingService = accountingService;
     }
 
     public async Task<WarehouseResponseDto> CreateWarehouseAsync(long storeId, CreateWarehouseDto dto)
@@ -99,6 +101,9 @@ public class InventoryService : IInventoryService
 
         if (dto.FromWarehouseId == dto.ToWarehouseId)
             throw new InvalidOperationException("لا يمكن التحويل لنفس المخزن");
+
+        if (dto.Items.Any(i => i.Quantity <= 0))
+            throw new InvalidOperationException("كميات التحويل يجب أن تكون أكبر من صفر");
 
         foreach (var item in dto.Items)
         {
@@ -216,6 +221,9 @@ public class InventoryService : IInventoryService
         if (warehouse == null)
             throw new InvalidOperationException("المخزن غير موجود");
 
+        if (dto.Quantity <= 0)
+            throw new InvalidOperationException("كمية التلف يجب أن تكون أكبر من صفر");
+
         var stock = await _context.InventoryStocks.FirstOrDefaultAsync(s =>
             s.WarehouseId == dto.WarehouseId && s.ProductId == dto.ProductId && s.VariantId == dto.VariantId);
 
@@ -257,6 +265,9 @@ public class InventoryService : IInventoryService
         if (stock == null || stock.QuantityAvailable < damage.Quantity)
             throw new InvalidOperationException("الكمية المتاحة غير كافية حاليًا لاعتماد هذا التلف");
 
+        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == damage.ProductId);
+        var damageAmount = (product?.CostPrice ?? 0) * damage.Quantity;
+
         stock.QuantityAvailable -= damage.Quantity;
 
         _context.InventoryTransactions.Add(new InventoryTransaction
@@ -275,5 +286,52 @@ public class InventoryService : IInventoryService
         damage.ApprovedByUserId = approvedByUserId;
 
         await _context.SaveChangesAsync();
+
+        if (damageAmount > 0)
+            await _accountingService.CreateDamageExpenseEntryAsync(
+                storeId, damageAmount,
+                $"قيد تلقائي — تلف مخزون ({damage.Quantity} قطعة — {product?.NameAr})",
+                approvedByUserId);
+    }
+
+    public async Task<List<StockTransferListDto>> GetStockTransfersAsync(long storeId)
+    {
+        return await _context.StockTransfers
+            .Include(t => t.FromWarehouse)
+            .Include(t => t.ToWarehouse)
+            .Include(t => t.Items)
+            .Where(t => t.FromWarehouse.StoreId == storeId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new StockTransferListDto
+            {
+                Id = t.Id,
+                FromWarehouseName = t.FromWarehouse.WarehouseName,
+                ToWarehouseName = t.ToWarehouse.WarehouseName,
+                Status = t.Status.ToString(),
+                ItemsCount = t.Items.Count,
+                CreatedAt = t.CreatedAt,
+                CompletedAt = t.CompletedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<DamagedStockListDto>> GetDamagedStocksAsync(long storeId)
+    {
+        return await _context.DamagedStocks
+            .Include(d => d.Warehouse)
+            .Include(d => d.Product)
+            .Where(d => d.Warehouse.StoreId == storeId)
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => new DamagedStockListDto
+            {
+                Id = d.Id,
+                WarehouseName = d.Warehouse.WarehouseName,
+                ProductNameAr = d.Product.NameAr,
+                Quantity = d.Quantity,
+                Reason = d.Reason,
+                IsApproved = d.IsApproved,
+                CreatedAt = d.CreatedAt
+            })
+            .ToListAsync();
     }
 }

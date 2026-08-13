@@ -23,14 +23,16 @@ public class AuthService : IAuthService
     private readonly string _googleClientId;
     private readonly IInvitationService _invitationService;
     private readonly IEmailService _emailService;
+    private readonly IReferralService _referralService;
 
-    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings, IConfiguration configuration, IInvitationService invitationService, IEmailService emailService)
+    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings, IConfiguration configuration, IInvitationService invitationService, IEmailService emailService, IReferralService referralService)
     {
         _context = context;
         _jwtSettings = jwtSettings.Value;
         _googleClientId = configuration["GoogleAuth:ClientId"] ?? string.Empty;
         _invitationService = invitationService;
         _emailService = emailService;
+        _referralService = referralService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -40,6 +42,8 @@ public class AuthService : IAuthService
 
         if (exists)
             throw new InvalidOperationException("البريد الإلكتروني أو رقم الجوال مستخدم بالفعل");
+
+        var emailConfigured = _emailService.IsConfigured();
 
         var user = new User
         {
@@ -52,52 +56,78 @@ public class AuthService : IAuthService
             IsVerified = false
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
-
-        if (!string.IsNullOrEmpty(dto.InvitationToken))
-        {
-            await _invitationService.AcceptInvitationAsync(dto.InvitationToken, user.Id);
-        }
-
         var code = GenerateNumericCode();
         var codeHash = BCrypt.Net.BCrypt.HashPassword(code);
 
-        _context.VerificationCodes.Add(new VerificationCode
-        {
-            UserId = user.Id,
-            CodeHash = codeHash,
-            Type = VerificationCodeType.EmailVerification,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(10),
-            IsUsed = false
-        });
-
-        await _context.SaveChangesAsync();
-
-        var subject = "تفعيل حسابك في فاتورة راحتك";
-        var body = $@"
-            <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
-                <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
-                <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
-                <p style='font-size:14px;color:#555'>رمز التفعيل الخاص بك هو:</p>
-                <div style='text-align:center;margin:24px 0'>
-                    <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
-                </div>
-                <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
-                <hr style='border:none;border-top:1px solid #eee' />
-                <p style='font-size:12px;color:#bbb;text-align:center'>© {DateTime.UtcNow.Year} فاتورة راحتك. جميع الحقوق محفوظة.</p>
-            </div>";
+        await using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-            await _emailService.SendEmailAsync(user.Email, subject, body);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(dto.ReferralCode))
+            {
+                await _referralService.RecordReferralAsync(dto.ReferralCode, user.Id);
+            }
+
+            await _referralService.GetOrCreateReferralCodeAsync(user.Id);
+
+            if (!string.IsNullOrEmpty(dto.InvitationToken))
+            {
+                await _invitationService.AcceptInvitationAsync(dto.InvitationToken, user.Id);
+            }
+
+            _context.VerificationCodes.Add(new VerificationCode
+            {
+                UserId = user.Id,
+                CodeHash = codeHash,
+                Type = VerificationCodeType.EmailVerification,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+                IsUsed = false
+            });
+
+            await _context.SaveChangesAsync();
+
+            if (emailConfigured)
+            {
+                var subject = "تفعيل حسابك في فاتورة راحتك";
+                var body = $@"
+                    <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
+                        <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
+                        <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
+                        <p style='font-size:14px;color:#555'>رمز التفعيل الخاص بك هو:</p>
+                        <div style='text-align:center;margin:24px 0'>
+                            <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
+                        </div>
+                        <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
+                        <hr style='border:none;border-top:1px solid #eee' />
+                        <p style='font-size:12px;color:#bbb;text-align:center'>© {DateTime.UtcNow.Year} فاتورة راحتك. جميع الحقوق محفوظة.</p>
+                    </div>";
+
+                try
+                {
+                    await _emailService.SendEmailAsync(user.Email, subject, body);
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw new InvalidOperationException("حصل خطأ في إرسال رمز التفعيل إلى بريدك الإلكتروني، تأكد من إعدادات البريد الإلكتروني وحاول مرة أخرى");
+                }
+            }
+
+            await transaction.CommitAsync();
         }
-        catch (InvalidOperationException)
+        catch
         {
-            throw new InvalidOperationException("حصل خطأ في إرسال رمز التفعيل إلى بريدك الإلكتروني، حاول تسجيل الدخول مرة أخرى وسيتم إرسال الرمز");
+            await transaction.RollbackAsync();
+            throw;
         }
 
         var authResponse = await GenerateAuthResponseAsync(user);
+        if (!emailConfigured)
+            authResponse.VerificationCode = code;
+
         return authResponse;
     }
 
@@ -197,7 +227,7 @@ public class AuthService : IAuthService
         return await GenerateAuthResponseAsync(storedToken.User);
     }
 
-    public async Task SendVerificationCodeAsync(string email)
+    public async Task<string?> SendVerificationCodeAsync(string email)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         if (user == null)
@@ -206,7 +236,7 @@ public class AuthService : IAuthService
         if (user.IsVerified)
             throw new InvalidOperationException("الحساب مفعّل بالفعل");
 
-        await SendOtpAsync(user, VerificationCodeType.EmailVerification);
+        return await SendOtpAsync(user, VerificationCodeType.EmailVerification);
     }
 
     public async Task VerifyAccountAsync(VerifyAccountDto dto)
@@ -221,13 +251,13 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
-    public async Task ForgotPasswordAsync(ForgotPasswordDto dto)
+    public async Task<string?> ForgotPasswordAsync(ForgotPasswordDto dto)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
         if (user == null)
             throw new InvalidOperationException("لا يوجد حساب مرتبط بهذا البريد الإلكتروني");
 
-        await SendOtpAsync(user, VerificationCodeType.PasswordReset);
+        return await SendOtpAsync(user, VerificationCodeType.PasswordReset);
     }
 
     public async Task ResetPasswordAsync(ResetPasswordDto dto)
@@ -249,7 +279,102 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
-    private async Task SendOtpAsync(User user, VerificationCodeType type)
+    public async Task<string?> SendProfileUpdateCodeAsync(long userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        return await SendOtpAsync(user, VerificationCodeType.ProfileUpdate);
+    }
+
+    public async Task UpdateProfileAsync(long userId, UpdateProfileDto dto)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (string.IsNullOrWhiteSpace(dto.Code))
+            throw new InvalidOperationException("رمز التحقق مطلوب لتأكيد التغييرات");
+
+        await VerifyOtpInternalAsync(user.Email, dto.Code, VerificationCodeType.ProfileUpdate);
+
+        if (!string.IsNullOrWhiteSpace(dto.Email) && dto.Email != user.Email
+            && await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == dto.Email))
+            throw new InvalidOperationException("البريد الإلكتروني مستخدم بالفعل");
+
+        if (!string.IsNullOrWhiteSpace(dto.Phone) && dto.Phone != user.Phone
+            && await _context.Users.AnyAsync(u => u.Id != user.Id && u.Phone == dto.Phone))
+            throw new InvalidOperationException("رقم الجوال مستخدم بالفعل");
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName))
+            user.FullName = dto.FullName;
+        if (!string.IsNullOrWhiteSpace(dto.Phone))
+            user.Phone = dto.Phone;
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+            user.Email = dto.Email;
+        if (dto.ProfileImage != null)
+            user.ProfileImage = dto.ProfileImage;
+
+        if (!string.IsNullOrWhiteSpace(dto.StoreName))
+        {
+            var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
+            if (store != null)
+                store.StoreName = dto.StoreName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.NewPassword))
+        {
+            if (dto.NewPassword.Length < 6)
+                throw new InvalidOperationException("كلمة المرور يجب ألا تقل عن 6 رموز (أحرف أو أرقام)");
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+            var oldTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+                .ToListAsync();
+            foreach (var token in oldTokens)
+                token.IsRevoked = true;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<string?> SendPasswordChangeCodeAsync(long userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        return await SendOtpAsync(user, VerificationCodeType.PasswordChange);
+    }
+
+    public async Task ChangePasswordAsync(long userId, ChangePasswordDto dto)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (string.IsNullOrWhiteSpace(dto.NewPassword) || dto.NewPassword.Length < 6)
+            throw new InvalidOperationException("كلمة المرور يجب ألا تقل عن 6 رموز (أحرف أو أرقام)");
+
+        if (string.IsNullOrWhiteSpace(dto.Code))
+            throw new InvalidOperationException("رمز التحقق مطلوب لتغيير كلمة المرور");
+
+        await VerifyOtpInternalAsync(user.Email, dto.Code, VerificationCodeType.PasswordChange);
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+        var oldTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+            .ToListAsync();
+        foreach (var token in oldTokens)
+            token.IsRevoked = true;
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<string?> SendOtpAsync(User user, VerificationCodeType type)
     {
         var now = DateTime.UtcNow;
 
@@ -292,6 +417,9 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync();
 
+        if (!_emailService.IsConfigured())
+            return code;
+
         string subject, body;
         if (type == VerificationCodeType.EmailVerification)
         {
@@ -309,7 +437,7 @@ public class AuthService : IAuthService
                     <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
                 </div>";
         }
-        else
+        else if (type == VerificationCodeType.PasswordReset)
         {
             subject = "استرجاع كلمة المرور - فاتورة راحتك";
             body = $@"
@@ -325,14 +453,47 @@ public class AuthService : IAuthService
                     <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
                 </div>";
         }
+        else if (type == VerificationCodeType.PasswordChange)
+        {
+            subject = "تغيير كلمة المرور - فاتورة راحتك";
+            body = $@"
+                <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
+                    <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
+                    <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
+                    <p style='font-size:14px;color:#555'>رمز تأكيد تغيير كلمة المرور الخاص بك هو:</p>
+                    <div style='text-align:center;margin:24px 0'>
+                        <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
+                    </div>
+                    <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
+                    <hr style='border:none;border-top:1px solid #eee' />
+                    <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
+                </div>";
+        }
+        else
+        {
+            subject = "تأكيد تعديل بيانات الحساب - فاتورة راحتك";
+            body = $@"
+                <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
+                    <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
+                    <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
+                    <p style='font-size:14px;color:#555'>رمز تأكيد تعديل بيانات حسابك هو:</p>
+                    <div style='text-align:center;margin:24px 0'>
+                        <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
+                    </div>
+                    <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
+                    <hr style='border:none;border-top:1px solid #eee' />
+                    <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
+                </div>";
+        }
 
         try
         {
             await _emailService.SendEmailAsync(user.Email, subject, body);
+            return null;
         }
-        catch (InvalidOperationException ex)
+        catch
         {
-            throw new InvalidOperationException($"حصل خطأ في إرسال البريد الإلكتروني: {ex.Message}");
+            throw new InvalidOperationException("حصل خطأ في إرسال البريد الإلكتروني، تأكد من إعدادات SMTP وحاول مرة أخرى");
         }
     }
 

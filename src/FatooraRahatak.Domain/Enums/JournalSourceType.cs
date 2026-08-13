@@ -8,5 +8,7 @@ public enum JournalSourceType
     POS = 4,
     Voucher = 5,
     Payroll = 6,
-    Depreciation = 7
+    Depreciation = 7,
+    Settlement = 8,
+    Inventory = 9
 }

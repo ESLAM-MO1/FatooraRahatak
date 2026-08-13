@@ -9,6 +9,8 @@ import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface StoreDetail {
   id: number;
@@ -53,6 +55,7 @@ const domainStatusBadgeClass = (status: string) => {
 
 export default function StoreDetailPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const storeId = params.id as string;
   const [store, setStore] = useState<StoreDetail | null>(null);
@@ -113,7 +116,7 @@ export default function StoreDetailPage() {
 
   const handleSuspend = async () => {
     if (!store) return;
-    if (!window.confirm(t("storeDetail.suspendConfirm", { name: store.storeName }))) return;
+    if (!(await confirm(t("storeDetail.suspendConfirm", { name: store.storeName })))) return;
 
     setActionError("");
     setActionSuccess("");
@@ -131,7 +134,7 @@ export default function StoreDetailPage() {
 
   const handleActivate = async () => {
     if (!store) return;
-    if (!window.confirm(t("storeDetail.activateConfirm", { name: store.storeName }))) return;
+    if (!(await confirm(t("storeDetail.activateConfirm", { name: store.storeName })))) return;
 
     setActionError("");
     setActionSuccess("");
@@ -149,7 +152,7 @@ export default function StoreDetailPage() {
 
   const handleActivateDomain = async () => {
     if (!store) return;
-    if (!window.confirm(t("storeDetail.activateDomainConfirm", { domain: store.customDomain }))) return;
+    if (!(await confirm(t("storeDetail.activateDomainConfirm", { domain: store.customDomain })))) return;
 
     setActionError("");
     setActionSuccess("");
@@ -198,7 +201,7 @@ export default function StoreDetailPage() {
       </div>
 
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
-      {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
+      <SuccessToast message={actionSuccess} fixed className="mb-4" />
 
       <div className="card p-5 mb-6">
         <h2 className="text-lg font-bold text-[var(--ink)] mb-5 pb-3 border-b" style={{ borderColor: "var(--border)" }}>{t("storeDetail.basicInfo")}</h2>
@@ -238,7 +241,7 @@ export default function StoreDetailPage() {
           <div className="p-4 md:col-span-2 lg:col-span-4">
             <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.registrationDate")}</p>
             <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">
-              {new Date(store.createdAt).toLocaleDateString(i18n.language === "ar" ? "ar-SA" : "en-US", {
+              {new Date(store.createdAt).toLocaleDateString(i18n.language === "ar" ? "ar-SA-u-nu-latn" : "en-US", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",

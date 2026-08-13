@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Entities.Packages;
+using FatooraRahatak.Domain.Entities.Affiliates;
 using FatooraRahatak.Domain.Entities.Roles;
 using FatooraRahatak.Domain.Entities.Employees;
 using FatooraRahatak.Domain.Entities.Products;
+using FatooraRahatak.Domain.Entities.Customers;
 using FatooraRahatak.Domain.Entities.Inventory;
 using FatooraRahatak.Domain.Entities.Sales;
 using FatooraRahatak.Domain.Entities.Platform;
@@ -20,6 +22,8 @@ using FatooraRahatak.Domain.Entities.Platform.Domains;
 using FatooraRahatak.Domain.Entities.Roles;
 using FatooraRahatak.Domain.Entities.Sales;
 using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Entities.Shipping;
+using FatooraRahatak.Domain.Entities.Settlement;
 using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Infrastructure.Data;
@@ -49,8 +53,10 @@ public class AppDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<VariantAttribute> VariantAttributes => Set<VariantAttribute>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
 
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<InventoryStock> InventoryStocks => Set<InventoryStock>();
@@ -73,6 +79,7 @@ public class AppDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalEntryLine> JournalEntryLines => Set<JournalEntryLine>();
@@ -96,6 +103,18 @@ public class AppDbContext : DbContext
     public DbSet<ProfessionalEmailSetup> ProfessionalEmailSetups => Set<ProfessionalEmailSetup>();
     public DbSet<DomainRegistrationRequest> DomainRegistrationRequests => Set<DomainRegistrationRequest>();
     public DbSet<DomainBlacklistEntry> DomainBlacklistEntries => Set<DomainBlacklistEntry>();
+    public DbSet<Theme> Themes => Set<Theme>();
+    public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
+    public DbSet<Referral> Referrals => Set<Referral>();
+    public DbSet<AffiliateCommission> AffiliateCommissions => Set<AffiliateCommission>();
+    public DbSet<ShippingCompany> ShippingCompanies => Set<ShippingCompany>();
+    public DbSet<Shipment> Shipments => Set<Shipment>();
+    public DbSet<ShipmentEvent> ShipmentEvents => Set<ShipmentEvent>();
+    public DbSet<StoreApiKey> StoreApiKeys => Set<StoreApiKey>();
+    public DbSet<MerchantBankDetails> MerchantBankDetails => Set<MerchantBankDetails>();
+    public DbSet<SettlementBatch> SettlementBatches => Set<SettlementBatch>();
+    public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();
+    public DbSet<ZatcaCredential> ZatcaCredentials => Set<ZatcaCredential>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +127,8 @@ public class AppDbContext : DbContext
             .HasIndex(u => u.Email).IsUnique();
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Phone).IsUnique();
+        modelBuilder.Entity<User>()
+            .Property(u => u.AffiliateBalance).HasPrecision(14, 2);
 
         modelBuilder.Entity<Store>()
             .HasIndex(s => s.StoreSlug).IsUnique();
@@ -169,6 +190,15 @@ public class AppDbContext : DbContext
             .WithMany(p => p.Stores)
             .HasForeignKey(s => s.PackageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CustomerAddress>()
+            .HasOne(a => a.Store)
+            .WithMany()
+            .HasForeignKey(a => a.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CustomerAddress>()
+            .HasIndex(a => new { a.StoreId, a.Phone });
 
         modelBuilder.Entity<RolePermission>()
             .HasOne(rp => rp.Role)
@@ -257,6 +287,9 @@ public class AppDbContext : DbContext
             .WithMany(p => p.Images)
             .HasForeignKey(i => i.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductReview>()
+            .HasIndex(r => new { r.StoreId, r.ProductId });
 
         modelBuilder.Entity<Product>()
             .HasIndex(p => new { p.StoreId, p.Sku })
@@ -620,6 +653,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Order>()
             .Property(o => o.DiscountAmount).HasPrecision(10, 2);
         modelBuilder.Entity<Order>()
+            .Property(o => o.ShippingCost).HasPrecision(10, 2);
+        modelBuilder.Entity<Order>()
             .Property(o => o.TotalAmount).HasPrecision(10, 2);
         modelBuilder.Entity<OrderItem>()
             .Property(i => i.UnitPriceSnapshot).HasPrecision(10, 2);
@@ -746,6 +781,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Invoice>()
             .Property(i => i.SubTotal).HasPrecision(14, 2);
         modelBuilder.Entity<Invoice>()
+            .Property(i => i.DiscountAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<Invoice>()
             .Property(i => i.TaxAmount).HasPrecision(14, 2);
         modelBuilder.Entity<Invoice>()
             .Property(i => i.TotalAmount).HasPrecision(14, 2);
@@ -755,6 +792,10 @@ public class AppDbContext : DbContext
             .Property(it => it.UnitPrice).HasPrecision(14, 2);
         modelBuilder.Entity<InvoiceItem>()
             .Property(it => it.LineTotal).HasPrecision(14, 2);
+        modelBuilder.Entity<InvoiceItem>()
+            .Property(it => it.DiscountAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<InvoiceItem>()
+            .Property(it => it.LineAfterDiscount).HasPrecision(14, 2);
 
         modelBuilder.Entity<Payment>()
             .HasOne(p => p.Invoice)
@@ -901,8 +942,173 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<PosShift>()
             .Property(s => s.TotalSales).HasPrecision(14, 2);
-    }
 
+        modelBuilder.Entity<Theme>()
+            .HasIndex(t => t.ThemeKey)
+            .IsUnique();
+
+        modelBuilder.Entity<ReferralCode>()
+            .HasIndex(r => r.Code)
+            .IsUnique();
+
+        modelBuilder.Entity<ReferralCode>()
+            .HasOne(r => r.User)
+            .WithMany()
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Referral>()
+            .HasOne(r => r.ReferrerUser)
+            .WithMany()
+            .HasForeignKey(r => r.ReferrerUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Referral>()
+            .HasOne(r => r.ReferredUser)
+            .WithMany()
+            .HasForeignKey(r => r.ReferredUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Referral>()
+            .HasOne(r => r.ReferralCode)
+            .WithMany(c => c.Referrals)
+            .HasForeignKey(r => r.ReferralCodeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AffiliateCommission>()
+            .HasOne(c => c.Referral)
+            .WithMany(r => r.Commissions)
+            .HasForeignKey(c => c.ReferralId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AffiliateCommission>()
+            .Property(c => c.Amount).HasPrecision(14, 2);
+        modelBuilder.Entity<AffiliateCommission>()
+            .Property(c => c.Rate).HasPrecision(5, 2);
+
+        modelBuilder.Entity<ShippingCompany>()
+            .HasIndex(c => new { c.StoreId, c.Code })
+            .IsUnique();
+
+        modelBuilder.Entity<Shipment>()
+            .HasOne(s => s.ShippingCompany)
+            .WithMany(c => c.Shipments)
+            .HasForeignKey(s => s.ShippingCompanyId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<StoreApiKey>()
+            .HasOne(k => k.Store)
+            .WithMany()
+            .HasForeignKey(k => k.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<StoreApiKey>()
+            .HasIndex(k => k.PublicKey).IsUnique();
+        modelBuilder.Entity<StoreApiKey>()
+            .HasIndex(k => k.SecretKey).IsUnique();
+
+        modelBuilder.Entity<Shipment>()
+            .HasIndex(s => s.Awb);
+
+        modelBuilder.Entity<Shipment>()
+            .Property(s => s.ShippingCost).HasPrecision(14, 2);
+        modelBuilder.Entity<Shipment>()
+            .Property(s => s.Weight).HasPrecision(10, 3);
+        modelBuilder.Entity<Shipment>()
+            .Property(s => s.CodAmount).HasPrecision(14, 2);
+
+        modelBuilder.Entity<ShipmentEvent>()
+            .HasOne(e => e.Shipment)
+            .WithMany(s => s.Events)
+            .HasForeignKey(e => e.ShipmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MerchantBankDetails>()
+            .HasOne(m => m.Store)
+            .WithMany()
+            .HasForeignKey(m => m.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MerchantBankDetails>()
+            .HasIndex(m => m.StoreId)
+            .IsUnique();
+
+        modelBuilder.Entity<MerchantBankDetails>()
+            .Property(m => m.Iban).HasMaxLength(34);
+
+        modelBuilder.Entity<SettlementBatch>()
+            .HasIndex(b => b.BatchNumber)
+            .IsUnique();
+
+        modelBuilder.Entity<SettlementBatch>()
+            .Property(b => b.GrossAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<SettlementBatch>()
+            .Property(b => b.CommissionAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<SettlementBatch>()
+            .Property(b => b.ShippingDeductedAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<SettlementBatch>()
+            .Property(b => b.NetAmount).HasPrecision(14, 2);
+
+        modelBuilder.Entity<SettlementLine>()
+            .HasOne(l => l.SettlementBatch)
+            .WithMany(b => b.Lines)
+            .HasForeignKey(l => l.SettlementBatchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SettlementLine>()
+            .HasOne(l => l.Store)
+            .WithMany()
+            .HasForeignKey(l => l.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SettlementLine>()
+            .HasIndex(l => new { l.SettlementBatchId, l.StoreId })
+            .IsUnique();
+
+        modelBuilder.Entity<SettlementLine>()
+            .Property(l => l.GrossAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<SettlementLine>()
+            .Property(l => l.CommissionAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<SettlementLine>()
+            .Property(l => l.ShippingDeductedAmount).HasPrecision(14, 2);
+        modelBuilder.Entity<SettlementLine>()
+            .Property(l => l.NetAmount).HasPrecision(14, 2);
+
+        modelBuilder.Entity<Order>()
+            .HasIndex(o => new { o.StoreId, o.SettledAt });
+
+        modelBuilder.Entity<ZatcaCredential>()
+            .HasOne(z => z.Store)
+            .WithMany()
+            .HasForeignKey(z => z.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ZatcaCredential>()
+            .HasIndex(z => z.StoreId)
+            .IsUnique();
+
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.VatNumber).HasMaxLength(32);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ComplianceRequestId).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ComplianceRequestSecret).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ProductionCsid).HasMaxLength(4096);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ProductionUuid).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ComplianceUuid).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.CsidPrivateKey).HasMaxLength(4096);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.CsidCertificate).HasMaxLength(4096);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.CsidSecret).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.SolutionName).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ErrorMessage).HasMaxLength(2000);
+    }
     public override int SaveChanges()
     {
         return base.SaveChanges();

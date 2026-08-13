@@ -12,6 +12,8 @@ public class InventoryStock : BaseEntity
     public int QuantityReserved { get; set; } = 0;
     public int ReorderLevel { get; set; } = 0;
 
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+
     public Warehouse Warehouse { get; set; } = null!;
     public Product Product { get; set; } = null!;
     public ProductVariant? Variant { get; set; }

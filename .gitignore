@@ -52,3 +52,11 @@ publish/
 # Temporary
 temp/
 tmp/
+
+# Local junk / backups
+*.zip
+api_output.txt
+api-*.log
+api_stdout.log
+api_stderr.log
+dir

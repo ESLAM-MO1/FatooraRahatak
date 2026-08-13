@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Auth;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -14,11 +15,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public AuthController(IAuthService authService, AppDbContext context)
+    public AuthController(IAuthService authService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _authService = authService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
@@ -71,11 +74,12 @@ public class AuthController : ControllerBase
     {
         try
         {
-            await _authService.SendVerificationCodeAsync(email);
+            var code = await _authService.SendVerificationCodeAsync(email);
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز التفعيل إلى بريدك الإلكتروني"
+                message = "تم إرسال رمز التفعيل إلى بريدك الإلكتروني",
+                code
             });
         }
         catch (InvalidOperationException ex)
@@ -103,11 +107,12 @@ public class AuthController : ControllerBase
     {
         try
         {
-            await _authService.ForgotPasswordAsync(dto);
+            var code = await _authService.ForgotPasswordAsync(dto);
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز استرجاع كلمة المرور إلى بريدك الإلكتروني"
+                message = "تم إرسال رمز استرجاع كلمة المرور إلى بريدك الإلكتروني",
+                code
             });
         }
         catch (InvalidOperationException ex)
@@ -150,27 +155,78 @@ public class AuthController : ControllerBase
         var userId = GetUserId();
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return NotFound();
-        return Ok(new { success = true, data = new { user.Id, user.FullName, user.Email, user.Phone, user.ProfileImage } });
+        var permissions = await _permCheck.GetUserPermissionCodesAsync(userId);
+        var storeId = await _permCheck.GetUserStoreIdAsync(userId);
+        return Ok(new { success = true, data = new { user.Id, user.FullName, user.Email, user.Phone, user.ProfileImage, permissions, storeId } });
     }
 
     [Authorize]
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
     {
-        var userId = GetUserId();
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null) return NotFound();
+        try
+        {
+            await _authService.UpdateProfileAsync(GetUserId(), dto);
+            return Ok(new { success = true, message = "تم تحديث الملف الشخصي بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 
-        if (!string.IsNullOrWhiteSpace(dto.FullName))
-            user.FullName = dto.FullName;
-        if (!string.IsNullOrWhiteSpace(dto.Phone))
-            user.Phone = dto.Phone;
-        if (!string.IsNullOrWhiteSpace(dto.Email))
-            user.Email = dto.Email;
-        if (!string.IsNullOrWhiteSpace(dto.ProfileImage))
-            user.ProfileImage = dto.ProfileImage;
+    [Authorize]
+    [HttpPost("send-profile-otp")]
+    public async Task<IActionResult> SendProfileOtp()
+    {
+        try
+        {
+            var code = await _authService.SendProfileUpdateCodeAsync(GetUserId());
+            return Ok(new
+            {
+                success = true,
+                message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
+                code
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 
-        await _context.SaveChangesAsync();
-        return Ok(new { success = true, message = "تم تحديث الملف الشخصي" });
+    [Authorize]
+    [HttpPost("send-password-otp")]
+    public async Task<IActionResult> SendPasswordOtp()
+    {
+        try
+        {
+            var code = await _authService.SendPasswordChangeCodeAsync(GetUserId());
+            return Ok(new
+            {
+                success = true,
+                message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
+                code
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+    {
+        try
+        {
+            await _authService.ChangePasswordAsync(GetUserId(), dto);
+            return Ok(new { success = true, message = "تم تغيير كلمة المرور بنجاح، يرجى تسجيل الدخول من جديد" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 }

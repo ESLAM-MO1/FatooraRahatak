@@ -370,8 +370,18 @@ public class AdminService : IAdminService
                 HasCustomDomain = p.HasCustomDomain,
                 HasAffiliateMarketing = p.HasAffiliateMarketing,
                 HasApiAccess = p.HasApiAccess,
+                HasPos = p.HasPos,
+                HasLogo = p.HasLogo,
                 MaxThemes = p.MaxThemes,
                 CommissionPercentage = p.CommissionPercentage,
+                Color = p.Color,
+                HasShippingIntegration = p.HasShippingIntegration,
+                HasShippingCalculator = p.HasShippingCalculator,
+                HasShippingTracking = p.HasShippingTracking,
+                HasShippingLabelPrinting = p.HasShippingLabelPrinting,
+                HasFreeShipping = p.HasFreeShipping,
+                HasCashOnDelivery = p.HasCashOnDelivery,
+                HasShippingDiscounts = p.HasShippingDiscounts,
                 IsActive = p.IsActive
             })
             .ToListAsync();
@@ -400,8 +410,18 @@ public class AdminService : IAdminService
             HasCustomDomain = package.HasCustomDomain,
             HasAffiliateMarketing = package.HasAffiliateMarketing,
             HasApiAccess = package.HasApiAccess,
+            HasPos = package.HasPos,
+            HasLogo = package.HasLogo,
             MaxThemes = package.MaxThemes,
             CommissionPercentage = package.CommissionPercentage,
+            Color = package.Color,
+            HasShippingIntegration = package.HasShippingIntegration,
+            HasShippingCalculator = package.HasShippingCalculator,
+            HasShippingTracking = package.HasShippingTracking,
+            HasShippingLabelPrinting = package.HasShippingLabelPrinting,
+            HasFreeShipping = package.HasFreeShipping,
+            HasCashOnDelivery = package.HasCashOnDelivery,
+            HasShippingDiscounts = package.HasShippingDiscounts,
             IsActive = package.IsActive
         };
     }
@@ -427,8 +447,18 @@ public class AdminService : IAdminService
         package.HasCustomDomain = dto.HasCustomDomain;
         package.HasAffiliateMarketing = dto.HasAffiliateMarketing;
         package.HasApiAccess = dto.HasApiAccess;
+        package.HasPos = dto.HasPos;
+        package.HasLogo = dto.HasLogo;
         package.MaxThemes = dto.MaxThemes;
         package.CommissionPercentage = dto.CommissionPercentage;
+        package.Color = dto.Color;
+        package.HasShippingIntegration = dto.HasShippingIntegration;
+        package.HasShippingCalculator = dto.HasShippingCalculator;
+        package.HasShippingTracking = dto.HasShippingTracking;
+        package.HasShippingLabelPrinting = dto.HasShippingLabelPrinting;
+        package.HasFreeShipping = dto.HasFreeShipping;
+        package.HasCashOnDelivery = dto.HasCashOnDelivery;
+        package.HasShippingDiscounts = dto.HasShippingDiscounts;
         package.IsActive = dto.IsActive;
 
         await _context.SaveChangesAsync();
@@ -656,5 +686,29 @@ public class AdminService : IAdminService
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
+    }
+
+    public async Task<List<AdminThemeDto>> GetThemesAsync()
+    {
+        return await _context.Themes
+            .OrderBy(t => t.DisplayOrder)
+            .Select(t => new AdminThemeDto
+            {
+                Id = t.Id,
+                ThemeKey = t.ThemeKey,
+                IsEnabled = t.IsEnabled,
+                DisplayOrder = t.DisplayOrder,
+            })
+            .ToListAsync();
+    }
+
+    public async Task SetThemeEnabledAsync(long id, bool isEnabled)
+    {
+        var theme = await _context.Themes.FindAsync(id);
+        if (theme == null)
+            throw new InvalidOperationException("الثيم غير موجود");
+        theme.IsEnabled = isEnabled;
+        theme.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
     }
 }

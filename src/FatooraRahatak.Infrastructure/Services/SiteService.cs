@@ -71,9 +71,29 @@ public class SiteService : ISiteService
                 HasCustomDomain = p.HasCustomDomain,
                 HasAffiliateMarketing = p.HasAffiliateMarketing,
                 HasApiAccess = p.HasApiAccess,
+                HasPos = p.HasPos,
+                HasLogo = p.HasLogo,
                 MaxThemes = p.MaxThemes,
                 CommissionPercentage = p.CommissionPercentage,
+                Color = p.Color,
+                HasShippingIntegration = p.HasShippingIntegration,
+                HasShippingCalculator = p.HasShippingCalculator,
+                HasShippingTracking = p.HasShippingTracking,
+                HasShippingLabelPrinting = p.HasShippingLabelPrinting,
+                HasFreeShipping = p.HasFreeShipping,
+                HasCashOnDelivery = p.HasCashOnDelivery,
+                HasShippingDiscounts = p.HasShippingDiscounts,
             })
+            .ToListAsync();
+    }
+
+    // === Themes ===
+    public async Task<List<string>> GetEnabledThemesAsync()
+    {
+        return await _context.Themes
+            .Where(t => t.IsEnabled)
+            .OrderBy(t => t.DisplayOrder)
+            .Select(t => t.ThemeKey)
             .ToListAsync();
     }
 

@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Employees;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
-using Microsoft.AspNetCore.Http;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -28,21 +27,15 @@ public class EmployeeController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("EmployeeManagement.Add")]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEmployeeDto dto)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
-        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "EmployeeManagement.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _employeeService.CreateAsync(storeId.Value, dto);
@@ -54,24 +47,56 @@ public class EmployeeController : ControllerBase
         }
     }
 
+    [RequirePermission("EmployeeManagement.View")]
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
-        var result = await _employeeService.GetAllAsync(storeId.Value);
+        var result = await _employeeService.GetAllAsync(storeId.Value, page, pageSize);
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("EmployeeManagement.View")]
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(long id)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var result = await _employeeService.GetByIdAsync(storeId.Value, id);
+        if (result == null)
+            return NotFound(new { success = false, message = "الموظف غير موجود" });
+
+        return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("EmployeeManagement.Edit")]
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(long id, [FromBody] UpdateEmployeeDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _employeeService.UpdateAsync(storeId.Value, id, dto);
+            return Ok(new { success = true, data = result, message = "تم تحديث بيانات الموظف" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("EmployeeManagement.Edit")]
     [HttpPut("{id}/deactivate")]
     public async Task<IActionResult> Deactivate(long id)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
-        try { await _permCheck.EnsurePermissionAsync(GetUserId(), "EmployeeManagement.Edit"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             await _employeeService.DeactivateAsync(storeId.Value, id);

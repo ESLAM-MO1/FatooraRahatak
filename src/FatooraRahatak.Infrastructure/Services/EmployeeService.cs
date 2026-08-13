@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.Common;
+using FatooraRahatak.Application.DTOs;
 using FatooraRahatak.Application.DTOs.Employees;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Users;
@@ -28,7 +29,9 @@ public class EmployeeService : IEmployeeService
         if (!PackageLimitHelper.IsWithinLimit(store.Package.MaxEmployees, currentCount))
             throw new InvalidOperationException($"وصلت للحد الأقصى لعدد الموظفين في باقتك ({store.Package.MaxEmployees}). قم بترقية باقتك.");
 
-        var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == dto.RoleName && r.RoleScope == RoleScope.Store);
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == dto.RoleName
+            && r.RoleScope == RoleScope.Store
+            && (r.StoreId == null || r.StoreId == storeId));
         if (role == null)
             throw new InvalidOperationException("الدور الوظيفي غير موجود");
 
@@ -69,16 +72,27 @@ public class EmployeeService : IEmployeeService
             RoleName = role.RoleName,
             Salary = employee.Salary,
             Status = employee.Status,
-            HireDate = employee.HireDate
+            HireDate = employee.HireDate,
+            Phone = user.Phone
         };
     }
 
-    public async Task<List<EmployeeResponseDto>> GetAllAsync(long storeId)
+    public async Task<PagedResult<EmployeeResponseDto>> GetAllAsync(long storeId, int page = 1, int pageSize = 20)
     {
-        return await _context.Employees
+        page = Math.Max(page, 1);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _context.Employees
             .Include(e => e.User)
             .Include(e => e.Role)
-            .Where(e => e.StoreId == storeId)
+            .Where(e => e.StoreId == storeId);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(e => new EmployeeResponseDto
             {
                 Id = e.Id,
@@ -87,9 +101,77 @@ public class EmployeeService : IEmployeeService
                 RoleName = e.Role.RoleName,
                 Salary = e.Salary,
                 Status = e.Status,
-                HireDate = e.HireDate
+                HireDate = e.HireDate,
+                Phone = e.User.Phone
             })
             .ToListAsync();
+
+        return new PagedResult<EmployeeResponseDto>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            Items = items
+        };
+    }
+
+    public async Task<EmployeeResponseDto?> GetByIdAsync(long storeId, long employeeId)
+    {
+        return await _context.Employees
+            .Include(e => e.User)
+            .Include(e => e.Role)
+            .Where(e => e.Id == employeeId && e.StoreId == storeId)
+            .Select(e => new EmployeeResponseDto
+            {
+                Id = e.Id,
+                FullName = e.User.FullName,
+                Email = e.User.Email,
+                RoleName = e.Role.RoleName,
+                Salary = e.Salary,
+                Status = e.Status,
+                HireDate = e.HireDate,
+                Phone = e.User.Phone
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<EmployeeResponseDto> UpdateAsync(long storeId, long employeeId, UpdateEmployeeDto dto)
+    {
+        var employee = await _context.Employees
+            .Include(e => e.User)
+            .Include(e => e.Role)
+            .FirstOrDefaultAsync(e => e.Id == employeeId && e.StoreId == storeId);
+
+        if (employee == null)
+            throw new InvalidOperationException("الموظف غير موجود");
+
+        var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == dto.RoleName
+            && r.RoleScope == RoleScope.Store
+            && (r.StoreId == null || r.StoreId == storeId));
+        if (role == null)
+            throw new InvalidOperationException("الدور الوظيفي غير موجود");
+
+        employee.User.FullName = dto.FullName;
+        employee.User.Phone = dto.Phone;
+        employee.RoleId = role.Id;
+        employee.Role = role;
+        employee.Salary = dto.Salary;
+        employee.Status = dto.Status;
+
+        await _context.SaveChangesAsync();
+
+        return new EmployeeResponseDto
+        {
+            Id = employee.Id,
+            FullName = employee.User.FullName,
+            Email = employee.User.Email,
+            RoleName = role.RoleName,
+            Salary = employee.Salary,
+            Status = employee.Status,
+            HireDate = employee.HireDate,
+            Phone = employee.User.Phone
+        };
     }
 
     public async Task DeactivateAsync(long storeId, long employeeId)

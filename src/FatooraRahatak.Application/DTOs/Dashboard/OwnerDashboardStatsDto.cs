@@ -3,6 +3,9 @@ namespace FatooraRahatak.Application.DTOs.Dashboard;
 public class OwnerDashboardStatsDto
 {
     public decimal TotalSales { get; set; }
+    public decimal TotalPosSales { get; set; }
+    public int InvoicesCount { get; set; }
+    public int NewOrdersCount { get; set; }
     public List<OrderStatusCountDto> OrdersCountByStatus { get; set; } = new();
     public List<TopSellingProductDto> TopSellingProducts { get; set; } = new();
     public List<TopBuyingCustomerDto> TopBuyingCustomers { get; set; } = new();

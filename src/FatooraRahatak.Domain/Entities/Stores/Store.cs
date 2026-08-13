@@ -48,8 +48,20 @@ public class Store : BaseEntity
     public bool CustomerNotificationWhatsapp { get; set; } = false;
     public string? TrustBadgesJson { get; set; } // JSON array of { icon, text, isEnabled }
     public int? ReturnPolicyDays { get; set; }
+    // خصومات الشحن (HasShippingDiscounts): حد شحن مجاني + خصم نسبة على تكلفة الشحن
+    public decimal? FreeShippingThreshold { get; set; }
+    public decimal? ShippingDiscountPercent { get; set; }
     public bool IsOnline { get; set; } = true;
-    public string ThemeName { get; set; } = "basic";
-    public string PrimaryColor { get; set; } = "#12a8db";
+    public string ThemeName { get; set; } = "professional-blue";
+    public string? ColorsJson { get; set; } // JSON: {headerColor, buttonColor, accentColor, heroFrom, heroTo, footerColor, newsletterColor}
     public string? CoverImage { get; set; }
+
+    // حساب استقبال مدفوعات المتجر (Moyasar recipient)
+    public PaymentAccountStatus PaymentAccountStatus { get; set; } = PaymentAccountStatus.NotSubmitted;
+    public string? MoyasarRecipientId { get; set; }
+    public string? PayoutBankName { get; set; }
+    public string? PayoutAccountHolder { get; set; }
+    public string? PayoutIban { get; set; }
+    public string? PayoutRejectionReason { get; set; }
+    public bool ShippingOnPlatformAccount { get; set; } = false;
 }

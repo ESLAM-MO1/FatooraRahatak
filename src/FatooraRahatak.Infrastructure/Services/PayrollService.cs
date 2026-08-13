@@ -96,8 +96,9 @@ public class PayrollService : IPayrollService
             throw new InvalidOperationException("لا يمكن اعتماد راتب بصافي صفري أو سالب");
 
         // ===== تاسك 15: توليد قيد محاسبي تلقائي عند الاعتماد (وليس عند الصرف) =====
-        // مدين: مصروف الرواتب — دائن: رواتب مستحقة الدفع (2103). حالة القيد PendingApproval
-        // (القرار الهندسي رقم 1 المُلزم)، يحتاج اعتماد Owner منفصل لاحقًا من صفحة القيود اليومية.
+        // مدين: مصروف الرواتب — دائن: رواتب مستحقة الدفع (2103). حالة القيد Approved فورًا،
+        // بنفس نمط باقي القيود التلقائية (فواتير/سندات/إهلاك) — لا يحتاج اعتماد منفصل.
+        // عند الصرف الفعلي يتولد قيد تلقائي إضافي من MarkAsPaidAsync (مدين 2103 / دائن نقدية).
         var journalEntry = await _accountingService.CreatePayrollJournalEntryAsync(
             storeId,
             approvedByUserId,
@@ -128,10 +129,10 @@ public class PayrollService : IPayrollService
         };
     }
 
-    public async Task MarkAsPaidAsync(long storeId, long payrollId)
+    public async Task MarkAsPaidAsync(long storeId, long payrollId, long userId)
     {
         var payroll = await _context.Payrolls
-            .Include(p => p.Employee)
+            .Include(p => p.Employee).ThenInclude(e => e.User)
             .FirstOrDefaultAsync(p => p.Id == payrollId && p.Employee.StoreId == storeId);
 
         if (payroll == null)
@@ -139,6 +140,15 @@ public class PayrollService : IPayrollService
 
         if (payroll.Status != PayrollStatus.Approved)
             throw new InvalidOperationException("لا يمكن صرف راتب غير معتمد");
+
+        // ===== تاسك إضافي: توليد قيد محاسبي تلقائي عند الصرف الفعلي =====
+        // مدين: رواتب مستحقة الدفع (2103) لتصفير الالتزام — دائن: الصندوق (1101).
+        await _accountingService.CreatePayrollPaymentJournalEntryAsync(
+            storeId,
+            userId,
+            payroll.Employee.User.FullName,
+            payroll.NetSalary,
+            payroll.PeriodMonth);
 
         payroll.Status = PayrollStatus.Paid;
         payroll.PaidAt = DateTime.UtcNow;

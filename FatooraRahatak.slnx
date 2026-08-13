@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/FatooraRahatak.API/FatooraRahatak.API.csproj" />
-    <Project Path="src/FatooraRahatak.Application/FatooraRahatak.Application.csproj" />
-    <Project Path="src/FatooraRahatak.Domain/FatooraRahatak.Domain.csproj" />
-    <Project Path="src/FatooraRahatak.Infrastructure/FatooraRahatak.Infrastructure.csproj" />
-  </Folder>
-</Solution>

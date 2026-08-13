@@ -8,4 +8,5 @@ public interface IStockCountService
     Task SubmitCountedQuantityAsync(long storeId, SubmitCountedQuantityDto dto);
     Task<StockCountResponseDto?> GetByIdAsync(long storeId, long stockCountId);
     Task ApproveAsync(long storeId, long stockCountId, long approvedByUserId);
+    Task<List<StockCountListDto>> GetAllAsync(long storeId);
 }

@@ -3,33 +3,35 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Accounting;
 using FatooraRahatak.Application.Interfaces;
-using Microsoft.AspNetCore.Http;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
 [ApiController]
 [Route("api/v1/invoices")]
 [Authorize]
+[RequirePackageFeature("HasAccountingFull")]
 public class InvoicesController : ControllerBase
 {
     private readonly IAccountingService _accountingService;
     private readonly IPermissionCheckService _permCheck;
+    private readonly IPdfService _pdfService;
 
-    public InvoicesController(IAccountingService accountingService, IPermissionCheckService permCheck)
+    public InvoicesController(IAccountingService accountingService, IPermissionCheckService permCheck, IPdfService pdfService)
     {
         _accountingService = accountingService;
         _permCheck = permCheck;
+        _pdfService = pdfService;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    [RequirePermission("Invoices.Add")]
     [HttpPost("sales")]
     public async Task<IActionResult> CreateSalesInvoice([FromBody] CreateSalesInvoiceDto dto)
     {
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Invoices.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _accountingService.CreateSalesInvoiceAsync(userId, dto);
@@ -41,12 +43,11 @@ public class InvoicesController : ControllerBase
         }
     }
 
+    [RequirePermission("Invoices.Add")]
     [HttpPost("purchase")]
     public async Task<IActionResult> CreatePurchaseInvoice([FromBody] CreatePurchaseInvoiceDto dto)
     {
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Invoices.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _accountingService.CreatePurchaseInvoiceAsync(userId, dto);
@@ -58,20 +59,45 @@ public class InvoicesController : ControllerBase
         }
     }
 
+    [RequirePermission("Invoices.View")]
     [HttpGet]
-    public async Task<IActionResult> GetInvoices([FromQuery] string? invoiceType, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to)
+    public async Task<IActionResult> GetInvoices([FromQuery] string? invoiceType, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var result = await _accountingService.GetInvoicesAsync(GetUserId(), invoiceType, from, to);
-        return Ok(new { success = true, data = result });
+        try
+        {
+            var result = await _accountingService.GetInvoicesAsync(GetUserId(), invoiceType, from, to, page, pageSize);
+            return Ok(new { success = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetInvoiceById(long id)
+    [RequirePermission("Invoices.View")]
+    [HttpGet("{id:long}")]
+    public async Task<IActionResult> GetInvoice(long id)
     {
         try
         {
             var result = await _accountingService.GetInvoiceByIdAsync(GetUserId(), id);
             return Ok(new { success = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Invoices.View")]
+    [HttpGet("{id:long}/pdf")]
+    public async Task<IActionResult> GetInvoicePdf(long id)
+    {
+        try
+        {
+            var result = await _accountingService.GetInvoiceByIdAsync(GetUserId(), id);
+            var pdf = _pdfService.GenerateInvoicePdf(result);
+            return File(pdf, "application/pdf", $"invoice-{result.InvoiceNumber}.pdf");
         }
         catch (InvalidOperationException ex)
         {

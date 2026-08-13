@@ -13,6 +13,10 @@ public class PosShift : BaseEntity
     public decimal StartingCash { get; set; }
     public decimal? EndingCash { get; set; }
     public decimal TotalSales { get; set; }
+    public decimal TotalCashSales { get; set; }
+    public decimal TotalCardSales { get; set; }
+    public decimal ExpectedCash { get; set; }
+    public decimal Variance { get; set; }
     public bool IsOpen => ClosedAt == null;
 
     public Store Store { get; set; } = null!;

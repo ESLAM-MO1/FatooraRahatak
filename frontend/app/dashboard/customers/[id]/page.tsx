@@ -44,6 +44,7 @@ export default function CustomerDetailPage() {
   const statusLabel = (status: string) => {
     switch (status) {
       case "New": return t("customerDetail.statusNew");
+      case "PendingPayment": return t("customerDetail.statusPendingPayment");
       case "Processing": return t("customerDetail.statusProcessing");
       case "Shipped": return t("customerDetail.statusShipped");
       case "Delivered": return t("customerDetail.statusDelivered");
@@ -119,7 +120,7 @@ export default function CustomerDetailPage() {
         <div className="card p-5">
           <p className="text-[12.5px] text-[var(--sub)] mb-1">{t("customerDetail.totalSpent")}</p>
           <p className="text-[15px] font-bold text-[var(--blue-deep)]">
-            {customer.totalSpent.toLocaleString("ar-SA")} {t("common.sar")}
+            {customer.totalSpent.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
           </p>
         </div>
       </div>
@@ -157,14 +158,14 @@ export default function CustomerDetailPage() {
                       {order.orderNumber}
                     </td>
                     <td className="p-4 text-[var(--sub)]">{order.itemsCount}</td>
-                    <td className="p-4 text-[var(--ink)]">{order.totalAmount.toLocaleString("ar-SA")} {t("common.sar")}</td>
+                    <td className="p-4 text-[var(--ink)]">{order.totalAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</td>
                     <td className="p-4">
                       <span className={statusStyles[order.status] ?? "badge badge--gray"}>
                         {statusLabel(order.status)}
                       </span>
                     </td>
                     <td className="p-4 text-[var(--sub)]">
-                      {new Date(order.createdAt).toLocaleDateString("ar-SA")}
+                      {new Date(order.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}
                     </td>
                     <td className="p-4">
                       <Link

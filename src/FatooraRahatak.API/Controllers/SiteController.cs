@@ -86,4 +86,11 @@ public class SiteController : ControllerBase
             return NotFound(new { success = false, message = ex.Message });
         }
     }
+
+    [HttpGet("themes")]
+    public async Task<IActionResult> GetThemes()
+    {
+        var themes = await _siteService.GetEnabledThemesAsync();
+        return Ok(new { success = true, data = themes });
+    }
 }

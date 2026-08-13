@@ -6,10 +6,17 @@ public class SubscriptionStatusDto
     public string Status { get; set; } = string.Empty;
     public DateTime BillingCycleDate { get; set; }
     public DateTime? GracePeriodEnd { get; set; }
+    public decimal Balance { get; set; }
     public int CurrentProductsCount { get; set; }
     public int? MaxProducts { get; set; }
     public int CurrentEmployeesCount { get; set; }
     public int MaxEmployees { get; set; }
     public int CurrentWarehousesCount { get; set; }
     public int MaxWarehouses { get; set; }
+    public int MaxThemes { get; set; } = 1;
+    public string BillingCycle { get; set; } = "Monthly";
+    public DateTime? SubscriptionEndDate { get; set; }
+    public int? DaysRemaining { get; set; }
+    public bool RequiresRenewal { get; set; }
+    public string? SubscriptionStatus { get; set; }
 }

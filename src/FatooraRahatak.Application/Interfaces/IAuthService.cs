@@ -8,8 +8,12 @@ public interface IAuthService
     Task<AuthResponseDto> LoginAsync(LoginDto dto);
     Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthDto dto);
     Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
-    Task SendVerificationCodeAsync(string email);
+    Task<string?> SendVerificationCodeAsync(string email);
     Task VerifyAccountAsync(VerifyAccountDto dto);
-    Task ForgotPasswordAsync(ForgotPasswordDto dto);
+    Task<string?> ForgotPasswordAsync(ForgotPasswordDto dto);
     Task ResetPasswordAsync(ResetPasswordDto dto);
+    Task<string?> SendProfileUpdateCodeAsync(long userId);
+    Task UpdateProfileAsync(long userId, UpdateProfileDto dto);
+    Task<string?> SendPasswordChangeCodeAsync(long userId);
+    Task ChangePasswordAsync(long userId, ChangePasswordDto dto);
 }

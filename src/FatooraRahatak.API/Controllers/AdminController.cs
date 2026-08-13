@@ -4,18 +4,19 @@ using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Admin;
 using FatooraRahatak.Application.DTOs.Platform;
 using FatooraRahatak.Application.Interfaces;
-namespace FatooraRahatak.API.Controllers;
-[ApiController]
+namespace FatooraRahatak.API.Controllers;[ApiController]
 [Route("api/v1/admin")]
 [Authorize]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
     private readonly ISiteService _siteService;
-    public AdminController(IAdminService adminService, ISiteService siteService)
+    private readonly IReferralService _referralService;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService)
     {
         _adminService = adminService;
         _siteService = siteService;
+        _referralService = referralService;
     }
     private bool IsSuperAdmin()
     {
@@ -488,5 +489,61 @@ public class AdminController : ControllerBase
         var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
         await _siteService.UpdateLandingPageAsync(dto);
         return Ok(new { success = true, message = "تم حفظ محتوى الصفحة الرئيسية" });
+    }
+
+    // === Themes ===
+    [HttpGet("themes")]
+    public async Task<IActionResult> GetAllThemes()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var themes = await _adminService.GetThemesAsync();
+        return Ok(new { success = true, data = themes });
+    }
+
+    [HttpPut("themes/{id}")]
+    public async Task<IActionResult> UpdateTheme(long id, [FromBody] UpdateThemeDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.SetThemeEnabledAsync(id, dto.IsEnabled);
+            return Ok(new { success = true, message = "تم تحديث حالة الثيم بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+    }
+
+    // === Referrals ===
+    [HttpGet("referrals")]
+    public async Task<IActionResult> GetAllReferrals([FromQuery] string? status)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetAllReferralsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("referrals/commissions")]
+    public async Task<IActionResult> GetAllCommissions([FromQuery] string? status)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetAllCommissionsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/commissions/{id}/paid")]
+    public async Task<IActionResult> MarkCommissionPaid(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.MarkCommissionPaidAsync(id);
+            return Ok(new { success = true, message = "تم تعليم العمولة كمصروفة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 }

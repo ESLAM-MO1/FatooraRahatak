@@ -4,6 +4,7 @@ using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace FatooraRahatak.Infrastructure.Data.Seed;
 
@@ -17,12 +18,11 @@ public static class DataSeeder
         await SeedSiteContentAsync(context);
         await SeedLandingPageContentAsync(context);
         await SeedAllSitePagesAsync(context);
+        await SeedThemesAsync(context);
     }
 
     private static async Task SeedRolesAndPermissionsAsync(AppDbContext context)
     {
-        if (await context.Permissions.AnyAsync()) return; 
-
         var moduleActions = new Dictionary<string, PermissionAction[]>
         {
 
@@ -33,6 +33,7 @@ public static class DataSeeder
             ["PlatformSettings"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["AuditLog"] = new[] { PermissionAction.View },
 
+            ["Dashboard"] = new[] { PermissionAction.View },
             ["StoreSettings"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["EmployeeManagement"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["SubscriptionPackage"] = new[] { PermissionAction.View, PermissionAction.Edit },
@@ -42,13 +43,17 @@ public static class DataSeeder
             ["Warehouses"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["StockTransfer"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Approve },
             ["DamagedStock"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Approve },
+            ["Inventory"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
+            ["StockCounts"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Approve },
+            ["Statistics"] = new[] { PermissionAction.View },
 
             ["POS"] = new[] { PermissionAction.View, PermissionAction.Add },
             ["Orders"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["Coupons"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["Customers"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
+            ["Payments"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
 
-            ["ChartOfAccounts"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
+            ["ChartOfAccounts"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["JournalEntries"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Approve },
             ["Ledger"] = new[] { PermissionAction.View },
             ["Invoices"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
@@ -56,31 +61,48 @@ public static class DataSeeder
             ["FixedAssets"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["Payroll"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete, PermissionAction.Approve },
             ["FinancialReports"] = new[] { PermissionAction.View },
+            ["Attendance"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
+            ["LeaveRequests"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Approve },
 
             ["PaymentGateways"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["PaymentLinks"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["ShippingCompanies"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
+            ["Referrals"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
         };
 
-        var permissions = new List<Permission>();
+        // Upsert permissions (idempotent — adds only the missing ones for existing DBs)
+        var existingCodes = await context.Permissions.Select(p => p.PermissionCode).ToListAsync();
+        var existingCodeSet = existingCodes.ToHashSet();
+        var newPermissions = new List<Permission>();
         foreach (var module in moduleActions)
         {
             foreach (var action in module.Value)
             {
-                permissions.Add(new Permission
+                var code = $"{module.Key}.{action}";
+                if (!existingCodeSet.Contains(code))
                 {
-                    ModuleName = module.Key,
-                    ActionType = action,
-                    PermissionCode = $"{module.Key}.{action}"
-                });
+                    newPermissions.Add(new Permission
+                    {
+                        ModuleName = module.Key,
+                        ActionType = action,
+                        PermissionCode = code
+                    });
+                }
             }
         }
-        await context.Permissions.AddRangeAsync(permissions);
-        await context.SaveChangesAsync();
+        if (newPermissions.Count > 0)
+        {
+            await context.Permissions.AddRangeAsync(newPermissions);
+            await context.SaveChangesAsync();
+        }
 
-        var permByCode = permissions.ToDictionary(p => p.PermissionCode, p => p.Id);
+        var allPermissions = await context.Permissions.ToListAsync();
+        var permByCode = allPermissions.ToDictionary(p => p.PermissionCode, p => p.Id);
 
-        var roles = new List<Role>
+        // Upsert roles (only the missing ones)
+        var existingRoleNames = await context.Roles.Select(r => r.RoleName).ToListAsync();
+        var roleNameSet = existingRoleNames.ToHashSet();
+        var roleDefs = new List<Role>
         {
             new() { RoleName = "SuperAdmin", RoleScope = RoleScope.Platform, IsSystemRole = true },
             new() { RoleName = "SupportStaff", RoleScope = RoleScope.Platform, IsSystemRole = true },
@@ -91,15 +113,30 @@ public static class DataSeeder
             new() { RoleName = "OrdersManager", RoleScope = RoleScope.Store, IsSystemRole = true },
             new() { RoleName = "Marketing", RoleScope = RoleScope.Store, IsSystemRole = true },
         };
-        await context.Roles.AddRangeAsync(roles);
+        foreach (var role in roleDefs)
+        {
+            if (!roleNameSet.Contains(role.RoleName))
+            {
+                context.Roles.Add(role);
+                roleNameSet.Add(role.RoleName);
+            }
+        }
         await context.SaveChangesAsync();
 
-        var roleByName = roles.ToDictionary(r => r.RoleName, r => r.Id);
+        var roleByName = await context.Roles
+            .Where(r => r.RoleScope == RoleScope.Store || r.RoleScope == RoleScope.Platform)
+            .ToDictionaryAsync(r => r.RoleName, r => r.Id);
+
+        var platformModules = new[]
+        {
+            "StoreManagement", "PackageManagement", "PlatformUserManagement",
+            "PlatformFinancialReports", "PlatformSettings", "AuditLog"
+        };
 
         var rolePermissionMap = new Dictionary<string, string[]>
         {
             ["SuperAdmin"] = moduleActions
-                .Where(m => new[] { "StoreManagement", "PackageManagement", "PlatformUserManagement", "PlatformFinancialReports", "PlatformSettings", "AuditLog" }.Contains(m.Key))
+                .Where(m => platformModules.Contains(m.Key))
                 .SelectMany(m => m.Value.Select(a => $"{m.Key}.{a}")).ToArray(),
 
             ["SupportStaff"] = new[]
@@ -110,14 +147,14 @@ public static class DataSeeder
             },
 
             ["Owner"] = moduleActions
-                .Where(m => !new[] { "StoreManagement", "PackageManagement", "PlatformUserManagement", "PlatformFinancialReports", "PlatformSettings", "AuditLog" }.Contains(m.Key))
+                .Where(m => !platformModules.Contains(m.Key))
                 .SelectMany(m => m.Value.Select(a => $"{m.Key}.{a}")).ToArray(),
 
             ["Accountant"] = new[]
             {
-                "StoreSettings.View", "SubscriptionPackage.View",
+                "Dashboard.View", "StoreSettings.View", "SubscriptionPackage.View",
                 "Products.View", "Categories.View", "Warehouses.View",
-                "Orders.View", "Customers.View",
+                "Orders.View", "Customers.View", "Payments.View",
                 "ChartOfAccounts.View", "ChartOfAccounts.Add", "ChartOfAccounts.Edit",
                 "JournalEntries.View", "JournalEntries.Add", "JournalEntries.Edit",
                 "Ledger.View",
@@ -130,17 +167,22 @@ public static class DataSeeder
 
             ["Cashier"] = new[]
             {
+                "Dashboard.View",
                 "Products.View", "POS.View", "POS.Add",
                 "Orders.View", "Orders.Add",
                 "Customers.View", "Customers.Add",
-                "Invoices.View", "Invoices.Add"
+                "Invoices.View", "Invoices.Add",
+                "Payments.View"
             },
 
             ["InventoryManager"] = new[]
             {
+                "Dashboard.View",
                 "Products.View", "Products.Add", "Products.Edit",
                 "Categories.View", "Categories.Add", "Categories.Edit",
                 "Warehouses.View", "Warehouses.Add", "Warehouses.Edit",
+                "Inventory.View", "Inventory.Add", "Inventory.Edit",
+                "StockCounts.View", "StockCounts.Add", "StockCounts.Edit", "StockCounts.Approve",
                 "StockTransfer.View", "StockTransfer.Add", "StockTransfer.Edit",
                 "DamagedStock.View", "DamagedStock.Add",
                 "Orders.View"
@@ -148,113 +190,147 @@ public static class DataSeeder
 
             ["OrdersManager"] = new[]
             {
+                "Dashboard.View",
                 "Products.View", "Orders.View", "Orders.Add", "Orders.Edit",
                 "Coupons.View", "Customers.View", "Customers.Add", "Customers.Edit",
-                "POS.View", "Warehouses.View", "ShippingCompanies.View"
+                "POS.View", "Warehouses.View", "ShippingCompanies.View",
+                "Payments.View"
             },
 
             ["Marketing"] = new[]
             {
+                "Dashboard.View",
                 "Products.View", "Products.Edit",
                 "Categories.View", "Orders.View",
                 "Coupons.View", "Coupons.Add", "Coupons.Edit",
-                "Customers.View"
+                "Customers.View", "Statistics.View",
+                "Referrals.View"
             },
         };
 
-        var rolePermissions = new List<RolePermission>();
+        // Upsert role-permission links (only add missing ones — never remove admin customizations)
         foreach (var map in rolePermissionMap)
         {
-            var roleId = roleByName[map.Key];
+            if (!roleByName.TryGetValue(map.Key, out var roleId)) continue;
+            var existingPermIds = await context.RolePermissions
+                .Where(rp => rp.RoleId == roleId)
+                .Select(rp => rp.PermissionId)
+                .ToListAsync();
+            var existingPermSet = existingPermIds.ToHashSet();
+
             foreach (var code in map.Value)
             {
-                if (permByCode.TryGetValue(code, out var permId))
+                if (permByCode.TryGetValue(code, out var permId) && !existingPermSet.Contains(permId))
                 {
-                    rolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = permId });
+                    context.RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = permId });
                 }
             }
         }
-        await context.RolePermissions.AddRangeAsync(rolePermissions);
         await context.SaveChangesAsync();
     }
 
     private static async Task SeedPackagesAsync(AppDbContext context)
     {
-        if (await context.Packages.AnyAsync()) return; 
-
         const int Unlimited = -1;
 
-        var packages = new List<Package>
+        var specs = new[]
         {
-            new()
+            new
             {
                 PackageName = "المجانية",
-                MonthlyPrice = 0,
-                MaxProducts = 20,
-                MaxOrdersPerMonth = 30,
-                MaxEmployees = 1,
+                MonthlyPrice = 0m,
+                MaxProducts = (int?)20,
+                MaxOrdersPerMonth = (int?)30,
+                MaxEmployees = 2,
                 MaxWarehouses = 1,
-                MaxBranchesPOS = 0,
+                MaxBranchesPOS = 1,
                 MaxPaymentGateways = 1,
                 MaxShippingCompanies = 0,
-                HasAccountingFull = false,
-                HasPayroll = false,
-                HasZatcaInvoice = false,
-                HasCustomDomain = false,
-                HasAffiliateMarketing = false,
-                HasApiAccess = false,
-                MaxThemes = 1,
-                CommissionPercentage = 0,
-                IsActive = true
-            },
-            new()
-            {
-                PackageName = "الإنطلاق",
-                MonthlyPrice = 99,
-                MaxProducts = 500,
-                MaxOrdersPerMonth = 500,
-                MaxEmployees = 3,
-                MaxWarehouses = 2,
-                MaxBranchesPOS = 1,
-                MaxPaymentGateways = 2,
-                MaxShippingCompanies = 1,
                 HasAccountingFull = false,
                 HasPayroll = false,
                 HasZatcaInvoice = true,
                 HasCustomDomain = false,
                 HasAffiliateMarketing = false,
                 HasApiAccess = false,
-                MaxThemes = 2,
-                CommissionPercentage = 5,
-                IsActive = true
+                HasPos = true,
+                HasLogo = true,
+                MaxThemes = 1,
+                CommissionPercentage = 5m,
+                Color = "#6B7280",
+                HasShippingIntegration = false,
+                HasShippingCalculator = false,
+                HasShippingTracking = false,
+                HasShippingLabelPrinting = false,
+                HasFreeShipping = false,
+                HasCashOnDelivery = false,
+                HasShippingDiscounts = false
             },
-            new()
+            new
+            {
+                PackageName = "الإنطلاق",
+                MonthlyPrice = 69m,
+                MaxProducts = (int?)500,
+                MaxOrdersPerMonth = (int?)500,
+                MaxEmployees = 10,
+                MaxWarehouses = 3,
+                MaxBranchesPOS = 1,
+                MaxPaymentGateways = 2,
+                MaxShippingCompanies = 2,
+                HasAccountingFull = true,
+                HasPayroll = false,
+                HasZatcaInvoice = true,
+                HasCustomDomain = true,
+                HasAffiliateMarketing = false,
+                HasApiAccess = false,
+                HasPos = true,
+                HasLogo = true,
+                MaxThemes = 3,
+                CommissionPercentage = 3m,
+                Color = "#12A8DB",
+                HasShippingIntegration = true,
+                HasShippingCalculator = true,
+                HasShippingTracking = true,
+                HasShippingLabelPrinting = false,
+                HasFreeShipping = false,
+                HasCashOnDelivery = true,
+                HasShippingDiscounts = false
+            },
+            new
             {
                 PackageName = "التوسع",
-                MonthlyPrice = 249,
-                MaxProducts = 5000,
-                MaxOrdersPerMonth = 5000,
-                MaxEmployees = 10,
-                MaxWarehouses = 5,
+                MonthlyPrice = 169m,
+                MaxProducts = (int?)2000,
+                MaxOrdersPerMonth = (int?)2000,
+                MaxEmployees = 25,
+                MaxWarehouses = 10,
                 MaxBranchesPOS = 3,
                 MaxPaymentGateways = Unlimited,
-                MaxShippingCompanies = 3,
+                MaxShippingCompanies = 5,
                 HasAccountingFull = true,
                 HasPayroll = true,
                 HasZatcaInvoice = true,
                 HasCustomDomain = true,
                 HasAffiliateMarketing = true,
                 HasApiAccess = false,
-                MaxThemes = 3,
-                CommissionPercentage = 3,
-                IsActive = true
+                HasPos = true,
+                HasLogo = true,
+                MaxThemes = 10,
+                CommissionPercentage = 1.5m,
+                Color = "#1FB983",
+                HasShippingIntegration = true,
+                HasShippingCalculator = true,
+                HasShippingTracking = true,
+                HasShippingLabelPrinting = true,
+                HasFreeShipping = true,
+                HasCashOnDelivery = true,
+                HasShippingDiscounts = true
             },
-            new()
+            new
             {
                 PackageName = "الريادة",
-                MonthlyPrice = 499,
-                MaxProducts = null,
-                MaxOrdersPerMonth = null,
+                MonthlyPrice = 269m,
+                MaxProducts = (int?)null,
+                MaxOrdersPerMonth = (int?)null,
                 MaxEmployees = Unlimited,
                 MaxWarehouses = Unlimited,
                 MaxBranchesPOS = Unlimited,
@@ -266,13 +342,90 @@ public static class DataSeeder
                 HasCustomDomain = true,
                 HasAffiliateMarketing = true,
                 HasApiAccess = true,
-                MaxThemes = 3,
-                CommissionPercentage = 5,
-                IsActive = true
+                HasPos = true,
+                HasLogo = true,
+                MaxThemes = Unlimited,
+                CommissionPercentage = 0m,
+                Color = "#C9A227",
+                HasShippingIntegration = true,
+                HasShippingCalculator = true,
+                HasShippingTracking = true,
+                HasShippingLabelPrinting = true,
+                HasFreeShipping = true,
+                HasCashOnDelivery = true,
+                HasShippingDiscounts = true
             }
         };
 
-        await context.Packages.AddRangeAsync(packages);
+        foreach (var spec in specs)
+        {
+            var existing = await context.Packages.FirstOrDefaultAsync(p => p.PackageName == spec.PackageName);
+            if (existing == null)
+            {
+                context.Packages.Add(new Package
+                {
+                    PackageName = spec.PackageName,
+                    MonthlyPrice = spec.MonthlyPrice,
+                    MaxProducts = spec.MaxProducts,
+                    MaxOrdersPerMonth = spec.MaxOrdersPerMonth,
+                    MaxEmployees = spec.MaxEmployees,
+                    MaxWarehouses = spec.MaxWarehouses,
+                    MaxBranchesPOS = spec.MaxBranchesPOS,
+                    MaxPaymentGateways = spec.MaxPaymentGateways,
+                    MaxShippingCompanies = spec.MaxShippingCompanies,
+                    HasAccountingFull = spec.HasAccountingFull,
+                    HasPayroll = spec.HasPayroll,
+                    HasZatcaInvoice = spec.HasZatcaInvoice,
+                    HasCustomDomain = spec.HasCustomDomain,
+                    HasAffiliateMarketing = spec.HasAffiliateMarketing,
+                    HasApiAccess = spec.HasApiAccess,
+                    HasPos = spec.HasPos,
+                    HasLogo = spec.HasLogo,
+                    MaxThemes = spec.MaxThemes,
+                    CommissionPercentage = spec.CommissionPercentage,
+                    Color = spec.Color,
+                    HasShippingIntegration = spec.HasShippingIntegration,
+                    HasShippingCalculator = spec.HasShippingCalculator,
+                    HasShippingTracking = spec.HasShippingTracking,
+                    HasShippingLabelPrinting = spec.HasShippingLabelPrinting,
+                    HasFreeShipping = spec.HasFreeShipping,
+                    HasCashOnDelivery = spec.HasCashOnDelivery,
+                    HasShippingDiscounts = spec.HasShippingDiscounts,
+                    IsActive = true
+                });
+            }
+            else
+            {
+                existing.MonthlyPrice = spec.MonthlyPrice;
+                existing.MaxProducts = spec.MaxProducts;
+                existing.MaxOrdersPerMonth = spec.MaxOrdersPerMonth;
+                existing.MaxEmployees = spec.MaxEmployees;
+                existing.MaxWarehouses = spec.MaxWarehouses;
+                existing.MaxBranchesPOS = spec.MaxBranchesPOS;
+                existing.MaxPaymentGateways = spec.MaxPaymentGateways;
+                existing.MaxShippingCompanies = spec.MaxShippingCompanies;
+                existing.HasAccountingFull = spec.HasAccountingFull;
+                existing.HasPayroll = spec.HasPayroll;
+                existing.HasZatcaInvoice = spec.HasZatcaInvoice;
+                existing.HasCustomDomain = spec.HasCustomDomain;
+                existing.HasAffiliateMarketing = spec.HasAffiliateMarketing;
+                existing.HasApiAccess = spec.HasApiAccess;
+                existing.HasPos = spec.HasPos;
+                existing.HasLogo = spec.HasLogo;
+                existing.MaxThemes = spec.MaxThemes;
+                existing.CommissionPercentage = spec.CommissionPercentage;
+                existing.Color = spec.Color;
+                existing.HasShippingIntegration = spec.HasShippingIntegration;
+                existing.HasShippingCalculator = spec.HasShippingCalculator;
+                existing.HasShippingTracking = spec.HasShippingTracking;
+                existing.HasShippingLabelPrinting = spec.HasShippingLabelPrinting;
+                existing.HasFreeShipping = spec.HasFreeShipping;
+                existing.HasCashOnDelivery = spec.HasCashOnDelivery;
+                existing.HasShippingDiscounts = spec.HasShippingDiscounts;
+                existing.IsActive = true;
+            }
+        }
+
         await context.SaveChangesAsync();
     }
 
@@ -281,12 +434,19 @@ public static class DataSeeder
         if (await context.Users.AnyAsync(u => u.Email == "admin@platform.com"))
             return;
 
+        // كلمة المرور تُؤخذ من متغير البيئة SUPER_ADMIN_PASSWORD،
+        // وإلا تُولَّد عشوائيًا — لا توجد كلمة افتراضية معلومة تُسلَّم للعميل.
+        var password = Environment.GetEnvironmentVariable("SUPER_ADMIN_PASSWORD");
+        if (string.IsNullOrWhiteSpace(password))
+            password = Convert.ToBase64String(RandomNumberGenerator.GetBytes(18))
+                .Replace("+", "x").Replace("/", "y").Replace("=", "");
+
         var superAdmin = new User
         {
             FullName = "منصة الإدارة",
             Email = "admin@platform.com",
             Phone = "0500000001",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             UserType = UserType.SuperAdmin,
             IsActive = true,
             IsVerified = true
@@ -294,6 +454,8 @@ public static class DataSeeder
 
         context.Users.Add(superAdmin);
         await context.SaveChangesAsync();
+
+        Console.WriteLine($"[SEED] SuperAdmin created: admin@platform.com / {password}");
     }
 
     private static async Task SeedSiteContentAsync(AppDbContext context)
@@ -301,14 +463,14 @@ public static class DataSeeder
         if (await context.Set<SitePage>().AnyAsync()) return;
 
         context.Set<SitePage>().AddRange(
-            new SitePage { PageKey = "about", TitleAr = "عن المنصة", TitleEn = "About Us", ContentAr = "<h2>فاتورة راحتك</h2><p>منصة سحابية متكاملة لإدارة المتاجر الإلكترونية، توفر حلولاً شاملة من إنشاء المتجر وإدارة المنتجات والمخزون إلى النظام المحاسبي الكامل والفواتير الإلكترونية.</p><p>نهدف إلى تمكين رواد الأعمال في المملكة العربية السعودية من إدارة أعمالهم بكفاءة واحترافية من خلال أدوات سهلة الاستخدام ومتكاملة.</p>", ContentEn = "<h2>FatooraRahatak</h2><p>A comprehensive SaaS platform for e-commerce management.</p>" },
+            new SitePage { PageKey = "about", TitleAr = "عن المنصة", TitleEn = "About Us", ContentAr = "<h2>فاتورة راحتك</h2><p>منصة سحابية متكاملة لإدارة المتاجر الإلكترونية، توفر حلولاً شاملة من إنشاء المتجر وإدارة المنتجات والمخزون إلى النظام المحاسبي الكامل والفواتير الإلكترونية.</p><p>نهدف إلى تمكين رواد الأعمال في المملكة العربية السعودية من إدارة أعمالهم بكفاءة واحترافية من خلال أدوات سهلة الاستخدام ومتكاملة.</p>", ContentEn = "<h2>Faturat Rahatik</h2><p>A comprehensive SaaS platform for e-commerce management.</p>" },
             new SitePage { PageKey = "help-center", TitleAr = "مركز المساعدة", TitleEn = "Help Center", ContentAr = "<h2>مرحبًا بك في مركز المساعدة</h2><p>هذا المركز قيد الإعداد حاليًا. سنوفر قريبًا أدلة وشروحات مفصلة لكل أجزاء المنصة.</p>", ContentEn = "<h2>Welcome to Help Center</h2><p>Coming soon.</p>" }
         );
 
         context.Set<SiteFaqItem>().AddRange(
             new SiteFaqItem { QuestionAr = "هل الباقة المجانية مجانية للأبد؟", QuestionEn = "Is the free plan free forever?", AnswerAr = "نعم، الباقة المجانية مجانية مدى الحياة بدون أي رسوم مخفية.", AnswerEn = "Yes, the free plan is free forever with no hidden fees.", DisplayOrder = 1 },
             new SiteFaqItem { QuestionAr = "هل يمكنني تغيير باقتي في أي وقت؟", QuestionEn = "Can I change my plan anytime?", AnswerAr = "نعم، يمكنك الترقية في أي وقت فوريًا. الترقية من باقة أعلى إلى أقل تتطلب خفض استخدامك أولاً.", AnswerEn = "Yes, you can upgrade anytime instantly. Downgrading requires reducing your usage first.", DisplayOrder = 2 },
-            new SiteFaqItem { QuestionAr = "هل النظام متوافق مع الفاتورة الإلكترونية ZATCA؟", QuestionEn = "Is the system ZATCA compliant?", AnswerAr = "نعم، المنصة تدعم الفاتورة الإلكترونية (المرحلة الثانية) مع QR Code والتوقيع الرقمي.", AnswerEn = "Yes, the platform supports e-invoicing (phase 2) with QR Code and digital signature.", DisplayOrder = 3 },
+            new SiteFaqItem { QuestionAr = "هل النظام متوافق مع الفاتورة الإلكترونية ZATCA؟", QuestionEn = "Is the system ZATCA compliant?", AnswerAr = "نعم، المنصة تدعم الفاتورة الإلكترونية (المرحلة الثانية): توليد XML بمواصفات UBL 2.1، التوقيع الرقمي XAdES-BES بشهادة CSID، إرسال الفواتير لبوابة زاتكا (Clearance/Reporting)، وQR Code مبني على البيانات الموقّعة. يتطلب التفعيل التسجيل ضريبيًا لدى زاتكا وتنفيذ تسجيل الجهاز (Onboarding) بشهادة CSID.", AnswerEn = "Yes, the platform supports e-invoicing (phase 2): UBL 2.1 XML generation, XAdES-BES digital signing with a CSID certificate, invoice submission to the ZATCA portal (Clearance/Reporting), and a QR Code built from the signed data. Activation requires VAT registration and device onboarding with a CSID.", DisplayOrder = 3 },
             new SiteFaqItem { QuestionAr = "كيف أضيف موظفين لحسابي؟", QuestionEn = "How do I add employees to my account?", AnswerAr = "يمكنك دعوة موظفين من لوحة التحكم عبر قسم الموظفين. ستحدد صلاحيات كل موظف حسب دوره.", AnswerEn = "You can invite employees from the dashboard. Set permissions for each employee based on their role.", DisplayOrder = 4 },
             new SiteFaqItem { QuestionAr = "هل يمكنني استخدام دومين خاص لمتجري؟", QuestionEn = "Can I use a custom domain?", AnswerAr = "نعم، يتوفر ربط دومين خاص في باقة التوسع والريادة.", AnswerEn = "Yes, custom domain is available in the Growth and Enterprise plans.", DisplayOrder = 5 }
         );
@@ -407,7 +569,7 @@ public static class DataSeeder
     {
         var pages = new[]
         {
-            new SitePage { PageKey = "about", TitleAr = "عن المنصة", TitleEn = "About Us", ContentAr = "<h2>فاتورة راحتك</h2><p>منصة سحابية متكاملة لإدارة المتاجر الإلكترونية، توفر حلولاً شاملة من إنشاء المتجر وإدارة المنتجات والمخزون إلى النظام المحاسبي الكامل والفواتير الإلكترونية.</p><p>نهدف إلى تمكين رواد الأعمال في المملكة العربية السعودية من إدارة أعمالهم بكفاءة واحترافية من خلال أدوات سهلة الاستخدام ومتكاملة.</p>", ContentEn = "<h2>FatooraRahatak</h2><p>A comprehensive SaaS platform for e-commerce management.</p>" },
+            new SitePage { PageKey = "about", TitleAr = "عن المنصة", TitleEn = "About Us", ContentAr = "<h2>فاتورة راحتك</h2><p>منصة سحابية متكاملة لإدارة المتاجر الإلكترونية، توفر حلولاً شاملة من إنشاء المتجر وإدارة المنتجات والمخزون إلى النظام المحاسبي الكامل والفواتير الإلكترونية.</p><p>نهدف إلى تمكين رواد الأعمال في المملكة العربية السعودية من إدارة أعمالهم بكفاءة واحترافية من خلال أدوات سهلة الاستخدام ومتكاملة.</p>", ContentEn = "<h2>Faturat Rahatik</h2><p>A comprehensive SaaS platform for e-commerce management.</p>" },
             new SitePage { PageKey = "help-center", TitleAr = "مركز المساعدة", TitleEn = "Help Center", ContentAr = "<h2>مرحبًا بك في مركز المساعدة</h2><p>هذا المركز قيد الإعداد حاليًا. سنوفر قريبًا أدلة وشروحات مفصلة لكل أجزاء المنصة.</p>", ContentEn = "<h2>Welcome to Help Center</h2><p>Coming soon.</p>" },
             new SitePage { PageKey = "contact", TitleAr = "تواصل معنا", TitleEn = "Contact Us", ContentAr = "<h2>تواصل معنا</h2><p>نحن هنا لمساعدتك! أرسل لنا رسالة وسنرد عليك في أقرب وقت ممكن.</p>", ContentEn = "<h2>Contact Us</h2><p>We are here to help! Send us a message and we'll get back to you as soon as possible.</p>" },
             new SitePage { PageKey = "terms-of-use", TitleAr = "شروط الاستخدام", TitleEn = "Terms of Use", ContentAr = "<h2>شروط الاستخدام</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر شروط الاستخدام قريبًا.</p>", ContentEn = "<h2>Terms of Use</h2><p>This page is under construction. Terms of use will be published soon.</p>" },
@@ -439,6 +601,36 @@ public static class DataSeeder
         {
             if (!await context.Set<SitePage>().AnyAsync(p => p.PageKey == page.PageKey))
                 context.Set<SitePage>().Add(page);
+        }
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedThemesAsync(AppDbContext context)
+    {
+        if (await context.Themes.AnyAsync()) return;
+
+        var themeKeys = new[]
+        {
+            "professional-blue",
+            "warm-modern",
+            "natural-green",
+            "pink-elegant",
+            "royal-purple",
+            "black-minimal",
+            "b2b-formal",
+            "b2b-calm",
+            "restaurant",
+            "pharmacy",
+        };
+
+        for (var i = 0; i < themeKeys.Length; i++)
+        {
+            context.Themes.Add(new Theme
+            {
+                ThemeKey = themeKeys[i],
+                IsEnabled = true,
+                DisplayOrder = i + 1,
+            });
         }
         await context.SaveChangesAsync();
     }

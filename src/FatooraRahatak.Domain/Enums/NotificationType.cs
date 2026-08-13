@@ -8,9 +8,13 @@ public enum NotificationType
 {
     General,
     OrderCreated,
+    OrderCancelled,
+    OrderReturned,
     DomainActivated,
     LowStock,
     SubscriptionExpiring,
+    SubscriptionSuspended,
+    PackageActivated,
     InvoiceCreated,
     VoucherCreated,
     FixedAssetDepreciationPosted,

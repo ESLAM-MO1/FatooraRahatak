@@ -4,5 +4,7 @@ public enum VerificationCodeType
 {
     EmailVerification,
     PhoneVerification,
-    PasswordReset
+    PasswordReset,
+    ProfileUpdate,
+    PasswordChange
 }

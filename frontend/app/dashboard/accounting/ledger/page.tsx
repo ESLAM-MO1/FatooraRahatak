@@ -51,7 +51,7 @@ function flattenAccounts(accounts: Account[], depth = 0): { account: Account; de
 }
 
 function formatMoney(n: number) {
-  return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function exportToExcel(tableHtml: string, filename: string) {
@@ -203,13 +203,13 @@ export default function LedgerPage() {
             <div className="card p-4">
               <p className="text-[12px] text-[var(--sub)] mb-1">{t("ledger.openingBalance")}</p>
               <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-                {formatMoney(ledger.openingBalance)} ر.س
+                {formatMoney(ledger.openingBalance)} {t("common.sar")}
               </p>
             </div>
             <div className="card p-4">
               <p className="text-[12px] text-[var(--sub)] mb-1">{t("ledger.closingBalance")}</p>
               <p className="text-[16px] font-bold text-[var(--blue-deep)]" dir="ltr">
-                {formatMoney(ledger.closingBalance)} ر.س
+                {formatMoney(ledger.closingBalance)} {t("common.sar")}
               </p>
             </div>
           </div>

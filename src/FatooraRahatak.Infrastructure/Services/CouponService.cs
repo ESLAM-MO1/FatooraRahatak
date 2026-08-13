@@ -21,6 +21,12 @@ public class CouponService : ICouponService
         if (!Enum.TryParse<DiscountType>(dto.DiscountType, out var discountType))
             throw new InvalidOperationException("نوع الخصم غير صحيح");
 
+        // ⚠️ منع كوبونات "الخصم السالب" التي ترفع سعر الطلب بدل خفضه
+        if (dto.DiscountValue <= 0)
+            throw new InvalidOperationException("قيمة الخصم يجب أن تكون أكبر من صفر");
+        if (dto.MinOrderAmount < 0)
+            throw new InvalidOperationException("الحد الأدنى للطلب لا يمكن أن يكون سالبًا");
+
         var codeExists = await _context.Coupons.AnyAsync(c => c.StoreId == storeId && c.Code == dto.Code);
         if (codeExists)
             throw new InvalidOperationException("كود الخصم مستخدم بالفعل");

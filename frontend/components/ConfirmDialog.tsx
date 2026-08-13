@@ -78,13 +78,14 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             <div className="flex gap-3">
               <button
                 onClick={() => handleClose(false)}
-                className="btn-secondary flex-1"
+                className="btn flex-1"
+                style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}
               >
                 {state.cancelLabel || t("common.cancel")}
               </button>
               <button
                 onClick={() => handleClose(true)}
-                className={state.danger ? "btn-danger flex-1" : "btn-primary flex-1"}
+                className={state.danger ? "btn btn-danger flex-1" : "btn btn-primary flex-1"}
               >
                 {state.confirmLabel || t("common.confirm")}
               </button>

@@ -3,13 +3,14 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Accounting;
 using FatooraRahatak.Application.Interfaces;
-using Microsoft.AspNetCore.Http;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
 [ApiController]
 [Route("api/v1/vouchers")]
 [Authorize]
+[RequirePackageFeature("HasAccountingFull")]
 public class VouchersController : ControllerBase
 {
     private readonly IAccountingService _accountingService;
@@ -24,12 +25,11 @@ public class VouchersController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    [RequirePermission("Vouchers.Add")]
     [HttpPost("receipt")]
     public async Task<IActionResult> CreateReceiptVoucher([FromBody] CreateVoucherDto dto)
     {
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Vouchers.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _accountingService.CreateReceiptVoucherAsync(userId, dto);
@@ -41,12 +41,11 @@ public class VouchersController : ControllerBase
         }
     }
 
+    [RequirePermission("Vouchers.Add")]
     [HttpPost("payment")]
     public async Task<IActionResult> CreatePaymentVoucher([FromBody] CreateVoucherDto dto)
     {
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "Vouchers.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var result = await _accountingService.CreatePaymentVoucherAsync(userId, dto);
@@ -58,10 +57,33 @@ public class VouchersController : ControllerBase
         }
     }
 
+    [RequirePermission("Vouchers.View")]
     [HttpGet]
     public async Task<IActionResult> GetVouchers([FromQuery] string? voucherType, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to)
     {
-        var result = await _accountingService.GetVouchersAsync(GetUserId(), voucherType, from, to);
-        return Ok(new { success = true, data = result });
+        try
+        {
+            var result = await _accountingService.GetVouchersAsync(GetUserId(), voucherType, from, to);
+            return Ok(new { success = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Vouchers.View")]
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(long id)
+    {
+        try
+        {
+            var result = await _accountingService.GetVoucherByIdAsync(GetUserId(), id);
+            return Ok(new { success = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
     }
 }

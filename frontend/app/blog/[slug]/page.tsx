@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import { SiteLayout } from "../../site-layout";
+import Hero from "@/components/Hero";
 import LoadingState from "@/components/LoadingState";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
@@ -12,11 +13,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v
 interface BlogPost {
   id: number;
   titleAr: string;
-  slug: string;
+  slugAr: string;
   contentAr: string;
   authorName: string;
   featuredImage: string | null;
-  createdAt: string;
+  publishedAt: string | null;
 }
 
 export default function BlogPostPage() {
@@ -45,9 +46,10 @@ export default function BlogPostPage() {
     load();
   }, [slug, t]);
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "—";
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ar-SA", {
+    return date.toLocaleDateString("ar-SA-u-nu-latn", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -76,16 +78,15 @@ export default function BlogPostPage() {
   return (
     <SiteLayout>
       <div>
-        <section
-          className="py-16 text-center text-white"
-          style={{ backgroundColor: "var(--blue-deep)" }}
-        >
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">{post.titleAr}</h1>
-          <div className="flex items-center justify-center gap-3 text-[14px] opacity-80">
-            {post.authorName && <span>{post.authorName}</span>}
-            <span>{formatDate(post.createdAt)}</span>
-          </div>
-        </section>
+        <Hero
+          title={post.titleAr}
+          subtitle={
+            <div className="flex items-center justify-center gap-3 text-[14px]">
+              {post.authorName && <span>{post.authorName}</span>}
+              <span>{formatDate(post.publishedAt)}</span>
+            </div>
+          }
+        />
         <div className="max-w-3xl mx-auto px-4 py-12">
           <Link
             href="/blog"
@@ -102,7 +103,7 @@ export default function BlogPostPage() {
               <img
                 src={post.featuredImage}
                 alt={post.titleAr}
-                className="w-full h-auto max-h-96 object-cover"
+                className="w-full h-auto"
               />
             </div>
           )}

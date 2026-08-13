@@ -32,6 +32,7 @@ interface DashboardStats {
 
 const statusStyles: Record<string, string> = {
   New: "badge badge--blue",
+  PendingPayment: "badge badge--orange",
   Processing: "badge badge--yellow",
   Shipped: "badge badge--gray",
   Delivered: "badge badge--green",
@@ -50,6 +51,7 @@ export default function StatisticsPage() {
 
   const statusLabels: Record<string, string> = {
     New: t("statistics.statusNew"),
+    PendingPayment: t("statistics.statusPendingPayment"),
     Processing: t("statistics.statusProcessing"),
     Shipped: t("statistics.statusShipped"),
     Delivered: t("statistics.statusDelivered"),
@@ -108,7 +110,7 @@ export default function StatisticsPage() {
                 <p className="text-[12.5px] text-[var(--sub)]">{t("statistics.totalSales")}</p>
               </div>
               <p className="text-[22px] font-bold text-[var(--blue-deep)]">
-                {stats.totalSales.toLocaleString("ar-SA")} {t("statistics.sar")}
+                {stats.totalSales.toLocaleString("ar-SA-u-nu-latn")} {t("statistics.sar")}
               </p>
             </div>
 
@@ -189,7 +191,7 @@ export default function StatisticsPage() {
                         <tr key={c.phone} className="border-b border-[var(--border)]">
                           <td className="p-3 text-[var(--ink)] font-medium">{c.name}</td>
                           <td className="p-3 text-[var(--ink)]">
-                            {c.totalSpent.toLocaleString("ar-SA")} {t("statistics.sar")}
+                            {c.totalSpent.toLocaleString("ar-SA-u-nu-latn")} {t("statistics.sar")}
                           </td>
                           <td className="p-3 text-[var(--sub)]">{c.ordersCount}</td>
                         </tr>

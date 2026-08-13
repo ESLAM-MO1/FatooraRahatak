@@ -235,7 +235,7 @@ export default function DomainsPage() {
                     <td>{statusBadge(d.status)}</td>
                     <td>{statusBadge(d.dnsStatus)}</td>
                     <td>{statusBadge(d.sslStatus)}</td>
-                    <td>{new Date(d.createdAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(d.createdAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                   </tr>
                 ))}
                 {domains.filter(d => d.type === "Subdomain").length === 0 && (
@@ -293,7 +293,7 @@ export default function DomainsPage() {
                     <td>{statusBadge(d.status)}</td>
                     <td>{statusBadge(d.dnsStatus)}</td>
                     <td>{d.isPrimary ? <span className="badge badge--green">{t("domains.yes")}</span> : "-"}</td>
-                    <td>{new Date(d.createdAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(d.createdAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                   </tr>
                 ))}
                 {domains.filter(d => d.type === "Custom").length === 0 && (
@@ -321,9 +321,9 @@ export default function DomainsPage() {
                   <tr key={c.id}>
                     <td className="font-medium">{c.domainName}</td>
                     <td>{c.issuer}</td>
-                    <td>{new Date(c.expiresAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(c.expiresAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                     <td>{statusBadge(c.status)}</td>
-                    <td>{c.lastRenewedAt ? new Date(c.lastRenewedAt).toLocaleDateString(isAr ? "ar-SA" : "en-US") : "-"}</td>
+                    <td>{c.lastRenewedAt ? new Date(c.lastRenewedAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US") : "-"}</td>
                     <td><button className="btn btn--sm btn--primary" onClick={() => handleRequestSsl(c.managedDomainId)}>{t("domains.requestSsl")}</button></td>
                   </tr>
                 ))}
@@ -413,7 +413,7 @@ export default function DomainsPage() {
                     <td className="dir-ltr text-left" style={{ direction: "ltr", textAlign: "left" }}>{r.targetUrl}</td>
                     <td>{r.redirectType === 301 ? "301" : "302"}</td>
                     <td>{r.isActive ? <span className="badge badge--green">{t("domains.active")}</span> : <span className="badge badge--gray">{t("domains.inactive")}</span>}</td>
-                    <td>{new Date(r.createdAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(r.createdAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                     <td className="flex gap-1">
                       <button className="btn btn--sm btn--ghost" onClick={() => handleToggleRedirect(r.id, r.isActive)}>
                         {r.isActive ? t("domains.deactivate") : t("domains.activate")}
@@ -502,7 +502,7 @@ export default function DomainsPage() {
                     <td dir="ltr" style={{ textAlign: "left" }}>{e.emailAddress}</td>
                     <td>{e.provider}</td>
                     <td>{e.isActive ? <span className="badge badge--green">{t("domains.active")}</span> : <span className="badge badge--gray">{t("domains.inactive")}</span>}</td>
-                    <td>{new Date(e.createdAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(e.createdAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                     <td className="flex gap-1">
                       <button className="btn btn--sm btn--ghost" onClick={() => handleToggleEmail(e.id)}>
                         {e.isActive ? t("domains.deactivate") : t("domains.activate")}
@@ -547,7 +547,7 @@ export default function DomainsPage() {
                     <td>{r.registrantName}</td>
                     <td>{r.registrantEmail}</td>
                     <td>{statusBadge(r.status)}</td>
-                    <td>{new Date(r.createdAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(r.createdAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                   </tr>
                 ))}
                 {registrations.length === 0 && (
@@ -584,7 +584,7 @@ export default function DomainsPage() {
                     <td className="font-medium dir-ltr" style={{ direction: "ltr", textAlign: "left" }}>{b.domainOrPattern}</td>
                     <td>{b.reason}</td>
                     <td>{b.addedByAdmin}</td>
-                    <td>{new Date(b.createdAt).toLocaleDateString(isAr ? "ar-SA" : "en-US")}</td>
+                    <td>{new Date(b.createdAt).toLocaleDateString(isAr ? "ar-SA-u-nu-latn" : "en-US")}</td>
                     <td><button className="btn btn--sm btn--danger" onClick={() => handleRemoveBlacklist(b.id)}>{t("domains.remove")}</button></td>
                   </tr>
                 ))}

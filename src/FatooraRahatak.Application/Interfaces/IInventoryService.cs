@@ -11,4 +11,6 @@ public interface IInventoryService
     Task ApproveStockTransferAsync(long storeId, long transferId, long approvedByUserId);
     Task<long> ReportDamagedStockAsync(long storeId, long userId, CreateDamagedStockDto dto);
     Task ApproveDamagedStockAsync(long storeId, long damageId, long approvedByUserId);
+    Task<List<StockTransferListDto>> GetStockTransfersAsync(long storeId);
+    Task<List<DamagedStockListDto>> GetDamagedStocksAsync(long storeId);
 }

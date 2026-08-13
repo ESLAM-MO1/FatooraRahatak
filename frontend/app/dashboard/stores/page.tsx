@@ -8,6 +8,8 @@ import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface Store {
   id: number;
@@ -53,6 +55,7 @@ const statusBadgeClass = (status: string) => {
 
 export default function StoresPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -91,7 +94,7 @@ export default function StoresPage() {
   };
 
   const handleSuspend = async (store: Store) => {
-    if (!window.confirm(t("store.suspendConfirm", { name: store.storeName }))) return;
+    if (!(await confirm(t("store.suspendConfirm", { name: store.storeName })))) return;
 
     setActionError("");
     setActionSuccess("");
@@ -108,7 +111,7 @@ export default function StoresPage() {
   };
 
   const handleActivate = async (store: Store) => {
-    if (!window.confirm(t("store.activateConfirm", { name: store.storeName }))) return;
+    if (!(await confirm(t("store.activateConfirm", { name: store.storeName })))) return;
 
     setActionError("");
     setActionSuccess("");
@@ -146,7 +149,7 @@ export default function StoresPage() {
       <PageHeader icon="store" title={t("store.manage")} />
 
       {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
-      {actionSuccess && <div className="alert alert--success mb-4">{actionSuccess}</div>}
+      <SuccessToast message={actionSuccess} fixed className="mb-4" />
 
       <div className="card p-4 mb-4 flex flex-wrap gap-4">
         <div className="flex items-center gap-2">
@@ -257,7 +260,7 @@ export default function StoresPage() {
                       <span className={statusBadgeClass(store.status)}>{statusLabel(store.status, t)}</span>
                     </td>
                     <td className="p-3 text-[var(--sub)]" dir="ltr">
-                      {new Date(store.createdAt).toLocaleDateString("ar-SA")}
+                      {new Date(store.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">

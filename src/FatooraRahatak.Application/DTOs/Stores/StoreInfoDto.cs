@@ -20,9 +20,11 @@ public class StoreInfoDto
     public string? ReturnPolicyText { get; set; }
     public bool IsOnline { get; set; }
     public string DefaultLanguage { get; set; } = string.Empty;
-    public string ThemeName { get; set; } = "basic";
-    public string PrimaryColor { get; set; } = "#12a8db";
+    public string ThemeName { get; set; } = "professional-blue";
+    public string? ColorsJson { get; set; }
+    public string? Logo { get; set; }
     public string? CoverImage { get; set; }
+    public int MaxThemes { get; set; } = 1;
     public bool IsSearchEnabled { get; set; }
     public bool IsReviewsEnabled { get; set; }
     public int? LowStockThreshold { get; set; }
@@ -31,6 +33,8 @@ public class StoreInfoDto
     public bool CustomerNotificationWhatsapp { get; set; }
     public string? TrustBadgesJson { get; set; }
     public int? ReturnPolicyDays { get; set; }
+    public decimal? FreeShippingThreshold { get; set; }
+    public decimal? ShippingDiscountPercent { get; set; }
     public List<ShippingMethodDto> ShippingMethods { get; set; } = new();
     public List<PaymentMethodDto> PaymentMethods { get; set; } = new();
 }

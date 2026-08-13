@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Employees;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,23 +15,21 @@ public class AttendanceController : ControllerBase
 {
     private readonly IAttendanceService _attendanceService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public AttendanceController(IAttendanceService attendanceService, AppDbContext context)
+    public AttendanceController(IAttendanceService attendanceService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _attendanceService = attendanceService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Attendance.Add")]
     [HttpPost("attendance/check-in")]
     public async Task<IActionResult> CheckIn([FromBody] CheckInOutDto dto)
     {
@@ -49,6 +47,7 @@ public class AttendanceController : ControllerBase
         }
     }
 
+    [RequirePermission("Attendance.Add")]
     [HttpPost("attendance/check-out")]
     public async Task<IActionResult> CheckOut([FromBody] CheckInOutDto dto)
     {
@@ -66,6 +65,7 @@ public class AttendanceController : ControllerBase
         }
     }
 
+    [RequirePermission("Attendance.View")]
     [HttpGet("attendance")]
     public async Task<IActionResult> GetAttendance([FromQuery] long? employeeId, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to)
     {
@@ -76,6 +76,7 @@ public class AttendanceController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("LeaveRequests.Add")]
     [HttpPost("leave-requests")]
     public async Task<IActionResult> CreateLeaveRequest([FromBody] CreateLeaveRequestDto dto)
     {
@@ -93,6 +94,7 @@ public class AttendanceController : ControllerBase
         }
     }
 
+    [RequirePermission("LeaveRequests.View")]
     [HttpGet("leave-requests")]
     public async Task<IActionResult> GetLeaveRequests([FromQuery] long? employeeId)
     {
@@ -103,6 +105,7 @@ public class AttendanceController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("LeaveRequests.Approve")]
     [HttpPut("leave-requests/{id}/approve")]
     public async Task<IActionResult> ApproveLeaveRequest(long id)
     {
@@ -120,6 +123,7 @@ public class AttendanceController : ControllerBase
         }
     }
 
+    [RequirePermission("LeaveRequests.Approve")]
     [HttpPut("leave-requests/{id}/reject")]
     public async Task<IActionResult> RejectLeaveRequest(long id)
     {

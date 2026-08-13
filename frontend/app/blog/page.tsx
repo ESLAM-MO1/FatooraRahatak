@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import { SiteLayout } from "../site-layout";
+import Hero from "@/components/Hero";
 import LoadingState from "@/components/LoadingState";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
@@ -11,7 +12,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v
 interface BlogPost {
   id: number;
   titleAr: string;
-  slug: string;
+  slugAr: string;
   contentAr: string;
   authorName: string;
   featuredImage: string | null;
@@ -43,7 +44,7 @@ export default function BlogPage() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ar-SA", {
+    return date.toLocaleDateString("ar-SA-u-nu-latn", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -75,13 +76,7 @@ export default function BlogPage() {
   return (
     <SiteLayout>
       <div>
-        <section
-          className="py-16 text-center text-white"
-          style={{ backgroundColor: "var(--blue-deep)" }}
-        >
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">{t("blog.pageTitle")}</h1>
-          <p className="text-[15px] opacity-80">{t("blog.pageSubtitle")}</p>
-        </section>
+        <Hero title={t("blog.pageTitle")} subtitle={t("blog.pageSubtitle")} />
         <div className="max-w-7xl mx-auto px-4 py-12">
           {posts.length === 0 ? (
             <p className="text-center text-[var(--sub)] py-12">{t("blog.noPostsYet")}</p>
@@ -90,15 +85,15 @@ export default function BlogPage() {
               {posts.map((post) => (
                 <Link
                   key={post.id}
-                  href={`/blog/${post.slug}`}
+                  href={`/blog/${post.slugAr}`}
                   className="group border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden shadow-[var(--shadow)] hover:shadow-[var(--shadow-md)] transition-shadow bg-white"
                 >
                   {post.featuredImage ? (
-                    <div className="aspect-video overflow-hidden">
+                    <div className="overflow-hidden">
                       <img
                         src={post.featuredImage}
                         alt={post.titleAr}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-auto group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>
                   ) : (

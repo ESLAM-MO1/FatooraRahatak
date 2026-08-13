@@ -5,6 +5,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
 
 interface Setting {
   settingKey: string;
@@ -85,7 +86,7 @@ export default function SettingsPage() {
       </PageHeader>
 
       {error && <div className="alert alert--danger">{error}</div>}
-      {success && <div className="alert alert--success">{success}</div>}
+      <SuccessToast message={success} fixed className="mb-4" />
 
       <div className="card p-5 space-y-4">
         {settings.length === 0 && (

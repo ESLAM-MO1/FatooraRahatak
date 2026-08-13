@@ -8,6 +8,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
+import SuccessToast from "@/components/SuccessToast";
 
 interface TicketReply {
   id: number;
@@ -130,7 +131,7 @@ export default function TicketDetailPage() {
       </div>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
-      {successMessage && <div className="alert alert--success mb-4">{successMessage}</div>}
+      <SuccessToast message={successMessage} fixed className="mb-4" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="card p-5">
@@ -147,7 +148,7 @@ export default function TicketDetailPage() {
             <p>
               <span className="text-[var(--sub)]">{t("ticketDetail.date")}: </span>
               <span className="text-[var(--ink)]">
-                {new Date(ticket.createdAt).toLocaleString("ar-SA")}
+                {new Date(ticket.createdAt).toLocaleString("ar-SA-u-nu-latn")}
               </span>
             </p>
             <p>
@@ -180,7 +181,7 @@ export default function TicketDetailPage() {
                     {reply.isAdminReply ? t("ticketDetail.adminReply") : t("ticketDetail.yourReply")}
                   </span>
                   <span className="text-[11px] text-[var(--sub)]">
-                    {new Date(reply.createdAt).toLocaleString("ar-SA")}
+                    {new Date(reply.createdAt).toLocaleString("ar-SA-u-nu-latn")}
                   </span>
                 </div>
                 <p className="text-sm text-[var(--ink)] leading-relaxed whitespace-pre-wrap">{reply.replyText}</p>

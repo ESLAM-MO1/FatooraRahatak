@@ -11,6 +11,9 @@ public interface ISiteService
     // Packages
     Task<List<PublicPackageDto>> GetAllActivePackagesAsync();
 
+    // Themes
+    Task<List<string>> GetEnabledThemesAsync();
+
     // Pages
     Task<SitePageDto> GetPageByKeyAsync(string pageKey);
     Task UpdatePageAsync(long userId, string pageKey, UpdateSitePageDto dto);

@@ -129,7 +129,7 @@ export default function NewFixedAssetPage() {
           <div className="bg-[var(--blue-50)] rounded-xl p-3 text-[12.5px] text-[var(--ink)]">
             {t("fixedAsset.monthlyPreview")}{" "}
             <span className="font-bold" dir="ltr">
-              {monthlyPreview} ر.س
+              {monthlyPreview} {t("common.sar")}
             </span>
           </div>
         )}

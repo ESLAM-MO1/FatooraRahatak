@@ -106,10 +106,10 @@ export default function CustomersPage() {
                     </td>
                     <td className="p-4 text-[var(--ink)]">{customer.ordersCount}</td>
                     <td className="p-4 text-[var(--ink)]">
-                      {customer.totalSpent.toLocaleString("ar-SA")} {t("common.sar")}
+                      {customer.totalSpent.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4 text-[var(--sub)]">
-                      {new Date(customer.lastOrderDate).toLocaleDateString("ar-SA")}
+                      {new Date(customer.lastOrderDate).toLocaleDateString("ar-SA-u-nu-latn")}
                     </td>
                     <td className="p-4">
                       <Link

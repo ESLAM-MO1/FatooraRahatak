@@ -1,11 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Inventory;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
-using Microsoft.AspNetCore.Http;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -28,13 +27,9 @@ public class InventoryController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("Warehouses.Add")]
     [HttpPost("warehouses")]
     public async Task<IActionResult> CreateWarehouse([FromBody] CreateWarehouseDto dto)
     {
@@ -52,6 +47,7 @@ public class InventoryController : ControllerBase
         }
     }
 
+    [RequirePermission("Warehouses.View")]
     [HttpGet("warehouses")]
     public async Task<IActionResult> GetWarehouses()
     {
@@ -62,6 +58,7 @@ public class InventoryController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("Inventory.View")]
     [HttpGet("inventory/stock")]
     public async Task<IActionResult> GetStock([FromQuery] long? warehouseId, [FromQuery] long? productId)
     {
@@ -72,6 +69,7 @@ public class InventoryController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("StockTransfer.Add")]
     [HttpPost("inventory/transfer")]
     public async Task<IActionResult> CreateTransfer([FromBody] CreateStockTransferDto dto)
     {
@@ -79,8 +77,6 @@ public class InventoryController : ControllerBase
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "StockTransfer.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var id = await _inventoryService.CreateStockTransferAsync(storeId.Value, userId, dto);
@@ -92,6 +88,7 @@ public class InventoryController : ControllerBase
         }
     }
 
+    [RequirePermission("StockTransfer.Approve")]
     [HttpPut("inventory/transfer/{id}/approve")]
     public async Task<IActionResult> ApproveTransfer(long id)
     {
@@ -99,8 +96,6 @@ public class InventoryController : ControllerBase
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "StockTransfer.Approve"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             await _inventoryService.ApproveStockTransferAsync(storeId.Value, id, userId);
@@ -112,6 +107,7 @@ public class InventoryController : ControllerBase
         }
     }
 
+    [RequirePermission("DamagedStock.Add")]
     [HttpPost("inventory/damage")]
     public async Task<IActionResult> ReportDamage([FromBody] CreateDamagedStockDto dto)
     {
@@ -119,8 +115,6 @@ public class InventoryController : ControllerBase
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "DamagedStock.Add"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             var id = await _inventoryService.ReportDamagedStockAsync(storeId.Value, userId, dto);
@@ -132,6 +126,7 @@ public class InventoryController : ControllerBase
         }
     }
 
+    [RequirePermission("DamagedStock.Approve")]
     [HttpPut("inventory/damage/{id}/approve")]
     public async Task<IActionResult> ApproveDamage(long id)
     {
@@ -139,8 +134,6 @@ public class InventoryController : ControllerBase
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         var userId = GetUserId();
-        try { await _permCheck.EnsurePermissionAsync(userId, "DamagedStock.Approve"); }
-        catch (UnauthorizedAccessException) { return StatusCode(403, new { success = false, message = "ليس لديك صلاحية" }); }
         try
         {
             await _inventoryService.ApproveDamagedStockAsync(storeId.Value, id, userId);
@@ -150,5 +143,27 @@ public class InventoryController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    [RequirePermission("StockTransfer.View")]
+    [HttpGet("inventory/transfers")]
+    public async Task<IActionResult> GetTransfers()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var result = await _inventoryService.GetStockTransfersAsync(storeId.Value);
+        return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("DamagedStock.View")]
+    [HttpGet("inventory/damages")]
+    public async Task<IActionResult> GetDamages()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var result = await _inventoryService.GetDamagedStocksAsync(storeId.Value);
+        return Ok(new { success = true, data = result });
     }
 }

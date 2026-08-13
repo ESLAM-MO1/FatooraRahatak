@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SiteLayout } from "../site-layout";
+import Hero from "@/components/Hero";
 import "@/lib/i18n/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
@@ -98,13 +99,7 @@ export default function ContactPage() {
   return (
     <SiteLayout>
       <div>
-        <section
-          className="py-16 text-center text-white"
-          style={{ backgroundColor: "var(--blue-deep)" }}
-        >
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3">{t("page.contact")}</h1>
-          <p className="text-[15px] opacity-80">{t("common.help")}</p>
-        </section>
+        <Hero title={t("page.contact")} subtitle={t("common.help")} />
         <div className="max-w-3xl mx-auto px-4 py-12">
           {error && (
             <div className="alert alert--danger mb-6">{error}</div>

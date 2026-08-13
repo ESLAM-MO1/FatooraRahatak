@@ -18,6 +18,16 @@ public class PublicPackageDto
     public bool HasCustomDomain { get; set; }
     public bool HasAffiliateMarketing { get; set; }
     public bool HasApiAccess { get; set; }
+    public bool HasPos { get; set; }
+    public bool HasLogo { get; set; }
     public int MaxThemes { get; set; }
     public decimal CommissionPercentage { get; set; }
+    public string Color { get; set; } = "#6B7280";
+    public bool HasShippingIntegration { get; set; }
+    public bool HasShippingCalculator { get; set; }
+    public bool HasShippingTracking { get; set; }
+    public bool HasShippingLabelPrinting { get; set; }
+    public bool HasFreeShipping { get; set; }
+    public bool HasCashOnDelivery { get; set; }
+    public bool HasShippingDiscounts { get; set; }
 }

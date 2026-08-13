@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import LoadingState from "@/components/LoadingState";
+import { useConfirm } from "@/components/ConfirmDialog";
+import Can from "@/components/Can";
 
 interface StockCountItem {
   id: number;
@@ -34,6 +36,7 @@ const statusStyles: Record<string, string> = {
 
 export default function StockCountDetailPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const stockCountId = params.id as string;
 
@@ -92,7 +95,7 @@ export default function StockCountDetailPage() {
   };
 
   const handleApprove = async () => {
-    if (!window.confirm(t("stockCount.confirmApproval"))) return;
+    if (!(await confirm(t("stockCount.confirmApproval")))) return;
 
     setActionError("");
     setApproving(true);
@@ -211,9 +214,11 @@ export default function StockCountDetailPage() {
 
       {isInProgress && stockCount.items.length > 0 && (
         <div className="mt-6">
-          <button onClick={handleApprove} disabled={approving} className="btn btn-primary px-6">
-            {approving ? t("stockCount.approving") : t("stockCount.approve")}
-          </button>
+          <Can code="StockCounts.Approve">
+            <button onClick={handleApprove} disabled={approving} className="btn btn-primary px-6">
+              {approving ? t("stockCount.approving") : t("stockCount.approve")}
+            </button>
+          </Can>
         </div>
       )}
     </div>

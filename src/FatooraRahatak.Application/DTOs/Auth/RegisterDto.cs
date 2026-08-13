@@ -7,4 +7,5 @@ public class RegisterDto
     public string Phone { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
     public string? InvitationToken { get; set; }
+    public string? ReferralCode { get; set; }
 }

@@ -5,6 +5,8 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import { useConfirm } from "@/components/ConfirmDialog";
+import Can from "@/components/Can";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 
@@ -33,6 +35,7 @@ const emptyForm: CategoryForm = {
 
 export default function CategoriesPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -119,7 +122,7 @@ export default function CategoriesPage() {
 
   const handleDelete = async (category: Category) => {
     if (
-      !window.confirm(t("category.confirmDelete", { name: category.nameAr }))
+      !(await confirm(t("category.confirmDelete", { name: category.nameAr })))
     ) {
       return;
     }
@@ -150,10 +153,12 @@ export default function CategoriesPage() {
   return (
     <div>
       <PageHeader icon="tag" title={t("category.title")}>
-        <button onClick={openAddModal} className="btn btn-primary">
-          <Icon name="plus" />
-          {t("category.add")}
-        </button>
+        <Can code="Categories.Add">
+          <button onClick={openAddModal} className="btn btn-primary">
+            <Icon name="plus" />
+            {t("category.add")}
+          </button>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger">{error}</div>}
@@ -190,12 +195,16 @@ export default function CategoriesPage() {
                     </td>
                     <td className="p-4">
                       <div className="flex gap-3">
-                        <button onClick={() => openEditModal(category)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
-                          {t("common.edit")}
-                        </button>
-                        <button onClick={() => handleDelete(category)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]">
-                          {t("common.delete")}
-                        </button>
+                        <Can code="Categories.Edit">
+                          <button onClick={() => openEditModal(category)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]">
+                            {t("common.edit")}
+                          </button>
+                        </Can>
+                        <Can code="Categories.Delete">
+                          <button onClick={() => handleDelete(category)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]">
+                            {t("common.delete")}
+                          </button>
+                        </Can>
                       </div>
                     </td>
                   </tr>

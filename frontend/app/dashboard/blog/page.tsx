@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { isAuthenticated, getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface BlogPost {
   id: number;
@@ -22,6 +23,7 @@ interface BlogPost {
 export default function BlogManagementPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const confirm = useConfirm();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,6 +39,8 @@ export default function BlogManagementPage() {
   });
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     if (!isAuthenticated() || getUserType() !== "SuperAdmin") {
@@ -67,6 +71,7 @@ export default function BlogManagementPage() {
   const openAdd = () => {
     setEditItem(null);
     setForm({ titleAr: "", contentAr: "", featuredImage: "", authorName: "" });
+    setUploadError("");
     setModalOpen(true);
   };
 
@@ -78,7 +83,51 @@ export default function BlogManagementPage() {
       featuredImage: post.featuredImage || "",
       authorName: post.authorName,
     });
+    setUploadError("");
     setModalOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+
+    const ratioOk = await new Promise<boolean>((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.width / img.height;
+        URL.revokeObjectURL(url);
+        resolve(Math.abs(ratio - 16 / 9) < 0.05);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(false);
+      };
+      img.src = url;
+    });
+
+    if (!ratioOk) {
+      setUploadError(t("blog.imageRatioError"));
+      e.target.value = "";
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post("/admin/site/upload", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const url = res.data?.data?.url;
+      if (url) setForm((p) => ({ ...p, featuredImage: url }));
+    } catch (err: any) {
+      setUploadError(err.response?.data?.message || t("blog.uploadError"));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   };
 
   const handleSave = async () => {
@@ -104,7 +153,7 @@ export default function BlogManagementPage() {
   };
 
   const handleDelete = async (post: BlogPost) => {
-    if (!window.confirm(`${t("blog.confirmDelete")} "${post.titleAr}"؟`)) return;
+    if (!(await confirm(`${t("blog.confirmDelete")} "${post.titleAr}"؟`))) return;
     try {
       await api.delete(`/admin/site/blog/${post.id}`);
       await load();
@@ -133,7 +182,7 @@ export default function BlogManagementPage() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("ar-SA", {
+    return date.toLocaleDateString("ar-SA-u-nu-latn", {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -242,13 +291,31 @@ export default function BlogManagementPage() {
               </div>
               <div>
                 <label>{t("blog.featuredImage")}</label>
-                <div className="field-shell">
-                  <input
-                    value={form.featuredImage}
-                    onChange={(e) => setForm((p) => ({ ...p, featuredImage: e.target.value }))}
-                    placeholder={t("blog.imagePlaceholder")}
-                  />
-                </div>
+                {uploadError && <div className="alert alert--danger mt-2">{uploadError}</div>}
+                {form.featuredImage ? (
+                  <div className="mt-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={form.featuredImage}
+                      alt=""
+                      className="w-full h-auto rounded-xl border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm((p) => ({ ...p, featuredImage: "" }))}
+                      className="btn btn-outline btn-sm mt-2"
+                    >
+                      {t("common.remove")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-1">
+                    <label className="btn btn-outline btn-sm cursor-pointer">
+                      {uploading ? t("blog.uploading") : t("blog.uploadImage")}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                    </label>
+                  </div>
+                )}
               </div>
               <div>
                 <label>{t("blog.authorName")}</label>

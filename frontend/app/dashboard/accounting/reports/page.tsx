@@ -87,7 +87,7 @@ const sourceTypeLabels: Record<string, string> = {
 };
 
 function formatMoney(n: number) {
-  return n.toLocaleString("ar-SA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function exportToExcel(tableHtml: string, filename: string) {
@@ -127,6 +127,26 @@ export default function FinancialReportsPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [asOf, setAsOf] = useState(todayStr());
+  const [accountType, setAccountType] = useState("");
+  const [sourceType, setSourceType] = useState("");
+
+  const accountTypeOptions: { key: string; label: string }[] = [
+    { key: "Asset", label: t("accountingReport.filterAsset") },
+    { key: "Liability", label: t("accountingReport.filterLiability") },
+    { key: "Equity", label: t("accountingReport.filterEquity") },
+    { key: "Revenue", label: t("accountingReport.filterRevenue") },
+    { key: "Expense", label: t("accountingReport.filterExpense") },
+  ];
+
+  const sourceTypeOptions: { key: string; label: string }[] = [
+    { key: "SalesInvoice", label: t("accountingReport.salesInvoices") },
+    { key: "PurchaseInvoice", label: t("accountingReport.purchaseInvoices") },
+    { key: "POS", label: t("accountingReport.pos") },
+    { key: "Voucher", label: t("accountingReport.vouchers") },
+    { key: "Payroll", label: t("accountingReport.payroll") },
+    { key: "Depreciation", label: t("accountingReport.depreciation") },
+    { key: "Manual", label: t("accountingReport.manualEntries") },
+  ];
 
   const [trialBalance, setTrialBalance] = useState<TrialBalanceResponse | null>(null);
   const [incomeStatement, setIncomeStatement] = useState<IncomeStatementResponse | null>(null);
@@ -144,12 +164,16 @@ export default function FinancialReportsPage() {
         const params: Record<string, string> = {};
         if (from) params.from = from;
         if (to) params.to = to;
+        if (accountType) params.accountType = accountType;
+        if (sourceType) params.sourceType = sourceType;
         const res = await api.get("/accounting/reports/trial-balance", { params });
         setTrialBalance(res.data.data);
       } else if (activeTab === "income-statement") {
         const params: Record<string, string> = {};
         if (from) params.from = from;
         if (to) params.to = to;
+        if (accountType) params.accountType = accountType;
+        if (sourceType) params.sourceType = sourceType;
         const res = await api.get("/accounting/reports/income-statement", { params });
         setIncomeStatement(res.data.data);
       } else if (activeTab === "balance-sheet") {
@@ -169,7 +193,7 @@ export default function FinancialReportsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, from, to, asOf, t]);
+  }, [activeTab, from, to, asOf, accountType, sourceType, t]);
 
   useEffect(() => {
     fetchReport();
@@ -178,6 +202,11 @@ export default function FinancialReportsPage() {
   const handleClearPeriod = () => {
     setFrom("");
     setTo("");
+  };
+
+  const handleClearFilters = () => {
+    setAccountType("");
+    setSourceType("");
   };
 
   return (
@@ -230,6 +259,48 @@ export default function FinancialReportsPage() {
           </>
         )}
       </div>
+
+      {activeTab !== "balance-sheet" && activeTab !== "cash-flow" && (
+        <div className="card p-4 mb-5">
+          <p className="text-[12px] font-bold text-[var(--ink)] mb-3 flex items-center gap-2">
+            <Icon name="filter" size={14} className="text-[var(--blue)]" />
+            {t("accountingReport.advancedFilters")}
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[200px]">
+              <label className="block text-[12px] font-bold text-[var(--ink)] mb-1.5">{t("accountingReport.filterAccountType")}</label>
+              <div className="field-shell">
+                <select value={accountType} onChange={(e) => setAccountType(e.target.value)}>
+                  <option value="">{t("accountingReport.allAccountTypes")}</option>
+                  {accountTypeOptions.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="min-w-[200px]">
+              <label className="block text-[12px] font-bold text-[var(--ink)] mb-1.5">{t("accountingReport.filterSourceType")}</label>
+              <div className="field-shell">
+                <select value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
+                  <option value="">{t("accountingReport.allSources")}</option>
+                  {sourceTypeOptions.map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {(accountType || sourceType) && (
+              <button onClick={handleClearFilters} className="text-[12.5px] text-[var(--blue)] hover:underline mb-2">
+                {t("accountingReport.clearFilters")}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
 
@@ -285,7 +356,7 @@ export default function FinancialReportsPage() {
 }
 
 function buildTrialBalanceTable(data: TrialBalanceResponse, t: (k: string) => string): string {
-  let rows = data.lines.map(l => `<tr><td>${l.accountCode}</td><td>${l.accountNameAr}</td><td>${l.accountType}</td><td>${l.debitBalance > 0 ? formatMoney(l.debitBalance) : "—"}</td><td>${l.creditBalance > 0 ? formatMoney(l.creditBalance) : "—"}</td></tr>`).join("");
+  const rows = data.lines.map(l => `<tr><td>${l.accountCode}</td><td>${l.accountNameAr}</td><td>${l.accountType}</td><td>${l.debitBalance > 0 ? formatMoney(l.debitBalance) : "—"}</td><td>${l.creditBalance > 0 ? formatMoney(l.creditBalance) : "—"}</td></tr>`).join("");
   return `<table><thead><tr><th>${t("accountingReport.code")}</th><th>${t("accountingReport.account")}</th><th>${t("accountingReport.type")}</th><th>${t("accountingReport.debit")}</th><th>${t("accountingReport.credit")}</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><th colspan="3">${t("accountingReport.total")}</th><th>${formatMoney(data.totalDebit)}</th><th>${formatMoney(data.totalCredit)}</th></tr></tfoot></table>`;
 }
 
@@ -326,13 +397,13 @@ function TrialBalanceView({ data, t }: { data: TrialBalanceResponse; t: (key: st
         <div className="card p-4 flex-1 min-w-[160px]">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.totalDebit")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.totalDebit)} ر.س
+            {formatMoney(data.totalDebit)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4 flex-1 min-w-[160px]">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.totalCredit")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.totalCredit)} ر.س
+            {formatMoney(data.totalCredit)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4 flex-1 min-w-[160px] flex flex-col justify-center">
@@ -401,13 +472,13 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
         <div className="card p-4">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.totalRevenue")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.totalRevenue)} ر.س
+            {formatMoney(data.totalRevenue)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.totalExpenses")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.totalExpenses)} ر.س
+            {formatMoney(data.totalExpenses)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4">
@@ -416,7 +487,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
             className={`text-[16px] font-bold ${data.netProfit >= 0 ? "text-[var(--green)]" : "text-[var(--danger)]"}`}
             dir="ltr"
           >
-            {formatMoney(data.netProfit)} ر.س
+            {formatMoney(data.netProfit)} {t("common.sar")}
           </p>
         </div>
       </div>
@@ -429,6 +500,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
           {data.revenueLines.length === 0 ? (
             <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noRevenues")}</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
                 {data.revenueLines.map((l) => (
@@ -446,6 +518,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -456,6 +529,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
           {data.expenseLines.length === 0 ? (
             <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noExpenses")}</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <tbody>
                 {data.expenseLines.map((l) => (
@@ -473,6 +547,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
@@ -493,13 +568,13 @@ function BalanceSheetView({ data, t }: { data: BalanceSheetResponse; t: (key: st
         <div className="card p-4 flex-1 min-w-[160px]">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.totalAssets")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.totalAssets)} ر.س
+            {formatMoney(data.totalAssets)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4 flex-1 min-w-[160px]">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.totalLiabilitiesEquity")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.totalLiabilities + data.totalEquity)} ر.س
+            {formatMoney(data.totalLiabilities + data.totalEquity)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4 flex-1 min-w-[160px] flex flex-col justify-center">
@@ -520,6 +595,7 @@ function BalanceSheetView({ data, t }: { data: BalanceSheetResponse; t: (key: st
             {s.lines.length === 0 ? (
               <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noData")}</p>
             ) : (
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
                   {s.lines.map((l) => (
@@ -537,6 +613,7 @@ function BalanceSheetView({ data, t }: { data: BalanceSheetResponse; t: (key: st
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         ))}
@@ -552,7 +629,7 @@ function CashFlowView({ data, t }: { data: CashFlowResponse; t: (key: string) =>
         <div className="card p-4">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.openingCashBalance")}</p>
           <p className="text-[16px] font-bold text-[var(--ink)]" dir="ltr">
-            {formatMoney(data.openingCashBalance)} ر.س
+            {formatMoney(data.openingCashBalance)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4">
@@ -561,13 +638,13 @@ function CashFlowView({ data, t }: { data: CashFlowResponse; t: (key: string) =>
             className={`text-[16px] font-bold ${data.netChangeInCash >= 0 ? "text-[var(--green)]" : "text-[var(--danger)]"}`}
             dir="ltr"
           >
-            {formatMoney(data.netChangeInCash)} ر.س
+            {formatMoney(data.netChangeInCash)} {t("common.sar")}
           </p>
         </div>
         <div className="card p-4">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("accountingReport.closingCashBalance")}</p>
           <p className="text-[16px] font-bold text-[var(--blue-deep)]" dir="ltr">
-            {formatMoney(data.closingCashBalance)} ر.س
+            {formatMoney(data.closingCashBalance)} {t("common.sar")}
           </p>
         </div>
       </div>
@@ -576,6 +653,7 @@ function CashFlowView({ data, t }: { data: CashFlowResponse; t: (key: string) =>
         {data.movementsBySource.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noCashMovements")}</p>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
               <tr>
@@ -597,6 +675,7 @@ function CashFlowView({ data, t }: { data: CashFlowResponse; t: (key: string) =>
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

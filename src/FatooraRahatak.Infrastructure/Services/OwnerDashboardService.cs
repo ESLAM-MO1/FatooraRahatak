@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Dashboard;
 using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 
 namespace FatooraRahatak.Infrastructure.Services;
@@ -25,6 +26,16 @@ public class OwnerDashboardService : IOwnerDashboardService
             .ToListAsync();
 
         var totalSales = orders.Sum(o => o.TotalAmount);
+
+        // مبيعات الفواتير (POS/فواتير مباشرة) في نفس الفترة
+        var invoices = await _context.Invoices
+            .Where(i => i.StoreId == storeId
+                && i.InvoiceType == InvoiceType.Sales
+                && i.InvoiceDate >= DateOnly.FromDateTime(from)
+                && i.InvoiceDate <= DateOnly.FromDateTime(to))
+            .ToListAsync();
+
+        var posSales = invoices.Sum(i => i.TotalAmount);
 
         var ordersCountByStatus = orders
             .GroupBy(o => o.Status)
@@ -69,6 +80,9 @@ public class OwnerDashboardService : IOwnerDashboardService
         return new OwnerDashboardStatsDto
         {
             TotalSales = totalSales,
+            TotalPosSales = posSales,
+            InvoicesCount = invoices.Count,
+            NewOrdersCount = orders.Count(o => o.Status == OrderStatus.New),
             OrdersCountByStatus = ordersCountByStatus,
             TopSellingProducts = topSellingProducts,
             TopBuyingCustomers = topBuyingCustomers

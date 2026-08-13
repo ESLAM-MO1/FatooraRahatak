@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Admin;
 using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -21,6 +22,7 @@ public class RolesController : ControllerBase
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
+    [RequirePermission("EmployeeManagement.View")]
     [HttpGet("permissions")]
     public async Task<IActionResult> GetAllPermissions()
     {
@@ -28,6 +30,7 @@ public class RolesController : ControllerBase
         return Ok(new { success = true, data = permissions });
     }
 
+    [RequirePermission("EmployeeManagement.View")]
     [HttpGet]
     public async Task<IActionResult> GetStoreRoles()
     {
@@ -35,6 +38,7 @@ public class RolesController : ControllerBase
         return Ok(new { success = true, data = roles });
     }
 
+    [RequirePermission("EmployeeManagement.Edit")]
     [HttpPost]
     public async Task<IActionResult> CreateRole([FromBody] CreateRoleDto dto)
     {
@@ -49,6 +53,7 @@ public class RolesController : ControllerBase
         }
     }
 
+    [RequirePermission("EmployeeManagement.Edit")]
     [HttpPut("{id}/permissions")]
     public async Task<IActionResult> UpdateRolePermissions(long id, [FromBody] UpdateRolePermissionsDto dto)
     {
@@ -63,6 +68,7 @@ public class RolesController : ControllerBase
         }
     }
 
+    [RequirePermission("EmployeeManagement.Delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteRole(long id)
     {

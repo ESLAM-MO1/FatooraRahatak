@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Application.DTOs.Subscriptions;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.API.Filters;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -15,23 +15,21 @@ public class SubscriptionController : ControllerBase
 {
     private readonly ISubscriptionService _subscriptionService;
     private readonly AppDbContext _context;
+    private readonly IPermissionCheckService _permCheck;
 
-    public SubscriptionController(ISubscriptionService subscriptionService, AppDbContext context)
+    public SubscriptionController(ISubscriptionService subscriptionService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _subscriptionService = subscriptionService;
         _context = context;
+        _permCheck = permCheck;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    private async Task<long?> GetStoreIdAsync()
-    {
-        var userId = GetUserId();
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
-        return store?.Id;
-    }
+    private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    [RequirePermission("SubscriptionPackage.View")]
     [HttpGet("status")]
     public async Task<IActionResult> GetStatus()
     {
@@ -42,6 +40,7 @@ public class SubscriptionController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
+    [RequirePermission("SubscriptionPackage.Edit")]
     [HttpPost("upgrade")]
     public async Task<IActionResult> Upgrade([FromBody] ChangePackageDto dto)
     {
@@ -50,8 +49,8 @@ public class SubscriptionController : ControllerBase
 
         try
         {
-            await _subscriptionService.UpgradeAsync(storeId.Value, dto);
-            return Ok(new { success = true, message = "تمت الترقية بنجاح" });
+            var result = await _subscriptionService.UpgradeAsync(storeId.Value, dto);
+            return Ok(new { success = true, message = "تمت الترقية بنجاح", data = result });
         }
         catch (InvalidOperationException ex)
         {
@@ -59,6 +58,7 @@ public class SubscriptionController : ControllerBase
         }
     }
 
+    [RequirePermission("SubscriptionPackage.Edit")]
     [HttpPost("downgrade")]
     public async Task<IActionResult> Downgrade([FromBody] ChangePackageDto dto)
     {
@@ -67,8 +67,8 @@ public class SubscriptionController : ControllerBase
 
         try
         {
-            await _subscriptionService.DowngradeAsync(storeId.Value, dto);
-            return Ok(new { success = true, message = "تم التنزيل بنجاح" });
+            var result = await _subscriptionService.DowngradeAsync(storeId.Value, dto);
+            return Ok(new { success = true, message = "تم التنزيل بنجاح", data = result });
         }
         catch (InvalidOperationException ex)
         {
@@ -76,16 +76,17 @@ public class SubscriptionController : ControllerBase
         }
     }
 
+    [RequirePermission("SubscriptionPackage.Edit")]
     [HttpPost("renew")]
-    public async Task<IActionResult> Renew()
+    public async Task<IActionResult> Renew([FromBody] ChangePackageDto? dto = null)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         try
         {
-            await _subscriptionService.RenewAsync(storeId.Value);
-            return Ok(new { success = true, message = "تم تجديد الاشتراك بنجاح" });
+            var result = await _subscriptionService.RenewAsync(storeId.Value, dto?.BillingCycle ?? Domain.Enums.BillingCycle.Monthly);
+            return Ok(new { success = true, message = "تم تجديد الاشتراك بنجاح", data = result });
         }
         catch (InvalidOperationException ex)
         {
@@ -93,6 +94,7 @@ public class SubscriptionController : ControllerBase
         }
     }
 
+    [RequirePermission("SubscriptionPackage.Edit")]
     [HttpPost("cancel")]
     public async Task<IActionResult> Cancel()
     {

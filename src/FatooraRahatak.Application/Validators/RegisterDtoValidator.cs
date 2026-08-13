@@ -7,13 +7,14 @@ namespace FatooraRahatak.Application.Validators;
 public partial class RegisterDtoValidator : AbstractValidator<RegisterDto>
 {
     private static readonly Regex EmailRegex = MyEmailRegex();
-    private static readonly Regex SaudiPhoneRegex = SaudiPhoneRegexPattern();
+    private static readonly Regex PhoneRegex = InternationalPhoneRegexPattern();
 
     [GeneratedRegex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")]
     private static partial Regex MyEmailRegex();
 
-    [GeneratedRegex(@"^(?:\+966|05)(5|0|3|6|4|9|1|2|7|8)\d{7}$")]
-    private static partial Regex SaudiPhoneRegexPattern();
+    // E.164 format: + followed by 8 to 15 digits total (country code + number)
+    [GeneratedRegex(@"^\+[1-9]\d{7,14}$")]
+    private static partial Regex InternationalPhoneRegexPattern();
 
     public RegisterDtoValidator()
     {
@@ -23,11 +24,11 @@ public partial class RegisterDtoValidator : AbstractValidator<RegisterDto>
 
         RuleFor(x => x.Phone)
             .NotEmpty().WithMessage("رقم الجوال مطلوب")
-            .Matches(SaudiPhoneRegex).WithMessage("رقم الجوال غير صحيح، يجب أن يبدأ بـ 05 أو +966 ويتكون من 9 أرقام");
+            .Matches(PhoneRegex).WithMessage("رقم الجوال غير صحيح");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("كلمة المرور مطلوبة")
-            .MinimumLength(6).WithMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل");
+            .MinimumLength(6).WithMessage("كلمة المرور يجب ألا تقل عن 6 رموز (أحرف أو أرقام)");
 
         RuleFor(x => x.FullName)
             .NotEmpty().WithMessage("الاسم مطلوب");

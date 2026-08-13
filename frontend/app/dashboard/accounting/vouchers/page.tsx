@@ -8,6 +8,7 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import Can from "@/components/Can";
 
 interface Voucher {
   id: number;
@@ -50,10 +51,12 @@ export default function VouchersPage() {
   return (
     <div>
       <PageHeader icon="wallet" title={t("voucher.title")}>
-        <Link href="/dashboard/accounting/vouchers/new" className="btn btn-primary">
-          <Icon name="plus" />
-          {t("voucher.newVoucher")}
-        </Link>
+        <Can code="Vouchers.Add">
+          <Link href="/dashboard/accounting/vouchers/new" className="btn btn-primary">
+            <Icon name="plus" />
+            {t("voucher.newVoucher")}
+          </Link>
+        </Can>
       </PageHeader>
 
       {error && <div className="alert alert--danger mb-4">{error}</div>}
@@ -98,7 +101,11 @@ export default function VouchersPage() {
               <tbody>
                 {vouchers.map((v) => (
                   <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--blue-50)]/40 transition-colors">
-                    <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">{v.voucherNumber}</td>
+                    <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">
+                      <Link href={`/dashboard/accounting/vouchers/${v.id}`} className="text-[var(--blue)] hover:underline">
+                        {v.voucherNumber}
+                      </Link>
+                    </td>
                     <td className="p-4">
                       <span className={`badge ${v.voucherType === "Receipt" ? "badge--green" : "badge--red"}`}>
                         {v.voucherType === "Receipt" ? t("voucher.receipt") : t("voucher.payment")}
@@ -108,7 +115,7 @@ export default function VouchersPage() {
                     <td className="p-4 text-[var(--ink)]">{v.counterpartAccountNameAr}</td>
                     <td className="p-4 text-[var(--sub)]">{v.partyName || "—"}</td>
                     <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">
-                      {v.amount.toLocaleString("ar-SA")} ر.س
+                      {v.amount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
                     </td>
                     <td className="p-4">
                       {v.journalEntryId ? (

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import SuccessToast from "@/components/SuccessToast";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 
@@ -43,6 +44,9 @@ export default function CartPage() {
   const [couponError, setCouponError] = useState("");
   const [couponSuccess, setCouponSuccess] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [couponsEnabled, setCouponsEnabled] = useState(true);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number | null>(null);
+  const [vatRate, setVatRate] = useState<number>(0);
 
   const loadCart = async (sId: number) => {
     const sessionId = localStorage.getItem(getCartSessionKey(slug));
@@ -74,6 +78,9 @@ export default function CartPage() {
         const storeRes = await api.get(`/public/stores/${slug}`);
         const id = storeRes.data.data.id;
         setStoreId(id);
+        setCouponsEnabled(storeRes.data.data.isCouponsEnabled !== false);
+        setFreeShippingThreshold(storeRes.data.data.freeShippingThreshold ?? null);
+        setVatRate(storeRes.data.data.vatRate ?? 0);
         await loadCart(id);
       } catch (err: any) {
         setError(err.response?.data?.message || t("cart.errorLoadingStore"));
@@ -137,7 +144,9 @@ export default function CartPage() {
         code: couponCode.trim(),
       });
       setDiscountAmount(res.data.data.discountAmount);
-      setCouponSuccess(res.data.message || t("cart.couponAppliedSuccess"));
+      setCouponSuccess(
+        `${res.data.message || t("cart.couponAppliedSuccess")} — ${t("cart.discountValueLabel", { amount: res.data.data.discountAmount.toFixed(2) })}`
+      );
     } catch (err: any) {
       setCouponError(err.response?.data?.message || t("cart.errorApplyingCoupon"));
     } finally {
@@ -158,6 +167,17 @@ export default function CartPage() {
       ? Math.max(0, cart.subtotal - discountAmount)
       : cart?.subtotal ?? 0;
 
+  const vatAmount = vatRate > 0 ? Math.round(finalTotal * vatRate * 100) / 100 : 0;
+  const grandTotal = finalTotal + vatAmount;
+  const remainingForFreeShipping =
+    freeShippingThreshold !== null && freeShippingThreshold > 0
+      ? Math.max(0, freeShippingThreshold - finalTotal)
+      : null;
+  const freeShippingPct =
+    freeShippingThreshold !== null && freeShippingThreshold > 0
+      ? Math.min(100, Math.round((finalTotal / freeShippingThreshold) * 100))
+      : 100;
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {error && (
@@ -176,6 +196,25 @@ export default function CartPage() {
         </div>
       ) : (
         <>
+          {remainingForFreeShipping !== null && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 mb-4">
+              <p className="text-sm font-medium mb-2" style={{ color: remainingForFreeShipping > 0 ? "#0F172A" : "#15803D" }}>
+                {remainingForFreeShipping > 0
+                  ? t("cart.freeShippingBar", { remaining: remainingForFreeShipping.toFixed(2) })
+                  : t("cart.freeShippingReached")}
+              </p>
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${freeShippingPct}%`,
+                    background: remainingForFreeShipping > 0 ? "linear-gradient(90deg,#3B82F6,#8B5CF6)" : "#22C55E",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100 mb-6">
             {cart.items.map((item) => (
               <div key={item.id} className="p-4 flex items-center justify-between gap-4">
@@ -220,6 +259,7 @@ export default function CartPage() {
           </div>
 
           {/* Coupon */}
+          {couponsEnabled && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
             <p className="text-sm font-medium text-gray-700 mb-2">{t("cart.haveCoupon")}</p>
             <div className="flex gap-2">
@@ -245,12 +285,9 @@ export default function CartPage() {
                 {couponError}
               </div>
             )}
-            {couponSuccess && discountAmount !== null && (
-              <div className="bg-green-50 text-green-700 p-3 rounded mt-3 text-sm">
-                {couponSuccess} — {t("cart.discountValueLabel", { amount: discountAmount.toFixed(2) })}
-              </div>
-            )}
+            <SuccessToast message={couponSuccess} fixed className="mb-4" />
           </div>
+          )}
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
             {discountAmount !== null && (
@@ -265,12 +302,24 @@ export default function CartPage() {
                 <span className="text-green-600">− {t("cart.priceSAR", { price: discountAmount.toFixed(2) })}</span>
               </div>
             )}
+            {vatRate > 0 && (
+              <>
+                <div className="flex items-center justify-between mb-2 text-sm">
+                  <span className="text-gray-500">{t("cart.vatAmount", { vatRate: Math.round(vatRate * 100) })}</span>
+                  <span className="text-gray-700">{t("cart.priceSAR", { price: vatAmount.toFixed(2) })}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2 text-sm">
+                  <span className="text-gray-500">{t("cart.shipping")}</span>
+                  <span className="text-gray-400">{t("cart.shippingEstimate")}</span>
+                </div>
+              </>
+            )}
             <div className="flex items-center justify-between mb-4 pt-2 border-t border-gray-100">
               <span className="text-gray-600 font-medium">
                 {discountAmount !== null ? t("cart.totalAfterDiscount") : t("cart.total")}
               </span>
               <span className="text-xl font-bold store-price">
-                {t("cart.priceSAR", { price: finalTotal.toFixed(2) })}
+                {t("cart.priceSAR", { price: grandTotal.toFixed(2) })}
               </span>
             </div>
 

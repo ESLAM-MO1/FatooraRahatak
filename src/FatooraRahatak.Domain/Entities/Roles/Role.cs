@@ -8,6 +8,7 @@ public class Role : BaseEntity
     public string RoleName { get; set; } = string.Empty;
     public RoleScope RoleScope { get; set; }
     public bool IsSystemRole { get; set; } = true;
+    public long? StoreId { get; set; }
 
     public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
     public ICollection<Employee> Employees { get; set; } = new List<Employee>();

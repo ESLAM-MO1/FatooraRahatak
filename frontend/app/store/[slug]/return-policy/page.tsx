@@ -12,6 +12,7 @@ export default function ReturnPolicyPage() {
   const slug = params.slug as string;
 
   const [policyText, setPolicyText] = useState<string | null>(null);
+  const [returnDays, setReturnDays] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -22,6 +23,7 @@ export default function ReturnPolicyPage() {
       try {
         const res = await api.get(`/public/stores/${slug}/return-policy`);
         setPolicyText(res.data.data.returnPolicyText);
+        setReturnDays(res.data.data.returnPolicyDays ?? null);
       } catch (err: any) {
         setError(err.response?.data?.message || t("returnPolicy.errorLoading"));
       } finally {
@@ -46,6 +48,11 @@ export default function ReturnPolicyPage() {
       )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+        {returnDays && returnDays > 0 ? (
+          <div className="mb-4 rounded-lg bg-blue-50 text-blue-800 border border-blue-100 px-4 py-3 text-sm font-medium">
+            {t("returnPolicy.daysNotice", { days: returnDays })}
+          </div>
+        ) : null}
         {policyText ? (
           <p className="text-gray-700 whitespace-pre-line leading-relaxed">{policyText}</p>
         ) : (

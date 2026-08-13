@@ -1,6 +1,0 @@
-@FatooraRahatak.API_HostAddress = http://localhost:5092
-
-GET {{FatooraRahatak.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

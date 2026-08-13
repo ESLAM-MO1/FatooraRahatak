@@ -14,10 +14,10 @@ public class InventoryTransaction : BaseEntity
     public int Quantity { get; set; } 
     public string? ReferenceType { get; set; } 
     public long? ReferenceId { get; set; }
-    public long CreatedByUserId { get; set; }
+    public long? CreatedByUserId { get; set; }
 
     public Warehouse Warehouse { get; set; } = null!;
     public Product Product { get; set; } = null!;
     public ProductVariant? Variant { get; set; }
-    public User CreatedBy { get; set; } = null!;
+    public User? CreatedBy { get; set; }
 }

@@ -37,20 +37,29 @@ public static class DefaultChartOfAccounts
             Node("2", "الخصوم", AccountType.Liability,
                 Node("2101", "الموردون (ذمم دائنة)", AccountType.Liability),
                 Node("2102", "ضريبة القيمة المضافة على المبيعات", AccountType.Liability),
-                Node("2103", "رواتب مستحقة الدفع", AccountType.Liability)
+                Node("2103", "رواتب مستحقة الدفع", AccountType.Liability),
+                Node("2104", "التزام مستحق للتاجر (المنصة)", AccountType.Liability)
             ),
             Node("3", "حقوق الملكية", AccountType.Equity,
                 Node("3101", "رأس المال", AccountType.Equity),
                 Node("3102", "الأرباح المحتجزة", AccountType.Equity)
             ),
             Node("4", "الإيرادات", AccountType.Revenue,
-                Node("4101", "إيرادات المبيعات", AccountType.Revenue)
+                Node("4101", "إيرادات المبيعات", AccountType.Revenue),
+                Node("4102", "إيرادات فرق الوردية (زيادة)", AccountType.Revenue),
+                Node("4103", "إيرادات الشحن", AccountType.Revenue),
+                Node("4104", "إيراد فائض الجرد", AccountType.Revenue)
             ),
             Node("5", "المصروفات", AccountType.Expense,
                 Node("5101", "تكلفة البضاعة المباعة", AccountType.Expense),
                 Node("5102", "مصروف الرواتب", AccountType.Expense),
                 Node("5103", "مصروف الإهلاك", AccountType.Expense),
-                Node("5104", "مصروفات عمومية وإدارية", AccountType.Expense)
+                Node("5104", "مصروفات عمومية وإدارية", AccountType.Expense),
+                Node("5105", "مصروف فرق الوردية (عجز)", AccountType.Expense),
+                Node("5106", "مصروف عمولة المنصة", AccountType.Expense),
+                Node("5107", "مصروف التالف", AccountType.Expense),
+                Node("5108", "مصروف عجز الجرد", AccountType.Expense),
+                Node("5109", "مصروف شحن تدفعه المنصة", AccountType.Expense)
             )
         };
     }

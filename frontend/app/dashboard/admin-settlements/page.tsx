@@ -123,7 +123,7 @@ export default function AdminSettlementsPage() {
 
   return (
     <div className="p-6">
-      <PageHeader title={t("nav.settlements")} />
+      <PageHeader icon="wallet" title={t("nav.settlements")} />
       {toast && <SuccessToast message={toast} onClose={() => setToast(null)} />}
 
       <div className="flex justify-end mb-6">

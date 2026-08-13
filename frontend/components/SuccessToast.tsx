@@ -6,9 +6,10 @@ interface SuccessToastProps {
   message: string | null;
   className?: string;
   fixed?: boolean;
+  onClose?: () => void;
 }
 
-export default function SuccessToast({ message, className = "", fixed = false }: SuccessToastProps) {
+export default function SuccessToast({ message, className = "", fixed = false, onClose }: SuccessToastProps) {
   const [rendered, setRendered] = useState(false);
   const [fading, setFading] = useState(false);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -27,7 +28,12 @@ export default function SuccessToast({ message, className = "", fixed = false }:
     setFading(false);
 
     timers.current.push(setTimeout(() => setFading(true), 3200));
-    timers.current.push(setTimeout(() => setRendered(false), 3650));
+    timers.current.push(
+      setTimeout(() => {
+        setRendered(false);
+        onClose?.();
+      }, 3650)
+    );
 
     return () => {
       timers.current.forEach((t) => clearTimeout(t));

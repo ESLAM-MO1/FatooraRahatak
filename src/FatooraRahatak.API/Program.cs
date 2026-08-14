@@ -21,7 +21,11 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(corsOrigins)
+        policy.SetIsOriginAllowed(origin =>
+        {
+            var trimmed = origin.TrimEnd('.').ToLowerInvariant();
+            return corsOrigins.Any(o => string.Equals(o.TrimEnd('.').ToLowerInvariant(), trimmed, StringComparison.Ordinal));
+        })
               .AllowAnyHeader()
               .AllowAnyMethod();
     });

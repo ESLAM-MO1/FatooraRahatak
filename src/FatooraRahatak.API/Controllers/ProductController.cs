@@ -177,8 +177,7 @@ public class ProductController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
-        var url = $"{baseUrl}/uploads/{fileName}";
+        var url = Helpers.UrlHelpers.AbsoluteUrl(Request, $"/uploads/{fileName}");
         return Ok(new { success = true, data = new { url } });
     }
 }

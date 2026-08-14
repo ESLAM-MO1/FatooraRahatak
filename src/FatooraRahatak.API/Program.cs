@@ -132,6 +132,12 @@ builder.Services.AddHttpClient<FatooraRahatak.Infrastructure.Services.Zatca.Zatc
 builder.Services.AddScoped<IZatcaService, FatooraRahatak.Infrastructure.Services.Zatca.ZatcaService>();
 var app = builder.Build();
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+                       Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost
+});
 app.UseStaticFiles();
 
 using (var scope = app.Services.CreateScope())

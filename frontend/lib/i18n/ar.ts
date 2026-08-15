@@ -183,7 +183,6 @@ const ar = {
   "nav.statistics": "الإحصائيات",
   "nav.blog": "المدونة",
   "nav.siteContent": "محتوى الموقع",
-  "nav.siteMenus": "إدارة القوائم",
   "nav.createStore": "إنشاء متجر جديد",
   "nav.settings": "الإعدادات",
   "nav.store": "المتجر",
@@ -796,7 +795,6 @@ const ar = {
 
   // ── Site Content Admin ──
   "admin.siteContent": "إدارة محتوى الموقع",
-  "admin.siteMenus": "إدارة القوائم",
   "admin.homepage": "الصفحة الرئيسية",
   "admin.features": "المزايا",
   "admin.about": "عن فاتورة راحتك",
@@ -1716,23 +1714,6 @@ const ar = {
   "packagesAdmin.paid": "مدفوع",
   "packagesAdmin.pending": "معلق",
   "packagesAdmin.overdue": "متأخر",
-
-  // ── Site Menus (Navigation Manager) ──
-  "siteMenus.pageIntro": "من هنا تتحكم في قوائم الموقع العامة (الهيدر والفوتر). أضف روابط، نظمها بأقسام، اخفِ أو أظهر أي عنصر، وأنشئ قوائم فرعية مثل منصات المتاجر الكبرى.",
-  "siteMenus.locFeatures": "الهيدر — المزايا",
-  "siteMenus.locAbout": "الهيدر — عن فاتورة راحتك",
-  "siteMenus.locFooterTools": "الفوتر — الأدوات",
-  "siteMenus.locFooterAbout": "الفوتر — عن فاتورة راحتك",
-  "siteMenus.locFooterHelp": "الفوتر — المساعدة والدعم",
-  "siteMenus.topLevelHint": "روابط المستوى الأول تظهر كعناوين/أزرار. يمكنك إضافة روابط فرعية تحت أي عنصر.",
-  "siteMenus.add": "إضافة رابط",
-  "siteMenus.addSub": "إضافة رابط فرعي",
-  "siteMenus.titleAr": "العنوان (عربي)",
-  "siteMenus.titleEn": "العنوان (إنجليزي)",
-  "siteMenus.href": "الرابط (Href)",
-  "siteMenus.location": "القسم",
-  "siteMenus.sortOrder": "الترتيب",
-  "siteMenus.icon": "الأيقونة (اختياري)",
 
   // ── Employee module permissions ──
   "employee.module.StoreManagement": "إدارة المتجر",

@@ -2393,55 +2393,6 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("SiteFaqItems");
                 });
 
-            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.SiteMenu", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Href")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Icon")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Location")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long?>("ParentId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TitleAr")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TitleEn")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ParentId");
-
-                    b.ToTable("SiteMenus");
-                });
-
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.SitePage", b =>
                 {
                     b.Property<long>("Id")
@@ -4766,16 +4717,6 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("ManagedDomain");
-                });
-
-            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.SiteMenu", b =>
-                {
-                    b.HasOne("FatooraRahatak.Domain.Entities.Platform.SiteMenu", "Parent")
-                        .WithMany()
-                        .HasForeignKey("ParentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Parent");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.StoreApiKey", b =>

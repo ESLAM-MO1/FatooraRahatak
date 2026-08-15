@@ -92,7 +92,6 @@ public class AppDbContext : DbContext
     public DbSet<PosShift> PosShifts => Set<PosShift>();
     public DbSet<SitePage> SitePages => Set<SitePage>();
     public DbSet<SiteFaqItem> SiteFaqItems => Set<SiteFaqItem>();
-    public DbSet<SiteMenu> SiteMenus => Set<SiteMenu>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<TicketReply> TicketReplies => Set<TicketReply>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
@@ -580,12 +579,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<SitePage>()
             .HasIndex(p => p.PageKey)
             .IsUnique();
-
-        modelBuilder.Entity<SiteMenu>()
-            .HasOne(m => m.Parent)
-            .WithMany()
-            .HasForeignKey(m => m.ParentId)
-            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<BlogPost>()
             .HasIndex(p => p.SlugAr)

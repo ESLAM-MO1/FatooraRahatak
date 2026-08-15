@@ -19,7 +19,6 @@ public static class DataSeeder
         await SeedLandingPageContentAsync(context);
         await SeedAllSitePagesAsync(context);
         await SeedThemesAsync(context);
-        await SeedSiteMenusAsync(context);
     }
 
     private static async Task SeedRolesAndPermissionsAsync(AppDbContext context)
@@ -603,65 +602,6 @@ public static class DataSeeder
                 DisplayOrder = i + 1,
             });
         }
-        await context.SaveChangesAsync();
-    }
-
-    private static async Task SeedSiteMenusAsync(AppDbContext context)
-    {
-        if (await context.Set<SiteMenu>().AnyAsync()) return;
-
-        var menus = new[]
-        {
-            // Header: Features dropdown
-            new SiteMenu { Location = "features", TitleAr = "نظام المحاسبي المتكامل", TitleEn = "Accounting System", Href = "/accounting-system", SortOrder = 1 },
-            new SiteMenu { Location = "features", TitleAr = "نظام نقاط البيع", TitleEn = "POS System", Href = "/pos-system", SortOrder = 2 },
-            new SiteMenu { Location = "features", TitleAr = "الفواتير الإلكترونية", TitleEn = "E-Invoicing", Href = "/invoicing", SortOrder = 3 },
-            new SiteMenu { Location = "features", TitleAr = "المتجر الإلكتروني", TitleEn = "E-Commerce", Href = "/ecommerce", SortOrder = 4 },
-            new SiteMenu { Location = "features", TitleAr = "إدارة المخزون", TitleEn = "Inventory", Href = "/inventory-management", SortOrder = 5 },
-            new SiteMenu { Location = "features", TitleAr = "التقارير الذكية", TitleEn = "Smart Reports", Href = "/smart-reports", SortOrder = 6 },
-            new SiteMenu { Location = "features", TitleAr = "روابط الدفع", TitleEn = "Payment Links", Href = "/payment-links", SortOrder = 7 },
-            new SiteMenu { Location = "features", TitleAr = "الكاشير", TitleEn = "POS", Href = "/pos", SortOrder = 8 },
-            new SiteMenu { Location = "features", TitleAr = "بوابة الدفع", TitleEn = "Payment Gateway", Href = "/payment-gateway", SortOrder = 9 },
-            new SiteMenu { Location = "features", TitleAr = "الربط مع المواقع", TitleEn = "Website Integration", Href = "/website-integration", SortOrder = 10 },
-
-            // Header: About dropdown
-            new SiteMenu { Location = "about", TitleAr = "عن المنصة", TitleEn = "About", Href = "/about", SortOrder = 1 },
-            new SiteMenu { Location = "about", TitleAr = "الباقات والأسعار", TitleEn = "Pricing", Href = "/packages", SortOrder = 2 },
-            new SiteMenu { Location = "about", TitleAr = "التسويق بالعمولة", TitleEn = "Affiliate", Href = "/affiliate", SortOrder = 3 },
-            new SiteMenu { Location = "about", TitleAr = "التوظيف", TitleEn = "Careers", Href = "/careers", SortOrder = 4 },
-            new SiteMenu { Location = "about", TitleAr = "أدوات مجانية", TitleEn = "Free Tools", Href = "/free-tools", SortOrder = 5 },
-
-            // Footer: Tools column
-            new SiteMenu { Location = "footer-tools", TitleAr = "نظام المحاسبي المتكامل", TitleEn = "Accounting System", Href = "/accounting-system", SortOrder = 1 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "نظام نقاط البيع", TitleEn = "POS", Href = "/pos-system", SortOrder = 2 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "الفواتير الإلكترونية", TitleEn = "E-Invoicing", Href = "/invoicing", SortOrder = 3 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "المتجر الإلكتروني", TitleEn = "E-Commerce", Href = "/ecommerce", SortOrder = 4 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "إدارة المخزون", TitleEn = "Inventory", Href = "/inventory-management", SortOrder = 5 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "التقارير الذكية", TitleEn = "Smart Reports", Href = "/smart-reports", SortOrder = 6 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "روابط الدفع", TitleEn = "Payment Links", Href = "/payment-links", SortOrder = 7 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "الكاشير", TitleEn = "POS", Href = "/pos", SortOrder = 8 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "بوابة الدفع", TitleEn = "Payment Gateway", Href = "/payment-gateway", SortOrder = 9 },
-            new SiteMenu { Location = "footer-tools", TitleAr = "الربط مع المواقع", TitleEn = "Website Integration", Href = "/website-integration", SortOrder = 10 },
-
-            // Footer: About column
-            new SiteMenu { Location = "footer-about", TitleAr = "عن المنصة", TitleEn = "About", Href = "/about", SortOrder = 1 },
-            new SiteMenu { Location = "footer-about", TitleAr = "الباقات والأسعار", TitleEn = "Pricing", Href = "/packages", SortOrder = 2 },
-            new SiteMenu { Location = "footer-about", TitleAr = "شروط الاستخدام", TitleEn = "Terms", Href = "/terms", SortOrder = 3 },
-            new SiteMenu { Location = "footer-about", TitleAr = "سياسة الخصوصية", TitleEn = "Privacy", Href = "/privacy", SortOrder = 4 },
-            new SiteMenu { Location = "footer-about", TitleAr = "سياسة الشحن", TitleEn = "Shipping Policy", Href = "/shipping-policy", SortOrder = 5 },
-            new SiteMenu { Location = "footer-about", TitleAr = "سياسة الاسترجاع", TitleEn = "Return Policy", Href = "/return-policy", SortOrder = 6 },
-            new SiteMenu { Location = "footer-about", TitleAr = "التسويق بالعمولة", TitleEn = "Affiliate", Href = "/affiliate", SortOrder = 7 },
-            new SiteMenu { Location = "footer-about", TitleAr = "التوظيف", TitleEn = "Careers", Href = "/careers", SortOrder = 8 },
-            new SiteMenu { Location = "footer-about", TitleAr = "أدوات مجانية", TitleEn = "Free Tools", Href = "/free-tools", SortOrder = 9 },
-
-            // Footer: Help column
-            new SiteMenu { Location = "footer-help", TitleAr = "تواصل معنا", TitleEn = "Contact", Href = "/contact", SortOrder = 1 },
-            new SiteMenu { Location = "footer-help", TitleAr = "الأسئلة الشائعة", TitleEn = "FAQ", Href = "/faq", SortOrder = 2 },
-            new SiteMenu { Location = "footer-help", TitleAr = "مركز المساعدة", TitleEn = "Help Center", Href = "/help-center", SortOrder = 3 },
-            new SiteMenu { Location = "footer-help", TitleAr = "شروط الاستخدام", TitleEn = "Terms", Href = "/terms", SortOrder = 4 },
-        };
-
-        context.Set<SiteMenu>().AddRange(menus);
         await context.SaveChangesAsync();
     }
 }

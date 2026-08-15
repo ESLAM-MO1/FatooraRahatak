@@ -11,12 +11,7 @@ namespace FatooraRahatak.API.Controllers;
 public class SiteController : ControllerBase
 {
     private readonly ISiteService _siteService;
-    private readonly ISiteMenuService _siteMenuService;
-    public SiteController(ISiteService siteService, ISiteMenuService siteMenuService)
-    {
-        _siteService = siteService;
-        _siteMenuService = siteMenuService;
-    }
+    public SiteController(ISiteService siteService) { _siteService = siteService; }
     private long GetCurrentUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -97,12 +92,5 @@ public class SiteController : ControllerBase
     {
         var themes = await _siteService.GetEnabledThemesAsync();
         return Ok(new { success = true, data = themes });
-    }
-
-    [HttpGet("menus")]
-    public async Task<IActionResult> GetMenus()
-    {
-        var menus = await _siteMenuService.GetActiveMenusAsync();
-        return Ok(new { success = true, data = menus });
     }
 }

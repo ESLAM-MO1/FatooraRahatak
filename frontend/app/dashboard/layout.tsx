@@ -139,7 +139,6 @@ const superAdminNavKeys: NavGroupKey[] = [
     titleKey: "nav.siteContent",
     items: [
       { href: "/dashboard/site-content", labelKey: "nav.siteContent", icon: "settings" },
-      { href: "/dashboard/site-menus", labelKey: "nav.siteMenus", icon: "link" },
       { href: "/dashboard/blog", labelKey: "nav.blog", icon: "edit" },
     ],
   },

@@ -71,18 +71,6 @@ interface BlogPost {
   slugEn?: string;
 }
 
-interface SiteMenuLink {
-  id: number;
-  location: string;
-  titleAr: string;
-  titleEn: string;
-  href: string;
-  icon?: string | null;
-  parentId?: number | null;
-  sortOrder: number;
-  isActive: boolean;
-}
-
 interface FooterData {
   description: string;
   copyright: string;
@@ -109,14 +97,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   const [aboutPos, setAboutPos] = useState<{ top: number; right: number } | null>(null);
   const [footer, setFooter] = useState<FooterData>({ description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#" } });
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
-  const [menus, setMenus] = useState<SiteMenuLink[]>([]);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/site/menus`).then(r => r.json()).then(json => {
-      const data = json.data || json;
-      if (Array.isArray(data)) setMenus(data);
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     fetch(`${API_BASE}/site/landing-page`).then(r => r.json()).then(json => {
@@ -182,21 +162,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
     };
   }, [aboutOpen]);
 
-  const isAr = i18n.language === "ar";
-  const resolveLinks = (location: string, fallback: readonly { labelKey: string; href: string }[]) => {
-    const fromApi = menus
-      .filter(m => m.location === location && m.isActive)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map(m => ({ href: m.href, label: isAr ? (m.titleAr || m.titleEn) : (m.titleEn || m.titleAr) }));
-    if (fromApi.length > 0) return fromApi;
-    return fallback.map(l => ({ href: l.href, label: t(l.labelKey) }));
-  };
-  const featuresLinks = resolveLinks("features", FEATURES_LINKS);
-  const aboutLinks = resolveLinks("about", ABOUT_LINKS);
-  const footerTools = resolveLinks("footer-tools", FOOTER_TOOLS);
-  const footerAbout = resolveLinks("footer-about", FOOTER_ABOUT);
-  const footerHelp = resolveLinks("footer-help", FOOTER_HELP);
-
   return (
     <div>
       <header
@@ -242,7 +207,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 >
                   <div className="flex">
                     <div className="flex-1 grid grid-cols-2 gap-1.5 p-2">
-                      {featuresLinks.map((link, i) => (
+                      {FEATURES_LINKS.map((link, i) => (
                         <Link
                           key={link.href + i}
                           href={link.href}
@@ -256,7 +221,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                           >
                             <Icon name="store" size={16} />
                           </span>
-                          {link.label}
+                          {t(link.labelKey)}
                         </Link>
                       ))}
                     </div>
@@ -308,7 +273,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   }}
                 >
                   <div className="p-2">
-                    {aboutLinks.map((link, i) => (
+                    {ABOUT_LINKS.map((link, i) => (
                       <Link
                         key={link.href + i}
                         href={link.href}
@@ -316,7 +281,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                         style={{ color: "var(--ink)" }}
                         onClick={() => setAboutOpen(false)}
                       >
-                        {link.label}
+                        {t(link.labelKey)}
                       </Link>
                     ))}
                   </div>
@@ -366,7 +331,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
               <p className="px-3 py-1 text-[12px] font-bold" style={{ color: "var(--sub)" }}>
                 {t("nav.mobileFeatures")}
               </p>
-              {featuresLinks.map((link, i) => (
+              {FEATURES_LINKS.map((link, i) => (
                 <Link
                   key={link.href + i}
                   href={link.href}
@@ -377,14 +342,14 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <span style={{ color: "var(--blue)" }}>
                     <Icon name="store" size={18} />
                   </span>
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               ))}
               <div className="border-t my-3" style={{ borderColor: "var(--border)" }} />
               <p className="px-3 py-1 text-[12px] font-bold" style={{ color: "var(--sub)" }}>
                 {t("nav.mobileAbout")}
               </p>
-              {aboutLinks.map((link, i) => (
+              {ABOUT_LINKS.map((link, i) => (
                 <Link
                   key={link.href + i}
                   href={link.href}
@@ -392,7 +357,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   style={{ color: "var(--ink)" }}
                   onClick={() => setMobileOpen(false)}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               ))}
               <div className="border-t my-3" style={{ borderColor: "var(--border)" }} />
@@ -449,10 +414,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.tools")}</h3>
               <ul className="space-y-3">
-                {footerTools.map((link, i) => (
+                {FOOTER_TOOLS.map((link, i) => (
                   <li key={link.href + i}>
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
-                      {link.label}
+                      {t(link.labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -462,10 +427,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.about")}</h3>
               <ul className="space-y-3">
-                {footerAbout.map((link, i) => (
+                {FOOTER_ABOUT.map((link, i) => (
                   <li key={link.href + i}>
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
-                      {link.label}
+                      {t(link.labelKey)}
                     </Link>
                   </li>
                 ))}
@@ -475,10 +440,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.help")}</h3>
               <ul className="space-y-3">
-                {footerHelp.map((link, i) => (
+                {FOOTER_HELP.map((link, i) => (
                   <li key={link.href + i}>
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
-                      {link.label}
+                      {t(link.labelKey)}
                     </Link>
                   </li>
                 ))}

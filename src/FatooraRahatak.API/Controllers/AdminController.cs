@@ -11,11 +11,13 @@ public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
     private readonly ISiteService _siteService;
+    private readonly ISiteMenuService _siteMenuService;
     private readonly IReferralService _referralService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService)
+    public AdminController(IAdminService adminService, ISiteService siteService, ISiteMenuService siteMenuService, IReferralService referralService)
     {
         _adminService = adminService;
         _siteService = siteService;
+        _siteMenuService = siteMenuService;
         _referralService = referralService;
     }
     private bool IsSuperAdmin()
@@ -517,5 +519,60 @@ public class AdminController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    // === Site Menus ===
+    [HttpGet("site/menus")]
+    public async Task<IActionResult> GetAllMenus()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _siteMenuService.GetAllMenusAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("site/menus")]
+    public async Task<IActionResult> CreateMenu([FromBody] CreateSiteMenuDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var menu = await _siteMenuService.CreateMenuAsync(dto);
+            return Ok(new { success = true, data = menu, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("site/menus/{id}")]
+    public async Task<IActionResult> UpdateMenu(long id, [FromBody] CreateSiteMenuDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _siteMenuService.UpdateMenuAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("site/menus/{id}")]
+    public async Task<IActionResult> DeleteMenu(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteMenuService.DeleteMenuAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("site/menus/{id}/toggle")]
+    public async Task<IActionResult> ToggleMenu(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteMenuService.ToggleMenuActiveAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
     }
 }

@@ -112,6 +112,7 @@ builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IPermissionCheckService, PermissionCheckService>();
 builder.Services.AddScoped<ISiteService, SiteService>();
+builder.Services.AddScoped<ISiteMenuService, SiteMenuService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
 builder.Services.AddScoped<ICustomerNotificationService, CustomerNotificationService>();
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();

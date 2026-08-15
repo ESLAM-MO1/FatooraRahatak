@@ -179,6 +179,7 @@ const en: Record<string, string> = {
   "nav.statistics": "Statistics",
   "nav.blog": "Blog",
   "nav.siteContent": "Site Content",
+  "nav.siteMenus": "Navigation Manager",
   "nav.createStore": "Create New Store",
   "nav.settings": "Settings",
   "nav.store": "Store",
@@ -751,6 +752,7 @@ const en: Record<string, string> = {
   "pos.shiftReport": "Shift Report",
 
   "admin.siteContent": "Site Content Management",
+  "admin.siteMenus": "Navigation Manager",
   "admin.homepage": "Homepage",
   "admin.features": "Features",
   "admin.about": "About",
@@ -1685,6 +1687,23 @@ const en: Record<string, string> = {
   "packagesAdmin.paid": "Paid",
   "packagesAdmin.pending": "Pending",
   "packagesAdmin.overdue": "Overdue",
+
+  // ── Site Menus (Navigation Manager) ──
+  "siteMenus.pageIntro": "Control your site navigation (header & footer) from here. Add links, organize them into sections, hide or show any item, and create sub-menus just like major e-commerce platforms.",
+  "siteMenus.locFeatures": "Header — Features",
+  "siteMenus.locAbout": "Header — About",
+  "siteMenus.locFooterTools": "Footer — Tools",
+  "siteMenus.locFooterAbout": "Footer — About Us",
+  "siteMenus.locFooterHelp": "Footer — Help & Support",
+  "siteMenus.topLevelHint": "Top-level links appear as titles/buttons. You can add sub-links under any item.",
+  "siteMenus.add": "Add Link",
+  "siteMenus.addSub": "Add Sub-link",
+  "siteMenus.titleAr": "Title (Arabic)",
+  "siteMenus.titleEn": "Title (English)",
+  "siteMenus.href": "Href",
+  "siteMenus.location": "Section",
+  "siteMenus.sortOrder": "Sort Order",
+  "siteMenus.icon": "Icon (optional)",
 
   // ── Employee module permissions ──
   "employee.module.StoreManagement": "Store Management",

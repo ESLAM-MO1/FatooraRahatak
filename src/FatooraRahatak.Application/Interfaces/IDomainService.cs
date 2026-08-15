@@ -9,6 +9,10 @@ public interface IDomainService
     Task<ManagedDomainDto> UpdateDomainStatusAsync(long id, string status);
     Task<DnsCheckResultDto> VerifyDnsAsync(string domainName, string? expectedIp, string? expectedCname);
     Task AutoCreateSubdomainAsync(long storeId, string slug);
+    Task<List<CustomDomainDto>> GetCustomDomainsAsync();
+    Task<CustomDomainDto> BindCustomDomainAsync(long storeId, string domainName);
+    Task<CustomDomainDto> SetCustomDomainDnsVerifiedAsync(long storeId);
+    Task<bool> RemoveCustomDomainAsync(long storeId);
     Task<List<SslCertificateDto>> GetAllSslCertificatesAsync();
     Task<SslCertificateDto> RequestSslAsync(long domainId);
     Task RenewExpiringSslAsync();

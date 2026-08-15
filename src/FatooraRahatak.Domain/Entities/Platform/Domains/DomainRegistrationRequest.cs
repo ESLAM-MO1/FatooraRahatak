@@ -9,6 +9,8 @@ public class DomainRegistrationRequest : BaseEntity
 {
     public long? StoreId { get; set; }
     public string DomainName { get; set; } = string.Empty;
+    public string RegistrantName { get; set; } = string.Empty;
+    public string RegistrantEmail { get; set; } = string.Empty;
     public string RegistrarApi { get; set; } = string.Empty;
     public decimal? Price { get; set; }
     public DomainRegistrationStatus Status { get; set; } = DomainRegistrationStatus.Pending;

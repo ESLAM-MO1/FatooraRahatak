@@ -3,7 +3,10 @@ using FatooraRahatak.Application.DTOs.Admin;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Platform.Domains;
 using FatooraRahatak.Domain.Entities.Stores;
+using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -11,11 +14,15 @@ public class DomainService : IDomainService
 {
     private readonly AppDbContext _context;
     private const string PlatformDomain = "fatorahr.com";
+    private const string DefaultTargetIp = "185.199.108.153";
+    private const string DefaultTargetCname = "fatorahr.com";
 
     public DomainService(AppDbContext context)
     {
         _context = context;
     }
+
+    #region Managed Domains
 
     public async Task<List<ManagedDomainDto>> GetAllDomainsAsync()
     {
@@ -60,8 +67,8 @@ public class DomainService : IDomainService
             DomainName = dto.DomainName,
             Type = dto.Type == "Subdomain" ? ManagedDomainType.Subdomain : ManagedDomainType.Custom,
             Status = ManagedDomainStatus.PendingDns,
-            TargetIp = dto.TargetIp,
-            TargetCname = dto.TargetCname,
+            TargetIp = dto.TargetIp ?? DefaultTargetIp,
+            TargetCname = dto.TargetCname ?? DefaultTargetCname,
             SslEnabled = false
         };
 
@@ -105,93 +112,97 @@ public class DomainService : IDomainService
         return new ManagedDomainDto { Id = entity.Id, DomainName = entity.DomainName, Status = entity.Status.ToString(), DnsStatus = "Verified", SslStatus = "Pending", IsPrimary = entity.Type == ManagedDomainType.Subdomain };
     }
 
-    public async Task<DnsCheckResultDto> VerifyDnsAsync(string domainName, string? expectedIp, string? expectedCname)
+    #endregion
+
+    #region Custom Domains (Stores.CustomDomain)
+
+    public async Task<List<CustomDomainDto>> GetCustomDomainsAsync()
     {
-        var result = new DnsCheckResultDto();
-
-        try
-        {
-            var hostEntry = await System.Net.Dns.GetHostEntryAsync(domainName);
-            result.ResolvedIps = hostEntry.AddressList.Select(a => a.ToString()).ToList();
-            result.ResolvedCnames = hostEntry.Aliases.ToList();
-
-            if (!string.IsNullOrEmpty(expectedIp))
+        return await _context.Stores
+            .Where(s => s.CustomDomain != null && s.CustomDomain != "")
+            .OrderByDescending(s => s.CreatedAt)
+            .Select(s => new CustomDomainDto
             {
-                if (result.ResolvedIps.Any(ip => ip == expectedIp))
-                {
-                    result.Success = true;
-                    result.Message = "✅ تطابق سجل A بنجاح";
-                }
-                else
-                {
-                    result.Success = false;
-                    result.Message = $"❌ سجل A غير متطابق. القيمة المتوقعة: {expectedIp}، القيمة الحالية: {string.Join(", ", result.ResolvedIps)}";
-                }
-            }
-            else if (!string.IsNullOrEmpty(expectedCname))
-            {
-                if (result.ResolvedCnames.Any(c => c.Contains(expectedCname.Replace("http://", "").Replace("https://", "").Trim('/'))))
-                {
-                    result.Success = true;
-                    result.Message = "✅ تطابق سجل CNAME بنجاح";
-                }
-                else
-                {
-                    result.Success = false;
-                    result.Message = $"❌ سجل CNAME غير متطابق";
-                }
-            }
-            else
-            {
-                if (result.ResolvedIps.Count > 0)
-                {
-                    result.Success = true;
-                    result.Message = "✅ تم حل اسم الدومين بنجاح";
-                }
-                else
-                {
-                    result.Success = false;
-                    result.Message = "❌ لم يتم العثور على أي سجلات DNS";
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            result.Success = false;
-            result.Message = $"❌ فشل فحص DNS: {ex.Message}";
-        }
-
-        return result;
+                StoreId = s.Id,
+                StoreName = s.StoreName,
+                DomainName = s.CustomDomain!,
+                Status = s.CustomDomainStatus.ToString(),
+                DnsVerified = s.CustomDomainStatus == CustomDomainStatus.Active,
+                CreatedAt = s.CreatedAt
+            })
+            .ToListAsync();
     }
 
-    public async Task AutoCreateSubdomainAsync(long storeId, string slug)
+    public async Task<CustomDomainDto> BindCustomDomainAsync(long storeId, string domainName)
     {
-        var subdomain = $"{slug}.{PlatformDomain}";
+        var store = await _context.Stores.FindAsync(storeId)
+            ?? throw new InvalidOperationException("المتجر غير موجود");
 
-        var exists = await _context.Set<ManagedDomain>().AnyAsync(d => d.DomainName == subdomain);
-        if (exists) return;
+        var domain = (domainName ?? "").Trim().ToLowerInvariant();
+        domain = domain.Replace("https://", "").Replace("http://", "").TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(domain))
+            throw new InvalidOperationException("يجب إدخال اسم النطاق");
 
-        var entity = new ManagedDomain
-        {
-            StoreId = storeId,
-            DomainName = subdomain,
-            Type = ManagedDomainType.Subdomain,
-            Status = ManagedDomainStatus.Active,
-            SslEnabled = false,
-            DnsVerifiedAt = DateTime.UtcNow
-        };
+        var blacklisted = await _context.Set<DomainBlacklistEntry>()
+            .AnyAsync(b => domain.Contains(b.DomainPattern));
+        if (blacklisted)
+            throw new InvalidOperationException("هذا الدومين موجود في القائمة السوداء");
 
-        _context.Set<ManagedDomain>().Add(entity);
+        var exists = await _context.Stores
+            .AnyAsync(s => s.Id != storeId && s.CustomDomain != null && s.CustomDomain.ToLower() == domain);
+        if (exists)
+            throw new InvalidOperationException("هذا الدومين مستخدم بالفعل من متجر آخر");
 
-        var sslRecord = new SslCertificate
-        {
-            ManagedDomain = entity,
-            Status = SslStatus.Issuing
-        };
-        _context.Set<SslCertificate>().Add(sslRecord);
-
+        store.CustomDomain = domain;
+        store.CustomDomainStatus = CustomDomainStatus.Pending;
         await _context.SaveChangesAsync();
+
+        return new CustomDomainDto
+        {
+            StoreId = store.Id,
+            StoreName = store.StoreName,
+            DomainName = store.CustomDomain!,
+            Status = store.CustomDomainStatus.ToString(),
+            DnsVerified = false,
+            CreatedAt = store.CreatedAt
+        };
     }
+
+    public async Task<CustomDomainDto> SetCustomDomainDnsVerifiedAsync(long storeId)
+    {
+        var store = await _context.Stores.FindAsync(storeId)
+            ?? throw new InvalidOperationException("المتجر غير موجود");
+        if (string.IsNullOrWhiteSpace(store.CustomDomain))
+            throw new InvalidOperationException("لا يوجد دومين مخصص لهذا المتجر");
+
+        store.CustomDomainStatus = CustomDomainStatus.Active;
+        await _context.SaveChangesAsync();
+
+        return new CustomDomainDto
+        {
+            StoreId = store.Id,
+            StoreName = store.StoreName,
+            DomainName = store.CustomDomain,
+            Status = store.CustomDomainStatus.ToString(),
+            DnsVerified = true,
+            CreatedAt = store.CreatedAt
+        };
+    }
+
+    public async Task<bool> RemoveCustomDomainAsync(long storeId)
+    {
+        var store = await _context.Stores.FindAsync(storeId);
+        if (store == null) return false;
+
+        store.CustomDomain = null;
+        store.CustomDomainStatus = CustomDomainStatus.None;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    #endregion
+
+    #region SSL
 
     public async Task<List<SslCertificateDto>> GetAllSslCertificatesAsync()
     {
@@ -203,8 +214,10 @@ public class DomainService : IDomainService
                 Id = s.Id,
                 ManagedDomainId = s.ManagedDomainId,
                 DomainName = s.ManagedDomain.DomainName,
-                Status = s.Status.ToString(),
+                Issuer = s.Issuer,
                 ExpiresAt = s.ExpiresAt,
+                LastRenewedAt = s.LastRenewedAt,
+                Status = s.Status.ToString(),
                 FailureReason = s.FailureReason,
                 CreatedAt = s.CreatedAt
             })
@@ -216,10 +229,24 @@ public class DomainService : IDomainService
         var domain = await _context.Set<ManagedDomain>().FindAsync(domainId)
             ?? throw new InvalidOperationException("الدومين غير موجود");
 
+        // إنهاء أي شهادة سابقة معلّقة لنفس الدومين
+        var pending = await _context.Set<SslCertificate>()
+            .Where(s => s.ManagedDomainId == domainId && s.Status != SslStatus.Active)
+            .ToListAsync();
+        _context.Set<SslCertificate>().RemoveRange(pending);
+
+        var (certPem, keyPem, issuer, notBefore, expiresAt) = GenerateSelfSignedCertificate(domain.DomainName);
+
         var ssl = new SslCertificate
         {
             ManagedDomainId = domainId,
-            Status = SslStatus.Issuing
+            CertificateData = certPem,
+            PrivateKey = keyPem,
+            Issuer = issuer,
+            NotBefore = notBefore,
+            ExpiresAt = expiresAt,
+            LastRenewedAt = DateTime.UtcNow,
+            Status = SslStatus.Active
         };
         _context.Set<SslCertificate>().Add(ssl);
         domain.SslEnabled = true;
@@ -230,6 +257,9 @@ public class DomainService : IDomainService
             Id = ssl.Id,
             ManagedDomainId = domainId,
             DomainName = domain.DomainName,
+            Issuer = ssl.Issuer,
+            ExpiresAt = ssl.ExpiresAt,
+            LastRenewedAt = ssl.LastRenewedAt,
             Status = ssl.Status.ToString(),
             CreatedAt = ssl.CreatedAt
         };
@@ -238,21 +268,64 @@ public class DomainService : IDomainService
     public async Task RenewExpiringSslAsync()
     {
         var expiringSoon = await _context.Set<SslCertificate>()
+            .Include(s => s.ManagedDomain)
             .Where(s => s.Status == SslStatus.Active && s.ExpiresAt != null && s.ExpiresAt < DateTime.UtcNow.AddDays(14))
             .ToListAsync();
 
         foreach (var cert in expiringSoon)
         {
-            cert.Status = SslStatus.Issuing;
+            try
+            {
+                var (certPem, keyPem, issuer, notBefore, expiresAt) = GenerateSelfSignedCertificate(cert.ManagedDomain.DomainName);
+                cert.CertificateData = certPem;
+                cert.PrivateKey = keyPem;
+                cert.Issuer = issuer;
+                cert.NotBefore = notBefore;
+                cert.ExpiresAt = expiresAt;
+                cert.LastRenewedAt = DateTime.UtcNow;
+                cert.Status = SslStatus.Active;
+                cert.FailureReason = null;
+            }
+            catch (Exception ex)
+            {
+                cert.Status = SslStatus.Failed;
+                cert.FailureReason = ex.Message;
+            }
         }
 
         await _context.SaveChangesAsync();
     }
 
+    private static (string CertPem, string KeyPem, string Issuer, DateTime NotBefore, DateTime ExpiresAt) GenerateSelfSignedCertificate(string domainName)
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest($"CN={domainName}", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+        var san = new SubjectAlternativeNameBuilder();
+        san.AddDnsName(domainName);
+        if (domainName.StartsWith("www.", StringComparison.OrdinalIgnoreCase))
+            san.AddDnsName(domainName[4..]);
+        request.CertificateExtensions.Add(san.Build());
+
+        var notBefore = DateTime.UtcNow.AddDays(-1);
+        var expiresAt = DateTime.UtcNow.AddDays(90);
+        var cert = request.CreateSelfSigned(notBefore, expiresAt);
+
+        var certPem = "-----BEGIN CERTIFICATE-----\n" +
+            Convert.ToBase64String(cert.RawData, Base64FormattingOptions.InsertLineBreaks) +
+            "\n-----END CERTIFICATE-----";
+        var keyPem = rsa.ExportPkcs8PrivateKeyPem();
+
+        return (certPem, keyPem, "FatooraRahatak Local CA (self-signed)", notBefore, expiresAt);
+    }
+
+    #endregion
+
+    #region DNS Records
+
     public async Task<List<DnsRecordDto>> GetDnsRecordsAsync()
     {
         return await _context.Set<DnsRecord>()
-            .Where(r => r.IsActive)
             .OrderBy(r => r.RecordType)
             .ThenBy(r => r.Name)
             .Select(r => new DnsRecordDto
@@ -263,7 +336,8 @@ public class DomainService : IDomainService
                 Value = r.Value,
                 Priority = r.Priority,
                 Ttl = r.Ttl,
-                IsActive = r.IsActive
+                IsActive = r.IsActive,
+                Status = r.IsActive ? "Active" : "Inactive"
             })
             .ToListAsync();
     }
@@ -290,7 +364,8 @@ public class DomainService : IDomainService
             Value = entity.Value,
             Priority = entity.Priority,
             Ttl = entity.Ttl,
-            IsActive = entity.IsActive
+            IsActive = entity.IsActive,
+            Status = "Active"
         };
     }
 
@@ -314,6 +389,54 @@ public class DomainService : IDomainService
         await _context.SaveChangesAsync();
     }
 
+    public async Task<DnsCheckResultDto> VerifyDnsAsync(string domainName, string? expectedIp, string? expectedCname)
+    {
+        var result = new DnsCheckResultDto { Domain = domainName };
+
+        try
+        {
+            var hostEntry = await System.Net.Dns.GetHostEntryAsync(domainName);
+            result.ResolvedIps = hostEntry.AddressList.Select(a => a.ToString()).ToList();
+            result.ResolvedCnames = hostEntry.Aliases.ToList();
+
+            if (!string.IsNullOrEmpty(expectedIp))
+            {
+                result.ExpectedIp = expectedIp;
+                result.Matched = result.ResolvedIps.Any(ip => string.Equals(ip, expectedIp, StringComparison.OrdinalIgnoreCase));
+                result.Success = result.Matched;
+                result.Message = result.Matched
+                    ? "✅ تطابق سجل A بنجاح"
+                    : $"❌ سجل A غير متطابق. المتوقع: {expectedIp}، الحالي: {string.Join(", ", result.ResolvedIps)}";
+            }
+            else if (!string.IsNullOrEmpty(expectedCname))
+            {
+                result.ExpectedCname = expectedCname;
+                var target = expectedCname.Replace("http://", "").Replace("https://", "").Trim('/');
+                result.Matched = result.ResolvedCnames.Any(c => c.Contains(target, StringComparison.OrdinalIgnoreCase));
+                result.Success = result.Matched;
+                result.Message = result.Matched ? "✅ تطابق سجل CNAME بنجاح" : "❌ سجل CNAME غير متطابق";
+            }
+            else
+            {
+                result.Matched = result.ResolvedIps.Count > 0;
+                result.Success = result.Matched;
+                result.Message = result.Matched ? "✅ تم حل اسم الدومين بنجاح" : "❌ لم يتم العثور على أي سجلات DNS";
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Matched = false;
+            result.Message = $"❌ فشل فحص DNS: {ex.Message}";
+        }
+
+        return result;
+    }
+
+    #endregion
+
+    #region Redirect Rules
+
     public async Task<List<RedirectRuleDto>> GetRedirectRulesAsync()
     {
         return await _context.Set<RedirectRule>()
@@ -324,7 +447,7 @@ public class DomainService : IDomainService
                 SourceDomain = r.SourceDomain,
                 SourcePath = r.SourcePath,
                 TargetUrl = r.TargetUrl,
-                IsPermanent = r.IsPermanent,
+                RedirectType = r.IsPermanent ? 301 : 302,
                 IsActive = r.IsActive,
                 CreatedAt = r.CreatedAt
             })
@@ -338,8 +461,8 @@ public class DomainService : IDomainService
             SourceDomain = dto.SourceDomain,
             SourcePath = dto.SourcePath,
             TargetUrl = dto.TargetUrl,
-            IsPermanent = dto.IsPermanent,
-            IsActive = true
+            IsPermanent = dto.RedirectType == 301,
+            IsActive = dto.IsActive
         };
         _context.Set<RedirectRule>().Add(entity);
         await _context.SaveChangesAsync();
@@ -350,7 +473,7 @@ public class DomainService : IDomainService
             SourceDomain = entity.SourceDomain,
             SourcePath = entity.SourcePath,
             TargetUrl = entity.TargetUrl,
-            IsPermanent = entity.IsPermanent,
+            RedirectType = entity.IsPermanent ? 301 : 302,
             IsActive = entity.IsActive,
             CreatedAt = entity.CreatedAt
         };
@@ -363,7 +486,8 @@ public class DomainService : IDomainService
         entity.SourceDomain = dto.SourceDomain;
         entity.SourcePath = dto.SourcePath;
         entity.TargetUrl = dto.TargetUrl;
-        entity.IsPermanent = dto.IsPermanent;
+        entity.IsPermanent = dto.RedirectType == 301;
+        entity.IsActive = dto.IsActive;
         await _context.SaveChangesAsync();
     }
 
@@ -392,6 +516,10 @@ public class DomainService : IDomainService
         return result;
     }
 
+    #endregion
+
+    #region Domain Registration
+
     public async Task<List<DomainRegistrationRequestDto>> GetRegistrationRequestsAsync()
     {
         return await _context.Set<DomainRegistrationRequest>()
@@ -403,6 +531,8 @@ public class DomainService : IDomainService
                 StoreId = r.StoreId,
                 StoreName = r.Store != null ? r.Store.StoreName : null,
                 DomainName = r.DomainName,
+                RegistrantName = r.RegistrantName,
+                RegistrantEmail = r.RegistrantEmail,
                 RegistrarApi = r.RegistrarApi,
                 Price = r.Price,
                 Status = r.Status.ToString(),
@@ -423,6 +553,8 @@ public class DomainService : IDomainService
         {
             StoreId = dto.StoreId,
             DomainName = dto.DomainName,
+            RegistrantName = dto.RegistrantName,
+            RegistrantEmail = dto.RegistrantEmail,
             RegistrarApi = dto.RegistrarApi,
             Price = dto.Price,
             Status = DomainRegistrationStatus.Pending
@@ -435,12 +567,18 @@ public class DomainService : IDomainService
             Id = entity.Id,
             StoreId = entity.StoreId,
             DomainName = entity.DomainName,
+            RegistrantName = entity.RegistrantName,
+            RegistrantEmail = entity.RegistrantEmail,
             RegistrarApi = entity.RegistrarApi,
             Price = entity.Price,
             Status = entity.Status.ToString(),
             CreatedAt = entity.CreatedAt
         };
     }
+
+    #endregion
+
+    #region Professional Email
 
     public async Task<List<ProfessionalEmailSetupDto>> GetEmailSetupsAsync()
     {
@@ -451,9 +589,11 @@ public class DomainService : IDomainService
             {
                 Id = e.Id,
                 StoreId = e.StoreId,
-                StoreName = e.Store.StoreName,
+                StoreName = e.Store != null ? e.Store.StoreName : null,
                 DomainName = e.DomainName,
-                EmailProvider = e.EmailProvider,
+                MailboxName = e.MailboxName,
+                EmailAddress = e.EmailAddress,
+                Provider = e.EmailProvider,
                 IsActive = e.IsActive,
                 CreatedAt = e.CreatedAt
             })
@@ -466,7 +606,11 @@ public class DomainService : IDomainService
         {
             StoreId = dto.StoreId,
             DomainName = dto.DomainName,
-            EmailProvider = dto.EmailProvider,
+            MailboxName = dto.MailboxName,
+            EmailAddress = string.IsNullOrWhiteSpace(dto.EmailAddress)
+                ? (string.IsNullOrWhiteSpace(dto.MailboxName) ? dto.DomainName : $"{dto.MailboxName}@{dto.DomainName}")
+                : dto.EmailAddress,
+            EmailProvider = dto.Provider,
             IsActive = true
         };
         _context.Set<ProfessionalEmailSetup>().Add(entity);
@@ -477,7 +621,9 @@ public class DomainService : IDomainService
             Id = entity.Id,
             StoreId = entity.StoreId,
             DomainName = entity.DomainName,
-            EmailProvider = entity.EmailProvider,
+            MailboxName = entity.MailboxName,
+            EmailAddress = entity.EmailAddress,
+            Provider = entity.EmailProvider,
             IsActive = entity.IsActive,
             CreatedAt = entity.CreatedAt
         };
@@ -499,6 +645,10 @@ public class DomainService : IDomainService
         await _context.SaveChangesAsync();
     }
 
+    #endregion
+
+    #region Blacklist
+
     public async Task<List<DomainBlacklistEntryDto>> GetBlacklistAsync()
     {
         return await _context.Set<DomainBlacklistEntry>()
@@ -508,6 +658,7 @@ public class DomainService : IDomainService
                 Id = b.Id,
                 DomainPattern = b.DomainPattern,
                 Reason = b.Reason,
+                AddedByAdmin = _context.Users.Where(u => u.Id == b.BlockedByUserId).Select(u => u.FullName).FirstOrDefault(),
                 CreatedAt = b.CreatedAt
             })
             .ToListAsync();
@@ -529,6 +680,7 @@ public class DomainService : IDomainService
             Id = entity.Id,
             DomainPattern = entity.DomainPattern,
             Reason = entity.Reason,
+            AddedByAdmin = await _context.Users.Where(u => u.Id == adminUserId).Select(u => u.FullName).FirstOrDefaultAsync(),
             CreatedAt = entity.CreatedAt
         };
     }
@@ -547,36 +699,9 @@ public class DomainService : IDomainService
             .AnyAsync(b => domainName.Contains(b.DomainPattern));
     }
 
-    public async Task SeedSubdomainsForExistingStoresAsync()
-    {
-        var storesWithoutSubdomain = await _context.Set<Store>()
-            .Where(s => !_context.Set<ManagedDomain>().Any(d => d.StoreId == s.Id && d.Type == ManagedDomainType.Subdomain))
-            .ToListAsync();
+    #endregion
 
-        foreach (var store in storesWithoutSubdomain)
-        {
-            var subdomain = $"{store.StoreSlug}.{PlatformDomain}";
-            var entity = new ManagedDomain
-            {
-                StoreId = store.Id,
-                DomainName = subdomain,
-                Type = ManagedDomainType.Subdomain,
-                Status = ManagedDomainStatus.Active,
-                SslEnabled = false,
-                DnsVerifiedAt = DateTime.UtcNow
-            };
-            _context.Set<ManagedDomain>().Add(entity);
-
-            var sslRecord = new SslCertificate
-            {
-                ManagedDomain = entity,
-                Status = SslStatus.Issuing
-            };
-            _context.Set<SslCertificate>().Add(sslRecord);
-        }
-
-        await _context.SaveChangesAsync();
-    }
+    #region Status Report / Seeding
 
     public async Task<List<ManagedDomainDto>> GetDomainStatusReportAsync(string? filter)
     {
@@ -614,4 +739,83 @@ public class DomainService : IDomainService
             })
             .ToListAsync();
     }
+
+    public async Task SeedSubdomainsForExistingStoresAsync()
+    {
+        var storesWithoutSubdomain = await _context.Set<Store>()
+            .Where(s => !_context.Set<ManagedDomain>().Any(d => d.StoreId == s.Id && d.Type == ManagedDomainType.Subdomain))
+            .ToListAsync();
+
+        foreach (var store in storesWithoutSubdomain)
+        {
+            var subdomain = $"{store.StoreSlug}.{PlatformDomain}";
+            var entity = new ManagedDomain
+            {
+                StoreId = store.Id,
+                DomainName = subdomain,
+                Type = ManagedDomainType.Subdomain,
+                Status = ManagedDomainStatus.Active,
+                SslEnabled = true,
+                TargetIp = DefaultTargetIp,
+                TargetCname = DefaultTargetCname,
+                DnsVerifiedAt = DateTime.UtcNow
+            };
+            _context.Set<ManagedDomain>().Add(entity);
+
+            var (certPem, keyPem, issuer, notBefore, expiresAt) = GenerateSelfSignedCertificate(subdomain);
+            var sslRecord = new SslCertificate
+            {
+                ManagedDomain = entity,
+                CertificateData = certPem,
+                PrivateKey = keyPem,
+                Issuer = issuer,
+                NotBefore = notBefore,
+                ExpiresAt = expiresAt,
+                LastRenewedAt = DateTime.UtcNow,
+                Status = SslStatus.Active
+            };
+            _context.Set<SslCertificate>().Add(sslRecord);
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task AutoCreateSubdomainAsync(long storeId, string slug)
+    {
+        var subdomain = $"{slug}.{PlatformDomain}";
+
+        var exists = await _context.Set<ManagedDomain>().AnyAsync(d => d.DomainName == subdomain);
+        if (exists) return;
+
+        var entity = new ManagedDomain
+        {
+            StoreId = storeId,
+            DomainName = subdomain,
+            Type = ManagedDomainType.Subdomain,
+            Status = ManagedDomainStatus.Active,
+            SslEnabled = true,
+            TargetIp = DefaultTargetIp,
+            TargetCname = DefaultTargetCname,
+            DnsVerifiedAt = DateTime.UtcNow
+        };
+        _context.Set<ManagedDomain>().Add(entity);
+
+        var (certPem, keyPem, issuer, notBefore, expiresAt) = GenerateSelfSignedCertificate(subdomain);
+        var sslRecord = new SslCertificate
+        {
+            ManagedDomain = entity,
+            CertificateData = certPem,
+            PrivateKey = keyPem,
+            Issuer = issuer,
+            NotBefore = notBefore,
+            ExpiresAt = expiresAt,
+            LastRenewedAt = DateTime.UtcNow,
+            Status = SslStatus.Active
+        };
+        _context.Set<SslCertificate>().Add(sslRecord);
+
+        await _context.SaveChangesAsync();
+    }
+
+    #endregion
 }

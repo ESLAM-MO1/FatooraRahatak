@@ -85,6 +85,56 @@ public class DomainController : ControllerBase
         return Ok(new { success = true, message = "تم إنشاء الدومين الفرعي" });
     }
 
+    [HttpGet("custom")]
+    public async Task<IActionResult> GetCustomDomains()
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var data = await _domainService.GetCustomDomainsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("custom")]
+    public async Task<IActionResult> BindCustomDomain([FromBody] BindCustomDomainDto dto)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _domainService.BindCustomDomainAsync(dto.StoreId, dto.DomainName);
+            return Ok(new { success = true, data });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("custom/{storeId}/dns-verified")]
+    public async Task<IActionResult> SetCustomDomainDnsVerified(long storeId)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _domainService.SetCustomDomainDnsVerifiedAsync(storeId);
+            return Ok(new { success = true, data });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("custom/{storeId}")]
+    public async Task<IActionResult> RemoveCustomDomain(long storeId)
+    {
+        var forbidden = CheckSuperAdmin();
+        if (forbidden != null) return forbidden;
+        var ok = await _domainService.RemoveCustomDomainAsync(storeId);
+        return ok ? Ok(new { success = true }) : NotFound(new { success = false, message = "المتجر غير موجود" });
+    }
+
     [HttpGet("ssl")]
     public async Task<IActionResult> GetAllSslCertificates()
     {

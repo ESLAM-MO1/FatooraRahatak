@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import Can from "@/components/Can";
 
 interface JournalEntry {
@@ -40,6 +42,7 @@ const statusStyles: Record<string, string> = {
 
 export default function JournalEntriesPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -65,8 +68,17 @@ export default function JournalEntriesPage() {
   }, [status, from, to, t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   return (
     <div>

@@ -44,7 +44,7 @@ export default function ReturnPolicyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+        <div className="alert alert--danger mb-4">{error}</div>
       )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">

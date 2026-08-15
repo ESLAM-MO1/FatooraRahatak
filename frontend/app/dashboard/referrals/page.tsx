@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import Icon from "@/components/Icon";
 
 interface MyReferral {
@@ -54,6 +56,7 @@ function StatCard({ icon, label, value, accent }: { icon: string; label: string;
 
 export default function ReferralsPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAffiliateMarketing");
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -73,7 +76,10 @@ export default function ReferralsPage() {
     }
   };
 
-  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
+    loadData();
+  }, [gate.ready, gate.allowed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const referralLink = data ? `${REGISTER_BASE_URL}/register?ref=${data.code}` : "";
 
@@ -86,6 +92,10 @@ export default function ReferralsPage() {
       setError(t("referrals.loadError"));
     }
   };
+
+  if (!gate.ready) return <LoadingState />;
+
+  if (!gate.allowed) return <RestrictedFeatureState />;
 
   if (loading) return <LoadingState />;
 

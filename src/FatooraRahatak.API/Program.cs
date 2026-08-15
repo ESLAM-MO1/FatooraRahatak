@@ -118,6 +118,7 @@ builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddScoped<IQuickLoginService, QuickLoginService>();
 builder.Services.AddDirectoryBrowser();
 builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
+builder.Services.AddHostedService<PendingPaymentReconcilerBackgroundService>();
 builder.Services.AddScoped<IShippingProvider, SmsaShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, AramexShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, ZajilShippingProvider>();
@@ -164,6 +165,12 @@ using (var scope = app.Services.CreateScope())
 
     var domainService = scope.ServiceProvider.GetRequiredService<IDomainService>();
     await domainService.SeedSubdomainsForExistingStoresAsync();
+
+    // Backfill: ترقية أكواد الإحالة القصيرة (أقل من 7 خانات) إلى كود رقمي أطول 7-8 خانات
+    var referralService = scope.ServiceProvider.GetRequiredService<IReferralService>();
+    var upgradedCodes = await referralService.UpgradeLegacyCodesAsync();
+    if (upgradedCodes > 0)
+        Console.WriteLine($"[Seeding] Upgraded {upgradedCodes} legacy referral code(s) to 7-8 digit format.");
 }
 
 if (app.Environment.IsDevelopment())

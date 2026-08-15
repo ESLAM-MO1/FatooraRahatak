@@ -181,7 +181,7 @@ export default function CartPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+        <div className="alert alert--danger mb-4">{error}</div>
       )}
 
       {!cart || cart.items.length === 0 ? (
@@ -281,7 +281,7 @@ export default function CartPage() {
             </div>
 
             {couponError && (
-              <div className="bg-red-50 text-red-600 p-3 rounded mt-3 text-sm">
+              <div className="alert alert--danger mt-3">
                 {couponError}
               </div>
             )}

@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import { useConfirm } from "@/components/ConfirmDialog";
 import InfoTooltip from "@/components/InfoTooltip";
 import Can from "@/components/Can";
@@ -36,6 +38,7 @@ const emptyEditForm = {
 export default function PayrollPage() {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const gate = usePackageFeature("hasPayroll");
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -66,8 +69,17 @@ export default function PayrollPage() {
   }, [year, month, t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     fetchPayrolls();
-  }, [fetchPayrolls]);
+  }, [fetchPayrolls, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   const handleGenerate = async () => {
     setActionError("");

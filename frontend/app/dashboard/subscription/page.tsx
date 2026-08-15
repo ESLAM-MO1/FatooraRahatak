@@ -7,10 +7,10 @@ import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
-import Icon from "@/components/Icon";
 import { useConfirm } from "@/components/ConfirmDialog";
 import PackageCard from "@/components/PackageCard";
 import Can from "@/components/Can";
+import { formatMoney } from "@/lib/formatNumber";
 
 interface SubscriptionStatus {
   currentPackage: string;
@@ -99,14 +99,6 @@ export default function SubscriptionPage() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("Monthly");
-  const [showCardForm, setShowCardForm] = useState(false);
-  const [pendingPayment, setPendingPayment] = useState<{ subscriptionId: number; amount: number } | null>(null);
-  const [cardHolder, setCardHolder] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
-  const [cardError, setCardError] = useState("");
-  const [paying, setPaying] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -165,22 +157,15 @@ export default function SubscriptionPage() {
 
         if (dueAmount > 0) {
           if (subscriptionId) {
-            // فتح فورم البطاقة لإدخال بيانات الكارت (رقم/تاريخ/CVV) —
-            // مع خيار بديل للدفع عبر صفحة موياسر المحمية.
-            setPendingPayment({ subscriptionId, amount: dueAmount });
-            setCardHolder("");
-            setCardNumber("");
-            setCardExpiry("");
-            setCardCvc("");
-            setCardError("");
-            setShowCardForm(true);
+            // الدفع عبر صفحة موياسر المحمية مباشرة (لا يُدخل العميل بيانات البطاقة هنا)
+            await startHostedPayment(subscriptionId, dueAmount);
           } else {
             setActionError(t("subscription.paymentError"));
           }
         } else {
           setActionSuccess(
             balanceUsed > 0
-              ? t("subscription.balanceCovered").replace("{amount}", `${balanceUsed.toFixed(2)} SAR`)
+              ? t("subscription.balanceCovered").replace("{amount}", `${formatMoney(balanceUsed)} ${t("common.sar")}`)
               : t("subscription.upgradeSuccess")
           );
           await fetchData();
@@ -211,7 +196,7 @@ export default function SubscriptionPage() {
       const dueAmount = res.data?.data?.dueAmount ?? 0;
       const subscriptionId = res.data?.data?.subscriptionId ?? null;
       if (balanceUsed > 0) {
-        setActionSuccess(t("subscription.balanceCovered").replace("{amount}", `${balanceUsed.toFixed(2)} SAR`));
+        setActionSuccess(t("subscription.balanceCovered").replace("{amount}", `${formatMoney(balanceUsed)} ${t("common.sar")}`));
         await fetchData();
       } else if (dueAmount > 0) {
         if (subscriptionId) {
@@ -254,63 +239,6 @@ export default function SubscriptionPage() {
       const e = err as { response?: { data?: { message?: string } } };
       setActionError(e.response?.data?.message || t("subscription.paymentError"));
     }
-  };
-
-  // 💳 الدفع عبر فورم البطاقة المدمج: تُرسل بيانات الكارت لإنشاء دفع مباشر لدى ميسرا
-  // (source: creditcard) ثم يُحوَّل المستخدم إلى صفحة 3DS لتأكيد الدفع.
-  const submitCardPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingPayment) return;
-
-    const expiryMatch = cardExpiry.trim().match(/^(\d{2})\s*[/-]\s*(\d{2})$/);
-    if (!expiryMatch) {
-      setCardError(t("subscription.cardExpiry"));
-      return;
-    }
-    if (cardNumber.replace(/\s/g, "").length < 12) {
-      setCardError(t("subscription.cardRequired"));
-      return;
-    }
-
-    setPaying(true);
-    setCardError("");
-    try {
-      const payRes = await api.post("/payments/create-link", {
-        subscriptionId: pendingPayment.subscriptionId,
-        amount: pendingPayment.amount,
-        currency: "SAR",
-        successUrl: window.location.href,
-        callbackUrl: window.location.href,
-        cardHolder: cardHolder.trim(),
-        cardNumber: cardNumber.replace(/\s/g, ""),
-        cardExpiryMonth: expiryMatch[1],
-        cardExpiryYear: expiryMatch[2],
-        cardCvc: cardCvc.trim(),
-      });
-      if (payRes.data.success && payRes.data.data.paymentLinkUrl) {
-        const ref = payRes.data?.data?.paymentReference;
-        if (ref) sessionStorage.setItem("sub_payment_ref", ref);
-        setActionSuccess(t("subscription.paymentInitiated"));
-        setShowCardForm(false);
-        setPendingPayment(null);
-        window.location.assign(payRes.data.data.paymentLinkUrl);
-      } else {
-        setCardError(payRes.data?.message || t("subscription.paymentError"));
-        setPaying(false);
-      }
-    } catch (err) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setCardError(e.response?.data?.message || t("subscription.paymentError"));
-      setPaying(false);
-    }
-  };
-
-  const useHostedCheckout = () => {
-    if (!pendingPayment) return;
-    const { subscriptionId, amount } = pendingPayment;
-    setShowCardForm(false);
-    setPendingPayment(null);
-    startHostedPayment(subscriptionId, amount);
   };
 
   // بعد الرجوع من صفحة موياسر المحمية، نتحقق من نتيجة الدفع
@@ -493,7 +421,7 @@ export default function SubscriptionPage() {
               </div>
               <div>
                 <p className="text-[var(--sub)]">{t("subscription.balance")}</p>
-                <p className="font-medium text-[var(--blue)]">{status.balance.toFixed(2)} SAR</p>
+                <p className="font-medium text-[var(--blue)]">{formatMoney(status.balance)} {t("common.sar")}</p>
               </div>
               {status.gracePeriodEnd && (
                 <div>
@@ -598,8 +526,8 @@ export default function SubscriptionPage() {
             const isCurrent = pkg.name === status?.currentPackage;
             const isHigher = isHigherPackage(pkg.name);
             const isLower = isLowerPackage(pkg.name);
-            const totalPrice = billingCycle === "Monthly" ? undefined : getCycleTotalPrice(pkg.monthlyPrice, billingCycle);
-            const savePercent = billingCycle === "Monthly" ? undefined : BILLING_CYCLE_DISCOUNT[billingCycle] * 100;
+            const totalPrice = billingCycle === "Monthly" || pkg.monthlyPrice <= 0 ? undefined : getCycleTotalPrice(pkg.monthlyPrice, billingCycle);
+            const savePercent = billingCycle === "Monthly" || pkg.monthlyPrice <= 0 ? undefined : BILLING_CYCLE_DISCOUNT[billingCycle] * 100;
 
             return (
               <PackageCard
@@ -647,105 +575,6 @@ export default function SubscriptionPage() {
           })}
         </div>
       </div>
-
-      {showCardForm && pendingPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[16px] font-bold text-[var(--blue-deep)]">{t("subscription.cardFormTitle")}</h2>
-              <button onClick={() => setShowCardForm(false)} className="text-[var(--sub)] hover:text-[var(--ink)]">
-                <Icon name="close" size={18} />
-              </button>
-            </div>
-
-            <p className="text-[13px] text-[var(--sub)] mb-4">
-              {t("subscription.cardDetails")}:{" "}
-              <span className="font-bold text-[var(--ink)]">{pendingPayment.amount.toFixed(2)} SAR</span>
-            </p>
-
-            {cardError && <div className="alert alert--danger mb-4">{cardError}</div>}
-
-            <form onSubmit={submitCardPayment} className="space-y-4">
-              <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("subscription.cardHolder")}</label>
-                <div className="field-shell">
-                  <input
-                    type="text"
-                    value={cardHolder}
-                    onChange={(e) => setCardHolder(e.target.value)}
-                    required
-                    placeholder={t("subscription.cardHolder")}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("subscription.cardNumber")}</label>
-                <div className="field-shell">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value.replace(/[^\d ]/g, "").slice(0, 19))}
-                    required
-                    dir="ltr"
-                    className="text-left"
-                    placeholder="4111 1111 1111 1111"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("subscription.cardExpiry")}</label>
-                  <div className="field-shell">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={cardExpiry}
-                      onChange={(e) => setCardExpiry(e.target.value.replace(/[^\d/]/g, "").slice(0, 5))}
-                      required
-                      dir="ltr"
-                      className="text-left"
-                      placeholder="MM/YY"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("subscription.cardCvc")}</label>
-                  <div className="field-shell">
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      value={cardCvc}
-                      onChange={(e) => setCardCvc(e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
-                      required
-                      dir="ltr"
-                      className="text-left"
-                      placeholder="123"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-[11.5px] text-[var(--sub)]">{t("subscription.securePaymentNote")}</p>
-              <p className="text-[11.5px] text-[var(--sub)] bg-[var(--bg)] p-2 rounded">{t("subscription.testCardHint")}</p>
-
-              <button type="submit" disabled={paying} className="btn-primary w-full">
-                {paying ? t("common.saving") : t("subscription.payNow")}
-              </button>
-              <button
-                type="button"
-                onClick={useHostedCheckout}
-                disabled={paying}
-                className="btn-outline w-full"
-              >
-                {t("subscription.hostedCheckout")}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

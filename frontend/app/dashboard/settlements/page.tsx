@@ -6,7 +6,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
-import SuccessToast from "@/components/SuccessToast";
+import Toast from "@/components/Toast";
 
 interface BankDetails {
   id: number;
@@ -54,7 +54,7 @@ export default function SettlementsPage() {
   const [data, setData] = useState<SettlementSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [form, setForm] = useState({ bankName: "", accountHolderName: "", iban: "" });
 
   const load = async () => {
@@ -67,7 +67,7 @@ export default function SettlementsPage() {
         setForm({ bankName: b.bankName, accountHolderName: b.accountHolderName, iban: b.iban });
       }
     } catch (e: any) {
-      setToast(e?.response?.data?.message || t("common.error"));
+      setToast({ type: "error", text: e?.response?.data?.message || t("common.error") });
     } finally {
       setLoading(false);
     }
@@ -81,10 +81,10 @@ export default function SettlementsPage() {
     setSaving(true);
     try {
       const res = await api.put("/owner/settlements/bank-details", form);
-      setToast(res.data.message || t("common.saved"));
+      setToast({ type: "success", text: res.data.message || t("common.saved") });
       load();
     } catch (e: any) {
-      setToast(e?.response?.data?.message || t("common.error"));
+      setToast({ type: "error", text: e?.response?.data?.message || t("common.error") });
     } finally {
       setSaving(false);
     }
@@ -99,7 +99,7 @@ export default function SettlementsPage() {
       <PageHeader icon="wallet" title={t("nav.settlements")}>
         <p className="text-[12px] text-[var(--sub)]">{t("settlements.subtitle")}</p>
       </PageHeader>
-      {toast && <SuccessToast message={toast} onClose={() => setToast(null)} fixed />}
+      {toast && <Toast message={toast.text} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card p-5">

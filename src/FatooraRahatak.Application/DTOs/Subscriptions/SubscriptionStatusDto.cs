@@ -19,4 +19,22 @@ public class SubscriptionStatusDto
     public int? DaysRemaining { get; set; }
     public bool RequiresRenewal { get; set; }
     public string? SubscriptionStatus { get; set; }
+
+    // مزايا الباقة الحالية — يستخدمها الواجهة الأمامية لعرض حالة "الميزة مقيدة"
+    // قبل استدعاء أي API خاص بميزة غير متاحة، بدلاً من انتظار رسالة خطأ من السيرفر.
+    public bool HasPos { get; set; }
+    public bool HasPayroll { get; set; }
+    public bool HasAccountingFull { get; set; }
+    public bool HasZatcaInvoice { get; set; }
+    public bool HasCustomDomain { get; set; }
+    public bool HasLogo { get; set; }
+    public bool HasApiAccess { get; set; }
+    public bool HasAffiliateMarketing { get; set; }
+    public bool HasShippingIntegration { get; set; }
+    public bool HasShippingCalculator { get; set; }
+    public bool HasShippingTracking { get; set; }
+    public bool HasShippingLabelPrinting { get; set; }
+    public bool HasFreeShipping { get; set; }
+    public bool HasCashOnDelivery { get; set; }
+    public bool HasShippingDiscounts { get; set; }
 }

@@ -56,7 +56,7 @@ api.interceptors.response.use(
     const isPackage400 =
       error.response?.status === 400 &&
       !!message?.includes("باقتك") &&
-      (message.includes("ترقية") || message.includes("تسمح بإضافة"));
+      (message.includes("ترقية") || message.includes("تسمح بإضافة") || message.includes("الحد الأقصى"));
     if (isPackage403 || isPackage400) {
       triggerUpgradePrompt(message as string);
       error.response.data = { ...error.response.data, message: undefined };

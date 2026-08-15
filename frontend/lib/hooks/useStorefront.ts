@@ -72,6 +72,7 @@ export interface UseStorefrontResult {
   setShowAllProducts: (show: boolean) => void;
   cartCount: number;
   cartMessage: string;
+  cartMessageType: "success" | "error";
   wishlist: number[];
   toggleWishlist: (productId: number) => void;
   searchQuery: string;
@@ -117,6 +118,7 @@ export function useStorefront(slug: string, storeId: number | null, currency: st
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartMessage, setCartMessage] = useState("");
+  const [cartMessageType, setCartMessageType] = useState<"success" | "error">("success");
   const [wishlist, setWishlist] = useState<number[]>([]);
   const [quickViewProduct, setQuickViewProduct] = useState<ProductItem | null>(null);
   const [quoteRequested, setQuoteRequested] = useState<number | null>(null);
@@ -188,10 +190,12 @@ export function useStorefront(slug: string, storeId: number | null, currency: st
       if (r.ok && d?.sessionId) localStorage.setItem(getCartKey(slug), d.sessionId);
       await refreshCart();
       setCartMessage(r.ok ? t("storefront.addedToCart") : (d?.message || t("storefront.cartError")));
+      setCartMessageType(r.ok ? "success" : "error");
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setCartMessage(""), 2500);
     } catch {
       setCartMessage(t("storefront.cartError"));
+      setCartMessageType("error");
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => setCartMessage(""), 2500);
     }
@@ -227,7 +231,7 @@ export function useStorefront(slug: string, storeId: number | null, currency: st
 
   return {
     categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId,
-    showAllProducts, setShowAllProducts, cartCount, cartMessage, wishlist, toggleWishlist,
+    showAllProducts, setShowAllProducts, cartCount, cartMessage, cartMessageType, wishlist, toggleWishlist,
     searchQuery, setSearchQuery, searchInput, setSearchInput, handleSearchSubmit, clearSearch,
     isSearchActive, searchResults, quickViewProduct, setQuickViewProduct, quoteRequested, handleQuoteRequest,
     countdown, currencySymbol, isRtl, handleAddToCart, orderType, setOrderType,

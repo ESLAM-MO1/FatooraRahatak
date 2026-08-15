@@ -6,9 +6,11 @@ using Microsoft.EntityFrameworkCore;
 namespace FatooraRahatak.API.BackgroundServices;
 
 /// <summary>
-/// قفل أوتوماتيكي للاشتراكات المنتهية:
-/// 1) اشتراك نشط انتهت مدته → فترة سماح 7 أيام + إشعار
-/// 2) انتهت فترة السماح بلا تجديد → إيقاف المتجر مؤقتًا (Suspended) + إشعار
+/// معالجة أوتوماتيكية للاشتراكات المنتهية (مثل أي موقع SaaS):
+/// 1) اشتراك نشط انتهت مدته → فترة سماح 7 أيام + إشعار "الباقة على وشك/انتهت"
+/// 2) انتهت فترة السماح بلا دفع → نزول المتجر تلقائيًا للباقة المجانية + إشعار واضح
+///    "انتهت باقتك" (لا يبقى المتجر معلّقًا على باقة مدفوعة منتهية ولا يُوقف تمامًا —
+///    بل يتحول لمزايا الباقة المجانية المتاحة لكل المستخدمين)
 /// 3) اشتراكات معلّقة (بانتظار الدفع) أقدم من 7 أيام → إلغاء
 /// </summary>
 public class SubscriptionExpiryBackgroundService : BackgroundService
@@ -73,7 +75,7 @@ public class SubscriptionExpiryBackgroundService : BackgroundService
             catch { }
         }
 
-        // 2) انتهت فترة السماح بلا تجديد → إيقاف المتجر مؤقتًا
+        // 2) انتهت فترة السماح بلا دفع → نزول تلقائي للباقة المجانية + إشعار واضح
         var expiredGrace = await db.Subscriptions
             .Include(s => s.Store)
             .Where(s => s.Status == SubscriptionStatus.GracePeriod && s.GracePeriodEnd < now)
@@ -81,23 +83,31 @@ public class SubscriptionExpiryBackgroundService : BackgroundService
 
         foreach (var sub in expiredGrace)
         {
-            sub.Status = SubscriptionStatus.Suspended;
+            sub.Status = SubscriptionStatus.Expired;
             sub.UpdatedAt = now;
             changed = true;
 
             if (sub.Store != null)
             {
-                sub.Store.Status = StoreStatus.Suspended;
-                sub.Store.IsOnline = false;
-                sub.Store.UpdatedAt = now;
+                var freePackage = await db.Packages.FirstOrDefaultAsync(p => string.Equals(p.PackageName, "المجانية", StringComparison.Ordinal))
+                    ?? await db.Packages.OrderBy(p => p.MonthlyPrice).FirstOrDefaultAsync(ct);
+
+                // نزول المتجر للباقة المجانية: يبقى المتجر يعمل بمزايا المجانية
+                // ولا يبقى "معلّقًا" على باقة مدفوعة انتهت مدتها بالفعل.
+                if (freePackage != null)
+                {
+                    sub.Store.PackageId = freePackage.Id;
+                    sub.Store.Status = StoreStatus.Active;
+                    sub.Store.UpdatedAt = now;
+                }
 
                 try
                 {
                     await notifications.CreateAsync(
                         sub.Store.OwnerUserId,
-                        "تم إيقاف متجرك مؤقتًا",
-                        "لم يتم تجديد باقتك، تم إيقاف متجرك مؤقتًا ولن يتمكن العملاء من الطلب. جدّد اشتراكك لإعادة تفعيله فورًا.",
-                        NotificationType.SubscriptionSuspended,
+                        "انتهت باقتك — تم التحويل للباقة المجانية",
+                        $"انتهت باقتك ({sub.Package?.PackageName ?? ""}) ولم يتم تجديدها. أصبحت الآن على الباقة المجانية بمزاياها الأساسية. يمكنك الترقية في أي وقت من صفحة الباقات.",
+                        NotificationType.SubscriptionExpired,
                         "/dashboard/subscription");
                 }
                 catch { }

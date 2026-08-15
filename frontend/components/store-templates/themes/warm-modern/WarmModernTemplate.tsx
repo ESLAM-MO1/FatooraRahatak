@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useStorefront } from "@/lib/hooks/useStorefront";
 import type { StoreTemplateProps } from "@/app/store/[slug]/layout";
 import type { StoreThemeMeta, StoreColors } from "@/components/store-templates/configs";
 import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
-import SuccessToast from "@/components/SuccessToast";
+import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, MailIcon, PhoneIcon, MapPinIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
@@ -25,7 +25,7 @@ export default function WarmModernTemplate({
 
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, searchInput, setSearchInput, handleSearchSubmit, isSearchActive, searchResults,
-    countdown, currencySymbol, isRtl, handleAddToCart, cartMessage } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
+    countdown, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -186,7 +186,7 @@ export default function WarmModernTemplate({
         </div>
       </section>}
 
-      <SuccessToast message={cartMessage} />
+      <Toast message={cartMessage} type={cartMessageType} />
 
       {showHero && <><svg viewBox="0 0 1440 64" preserveAspectRatio="none" className="w-full block" style={{ height: 64, display: "block" }}>
         <path d="M0,32 C240,62 480,2 720,18 C960,34 1200,62 1440,22 L1440,64 L0,64 Z" fill={colors.newsletterColor} />

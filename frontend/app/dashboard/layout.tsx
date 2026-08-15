@@ -375,6 +375,16 @@ const handler = () => {
     } catch {}
   };
 
+  const toggleNotifOpen = () => {
+    setNotifOpen((o) => {
+      const next = !o;
+      if (next && unreadCount > 0) {
+        handleMarkAllRead();
+      }
+      return next;
+    });
+  };
+
   const renderSidebarContent = () => (
     <>
       <div
@@ -747,7 +757,7 @@ const handler = () => {
 
             <div className="relative">
               <button
-                onClick={() => setNotifOpen((o) => !o)}
+                onClick={toggleNotifOpen}
                 title={t("dashboard.notifications")}
                 className="relative w-9 h-9 rounded-lg flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 hover:text-[var(--ink)] transition-colors"
               >

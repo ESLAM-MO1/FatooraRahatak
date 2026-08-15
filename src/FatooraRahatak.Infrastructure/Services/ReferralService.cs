@@ -197,11 +197,11 @@ public class ReferralService : IReferralService
         if (user == null)
             throw new InvalidOperationException("المستخدم غير موجود");
 
-        var code = GenerateNumericCode();
+        var code = GenerateLongNumericCode();
         var attempts = 0;
         while (await _context.ReferralCodes.AnyAsync(c => c.Code == code) && attempts < 20)
         {
-            code = GenerateNumericCode();
+            code = GenerateLongNumericCode();
             attempts++;
         }
 
@@ -211,8 +211,31 @@ public class ReferralService : IReferralService
         return referralCode;
     }
 
-    private static string GenerateNumericCode()
+    public async Task<int> UpgradeLegacyCodesAsync()
     {
-        return Random.Shared.Next(100000, 1000000).ToString();
+        var legacyCodes = await _context.ReferralCodes
+            .Where(c => c.Code.Length < 7 || EF.Functions.Like(c.Code, "%[^0-9]%"))
+            .ToListAsync();
+
+        foreach (var referralCode in legacyCodes)
+        {
+            var code = GenerateLongNumericCode();
+            var attempts = 0;
+            while (await _context.ReferralCodes.AnyAsync(c => c.Code == code) && attempts < 20)
+            {
+                code = GenerateLongNumericCode();
+                attempts++;
+            }
+            referralCode.Code = code;
+        }
+
+        await _context.SaveChangesAsync();
+        return legacyCodes.Count;
+    }
+
+    private static string GenerateLongNumericCode()
+    {
+        // 7-8 random numeric digits
+        return Random.Shared.Next(1000000, 100000000).ToString();
     }
 }

@@ -6,9 +6,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import { getUserType } from "@/lib/auth";
 import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import SuccessToast from "@/components/SuccessToast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Can from "@/components/Can";
@@ -61,6 +63,7 @@ export default function JournalEntryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
+  const gate = usePackageFeature("hasAccountingFull");
 
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,8 +91,16 @@ export default function JournalEntryDetailPage() {
   }, [id, t]);
 
   useEffect(() => {
-    if (id) fetchEntry();
-  }, [id, fetchEntry]);
+    if (id && gate.ready && gate.allowed) fetchEntry();
+  }, [id, fetchEntry, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   const isOwner = userType === "Owner";
 
@@ -139,6 +150,14 @@ export default function JournalEntryDetailPage() {
       setActionLoading(false);
     }
   };
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   if (loading) {
     return <LoadingState />;

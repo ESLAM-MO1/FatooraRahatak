@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 
 interface TrialBalanceLine {
   accountId: number;
@@ -115,6 +118,7 @@ function todayStr() {
 
 export default function FinancialReportsPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
   const [activeTab, setActiveTab] = useState<ReportKey>("trial-balance");
 
   const tabs: { key: ReportKey; label: string }[] = [
@@ -196,8 +200,17 @@ export default function FinancialReportsPage() {
   }, [activeTab, from, to, asOf, accountType, sourceType, t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     fetchReport();
-  }, [fetchReport]);
+  }, [fetchReport, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   const handleClearPeriod = () => {
     setFrom("");

@@ -6,7 +6,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
-import SuccessToast from "@/components/SuccessToast";
+import Toast from "@/components/Toast";
 import { useConfirm } from "@/components/ConfirmDialog";
 
 interface Batch {
@@ -62,7 +62,7 @@ export default function AdminSettlementsPage() {
   const [detail, setDetail] = useState<BatchDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [refText, setRefText] = useState("");
   const confirm = useConfirm();
 
@@ -72,7 +72,7 @@ export default function AdminSettlementsPage() {
       const res = await api.get("/admin/settlements/batches");
       setBatches(res.data.data || []);
     } catch (e: any) {
-      setToast(e?.response?.data?.message || t("common.error"));
+      setToast({ type: "error", text: e?.response?.data?.message || t("common.error") });
     } finally {
       setLoading(false);
     }
@@ -87,10 +87,10 @@ export default function AdminSettlementsPage() {
     setGenerating(true);
     try {
       const res = await api.post("/admin/settlements/batches/generate", {});
-      setToast(res.data.message || t("settlements.generated"));
+      setToast({ type: "success", text: res.data.message || t("settlements.generated") });
       load();
     } catch (e: any) {
-      setToast(e?.response?.data?.message || t("common.error"));
+      setToast({ type: "error", text: e?.response?.data?.message || t("common.error") });
     } finally {
       setGenerating(false);
     }
@@ -107,11 +107,11 @@ export default function AdminSettlementsPage() {
     if (!ok) return;
     try {
       const res = await api.post(`/admin/settlements/batches/${detail.id}/confirm`, { paymentReference: refText || null });
-      setToast(res.data.message || t("settlements.confirmed"));
+      setToast({ type: "success", text: res.data.message || t("settlements.confirmed") });
       setDetail(res.data.data);
       load();
     } catch (e: any) {
-      setToast(e?.response?.data?.message || t("common.error"));
+      setToast({ type: "error", text: e?.response?.data?.message || t("common.error") });
     }
   };
 
@@ -124,7 +124,7 @@ export default function AdminSettlementsPage() {
   return (
     <div className="p-6">
       <PageHeader icon="wallet" title={t("nav.settlements")} />
-      {toast && <SuccessToast message={toast} onClose={() => setToast(null)} />}
+      {toast && <Toast message={toast.text} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="flex justify-end mb-6">
         <button

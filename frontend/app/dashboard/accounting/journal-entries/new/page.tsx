@@ -6,8 +6,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 
 interface Account {
   id: number;
@@ -39,6 +42,7 @@ function flattenLeafAccounts(accounts: Account[], depth = 0): { account: Account
 export default function NewJournalEntryPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const gate = usePackageFeature("hasAccountingFull");
   const [accounts, setAccounts] = useState<{ account: Account; depth: number }[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -48,12 +52,21 @@ export default function NewJournalEntryPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     api
       .get("/accounts")
       .then((res) => setAccounts(flattenLeafAccounts(res.data.data)))
       .catch(() => setError(t("journalEntry.loadAccountsError")))
       .finally(() => setLoadingAccounts(false));
-  }, [t]);
+  }, [t, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   const totals = useMemo(() => {
     const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);

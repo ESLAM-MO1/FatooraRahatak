@@ -54,6 +54,52 @@ const PAYMENT_LABEL_KEYS: Record<string, string> = {
   BankTransfer: "checkout.paymentBankTransfer",
 };
 
+function paymentIcon(type: string) {
+  switch (type) {
+    case "CashOnDelivery":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="6" width="20" height="12" rx="2" />
+          <circle cx="12" cy="12" r="2.5" />
+          <path d="M6 12h.01M18 12h.01" />
+        </svg>
+      );
+    case "CreditCard":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <path d="M2 10h20" />
+          <path d="M6 15h4" />
+        </svg>
+      );
+    case "PayPal":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 3h5a5 5 0 0 1 5 5c0 .6-.1 1.2-.3 1.7" />
+          <path d="M6 3h-2l3 13h2l1.2-5" />
+          <path d="M9 11c1.2 0 2.3-1 2.3-2.3A2.3 2.3 0 0 0 9 6.5H6.5L8 11" />
+        </svg>
+      );
+    case "BankTransfer":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 20h16" />
+          <path d="M5 20v-8M9 20v-8M15 20v-8M19 20v-8" />
+          <path d="M3 12V8l9-5 9 5v4" />
+          <path d="M5 8h14" />
+          <path d="M8 8v-1M16 8v-1" />
+        </svg>
+      );
+    default:
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v10M8.5 9.5 12 7l3.5 2.5" />
+        </svg>
+      );
+  }
+}
+
 interface MethodOption {
   type: string;
 }
@@ -334,78 +380,49 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-6xl mx-auto px-4 py-6">
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+        <div className="alert alert--danger mb-4">{error}</div>
       )}
 
-      {/* Cart summary for review */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100 mb-6">
-        {cart.items.map((item) => (
-          <div key={item.id} className="p-4 flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-gray-800 font-medium">{item.productNameAr}</p>
-              <p className="text-sm text-gray-500 mt-1">
-                {item.quantity} × {t("cart.priceSAR", { price: item.priceAtAdd.toFixed(2) })}
-              </p>
-            </div>
-            <p className="font-bold text-gray-800">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
-          </div>
-        ))}
-        <div className="p-4 flex items-center justify-between">
-          <span className="text-gray-600 font-medium">{t("cart.subtotal")}</span>
-          <span className="text-base font-bold text-gray-700">
-            {t("cart.priceSAR", { price: cart.subtotal.toFixed(2) })}
-          </span>
-        </div>
-        {selectedShipping === "DeliveryToAddress" && quote?.available && (
-          <div className="p-4 flex items-center justify-between">
-            <span className="text-gray-500 text-sm">{t("checkout.shippingCostLabel")}</span>
-            <span className="text-sm font-bold text-gray-700">
-              {quote.isFreeShipping
-                ? t("checkout.freeShipping")
-                : t("cart.priceSAR", { price: quote.shippingCost.toFixed(2) })}
-            </span>
-          </div>
-        )}
-        <div className="p-4 flex items-center justify-between">
-          <span className="text-gray-600 font-medium">{t("cart.total")}</span>
-          <span className="text-xl font-bold store-price">
-            {t("cart.priceSAR", {
-              price: (
-                cart.subtotal +
-                (selectedShipping === "DeliveryToAddress" && quote?.available ? quote.shippingCost : 0)
-              ).toFixed(2),
-            })}
-          </span>
-        </div>
-      </div>
+      <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start">
+        {/* Main column */}
+        <div className="space-y-6">
 
       {/* Shipping method selection */}
       {shippingMethods.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
-          <p className="text-sm font-bold text-gray-800 mb-3">{t("checkout.shippingMethodLabel")}</p>
-          <div className="space-y-2">
-            {shippingMethods.map((m) => (
-              <label
-                key={m.type}
-                className={`flex items-center justify-between px-4 py-3 rounded-lg border cursor-pointer transition ${
-                  selectedShipping === m.type
-                    ? "border-[var(--theme)] bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <span className="text-sm font-medium text-gray-700">{shippingLabel(m.type)}</span>
-                <input
-                  type="radio"
-                  name="shippingMethod"
-                  value={m.type}
-                  checked={selectedShipping === m.type}
-                  onChange={() => setSelectedShipping(m.type)}
-                  className="accent-[var(--theme)]"
-                />
-              </label>
-            ))}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-7 h-7 rounded-full bg-[var(--theme)]/10 text-[var(--theme)] text-[13px] font-bold flex items-center justify-center">1</span>
+            <p className="text-[14px] font-bold text-gray-800">{t("checkout.shippingMethodLabel")}</p>
+          </div>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {shippingMethods.map((m) => {
+              const active = selectedShipping === m.type;
+              return (
+                <button
+                  key={m.type}
+                  type="button"
+                  onClick={() => setSelectedShipping(m.type)}
+                  className={`flex items-center justify-between px-4 py-3.5 rounded-xl border-2 transition cursor-pointer ${
+                    active
+                      ? "border-[var(--theme)] bg-[var(--theme)]/[0.06] shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
+                  <span className={`text-sm font-semibold ${active ? "text-[var(--theme)]" : "text-gray-700"}`}>
+                    {shippingLabel(m.type)}
+                  </span>
+                  <span
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                      active ? "border-[var(--theme)]" : "border-gray-300"
+                    }`}
+                  >
+                    {active && <span className="w-2.5 h-2.5 rounded-full bg-[var(--theme)]" />}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {cart.totalWeightKg ? (
@@ -444,46 +461,63 @@ export default function CheckoutPage() {
 
       {/* Payment method selection */}
       {paymentMethods.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
-          <p className="text-sm font-bold text-gray-800 mb-3">{t("checkout.paymentMethodLabel")}</p>
-          <div className="space-y-2">
-            {paymentMethods.map((m) => (
-              <label
-                key={m.type}
-                className={`flex items-center justify-between px-4 py-3 rounded-lg border cursor-pointer transition ${
-                  selectedPayment === m.type
-                    ? "border-[var(--theme)] bg-blue-50"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <span className="text-sm font-medium text-gray-700">{paymentLabel(m.type)}</span>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={m.type}
-                  checked={selectedPayment === m.type}
-                  onChange={() => setSelectedPayment(m.type)}
-                  className="accent-[var(--theme)]"
-                />
-              </label>
-            ))}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-7 h-7 rounded-full bg-[var(--theme)]/10 text-[var(--theme)] text-[13px] font-bold flex items-center justify-center">2</span>
+            <p className="text-[14px] font-bold text-gray-800">{t("checkout.paymentMethodLabel")}</p>
+          </div>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {paymentMethods.map((m) => {
+              const active = selectedPayment === m.type;
+              return (
+                <button
+                  key={m.type}
+                  type="button"
+                  onClick={() => setSelectedPayment(m.type)}
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 transition cursor-pointer ${
+                    active
+                      ? "border-[var(--theme)] bg-[var(--theme)]/[0.06] shadow-sm"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
+                  <span
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      active ? "bg-[var(--theme)]/[0.12] text-[var(--theme)]" : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {paymentIcon(m.type)}
+                  </span>
+                  <span className={`text-sm font-semibold flex-1 text-right ${active ? "text-[var(--theme)]" : "text-gray-700"}`}>
+                    {paymentLabel(m.type)}
+                  </span>
+                  <span
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition shrink-0 ${
+                      active ? "border-[var(--theme)]" : "border-gray-300"
+                    }`}
+                  >
+                    {active && <span className="w-2.5 h-2.5 rounded-full bg-[var(--theme)]" />}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
       {/* Shipping form - always direct, no login/guest step */}
       <form
+        id="checkout-form"
         onSubmit={handleSubmit}
-        className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 space-y-4"
+        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
       >
         {loggedIn && (
-          <p className="text-sm text-green-700 bg-green-50 rounded p-3">
+          <p className="text-sm text-green-700 bg-green-50 px-5 py-3 border-b border-green-100">
             {t("checkout.loggedInNotice")}
           </p>
         )}
 
         {savedAddresses.length > 0 && (
-          <div>
+          <div className="px-5 pt-5">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t("checkout.savedAddresses")}
             </label>
@@ -491,7 +525,7 @@ export default function CheckoutPage() {
               {savedAddresses.map((addr) => (
                 <label
                   key={addr.id}
-                  className={`flex items-start gap-3 px-4 py-3 rounded-lg border cursor-pointer transition ${
+                  className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition ${
                     selectedAddressId === String(addr.id)
                       ? "border-[var(--theme)] bg-blue-50"
                       : "border-gray-200 hover:border-gray-300"
@@ -516,7 +550,7 @@ export default function CheckoutPage() {
                 </label>
               ))}
               <label
-                className={`flex items-start gap-3 px-4 py-3 rounded-lg border cursor-pointer transition ${
+                className={`flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition ${
                   selectedAddressId === "new"
                     ? "border-[var(--theme)] bg-blue-50"
                     : "border-gray-200 hover:border-gray-300"
@@ -547,103 +581,170 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("checkout.nameLabel")}{!loggedIn && " *"}
-          </label>
-          <input
-            type="text"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
-            required={!loggedIn}
-          />
-        </div>
+        <div className="p-5 space-y-5">
+          {/* Contact details section */}
+          <div className="border-b border-gray-100 pb-5">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-7 h-7 rounded-full bg-[var(--theme)]/10 text-[var(--theme)] text-[13px] font-bold flex items-center justify-center">3</span>
+              <p className="text-[14px] font-bold text-gray-800">{t("checkout.sectionContact")}</p>
+            </div>
 
-        <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    {t("checkout.phoneLabel")}{!loggedIn && " *"}
-  </label>
-  <PhoneInputField
-    value={guestPhone}
-    onChange={setGuestPhone}
-    required={!loggedIn}
-    className="w-full px-3 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-[var(--theme)]"
-  />
-</div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t("checkout.nameLabel")}{!loggedIn && " *"}
+              </label>
+              <input
+                type="text"
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
+                required={!loggedIn}
+              />
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("checkout.emailLabel")}
-          </label>
-          <input
-            type="email"
-            value={guestEmail}
-            onChange={(e) => setGuestEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
-          />
-        </div>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t("checkout.phoneLabel")}{!loggedIn && " *"}
+              </label>
+              <PhoneInputField
+                value={guestPhone}
+                onChange={setGuestPhone}
+                required={!loggedIn}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-[var(--theme)]"
+              />
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("checkout.shippingAddressLabel")}
-          </label>
-          <textarea
-            value={shippingAddress}
-            onChange={(e) => setShippingAddress(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("checkout.notesLabel")}
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--theme)]"
-          />
-        </div>
-
-        {selectedPayment === "CreditCard" && (
-          <div className="rounded-lg border border-blue-300 bg-blue-50/40 p-4">
-            <p className="text-[13px] font-bold text-gray-800">{t("checkout.securePaymentTitle")}</p>
-            <p className="text-[12px] text-gray-600 mt-1">
-              {t("checkout.securePaymentRedirect")}
-            </p>
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t("checkout.emailLabel")}
+              </label>
+              <input
+                type="email"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
+              />
+            </div>
           </div>
-        )}
 
-        {selectedPayment === "PayPal" && (
-          <div className="rounded-lg border border-blue-300 bg-blue-50/40 p-4">
-            <p className="text-[13px] font-bold text-gray-800">{t("checkout.paypalTitle")}</p>
-            <p className="text-[12px] text-gray-600 mt-1">
-              {t("checkout.paypalRedirect")}
-            </p>
+          {/* Delivery details section */}
+          <div className="border-b border-gray-100 pb-5">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-7 h-7 rounded-full bg-[var(--theme)]/10 text-[var(--theme)] text-[13px] font-bold flex items-center justify-center">4</span>
+              <p className="text-[14px] font-bold text-gray-800">{t("checkout.sectionDelivery")}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t("checkout.shippingAddressLabel")}{" *"}
+              </label>
+              <textarea
+                value={shippingAddress}
+                onChange={(e) => setShippingAddress(e.target.value)}
+                rows={3}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
+                required
+              />
+            </div>
           </div>
-        )}
 
-        {selectedPayment === "BankTransfer" && (
-          <div className="rounded-lg border border-blue-300 bg-blue-50/40 p-4">
-            <p className="text-[13px] font-bold text-gray-800">{t("checkout.bankTransferTitle")}</p>
-            <p className="text-[12px] text-gray-600 mt-1">
-              {t("checkout.bankTransferInstructions")}
-            </p>
+          {/* Notes section */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-7 h-7 rounded-full bg-[var(--theme)]/10 text-[var(--theme)] text-[13px] font-bold flex items-center justify-center">5</span>
+              <p className="text-[14px] font-bold text-gray-800">{t("checkout.sectionNotes")}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t("checkout.notesLabel")}
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
+              />
+            </div>
           </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="store-btn w-full disabled:bg-gray-300"
-        >
-          {submitting ? t("checkout.confirming") : t("checkout.confirmOrder")}
-        </button>
+        </div>
       </form>
+        </div>
+        {/* End main column */}
+
+        {/* Sticky order summary sidebar */}
+        <aside className="lg:sticky lg:top-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100">
+            <div className="px-5 py-4">
+              <p className="text-[15px] font-bold text-gray-800">{t("checkout.yourOrderTitle")}</p>
+            </div>
+            <div className="px-5 py-3 max-h-64 overflow-y-auto">
+              {cart.items.map((item) => (
+                <div key={item.id} className="py-2.5 flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-800 text-sm font-medium truncate">{item.productNameAr}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {item.quantity} × {t("cart.priceSAR", { price: item.priceAtAdd.toFixed(2) })}
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-gray-800 shrink-0">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
+                </div>
+              ))}
+            </div>
+            <div className="px-5 py-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 text-sm font-medium">{t("cart.subtotal")}</span>
+                <span className="text-sm font-bold text-gray-700">
+                  {t("cart.priceSAR", { price: cart.subtotal.toFixed(2) })}
+                </span>
+              </div>
+              {selectedShipping === "DeliveryToAddress" && quote?.available ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 text-sm">{t("checkout.shippingCostLabel")}</span>
+                  <span className="text-sm font-bold text-gray-700">
+                    {quote.isFreeShipping
+                      ? t("checkout.freeShipping")
+                      : t("cart.priceSAR", { price: quote.shippingCost.toFixed(2) })}
+                  </span>
+                </div>
+              ) : selectedShipping === "DeliveryToAddress" ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-400 text-sm">{t("checkout.shippingCostLabel")}</span>
+                  <span className="text-xs text-gray-400">{t("checkout.enterAddressForShipping")}</span>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
+                <span className="text-gray-700 font-bold">{t("cart.total")}</span>
+                <span className="text-xl font-bold store-price">
+                  {t("cart.priceSAR", {
+                    price: (
+                      cart.subtotal +
+                      (selectedShipping === "DeliveryToAddress" && quote?.available ? quote.shippingCost : 0)
+                    ).toFixed(2),
+                  })}
+                </span>
+              </div>
+            </div>
+            <div className="px-5 py-4">
+              <button
+                type="submit"
+                form="checkout-form"
+                disabled={submitting}
+                className="store-btn w-full disabled:bg-gray-300"
+              >
+                {submitting ? t("checkout.confirming") : t("checkout.confirmOrder")}
+              </button>
+              {(selectedPayment === "CreditCard" || selectedPayment === "PayPal" || selectedPayment === "BankTransfer") && (
+                <p className="mt-2.5 text-[11px] text-gray-400 text-center leading-relaxed">
+                  {selectedPayment === "CreditCard"
+                    ? t("checkout.securePaymentRedirect")
+                    : selectedPayment === "PayPal"
+                    ? t("checkout.paypalRedirect")
+                    : t("checkout.bankTransferInstructions")}
+                </p>
+              )}
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

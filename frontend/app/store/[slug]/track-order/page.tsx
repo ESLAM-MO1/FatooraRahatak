@@ -70,7 +70,7 @@ export default function TrackOrderPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>
+          <div className="alert alert--danger">{error}</div>
         )}
 
         <button

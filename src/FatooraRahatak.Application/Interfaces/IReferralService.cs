@@ -11,4 +11,5 @@ public interface IReferralService
     Task<List<AdminReferralDto>> GetAllReferralsAsync(string? status = null);
     Task<List<AdminCommissionDto>> GetAllCommissionsAsync(string? status = null);
     Task MarkCommissionPaidAsync(long commissionId);
+    Task<int> UpgradeLegacyCodesAsync();
 }

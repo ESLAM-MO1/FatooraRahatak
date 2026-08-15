@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import Can from "@/components/Can";
 import Pagination from "@/components/Pagination";
 
@@ -33,6 +35,7 @@ const typeStyles: Record<string, string> = {
 
 export default function InvoicesPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -75,13 +78,22 @@ export default function InvoicesPage() {
   }, [invoiceType, from, to, page, pageSize, t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, gate.ready, gate.allowed]);
 
   useEffect(() => {
     setPage(1);
   }, [invoiceType, from, to]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   return (
     <div>

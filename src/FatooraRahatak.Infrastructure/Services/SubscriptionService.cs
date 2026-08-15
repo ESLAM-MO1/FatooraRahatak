@@ -74,6 +74,23 @@ public class SubscriptionService : ISubscriptionService
 
         var ownerUser = await _context.Users.FindAsync(store.OwnerUserId);
 
+        var now = DateTime.UtcNow;
+        var storeLocked = store.Status == StoreStatus.Suspended || store.Status == StoreStatus.Closed;
+
+        // ⚠️ إصلاح: كانت تظهر رسالة "مطلوب التجديد الآن" أثناء عمل المزايا لمجرد انتهاء
+        // الاشتراك أو عدم وجود اشتراك نشط، بينما المتجر ما زال Active والباقة مفعّلة فعليًا.
+        // القاعدة الجديدة: مطلوب التجديد فقط إذا كان المتجر موقوفًا فعليًا، أو انتهى
+        // الاشتراك فعليًا (بعد مراعاة فترة السماح في الأيام المتبقية).
+        var effectiveEnd = activeSubscription?.EndDate
+            ?? (activeSubscription?.GracePeriodEnd ?? (DateTime?)null);
+        var daysRemaining = activeSubscription == null || effectiveEnd == null
+            ? (int?)null
+            : Math.Max(0, (int)Math.Ceiling((effectiveEnd.Value - now).TotalDays));
+
+        var requiresRenewal = storeLocked
+            || (daysRemaining != null && daysRemaining <= 7 && (activeSubscription!.GracePeriodEnd == null || activeSubscription!.GracePeriodEnd <= now))
+            || (activeSubscription == null && storeLocked);
+
         return new SubscriptionStatusDto
         {
             CurrentPackage = store.Package.PackageName,
@@ -90,9 +107,24 @@ public class SubscriptionService : ISubscriptionService
             MaxThemes = store.Package.MaxThemes,
             BillingCycle = (activeSubscription?.BillingCycle ?? Domain.Enums.BillingCycle.Monthly).ToString(),
             SubscriptionEndDate = activeSubscription?.EndDate,
-            DaysRemaining = activeSubscription == null ? null : Math.Max(0, (int)Math.Ceiling((activeSubscription.EndDate - DateTime.UtcNow).TotalDays)),
-            RequiresRenewal = activeSubscription == null || activeSubscription.EndDate <= DateTime.UtcNow.AddDays(7),
-            SubscriptionStatus = activeSubscription?.Status.ToString()
+            DaysRemaining = daysRemaining,
+            RequiresRenewal = requiresRenewal,
+            SubscriptionStatus = activeSubscription?.Status.ToString(),
+            HasPos = store.Package.HasPos,
+            HasPayroll = store.Package.HasPayroll,
+            HasAccountingFull = store.Package.HasAccountingFull,
+            HasZatcaInvoice = store.Package.HasZatcaInvoice,
+            HasCustomDomain = store.Package.HasCustomDomain,
+            HasLogo = store.Package.HasLogo,
+            HasApiAccess = store.Package.HasApiAccess,
+            HasAffiliateMarketing = store.Package.HasAffiliateMarketing,
+            HasShippingIntegration = store.Package.HasShippingIntegration,
+            HasShippingCalculator = store.Package.HasShippingCalculator,
+            HasShippingTracking = store.Package.HasShippingTracking,
+            HasShippingLabelPrinting = store.Package.HasShippingLabelPrinting,
+            HasFreeShipping = store.Package.HasFreeShipping,
+            HasCashOnDelivery = store.Package.HasCashOnDelivery,
+            HasShippingDiscounts = store.Package.HasShippingDiscounts
         };
     }
 

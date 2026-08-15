@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import Can from "@/components/Can";
 
 interface Voucher {
@@ -26,6 +28,7 @@ interface Voucher {
 
 export default function VouchersPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -45,8 +48,17 @@ export default function VouchersPage() {
   }, [t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     fetchData(filterType);
-  }, [fetchData, filterType]);
+  }, [fetchData, filterType, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   return (
     <div>

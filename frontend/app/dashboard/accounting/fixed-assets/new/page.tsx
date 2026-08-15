@@ -6,12 +6,16 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 
 export default function NewFixedAssetPage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const gate = usePackageFeature("hasAccountingFull");
   const [nameAr, setNameAr] = useState("");
   const [purchaseCost, setPurchaseCost] = useState("");
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -57,6 +61,14 @@ export default function NewFixedAssetPage() {
       setSubmitting(false);
     }
   };
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   return (
     <div>

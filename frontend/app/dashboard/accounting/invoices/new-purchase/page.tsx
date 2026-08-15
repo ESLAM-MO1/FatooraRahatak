@@ -6,8 +6,11 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 
 interface Product {
   id: number;
@@ -31,6 +34,7 @@ const VAT_RATE = 0.15;
 export default function NewPurchaseInvoicePage() {
   const { t } = useTranslation();
   const router = useRouter();
+  const gate = usePackageFeature("hasAccountingFull");
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productsError, setProductsError] = useState(false);
@@ -47,18 +51,28 @@ export default function NewPurchaseInvoicePage() {
   const [isVatRegistered, setIsVatRegistered] = useState(false);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     api
       .get("/products")
       .then((res) => setProducts(res.data.data))
       .catch(() => setProductsError(true))
       .finally(() => setLoadingProducts(false));
-  }, []);
+  }, [gate.ready, gate.allowed]);
   useEffect(() => {
+  if (!gate.ready || !gate.allowed) return;
   api
     .get("/stores/my-store")
     .then((res) => setIsVatRegistered(res.data.data.isVatRegistered))
     .catch(() => {});
-  }, []);
+  }, [gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   const productMap = useMemo(() => {
     const map = new Map<string, Product>();

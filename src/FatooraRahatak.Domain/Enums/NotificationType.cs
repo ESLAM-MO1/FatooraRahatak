@@ -27,5 +27,9 @@ public enum NotificationType
     LeaveRequestRejected,
     StockCountCompleted,
     TicketReplied,
-    TicketStatusChanged
+    TicketStatusChanged,
+    // ⚠️ أُضيفت في النهاية حصرًا: القيم تُخزَّن كأرقام في قاعدة البيانات ويُعرض نوعها
+    // بـ ToString()، لذلك أي قيمة جديدة يجب أن تأتي في النهاية حتى لا تتغير معاني
+    // الإشعارات القديمة المحفوظة (كانت وُضعت في المنتصف فزيّحت ترقيم الباقي).
+    SubscriptionExpired
 }

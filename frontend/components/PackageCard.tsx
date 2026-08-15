@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { formatNumber } from "@/lib/formatNumber";
+import { formatMoney } from "@/lib/formatNumber";
 import InfoTooltip from "@/components/InfoTooltip";
 
 export interface PackageCardData {
@@ -132,15 +132,15 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
               </span>
             ) : null}
             <p className="text-[22px] font-bold" style={{ color: pkg.color }}>
-              {formatNumber(totalPrice)} SAR
+              {formatMoney(totalPrice)} {t("common.sar")}
             </p>
             <p className="text-[11px] text-[var(--sub)]">
-              {formatNumber(pkg.monthlyPrice)} {t("packages.month")}
+              {formatMoney(pkg.monthlyPrice)} {t("common.sar")} / {t("packages.month")}
             </p>
           </>
         ) : (
           <p className="text-[22px] font-bold" style={{ color: pkg.color }}>
-            {formatNumber(pkg.monthlyPrice)} {t("packages.month")}
+            {formatMoney(pkg.monthlyPrice)} {t("common.sar")} / {t("packages.month")}
           </p>
         )}
       </div>

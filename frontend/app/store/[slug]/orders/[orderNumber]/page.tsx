@@ -237,7 +237,7 @@ export default function OrderDetailPage() {
 </div>
 
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>
+            <div className="alert alert--danger">{error}</div>
           )}
 
           <button
@@ -351,7 +351,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
         {isReturned && (
-          <div className="mt-5 flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-3 text-sm font-medium">
+          <div className="alert alert--danger mt-5">
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className="shrink-0">
               <path d="M3 3v6h6M21 21v-6h-6M3.5 9a9 9 0 0 1 15.4-2.3M20.5 15a9 9 0 0 1-15.4 2.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -524,7 +524,7 @@ export default function OrderDetailPage() {
                 />
               </div>
               {returnError && (
-                <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{returnError}</div>
+                <div className="alert alert--danger">{returnError}</div>
               )}
               <div className="flex items-center gap-3">
                 <button

@@ -325,7 +325,7 @@ export default function ProductDetailPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>
+        <div className="alert alert--danger mb-4">{error}</div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -465,7 +465,7 @@ export default function ProductDetailPage() {
 
           <SuccessToast message={addSuccess} fixed className="mb-4" />
           {addError && (
-            <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
+            <div className="alert alert--danger mb-4">
               {addError}
             </div>
           )}
@@ -621,7 +621,7 @@ export default function ProductDetailPage() {
             </div>
 
             {reviewSubmitError && (
-              <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{reviewSubmitError}</div>
+              <div className="alert alert--danger">{reviewSubmitError}</div>
             )}
 
             <button

@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useStorefront } from "@/lib/hooks/useStorefront";
 import type { StoreTemplateProps } from "@/app/store/[slug]/layout";
 import type { StoreThemeMeta, StoreColors } from "@/components/store-templates/configs";
 import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
-import SuccessToast from "@/components/SuccessToast";
+import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon, SparklesIcon } from "@/components/store-templates/icons";
@@ -24,7 +24,7 @@ export default function RoyalPurpleTemplate({
 
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, searchInput, setSearchInput, handleSearchSubmit, isSearchActive, searchResults,
-    currencySymbol, isRtl, handleAddToCart, cartMessage } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
+    currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
   const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
@@ -144,7 +144,7 @@ export default function RoyalPurpleTemplate({
         </div>
       </section>}
 
-      <SuccessToast message={cartMessage} />
+      <Toast message={cartMessage} type={cartMessageType} />
 
       {showHero && <section style={{ background: colors.newsletterColor, padding: "56px 0" }}>
         <div className="text-center max-w-3xl mx-auto px-4">

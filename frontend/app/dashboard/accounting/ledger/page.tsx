@@ -4,8 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 
 interface Account {
   id: number;
@@ -80,6 +83,7 @@ function buildLedgerTable(ledger: LedgerResponse, from: string, to: string, t: (
 
 export default function LedgerPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
   const [accountsFlat, setAccountsFlat] = useState<{ account: Account; depth: number }[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountsError, setAccountsError] = useState("");
@@ -93,6 +97,7 @@ export default function LedgerPage() {
   const [ledgerError, setLedgerError] = useState("");
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     api
       .get("/accounts")
       .then((res) => {
@@ -102,7 +107,7 @@ export default function LedgerPage() {
         setAccountsError(err.response?.data?.message || t("ledger.loadAccountsError"));
       })
       .finally(() => setAccountsLoading(false));
-  }, [t]);
+  }, [t, gate.ready, gate.allowed]);
 
   const fetchLedger = useCallback(async () => {
     if (!selectedAccountId) {
@@ -126,8 +131,17 @@ export default function LedgerPage() {
   }, [selectedAccountId, from, to, t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     fetchLedger();
-  }, [fetchLedger]);
+  }, [fetchLedger, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   return (
     <div>

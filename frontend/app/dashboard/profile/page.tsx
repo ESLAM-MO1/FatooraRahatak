@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import { logout } from "@/lib/auth";
-import SuccessToast from "@/components/SuccessToast";
+import Toast from "@/components/Toast";
 import PhoneInputField from "@/components/PhoneInputField";
 import { normalizePhone } from "@/lib/phone";
 
@@ -156,8 +156,7 @@ export default function ProfilePage() {
     <div className="max-w-lg mx-auto">
       <h1 className="text-[22px] font-bold text-[var(--blue-deep)] mb-6">{t("common.profile")}</h1>
 
-      {message?.type === "success" && <SuccessToast message={message.text} fixed className="mb-4" />}
-      {message?.type === "error" && <div className="alert alert--danger mb-4">{message.text}</div>}
+      {message && <Toast message={message.text} type={message.type} fixed />}
 
       <div className="card p-6 mb-6">
         <div className="flex flex-col items-center mb-6">

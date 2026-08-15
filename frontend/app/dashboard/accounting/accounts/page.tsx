@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import SuccessToast from "@/components/SuccessToast";
 import InfoTooltip from "@/components/InfoTooltip";
 import Can from "@/components/Can";
@@ -66,6 +68,7 @@ function collectDescendantIds(account: Account): number[] {
 
 export default function AccountsPage() {
   const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
   const [tree, setTree] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -91,8 +94,9 @@ export default function AccountsPage() {
   }, [t]);
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, gate.ready, gate.allowed]);
 
   const flatList = flattenAccounts(tree);
 
@@ -162,6 +166,14 @@ export default function AccountsPage() {
       setSubmitting(false);
     }
   };
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   if (loading) {
     return <LoadingState />;

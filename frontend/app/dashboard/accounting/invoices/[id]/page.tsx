@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 
 interface InvoiceItem {
   id: number;
@@ -285,12 +287,14 @@ export default function InvoiceDetailPage() {
   const { t } = useTranslation();
   const params = useParams();
   const id = params.id as string;
+  const gate = usePackageFeature("hasAccountingFull");
 
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     let active = true;
     api
       .get(`/invoices/${id}`)
@@ -310,7 +314,15 @@ export default function InvoiceDetailPage() {
     return () => {
       active = false;
     };
-  }, [id, t]);
+  }, [id, t, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
 
   if (loading) {
     return <LoadingState />;

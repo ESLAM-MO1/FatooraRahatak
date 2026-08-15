@@ -86,14 +86,9 @@ public class QuickLoginService : IQuickLoginService
         var code = Random.Shared.Next(100000, 999999).ToString();
         _cache.Set(GetCacheKey(store.Id, normalized), code, TimeSpan.FromMinutes(10));
 
-        // ⚠️ إصلاح تسريب رمز التحقق: رمز التطوير (DevCode) يُرجع في الرد فقط داخل بيئة التطوير،
-        // أما في الإنتاج فلا يُكشف الرمز في أي حال — المُرسل إليه يستقبله فقط عبر واتساب/بريد.
-        var isDevelopment = string.Equals(
-            _configuration["ASPNETCORE_ENVIRONMENT"] ?? System.Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
-            "Development",
-            StringComparison.OrdinalIgnoreCase);
-
         // قناة الإرسال: واتساب إن كان مُهيأ، وإلا بريد العميل إن وُجد، وإلا رمز تطوير للاختبار
+        // بإرجاع رمز التطوير في الرد فقط عندما لا توجد أي قناة توصل مهيأة — وبهذا يعمل
+        // الدخول السريع تجريبيًا (كما في بيئة التطوير) دون كشف الرمز عند وجود قناة إرسال حقيقية.
         string? channel = null;
         string? maskedContact = null;
         string? devCode = null;
@@ -141,7 +136,7 @@ public class QuickLoginService : IQuickLoginService
             MaskedContact = maskedContact,
             CustomerFound = user != null || guest != null,
             CustomerName = name,
-            DevCode = isDevelopment ? devCode : null
+            DevCode = channel == "dev" ? devCode : null
         };
     }
 

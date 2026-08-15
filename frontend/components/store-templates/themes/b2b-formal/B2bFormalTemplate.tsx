@@ -1,11 +1,11 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useStorefront } from "@/lib/hooks/useStorefront";
 import type { StoreTemplateProps } from "@/app/store/[slug]/layout";
 import type { StoreThemeMeta, StoreColors } from "@/components/store-templates/configs";
 import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
-import SuccessToast from "@/components/SuccessToast";
+import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon, CheckIcon, BuildingIcon, HeadsetIcon, ScaleIcon } from "@/components/store-templates/icons";
@@ -23,7 +23,7 @@ export default function B2bFormalTemplate({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
-    cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, quoteRequested, handleQuoteRequest } = useStorefront(slug, storeId, currency, false, showHero, themeMeta);
+    cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType, quoteRequested, handleQuoteRequest } = useStorefront(slug, storeId, currency, false, showHero, themeMeta);
 
   const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
@@ -148,7 +148,7 @@ export default function B2bFormalTemplate({
         </div>
       </section>}
 
-      <SuccessToast message={cartMessage} />
+      <Toast message={cartMessage} type={cartMessageType} />
 
       {showHero && <section style={{ background: "#E8EAED", padding: "24px 0" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap justify-center gap-6">

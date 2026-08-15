@@ -9,6 +9,7 @@ using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -21,8 +22,9 @@ public class PaymentService : IPaymentService
     private readonly IAccountingService _accountingService;
     private readonly IOrderStockService _orderStockService;
     private readonly INotificationService _notificationService;
+    private readonly IConfiguration _config;
 
-    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService)
+    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config)
     {
         _context = context;
         _provider = provider;
@@ -31,6 +33,7 @@ public class PaymentService : IPaymentService
         _accountingService = accountingService;
         _orderStockService = orderStockService;
         _notificationService = notificationService;
+        _config = config;
     }
 
     public async Task<CreatePaymentResult> CreatePaymentLinkAsync(CreatePaymentDto dto, long? storeId = null)
@@ -118,6 +121,14 @@ public class PaymentService : IPaymentService
             ? BuildPaymentDescription(dto)
             : dto.Description;
 
+        // 🔔 إصلاح الباقة لا تُطبَّق بعد الدفع الناجح: كان رابط الدفع (الاشتراك/الفاتورة المحمية)
+        // يُرسل callback_url يساوي ما يبعثه العميل (صفحة اللوحة) كـ webhook إلى موياسر، فكان
+        // إشعار اكتمال الدفع يذهب إلى صفحة الواجهة بدل السيرفر → لا يُفعَّل الاشتراك ولا يصل
+        // إشعار "تم تفعيل الباقة". الآن نبني دائمًا رابط webhook الخادم من App:BaseUrl تمامًا
+        // كما تفعل خدمة الطلبات (OrderService) — والعميل لن يستطيع تجاوزه.
+        var paymentCallbackUrl = (_config["App:BaseUrl"] ?? "https://your-domain.com")
+            .TrimEnd('/') + "/api/v1/payments/webhook";
+
         if (dto.OrderId.HasValue)
         {
             var orderForMethod = await _context.Orders
@@ -204,7 +215,7 @@ public class PaymentService : IPaymentService
                     dto.Amount,
                     dto.Currency,
                     description,
-                    dto.CallbackUrl,
+                    paymentCallbackUrl,
                     dto.SuccessUrl,
                     dto.SuccessUrl,
                     dto.CustomerEmail);

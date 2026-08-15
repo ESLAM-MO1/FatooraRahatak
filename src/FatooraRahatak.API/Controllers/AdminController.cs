@@ -216,24 +216,6 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, data });
     }
 
-    [HttpPost("users/{id}/impersonate")]
-    public async Task<IActionResult> ImpersonateUser(long id)
-    {
-        var forbidden = CheckSuperAdmin();
-        if (forbidden != null) return forbidden;
-        var adminId = GetCurrentUserId();
-        var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        try
-        {
-            var result = await _adminService.ImpersonateUserAsync(adminId, id, ip);
-            return Ok(new { success = true, data = result });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { success = false, message = ex.Message });
-        }
-    }
-
     [HttpPost("users/staff")]
     public async Task<IActionResult> CreateStaffUser([FromBody] CreateStaffDto dto)
     {
@@ -256,15 +238,6 @@ public class AdminController : ControllerBase
         var forbidden = CheckSuperAdmin();
         if (forbidden != null) return forbidden;
         var data = await _adminService.GetStaffUsersAsync();
-        return Ok(new { success = true, data });
-    }
-
-    [HttpGet("audit-logs")]
-    public async Task<IActionResult> GetAuditLogs()
-    {
-        var forbidden = CheckSuperAdmin();
-        if (forbidden != null) return forbidden;
-        var data = await _adminService.GetAuditLogsAsync();
         return Ok(new { success = true, data });
     }
 

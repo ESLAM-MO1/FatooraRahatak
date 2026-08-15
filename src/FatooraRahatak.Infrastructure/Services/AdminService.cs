@@ -9,10 +9,6 @@ using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Audit;
 using ClosedXML.Excel;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
 using FatooraRahatak.Application.Common;
 namespace FatooraRahatak.Infrastructure.Services;
@@ -152,53 +148,6 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
-    public async Task<ImpersonateResultDto> ImpersonateUserAsync(long adminUserId, long targetUserId, string ipAddress)
-    {
-        var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == targetUserId)
-            ?? throw new InvalidOperationException("المستخدم غير موجود");
-
-        if (targetUser.UserType != UserType.Owner && targetUser.UserType != UserType.Employee)
-            throw new InvalidOperationException("يمكن فقط انتحال شخصية أصحاب المتاجر والموظفين");
-
-        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminUserId)
-            ?? throw new InvalidOperationException("المدير غير موجود");
-
-        var expiry = DateTime.UtcNow.AddMinutes(60);
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, targetUser.Id.ToString()),
-            new Claim(ClaimTypes.Role, targetUser.UserType.ToString()),
-            new Claim(ClaimTypes.Name, targetUser.FullName),
-            new Claim("IsImpersonated", "true"),
-            new Claim("ImpersonatedBy", admin.FullName),
-            new Claim(ClaimTypes.Email, targetUser.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
-        var token = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
-            claims: claims,
-            expires: expiry,
-            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)
-        );
-        var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
-
-        await LogAuditActionAsync(adminUserId, admin.FullName, "Impersonate",
-            targetUser.UserType.ToString(), targetUser.Id.ToString(),
-            $"انتحال شخصية {targetUser.FullName}", ipAddress);
-
-        return new ImpersonateResultDto
-        {
-            AccessToken = accessToken,
-            ExpiresAt = expiry,
-            UserId = targetUser.Id,
-            FullName = targetUser.FullName,
-            UserType = targetUser.UserType.ToString()
-        };
-    }
-
     public async Task<StaffUserDto> CreateStaffUserAsync(CreateStaffDto dto)
     {
         var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
@@ -241,25 +190,6 @@ public class AdminService : IAdminService
                 RoleType = "Support",
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
-            })
-            .ToListAsync();
-    }
-
-    public async Task<List<AuditLogDto>> GetAuditLogsAsync()
-    {
-        return await _context.Set<AuditLog>()
-            .OrderByDescending(a => a.CreatedAt)
-            .Take(200)
-            .Select(a => new AuditLogDto
-            {
-                Id = a.Id,
-                AdminName = a.AdminName,
-                Action = a.Action,
-                TargetType = a.TargetType,
-                TargetId = a.TargetId,
-                Details = a.Details,
-                IpAddress = a.IpAddress,
-                CreatedAt = a.CreatedAt
             })
             .ToListAsync();
     }

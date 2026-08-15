@@ -34,27 +34,6 @@ interface StaffUser {
   createdAt: string;
 }
 
-interface AuditLogEntry {
-  id: number;
-  adminName: string;
-  action: string;
-  targetType: string | null;
-  targetId: string | null;
-  details: string | null;
-  ipAddress: string | null;
-  createdAt: string;
-}
-
-const ACTION_LABEL_KEYS: Record<string, string> = {
-  SuspendStore: "logs.suspendStore",
-  ActivateStore: "logs.activateStore",
-  UpdatePackage: "logs.updatePackage",
-  DeactivateUser: "logs.deactivateUser",
-  ActivateUser: "logs.activateUser",
-  Impersonate: "logs.impersonate",
-  SendNotification: "logs.sendNotification",
-};
-
 const ROLE_OPTIONS = [
   { value: "Support", labelKey: "users.roleSupport" },
   { value: "Finance", labelKey: "users.roleFinance" },
@@ -68,13 +47,10 @@ export default function UsersManagementPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [owners, setOwners] = useState<OwnerUser[]>([]);
   const [staff, setStaff] = useState<StaffUser[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
-
-  const [impersonating, setImpersonating] = useState<number | null>(null);
 
   const [staffForm, setStaffForm] = useState({ fullName: "", email: "", password: "", roleType: "Support" });
   const [staffError, setStaffError] = useState("");
@@ -119,13 +95,6 @@ export default function UsersManagementPage() {
     } catch { }
   };
 
-  const loadAuditLogs = async () => {
-    try {
-      const res = await api.get("/admin/audit-logs");
-      setAuditLogs(res.data.data);
-    } catch { }
-  };
-
   useEffect(() => {
     loadUsers();
   }, []);
@@ -133,7 +102,6 @@ export default function UsersManagementPage() {
   useEffect(() => {
     if (activeTab === "owners") loadOwners();
     if (activeTab === "staff") loadStaff();
-    if (activeTab === "audit") loadAuditLogs();
   }, [activeTab]);
 
   const handleToggleActive = async (user: AdminUser) => {
@@ -151,25 +119,6 @@ export default function UsersManagementPage() {
       setError(err.response?.data?.message || t("users.updateError"));
     } finally {
       setProcessingId(null);
-    }
-  };
-
-  const handleImpersonate = async (ownerId: number) => {
-    setImpersonating(ownerId);
-    try {
-      const res = await api.post(`/admin/users/${ownerId}/impersonate`);
-      const { accessToken, fullName, userType } = res.data.data;
-      const originalToken = localStorage.getItem("accessToken");
-      if (originalToken) localStorage.setItem("originalAccessToken", originalToken);
-      localStorage.setItem("accessToken", accessToken);
-      localStorage.setItem("userType", userType || "Owner");
-      localStorage.setItem("fullName", fullName);
-      localStorage.setItem("impersonatedBy", localStorage.getItem("fullName") || "");
-      window.location.href = "/dashboard";
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("users.impersonateFailed"));
-    } finally {
-      setImpersonating(null);
     }
   };
 
@@ -228,7 +177,6 @@ export default function UsersManagementPage() {
     { key: "all", label: t("users.allTypes") },
     { key: "owners", label: t("users.tabOwners") },
     { key: "staff", label: t("users.tabStaff") },
-    { key: "audit", label: t("users.tabAudit") },
     { key: "notifications", label: t("users.tabNotifications") },
   ];
 
@@ -330,7 +278,6 @@ export default function UsersManagementPage() {
                 <th>{t("users.email")}</th>
                 <th>{t("users.registrationDate")}</th>
                 <th>{t("users.status")}</th>
-                <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -343,15 +290,6 @@ export default function UsersManagementPage() {
                     <span className={`badge ${owner.isActive ? "badge--green" : "badge--red"}`}>
                       {owner.isActive ? t("users.active") : t("users.inactive")}
                     </span>
-                  </td>
-                  <td>
-                    <button
-                      onClick={() => handleImpersonate(owner.id)}
-                      disabled={impersonating === owner.id}
-                      className="btn btn-primary btn-sm"
-                    >
-                      {impersonating === owner.id ? t("users.impersonating") : t("users.impersonate")}
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -462,45 +400,6 @@ export default function UsersManagementPage() {
               <p className="text-center text-[var(--sub)] py-8">{t("users.noStaff")}</p>
             )}
           </div>
-        </div>
-      )}
-
-      {activeTab === "audit" && (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{t("users.auditAdmin")}</th>
-                <th>{t("users.auditAction")}</th>
-                <th>{t("users.auditTarget")}</th>
-                <th>{t("users.auditDetails")}</th>
-                <th>{t("users.auditIp")}</th>
-                <th>{t("users.auditDate")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditLogs.map((log) => (
-                <tr key={log.id}>
-                  <td className="font-bold">{log.adminName}</td>
-                  <td>
-                    <span className="badge badge--blue">
-                      {t(ACTION_LABEL_KEYS[log.action] || log.action)}
-                    </span>
-                  </td>
-                  <td className="text-[var(--sub)]">
-                    {log.targetType ? `${log.targetType} #${log.targetId}` : "-"}
-                  </td>
-                  <td className="text-[var(--sub)] max-w-[200px] truncate">{log.details || "-"}</td>
-                  <td className="text-[var(--sub)] font-mono text-[11px]" dir="ltr">{log.ipAddress || "-"}</td>
-                  <td className="text-[var(--sub)]">{formatDateTime(log.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {auditLogs.length === 0 && (
-            <p className="text-center text-[var(--sub)] py-8">{t("users.noAuditLogs")}</p>
-          )}
         </div>
       )}
 

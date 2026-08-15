@@ -179,7 +179,6 @@ export default function DashboardLayout({
   const prevUnreadRef = useRef<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const helpRef = useRef<HTMLDivElement>(null);
-  const [impersonatedBy, setImpersonatedBy] = useState<string | null>(null);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -237,7 +236,6 @@ export default function DashboardLayout({
         localStorage.getItem("profileImage") ||
         ""
     );
-    setImpersonatedBy(localStorage.getItem("impersonatedBy"));
     setReady(true);
   }, [router]);
 
@@ -354,16 +352,6 @@ const handler = () => {
     }
     setNotifOpen(false);
     if (n.link) router.push(n.link);
-  };
-
-  const handleExitImpersonation = () => {
-    const originalToken = localStorage.getItem("originalAccessToken");
-    if (originalToken) {
-      localStorage.setItem("accessToken", originalToken);
-    }
-    localStorage.removeItem("originalAccessToken");
-    localStorage.removeItem("impersonatedBy");
-    window.location.href = "/dashboard";
   };
 
   const handleMarkAllRead = async () => {
@@ -705,23 +693,6 @@ const handler = () => {
               <button onClick={() => setActionSuccess("")} className="text-green-600 hover:text-green-900">✕</button>
             </div>
           )}
-          {impersonatedBy && (
-          <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 text-[13px] font-bold text-[#92400e] bg-[#fef3c7] border-b border-[#fde68a]">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <span className="flex-1">
-              {t("impersonation.banner.prefix")} <strong>{impersonatedBy}</strong> {t("impersonation.banner.suffix")}
-            </span>
-            <button
-              onClick={handleExitImpersonation}
-              className="px-3 py-1.5 rounded-lg bg-[#92400e] text-white text-[12px] font-bold hover:bg-[#78350f] transition-colors"
-            >
-              {t("impersonation.exit")}
-            </button>
-          </div>
-        )}
         <div
           className="sticky top-0 z-30 h-[60px] shrink-0 border-b border-[var(--border)] flex items-center justify-between px-4 gap-3"
           style={{ backgroundColor: "var(--bg-card)" }}

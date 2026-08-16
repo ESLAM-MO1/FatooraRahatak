@@ -31,6 +31,10 @@ export interface StoreTemplateProps {
   facebookUrl: string | null;
   instagramUrl: string | null;
   whatsappUrl: string | null;
+  snapchatUrl: string | null;
+  tiktokUrl: string | null;
+  telegramUrl: string | null;
+  linkedinUrl: string | null;
   shippingMethods: StoreMethodInfo[];
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;
@@ -96,6 +100,10 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           facebookUrl: d.facebookUrl || null,
           instagramUrl: d.instagramUrl || null,
           whatsappUrl: d.whatsappUrl || null,
+          snapchatUrl: d.snapchatUrl || null,
+          tiktokUrl: d.tiktokUrl || null,
+          telegramUrl: d.telegramUrl || null,
+          linkedinUrl: d.linkedinUrl || null,
           returnPolicyText: d.returnPolicyText || null,
           shippingMethods: d.shippingMethods || [],
           paymentMethods: d.paymentMethods || [],
@@ -156,6 +164,10 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           facebookUrl={store.facebookUrl}
           instagramUrl={store.instagramUrl}
           whatsappUrl={store.whatsappUrl}
+          snapchatUrl={store.snapchatUrl}
+          tiktokUrl={store.tiktokUrl}
+          telegramUrl={store.telegramUrl}
+          linkedinUrl={store.linkedinUrl}
           shippingMethods={store.shippingMethods}
           paymentMethods={store.paymentMethods}
           isSearchEnabled={store.isSearchEnabled}

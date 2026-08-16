@@ -8,7 +8,8 @@ import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
 import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
-import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, MailIcon, PhoneIcon, MapPinIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
+import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
+import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -17,7 +18,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function WarmModernTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -33,10 +34,14 @@ export default function WarmModernTemplate({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl);
+  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
+  const scUrl = resolveSocialUrl(snapchatUrl);
+  const tkUrl = resolveSocialUrl(tiktokUrl);
+  const tgUrl = resolveSocialUrl(telegramUrl);
+  const liUrl = resolveSocialUrl(linkedinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const getDiscount = (p: { basePrice: number; discountPrice: number | null }) => hasDiscount(p) ? Math.round((1 - (p.discountPrice as number) / p.basePrice) * 100) : 0;
@@ -228,9 +233,12 @@ export default function WarmModernTemplate({
           <div>
             <h4 className="text-white font-extrabold text-[14px] uppercase tracking-wider">{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
-              {fbUrl && <a href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex items-center justify-center rounded-full transition-opacity hover:opacity-70" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.15)", color: "#fff" }}><FacebookIcon size={17} /></a>}
-              {igUrl && <a href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex items-center justify-center rounded-full transition-opacity hover:opacity-70" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.15)", color: "#fff" }}><InstagramIcon size={17} /></a>}
-              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="flex items-center justify-center rounded-full transition-opacity hover:opacity-70" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.15)", color: "#fff" }}><WhatsAppIcon size={17} /></a>}
+              <StoreSocialLinks
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                linkClassName="flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
+                linkStyle={{ width: 36, height: 36, background: "rgba(255,255,255,0.15)", color: "#fff" }}
+                iconSize={17}
+              />
             </div>
           </div>
         </div>

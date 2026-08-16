@@ -298,6 +298,10 @@ function HomepageEditor() {
             <Field label={t("admin.facebook")}><input value={content.footer?.social?.facebook || ""} onChange={e => update("footer.social.facebook", e.target.value)} /></Field>
             <Field label={t("admin.instagram")}><input value={content.footer?.social?.instagram || ""} onChange={e => update("footer.social.instagram", e.target.value)} /></Field>
             <Field label={t("admin.whatsapp")}><input value={content.footer?.social?.whatsapp || ""} onChange={e => update("footer.social.whatsapp", e.target.value)} /></Field>
+            <Field label={t("admin.snapchat")}><input value={content.footer?.social?.snapchat || ""} onChange={e => update("footer.social.snapchat", e.target.value)} /></Field>
+            <Field label={t("admin.tiktok")}><input value={content.footer?.social?.tiktok || ""} onChange={e => update("footer.social.tiktok", e.target.value)} /></Field>
+            <Field label={t("admin.telegram")}><input value={content.footer?.social?.telegram || ""} onChange={e => update("footer.social.telegram", e.target.value)} /></Field>
+            <Field label={t("admin.linkedin")}><input value={content.footer?.social?.linkedin || ""} onChange={e => update("footer.social.linkedin", e.target.value)} /></Field>
           </GridCols>
         </Section>
 

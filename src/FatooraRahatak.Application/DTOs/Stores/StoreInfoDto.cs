@@ -14,6 +14,10 @@ public class StoreInfoDto
     public string? FacebookUrl { get; set; }
     public string? InstagramUrl { get; set; }
     public string? WhatsappUrl { get; set; }
+    public string? SnapchatUrl { get; set; }
+    public string? TiktokUrl { get; set; }
+    public string? TelegramUrl { get; set; }
+    public string? LinkedinUrl { get; set; }
     public string Currency { get; set; } = string.Empty;
     public bool IsVatRegistered { get; set; }
     public string? VatNumber { get; set; }

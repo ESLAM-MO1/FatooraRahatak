@@ -8,7 +8,8 @@ import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
 import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
-import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon } from "@/components/store-templates/icons";
+import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
+import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, PackageIcon } from "@/components/store-templates/icons";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -17,7 +18,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function BlackMinimalTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,10 +26,14 @@ export default function BlackMinimalTemplate({
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, false, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl);
+  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
+  const scUrl = resolveSocialUrl(snapchatUrl);
+  const tkUrl = resolveSocialUrl(tiktokUrl);
+  const tgUrl = resolveSocialUrl(telegramUrl);
+  const liUrl = resolveSocialUrl(linkedinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
 
@@ -152,9 +157,13 @@ export default function BlackMinimalTemplate({
             {!contactEmail && !contactPhone && <span>{t("storefront.noContact")}</span>}
           </div>
           <div className="mt-5 flex justify-center gap-5">
-            {fbUrl && <a href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="hover:text-white" style={{ color: "#A3A3A3" }}><FacebookIcon size={16} /></a>}
-            {igUrl && <a href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="hover:text-white" style={{ color: "#A3A3A3" }}><InstagramIcon size={16} /></a>}
-            {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="hover:text-white" style={{ color: "#A3A3A3" }}><WhatsAppIcon size={16} /></a>}
+            <StoreSocialLinks
+              urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+              containerClassName="mt-5 flex justify-center gap-5"
+              linkClassName="hover:text-white"
+              linkStyle={{ color: "#A3A3A3" }}
+              iconSize={16}
+            />
           </div>
           <p className="mt-6 pt-5 border-t text-[11px]" style={{ borderColor: "#262626", color: "#737373" }}>© {new Date().getFullYear()} {storeName}. {t("storefront.footerBy")}</p>
         </div>

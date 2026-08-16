@@ -349,6 +349,10 @@ public class StoreService : IStoreService
             FacebookUrl = store.FacebookUrl,
             InstagramUrl = store.InstagramUrl,
             WhatsappUrl = store.WhatsappUrl,
+            SnapchatUrl = store.SnapchatUrl,
+            TiktokUrl = store.TiktokUrl,
+            TelegramUrl = store.TelegramUrl,
+            LinkedinUrl = store.LinkedinUrl,
             Currency = store.Currency,
             IsVatRegistered = store.IsVatRegistered,
             VatNumber = store.VatNumber,
@@ -469,6 +473,10 @@ public class StoreService : IStoreService
         store.FacebookUrl = dto.FacebookUrl;
         store.InstagramUrl = dto.InstagramUrl;
         store.WhatsappUrl = dto.WhatsappUrl;
+        store.SnapchatUrl = dto.SnapchatUrl;
+        store.TiktokUrl = dto.TiktokUrl;
+        store.TelegramUrl = dto.TelegramUrl;
+        store.LinkedinUrl = dto.LinkedinUrl;
         await _context.SaveChangesAsync();
 
         return new StoreSocialResponseDto
@@ -476,7 +484,11 @@ public class StoreService : IStoreService
             BioLink = store.BioLink,
             FacebookUrl = store.FacebookUrl,
             InstagramUrl = store.InstagramUrl,
-            WhatsappUrl = store.WhatsappUrl
+            WhatsappUrl = store.WhatsappUrl,
+            SnapchatUrl = store.SnapchatUrl,
+            TiktokUrl = store.TiktokUrl,
+            TelegramUrl = store.TelegramUrl,
+            LinkedinUrl = store.LinkedinUrl
         };
     }
 

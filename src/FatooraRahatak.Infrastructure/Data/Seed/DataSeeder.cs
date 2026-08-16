@@ -498,7 +498,7 @@ public static class DataSeeder
             {
                 description = "منصة متكاملة لإدارة متجرك الإلكتروني، الفواتير، روابط الدفع، الكاشير، والمزيد.",
                 copyright = "جميع الحقوق محفوظة.",
-                social = new { facebook = "#", instagram = "#", whatsapp = "#" }
+                social = new { facebook = "#", instagram = "#", whatsapp = "#", snapchat = "#", tiktok = "#", telegram = "#", linkedin = "#" }
             }
         };
 

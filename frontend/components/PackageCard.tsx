@@ -131,7 +131,7 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
                 {t("subscription.savePercent").replace("{percent}", String(savePercent))}
               </span>
             ) : null}
-            <p className="text-[22px] font-bold" style={{ color: pkg.color }}>
+            <p className="text-[30px] font-extrabold leading-tight" style={{ color: pkg.color }}>
               {formatMoney(totalPrice)} {t("common.sar")}
             </p>
             <p className="text-[11px] text-[var(--sub)]">
@@ -139,7 +139,7 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
             </p>
           </>
         ) : (
-          <p className="text-[22px] font-bold" style={{ color: pkg.color }}>
+          <p className="text-[30px] font-extrabold leading-tight" style={{ color: pkg.color }}>
             {formatMoney(pkg.monthlyPrice)} {t("common.sar")} / {t("packages.month")}
           </p>
         )}

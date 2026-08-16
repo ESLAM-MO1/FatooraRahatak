@@ -8,7 +8,8 @@ import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
 import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
-import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon, CheckIcon, BuildingIcon, HeadsetIcon, ScaleIcon } from "@/components/store-templates/icons";
+import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
+import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, PackageIcon, CheckIcon, BuildingIcon, HeadsetIcon, ScaleIcon } from "@/components/store-templates/icons";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -17,7 +18,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function B2bFormalTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,10 +26,14 @@ export default function B2bFormalTemplate({
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType, quoteRequested, handleQuoteRequest } = useStorefront(slug, storeId, currency, false, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl);
+  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
+  const scUrl = resolveSocialUrl(snapchatUrl);
+  const tkUrl = resolveSocialUrl(tiktokUrl);
+  const tgUrl = resolveSocialUrl(telegramUrl);
+  const liUrl = resolveSocialUrl(linkedinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
 
@@ -178,9 +183,12 @@ export default function B2bFormalTemplate({
               <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
             </ul>
             <div className="mt-4 flex gap-3">
-              {fbUrl && <a href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex items-center justify-center rounded transition-opacity hover:opacity-70" style={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)", color: "#fff" }}><FacebookIcon size={15} /></a>}
-              {igUrl && <a href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex items-center justify-center rounded transition-opacity hover:opacity-70" style={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)", color: "#fff" }}><InstagramIcon size={15} /></a>}
-              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="flex items-center justify-center rounded transition-opacity hover:opacity-70" style={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)", color: "#fff" }}><WhatsAppIcon size={15} /></a>}
+              <StoreSocialLinks
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                linkClassName="flex items-center justify-center rounded transition-opacity hover:opacity-70"
+                linkStyle={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)", color: "#fff" }}
+                iconSize={15}
+              />
             </div>
           </div>
         </div>

@@ -8,7 +8,8 @@ import QuickLoginButton from "@/components/store-templates/QuickLoginButton";
 import Toast from "@/components/Toast";
 import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
-import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, FacebookIcon, InstagramIcon, WhatsAppIcon, PackageIcon, SparklesIcon } from "@/components/store-templates/icons";
+import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
+import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, SparklesIcon } from "@/components/store-templates/icons";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -17,7 +18,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function RoyalPurpleTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,10 +27,14 @@ export default function RoyalPurpleTemplate({
     cartCount, wishlist, toggleWishlist, searchInput, setSearchInput, handleSearchSubmit, isSearchActive, searchResults,
     currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl);
+  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
+  const scUrl = resolveSocialUrl(snapchatUrl);
+  const tkUrl = resolveSocialUrl(tiktokUrl);
+  const tgUrl = resolveSocialUrl(telegramUrl);
+  const liUrl = resolveSocialUrl(linkedinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const getDiscount = (p: { basePrice: number; discountPrice: number | null }) => hasDiscount(p) ? Math.round((1 - (p.discountPrice as number) / p.basePrice) * 100) : 0;
@@ -183,9 +188,12 @@ export default function RoyalPurpleTemplate({
           <div>
             <h4 className="font-bold text-[13px] tracking-[0.2em] uppercase" style={{ color: gold }}>{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
-              {fbUrl && <a href={fbUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex items-center justify-center transition-opacity hover:opacity-70" style={{ width: 34, height: 34, border: `1px solid ${gold}55`, color: gold }}><FacebookIcon size={16} /></a>}
-              {igUrl && <a href={igUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex items-center justify-center transition-opacity hover:opacity-70" style={{ width: 34, height: 34, border: `1px solid ${gold}55`, color: gold }}><InstagramIcon size={16} /></a>}
-              {waUrl && <a href={waUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="flex items-center justify-center transition-opacity hover:opacity-70" style={{ width: 34, height: 34, border: `1px solid ${gold}55`, color: gold }}><WhatsAppIcon size={16} /></a>}
+              <StoreSocialLinks
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                linkClassName="flex items-center justify-center transition-opacity hover:opacity-70"
+                linkStyle={{ width: 34, height: 34, border: `1px solid ${gold}55`, color: gold }}
+                iconSize={16}
+              />
             </div>
           </div>
         </div>

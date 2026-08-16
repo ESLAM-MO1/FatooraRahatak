@@ -29,6 +29,10 @@ export interface StoreData {
   facebookUrl: string | null;
   instagramUrl: string | null;
   whatsappUrl: string | null;
+  snapchatUrl: string | null;
+  tiktokUrl: string | null;
+  telegramUrl: string | null;
+  linkedinUrl: string | null;
   returnPolicyText: string | null;
   shippingMethods: StoreMethodInfo[];
   paymentMethods: StoreMethodInfo[];

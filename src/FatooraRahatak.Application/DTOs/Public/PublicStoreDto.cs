@@ -22,6 +22,10 @@ public class PublicStoreDto
     public string? FacebookUrl { get; set; }
     public string? InstagramUrl { get; set; }
     public string? WhatsappUrl { get; set; }
+    public string? SnapchatUrl { get; set; }
+    public string? TiktokUrl { get; set; }
+    public string? TelegramUrl { get; set; }
+    public string? LinkedinUrl { get; set; }
     public string? ReturnPolicyText { get; set; }
     public bool IsCouponsEnabled { get; set; }
     public bool IsSearchEnabled { get; set; } = true;

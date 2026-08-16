@@ -20,6 +20,32 @@ interface Course {
   level: string;
   isActive: boolean;
   sortOrder: number;
+  lessonsCount?: number;
+}
+
+interface Lesson {
+  id: number;
+  courseId: number;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr?: string | null;
+  descriptionEn?: string | null;
+  videoUrl?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+interface Enrollment {
+  id: number;
+  courseId: number;
+  courseTitleAr: string;
+  courseTitleEn: string;
+  applicantName: string;
+  email: string;
+  phone?: string | null;
+  message?: string | null;
+  status: string;
+  createdAt: string;
 }
 
 type FormState = { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; category: string; duration: string; level: string; sortOrder: number; isActive: boolean };
@@ -27,17 +53,30 @@ const EMPTY_FORM: FormState = { titleAr: "", titleEn: "", descriptionAr: "", des
 const LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const CATEGORIES = ["management", "accounting", "inventory", "sales", "software", "other"];
 
+type LessonForm = { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; videoUrl: string; sortOrder: number; isActive: boolean };
+const EMPTY_LESSON: LessonForm = { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", videoUrl: "", sortOrder: 1, isActive: true };
+
 export default function AcademyAdminPage() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [ready, setReady] = useState(false);
+  const [tab, setTab] = useState<"courses" | "lessons" | "enrollments">("courses");
+
   const [courses, setCourses] = useState<Course[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [lessonModalOpen, setLessonModalOpen] = useState(false);
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
+  const [lessonForm, setLessonForm] = useState<LessonForm>(EMPTY_LESSON);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
@@ -54,11 +93,31 @@ export default function AcademyAdminPage() {
     setCourses(res.data.data || []);
   }, []);
 
+  const loadLessons = useCallback(async (courseId: number) => {
+    const res = await api.get(`/admin/courses/${courseId}/lessons`);
+    setLessons(res.data.data || []);
+  }, []);
+
+  const loadEnrollments = useCallback(async () => {
+    const res = await api.get("/admin/course-enrollments");
+    setEnrollments(res.data.data || []);
+  }, []);
+
   useEffect(() => {
     if (!ready) return;
     load().catch(() => setMessage({ type: "error", text: t("error.serverError") })).finally(() => setLoading(false));
+    loadEnrollments().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, load]);
+  }, [ready, load, loadEnrollments]);
+
+  useEffect(() => {
+    if (tab === "lessons" && selectedCourseId != null) {
+      loadLessons(selectedCourseId).catch(() => {});
+    }
+    if (tab === "enrollments") {
+      loadEnrollments().catch(() => {});
+    }
+  }, [tab, selectedCourseId, loadLessons, loadEnrollments]);
 
   const openCreate = () => { setEditingId(null); setForm(EMPTY_FORM); setModalOpen(true); };
 
@@ -119,6 +178,75 @@ export default function AcademyAdminPage() {
     }
   };
 
+  const openLessonCreate = () => { setEditingLessonId(null); setLessonForm(EMPTY_LESSON); setLessonModalOpen(true); };
+
+  const openLessonEdit = (l: Lesson) => {
+    setEditingLessonId(l.id);
+    setLessonForm({ titleAr: l.titleAr, titleEn: l.titleEn, descriptionAr: l.descriptionAr || "", descriptionEn: l.descriptionEn || "", videoUrl: l.videoUrl || "", sortOrder: l.sortOrder, isActive: l.isActive });
+    setLessonModalOpen(true);
+  };
+
+  const closeLessonModal = () => { setLessonModalOpen(false); setEditingLessonId(null); setLessonForm(EMPTY_LESSON); };
+
+  const submitLesson = async () => {
+    if (selectedCourseId == null) return;
+    if (!lessonForm.titleAr.trim() && !lessonForm.titleEn.trim()) {
+      setMessage({ type: "error", text: t("academy.lessonTitleAr") + " / " + t("academy.lessonTitleEn") });
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    const payload = {
+      titleAr: lessonForm.titleAr.trim(), titleEn: lessonForm.titleEn.trim(),
+      descriptionAr: lessonForm.descriptionAr.trim() || null, descriptionEn: lessonForm.descriptionEn.trim() || null,
+      videoUrl: lessonForm.videoUrl.trim() || null, sortOrder: lessonForm.sortOrder, isActive: lessonForm.isActive,
+    };
+    try {
+      if (editingLessonId) {
+        await api.put(`/admin/courses/lessons/${editingLessonId}`, payload);
+      } else {
+        await api.post(`/admin/courses/${selectedCourseId}/lessons`, payload);
+      }
+      await loadLessons(selectedCourseId);
+      await load();
+      setMessage({ type: "success", text: t("academy.saveSuccess") });
+      closeLessonModal();
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setMessage({ type: "error", text: e?.response?.data?.message || t("error.serverError") });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeLesson = async (l: Lesson) => {
+    if (!window.confirm(t("common.confirmDelete"))) return;
+    try {
+      await api.delete(`/admin/courses/lessons/${l.id}`);
+      if (selectedCourseId != null) await loadLessons(selectedCourseId);
+      await load();
+      setMessage({ type: "success", text: t("academy.deleteSuccess") });
+    } catch { setMessage({ type: "error", text: t("error.serverError") }); }
+  };
+
+  const updateEnrollmentStatus = async (e: Enrollment, status: string) => {
+    if (e.status === status) return;
+    try {
+      await api.put(`/admin/course-enrollments/${e.id}/status`, { status });
+      await loadEnrollments();
+      setMessage({ type: "success", text: t("academy.updateStatusSuccess") });
+    } catch { setMessage({ type: "error", text: t("error.serverError") }); }
+  };
+
+  const removeEnrollment = async (e: Enrollment) => {
+    if (!window.confirm(t("common.confirmDelete"))) return;
+    try {
+      await api.delete(`/admin/course-enrollments/${e.id}`);
+      await loadEnrollments();
+      setMessage({ type: "success", text: t("academy.deleteSuccess") });
+    } catch { setMessage({ type: "error", text: t("error.serverError") }); }
+  };
+
   if (!ready) return <LoadingState />;
   if (!authorized) return null;
 
@@ -127,6 +255,19 @@ export default function AcademyAdminPage() {
     const v = t(`academy.cat_${key}`);
     return v === `academy.cat_${key}` ? key : v;
   };
+  const statusLabel = (s: string) => {
+    const v = t(`academy.status${s}`);
+    return v === `academy.status${s}` ? s : v;
+  };
+  const statusStyle = (s: string) => {
+    const map: Record<string, { color: string; backgroundColor: string }> = {
+      New: { color: "var(--blue)", backgroundColor: "var(--blue-50)" },
+      Reviewed: { color: "#b45309", backgroundColor: "#fef3c7" },
+      Accepted: { color: "var(--green)", backgroundColor: "#f0fdf4" },
+      Rejected: { color: "#dc2626", backgroundColor: "#fef2f2" },
+    };
+    return map[s] || { color: "var(--sub)", backgroundColor: "#f3f4f6" };
+  };
 
   return (
     <div>
@@ -134,32 +275,94 @@ export default function AcademyAdminPage() {
       <p className="mb-5 text-[13px]" style={{ color: "var(--sub)" }}>{t("academy.pageIntro")}</p>
       {message && <Toast message={message.text} type={message.type} fixed />}
 
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-[13px]" style={{ color: "var(--sub)" }}>{t("academy.count", { count: courses.length })}</span>
-        <button className="btn btn-primary" onClick={openCreate}>+ {t("academy.addCourse")}</button>
+      <div className="flex items-center gap-2 mb-4">
+        <button className={`btn ${tab === "courses" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("courses")}>{t("academy.courses")} ({courses.length})</button>
+        <button className={`btn ${tab === "lessons" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("lessons")}>{t("academy.lessons")}</button>
+        <button className={`btn ${tab === "enrollments" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("enrollments")}>{t("academy.enrollments")} ({enrollments.length})</button>
+        {tab === "courses" && (
+          <button className="btn btn-primary ms-auto" onClick={openCreate}>+ {t("academy.addCourse")}</button>
+        )}
+        {tab === "lessons" && selectedCourseId != null && (
+          <button className="btn btn-primary ms-auto" onClick={openLessonCreate}>+ {t("academy.addLesson")}</button>
+        )}
       </div>
 
-      {loading ? <LoadingState /> : sorted.length === 0 ? (
+      {loading ? <LoadingState /> : tab === "courses" ? (
+        sorted.length === 0 ? (
+          <div className="card p-10 text-center"><p className="text-[13.5px]" style={{ color: "var(--sub)" }}>{t("common.noData")}</p></div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {sorted.map(c => (
+              <div key={c.id} className="card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--ink)" }}>{i18nText(c.titleAr, c.titleEn)}</p>
+                    <p className="text-[11.5px] text-[var(--sub)] truncate">{categoryLabel(c.category)} · {c.level} · {c.duration} · {c.lessonsCount || 0} {t("academy.lessonCount")}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${c.isActive ? "bg-green-50" : "bg-gray-100"}`} style={{ color: c.isActive ? "var(--green)" : "var(--sub)" }}>
+                    {c.isActive ? t("academy.active") : t("academy.inactive")}
+                  </span>
+                  <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => { setSelectedCourseId(c.id); setTab("lessons"); }}>{t("academy.manageLessons")}</button>
+                  <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => openEdit(c)}>{t("common.edit")}</button>
+                  <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => toggle(c)}>{c.isActive ? t("academy.deactivate") : t("academy.activate")}</button>
+                  <button className="btn btn-outline !px-2 !py-1 !text-[11px] !text-red-600" onClick={() => remove(c)}>{t("common.delete")}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : tab === "lessons" ? (
+        <div>
+          <div className="mb-4">
+            <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.selectCourse")}</label>
+            <select className="w-full max-w-sm border rounded-lg px-3 py-2 text-[13px]" value={selectedCourseId ?? ""} onChange={e => { const v = e.target.value; setSelectedCourseId(v ? Number(v) : null); }}>
+              <option value="">{t("academy.noCourse")}</option>
+              {sorted.map(c => <option key={c.id} value={c.id}>{i18nText(c.titleAr, c.titleEn)}</option>)}
+            </select>
+          </div>
+          {selectedCourseId == null ? (
+            <div className="card p-10 text-center"><p className="text-[13.5px]" style={{ color: "var(--sub)" }}>{t("academy.noCourse")}</p></div>
+          ) : lessons.length === 0 ? (
+            <div className="card p-10 text-center"><p className="text-[13.5px]" style={{ color: "var(--sub)" }}>{t("common.noData")}</p></div>
+          ) : (
+            <div className="space-y-2">
+              {[...lessons].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id).map(l => (
+                <div key={l.id} className="card p-3 flex items-center gap-3">
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>{l.sortOrder}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-bold truncate" style={{ color: "var(--ink)" }}>{i18nText(l.titleAr, l.titleEn)}</p>
+                    {l.videoUrl && <p className="text-[11px] text-[var(--sub)] truncate" dir="ltr">{l.videoUrl}</p>}
+                  </div>
+                  <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => openLessonEdit(l)}>{t("common.edit")}</button>
+                  <button className="btn btn-outline !px-2 !py-1 !text-[11px] !text-red-600" onClick={() => removeLesson(l)}>{t("common.delete")}</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : enrollments.length === 0 ? (
         <div className="card p-10 text-center"><p className="text-[13.5px]" style={{ color: "var(--sub)" }}>{t("common.noData")}</p></div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sorted.map(c => (
-            <div key={c.id} className="card p-4">
+        <div className="space-y-3">
+          {enrollments.map(e => (
+            <div key={e.id} className="card p-4">
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--ink)" }}>{i18nText(c.titleAr, c.titleEn)}</p>
-                  <p className="text-[11.5px] text-[var(--sub)] truncate">{categoryLabel(c.category)} · {c.level} · {c.duration}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[13.5px] font-bold" style={{ color: "var(--ink)" }}>{e.applicantName}</p>
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold shrink-0" style={{ ...statusStyle(e.status) }}>{statusLabel(e.status)}</span>
+                  </div>
+                  <p className="text-[12px] text-[var(--sub)]">{e.email} · {e.phone || ""}</p>
+                  <p className="text-[11.5px] text-[var(--sub)]">{i18nText(e.courseTitleAr, e.courseTitleEn)} · {new Date(e.createdAt).toLocaleString()}</p>
+                  {e.message && <p className="text-[12.5px] mt-2 p-3 rounded-lg bg-[var(--bg)]" style={{ color: "var(--ink)" }}>{e.message}</p>}
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${c.isActive ? "bg-green-50" : "bg-gray-100"}`} style={{ color: c.isActive ? "var(--green)" : "var(--sub)" }}>
-                  {c.isActive ? t("academy.active") : t("academy.inactive")}
-                </span>
-                <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => openEdit(c)}>{t("common.edit")}</button>
-                <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => toggle(c)}>{c.isActive ? t("academy.deactivate") : t("academy.activate")}</button>
-                <button className="btn btn-outline !px-2 !py-1 !text-[11px] !text-red-600" onClick={() => remove(c)}>{t("common.delete")}</button>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  {["New", "Reviewed", "Accepted", "Rejected"].map(s => (
+                    <button key={s} className={`btn !px-2 !py-1 !text-[10.5px] ${e.status === s ? "btn-primary" : "btn-outline"}`} onClick={() => updateEnrollmentStatus(e, s)}>{statusLabel(s)}</button>
+                  ))}
+                  <button className="btn btn-outline !px-2 !py-1 !text-[10.5px] !text-red-600" onClick={() => removeEnrollment(e)}>{t("common.delete")}</button>
+                </div>
               </div>
-              {i18nText(c.descriptionAr, c.descriptionEn) && (
-                <p className="text-[12.5px] mt-3" style={{ color: "var(--sub)" }}>{i18nText(c.descriptionAr, c.descriptionEn)}</p>
-              )}
             </div>
           ))}
         </div>
@@ -224,6 +427,56 @@ export default function AcademyAdminPage() {
                 {saving ? t("common.loading") : t("common.save")}
               </button>
               <button className="btn btn-outline" onClick={closeModal}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lessonModalOpen && (
+        <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-[17px] font-bold mb-4" style={{ color: "var(--blue-deep)" }}>
+              {editingLessonId ? t("academy.editLesson") : t("academy.addLesson")}
+            </h3>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.lessonTitleAr")}</label>
+                  <div className="field-shell"><input type="text" value={lessonForm.titleAr} onChange={e => setLessonForm({ ...lessonForm, titleAr: e.target.value })} /></div>
+                </div>
+                <div>
+                  <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.lessonTitleEn")}</label>
+                  <div className="field-shell"><input type="text" dir="ltr" value={lessonForm.titleEn} onChange={e => setLessonForm({ ...lessonForm, titleEn: e.target.value })} /></div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.lessonDescAr")}</label>
+                <div className="field-shell"><textarea rows={2} value={lessonForm.descriptionAr} onChange={e => setLessonForm({ ...lessonForm, descriptionAr: e.target.value })} /></div>
+              </div>
+              <div>
+                <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.lessonDescEn")}</label>
+                <div className="field-shell"><textarea rows={2} dir="ltr" value={lessonForm.descriptionEn} onChange={e => setLessonForm({ ...lessonForm, descriptionEn: e.target.value })} /></div>
+              </div>
+              <div>
+                <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.videoUrl")}</label>
+                <div className="field-shell"><input type="text" dir="ltr" value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=..." /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.sortOrder")}</label>
+                  <div className="field-shell"><input type="number" min={1} value={lessonForm.sortOrder} onChange={e => setLessonForm({ ...lessonForm, sortOrder: Number(e.target.value) || 1 })} /></div>
+                </div>
+                <label className="flex items-center gap-2 text-[13px] font-bold cursor-pointer pt-6">
+                  <input type="checkbox" checked={lessonForm.isActive} onChange={e => setLessonForm({ ...lessonForm, isActive: e.target.checked })} />
+                  {lessonForm.isActive ? t("academy.active") : t("academy.inactive")}
+                </label>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button disabled={saving} className="btn btn-primary flex-1 disabled:opacity-60" onClick={submitLesson}>
+                {saving ? t("common.loading") : t("common.save")}
+              </button>
+              <button className="btn btn-outline" onClick={closeLessonModal}>{t("common.cancel")}</button>
             </div>
           </div>
         </div>

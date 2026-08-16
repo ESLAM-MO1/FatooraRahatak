@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
 import Icon from "@/components/Icon";
@@ -100,11 +100,12 @@ const COLOR_FIELDS: { key: keyof StoreColors; labelKey: string }[] = [
 // named sections — reachable from one tab strip — keeps every field exactly
 // where it was, just organized around the questions a merchant actually asks
 // ("what does my store look like?" vs "how do people pay?").
-type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "policies" | "advanced";
+type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "policies" | "advanced" | "designChat";
 
 const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "overview", labelKey: "storeSettings.tabOverview", icon: "hash" },
   { id: "design", labelKey: "storeSettings.tabDesign", icon: "settings" },
+  { id: "designChat", labelKey: "storeSettings.tabDesignChat", icon: "palette" },
   { id: "domain", labelKey: "storeSettings.tabDomain", icon: "link" },
   { id: "contact", labelKey: "storeSettings.tabContact", icon: "phone" },
   { id: "commerce", labelKey: "storeSettings.tabCommerce", icon: "truck" },
@@ -115,6 +116,7 @@ const TABS: { id: TabId; labelKey: string; icon: string }[] = [
 const TAB_FALLBACK: Record<TabId, string> = {
   overview: "نظرة عامة",
   design: "التصميم والمظهر",
+  designChat: "التصميم المخصص",
   domain: "النطاق المخصص",
   contact: "التواصل والسوشيال",
   commerce: "الشحن والدفع",
@@ -365,6 +367,57 @@ export default function StoreSettingsPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
 
+  // ---- Active tab ----
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
+
+  // ---- Custom design chat ----
+  const [designRequest, setDesignRequest] = useState<{ id: number; status: string } | null>(null);
+  const [designMessages, setDesignMessages] = useState<{ id: number; senderType: string; senderName: string; body: string; cssPayload?: string | null; createdAt: string }[]>([]);
+  const [designText, setDesignText] = useState("");
+  const [designSending, setDesignSending] = useState(false);
+  const [designLoading, setDesignLoading] = useState(false);
+  const [designSuccess, setDesignSuccess] = useState("");
+  const designEndRef = useRef<HTMLDivElement>(null);
+
+  const loadDesignChat = async () => {
+    setDesignLoading(true);
+    try {
+      const res = await api.get("/stores/design-request");
+      setDesignRequest(res.data.data.request);
+      setDesignMessages(res.data.data.messages || []);
+    } catch { setDesignRequest(null); setDesignMessages([]); }
+    finally { setDesignLoading(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === "designChat") {
+      setDesignSuccess("");
+      loadDesignChat();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  useEffect(() => {
+    designEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [designMessages]);
+
+  const handleSendDesign = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!designText.trim()) return;
+    setDesignSending(true);
+    setDesignSuccess("");
+    try {
+      await api.post("/stores/design-request/messages", { body: designText.trim() });
+      setDesignText("");
+      await loadDesignChat();
+      setDesignSuccess(t("storeSettings.designChatSent"));
+    } catch {
+      setError(t("error.serverError"));
+    } finally {
+      setDesignSending(false);
+    }
+  };
+
   const [domainSuccess, setDomainSuccess] = useState("");
   const [contactSuccess, setContactSuccess] = useState("");
   const [socialSuccess, setSocialSuccess] = useState("");
@@ -417,9 +470,6 @@ export default function StoreSettingsPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [notifTesting, setNotifTesting] = useState(false);
   const [notifTestSuccess, setNotifTestSuccess] = useState("");
-
-  // ---- Active tab ----
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   const availableThemes = enabledThemes ? STORE_THEMES.filter((th) => enabledThemes.has(th.id)) : STORE_THEMES;
 
@@ -1337,6 +1387,56 @@ export default function StoreSettingsPage() {
                 </button>
               </Can>
             </form>
+          </SettingCard>
+        )}
+
+        {activeTab === "designChat" && (
+          <SettingCard icon="palette" title={t("storeSettings.designChatTitle")} accent="blue">
+            <p className="text-[12.5px] text-[var(--sub)] mb-4 leading-relaxed">{t("storeSettings.designChatIntro")}</p>
+            <SuccessToast message={designSuccess} fixed className="mb-4" />
+            <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "#fff" }}>
+              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ borderColor: "var(--border)", background: "#f9fafb" }}>
+                <p className="text-[12.5px] font-bold text-[var(--ink)]">{t("storeSettings.designChatStatus")}</p>
+                {designRequest ? (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ color: "var(--blue)", backgroundColor: "var(--blue-50)" }}>
+                    {t(`design.status${designRequest.status}`)}
+                  </span>
+                ) : (
+                  <span className="text-[11.5px] text-[var(--sub)]">{designLoading ? t("common.loading") : "—"}</span>
+                )}
+              </div>
+              <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 340 }}>
+                {designLoading ? (
+                  <p className="text-[12.5px] text-[var(--sub)] text-center py-10">{t("common.loading")}</p>
+                ) : designMessages.length === 0 ? (
+                  <p className="text-[12.5px] text-[var(--sub)] text-center py-10">{t("design.noMessages")}</p>
+                ) : (
+                  designMessages.map(m => (
+                    <div key={m.id} className="flex flex-col" style={{ alignItems: m.senderType === "StoreOwner" ? "flex-end" : "flex-start" }}>
+                      <div className="max-w-[85%] rounded-2xl p-3" style={{ backgroundColor: m.senderType === "StoreOwner" ? "var(--blue-50)" : "var(--bg)", border: "1px solid var(--border)" }}>
+                        <p className="text-[11px] font-bold mb-1" style={{ color: "var(--blue)" }}>{m.senderName}</p>
+                        {m.body && <p className="text-[13px] leading-relaxed text-[var(--ink)]">{m.body}</p>}
+                        {m.cssPayload && (
+                          <pre className="mt-2 p-2 rounded-lg text-[11px] overflow-x-auto" dir="ltr" style={{ backgroundColor: "#0f172a", color: "#e2e8f0", whiteSpace: "pre-wrap" }}>{m.cssPayload}</pre>
+                        )}
+                        <p className="text-[10.5px] text-[var(--sub)] mt-1.5">{new Date(m.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+                <div ref={designEndRef} />
+              </div>
+              <form onSubmit={handleSendDesign} className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
+                <textarea rows={3} placeholder={t("storeSettings.designChatPlaceholder")} value={designText} onChange={e => setDesignText(e.target.value)} />
+                <div className="flex justify-end mt-3">
+                  <Can code="StoreSettings.Edit">
+                    <button type="submit" disabled={designSending} className="btn btn-primary btn-sm">
+                      {designSending ? t("storeSettings.saving") : t("design.sendReply")}
+                    </button>
+                  </Can>
+                </div>
+              </form>
+            </div>
           </SettingCard>
         )}
       </div>

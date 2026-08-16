@@ -144,6 +144,7 @@ const superAdminNavKeys: NavGroupKey[] = [
       { href: "/dashboard/blog", labelKey: "nav.blog", icon: "edit" },
       { href: "/dashboard/careers", labelKey: "nav.careers", icon: "users" },
       { href: "/dashboard/academy", labelKey: "nav.academy", icon: "star" },
+      { href: "/dashboard/design-requests", labelKey: "nav.designRequests", icon: "palette" },
     ],
   },
 ];

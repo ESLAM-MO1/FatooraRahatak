@@ -18,6 +18,23 @@ interface Course {
   level: string;
   isActive: boolean;
   sortOrder: number;
+  lessonsCount?: number;
+}
+
+interface Lesson {
+  id: number;
+  courseId: number;
+  titleAr: string;
+  titleEn: string;
+  descriptionAr?: string | null;
+  descriptionEn?: string | null;
+  videoUrl?: string | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+interface CourseDetail extends Course {
+  lessons: Lesson[];
 }
 
 const LEVEL_COLORS: Record<string, { fg: string; bg: string }> = {
@@ -34,6 +51,11 @@ export default function AcademyPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCat, setActiveCat] = useState("all");
+  const [selected, setSelected] = useState<CourseDetail | null>(null);
+  const [enrollForm, setEnrollForm] = useState({ applicantName: "", email: "", phone: "", message: "" });
+  const [enrollSubmitting, setEnrollSubmitting] = useState(false);
+  const [enrollDone, setEnrollDone] = useState(false);
+  const [enrollError, setEnrollError] = useState("");
 
   useEffect(() => {
     api.get("/site/courses").then((res) => setCourses(res.data?.data || [])).catch(() => setCourses([])).finally(() => setLoading(false));
@@ -48,7 +70,44 @@ export default function AcademyPage() {
   const cats = Array.from(new Set(courses.map(c => c.category))).filter(Boolean);
   const filtered = activeCat === "all" ? courses : courses.filter(c => c.category === activeCat);
 
-  const levelStyle = (level: string) => LEVEL_COLORS[level] || LEVEL_COLORS[level.startsWith("B") || level.startsWith("م") ? "Beginner" : "Intermediate"] || { fg: "var(--blue)", bg: "var(--blue-50)" };
+  const levelStyle = (level: string) => (LEVEL_COLORS[level] || { fg: "var(--blue)", bg: "var(--blue-50)" });
+
+  const openDetails = async (id: number) => {
+    setSelected(null);
+    setEnrollForm({ applicantName: "", email: "", phone: "", message: "" });
+    setEnrollDone(false);
+    setEnrollError("");
+    try {
+      const res = await api.get(`/site/courses/${id}`);
+      setSelected(res.data?.data || null);
+    } catch {
+      setSelected(null);
+    }
+  };
+
+  const submitEnroll = async () => {
+    if (!selected) return;
+    if (!enrollForm.applicantName.trim() || !enrollForm.email.trim()) {
+      setEnrollError(t("careersPublic.requiredError"));
+      return;
+    }
+    setEnrollSubmitting(true);
+    setEnrollError("");
+    try {
+      await api.post(`/site/courses/${selected.id}/enroll`, {
+        applicantName: enrollForm.applicantName.trim(),
+        email: enrollForm.email.trim(),
+        phone: enrollForm.phone.trim(),
+        message: enrollForm.message.trim(),
+      });
+      setEnrollDone(true);
+    } catch (e) {
+      const err = e as { response?: { data?: { message?: string } } };
+      setEnrollError(err?.response?.data?.message || t("error.serverError"));
+    } finally {
+      setEnrollSubmitting(false);
+    }
+  };
 
   return (
     <SiteLayout>
@@ -82,20 +141,100 @@ export default function AcademyPage() {
                       )}
                     </div>
                     <h2 className="text-[17px] font-bold mb-1" style={{ color: "var(--ink)" }}>{loc(c.titleAr, c.titleEn)}</h2>
-                    {c.duration && (
-                      <p className="text-[12px] mb-3" style={{ color: "var(--sub)" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block -mt-0.5 me-1"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                        {t("academyPublic.duration")}: {c.duration}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-4 mb-3 text-[12px]" style={{ color: "var(--sub)" }}>
+                      {c.duration && (
+                        <span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block -mt-0.5 me-1"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                          {t("academyPublic.duration")}: {c.duration}
+                        </span>
+                      )}
+                      {c.lessonsCount != null && <span>{c.lessonsCount} {t("academyPublic.lesson")}</span>}
+                    </div>
                     {loc(c.descriptionAr, c.descriptionEn) && (
-                      <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ink)" }}>{loc(c.descriptionAr, c.descriptionEn)}</p>
+                      <p className="text-[13.5px] leading-relaxed mb-5" style={{ color: "var(--ink)" }}>{loc(c.descriptionAr, c.descriptionEn)}</p>
                     )}
+                    <button className="btn btn-primary mt-auto !text-[12.5px]" onClick={() => openDetails(c.id)}>
+                      {t("academyPublic.details")}
+                    </button>
                   </div>
                 );
               })}
             </div>
           </>
+        )}
+
+        {selected && (
+          <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-xl p-6 shadow-xl max-h-[92vh] overflow-y-auto">
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>{loc(selected.titleAr, selected.titleEn)}</h3>
+                <button className="btn btn-outline !px-2 !py-1 !text-[11px]" onClick={() => setSelected(null)}>{t("common.close")}</button>
+              </div>
+              <p className="text-[12.5px] mb-4 text-[var(--sub)]">
+                {catLabel(selected.category)} · {selected.level} {selected.duration && <>· {t("academyPublic.duration")}: {selected.duration}</>} · {selected.lessons.length} {t("academyPublic.lesson")}
+              </p>
+              {loc(selected.descriptionAr, selected.descriptionEn) && (
+                <p className="text-[13.5px] leading-relaxed mb-5" style={{ color: "var(--ink)" }}>{loc(selected.descriptionAr, selected.descriptionEn)}</p>
+              )}
+
+              <p className="text-[13px] font-bold mb-2" style={{ color: "var(--ink)" }}>{t("academyPublic.lessons")}</p>
+              {selected.lessons.length === 0 ? (
+                <p className="text-[12.5px] text-[var(--sub)] mb-5">{t("academyPublic.noLessons")}</p>
+              ) : (
+                <div className="space-y-2 mb-5">
+                  {[...selected.lessons].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id).map((l, idx) => (
+                    <div key={l.id} className="p-3 rounded-xl border" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)" }}>
+                      <p className="text-[13px] font-bold" style={{ color: "var(--ink)" }}>{idx + 1}. {loc(l.titleAr, l.titleEn)}</p>
+                      {loc(l.descriptionAr || "", l.descriptionEn || "") && (
+                        <p className="text-[12px] mt-1 text-[var(--sub)]">{loc(l.descriptionAr || "", l.descriptionEn || "")}</p>
+                      )}
+                      {l.videoUrl && (
+                        <a href={l.videoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-[12px] font-bold no-underline" style={{ color: "var(--blue)" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                          <span dir="ltr">{l.videoUrl}</span>
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-4 border-t border-[var(--border)]">
+                <p className="text-[13px] font-bold mb-3" style={{ color: "var(--ink)" }}>{t("academyPublic.enroll")}</p>
+                {enrollDone ? (
+                  <div className="text-center py-6">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--green)", margin: "0 auto 10px" }}><path d="M20 6 9 17l-5-5" /></svg>
+                    <p className="text-[13.5px] font-bold" style={{ color: "var(--ink)" }}>{t("academyPublic.enrollSuccess")}</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careersPublic.name")}</label>
+                        <div className="field-shell"><input type="text" value={enrollForm.applicantName} onChange={e => setEnrollForm({ ...enrollForm, applicantName: e.target.value })} /></div>
+                      </div>
+                      <div>
+                        <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careersPublic.email")}</label>
+                        <div className="field-shell"><input type="email" dir="ltr" value={enrollForm.email} onChange={e => setEnrollForm({ ...enrollForm, email: e.target.value })} /></div>
+                      </div>
+                      <div>
+                        <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careersPublic.phone")}</label>
+                        <div className="field-shell"><input type="tel" dir="ltr" value={enrollForm.phone} onChange={e => setEnrollForm({ ...enrollForm, phone: e.target.value })} /></div>
+                      </div>
+                      <div>
+                        <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careersPublic.message")}</label>
+                        <div className="field-shell"><input type="text" value={enrollForm.message} onChange={e => setEnrollForm({ ...enrollForm, message: e.target.value })} /></div>
+                      </div>
+                    </div>
+                    {enrollError && <p className="text-[12.5px] font-bold text-red-600 mt-2">{enrollError}</p>}
+                    <button disabled={enrollSubmitting} className="btn btn-primary w-full mt-4 disabled:opacity-60" onClick={submitEnroll}>
+                      {enrollSubmitting ? t("common.loading") : t("academyPublic.enroll")}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </SiteLayout>

@@ -122,9 +122,40 @@ public class AcademyService : IAcademyService
                 Id = c.Id, TitleAr = c.TitleAr, TitleEn = c.TitleEn,
                 DescriptionAr = c.DescriptionAr, DescriptionEn = c.DescriptionEn,
                 Category = c.Category, Duration = c.Duration, Level = c.Level,
-                IsActive = c.IsActive, SortOrder = c.SortOrder
+                IsActive = c.IsActive, SortOrder = c.SortOrder,
+                LessonsCount = c.Lessons != null ? c.Lessons.Count(l => l.IsActive) : 0
             })
             .ToListAsync();
+    }
+
+    public async Task<AcademyCourseDetailDto?> GetCourseByIdAsync(long id, bool activeOnly = false)
+    {
+        var q = _context.Set<AcademyCourse>().AsQueryable();
+        if (activeOnly) q = q.Where(c => c.IsActive);
+        var course = await q.Where(c => c.Id == id).FirstOrDefaultAsync();
+        if (course == null) return null;
+
+        var lessons = await _context.Set<AcademyLesson>()
+            .Where(l => l.CourseId == id)
+            .Where(l => !activeOnly || l.IsActive)
+            .OrderBy(l => l.SortOrder).ThenBy(l => l.Id)
+            .Select(l => new AcademyLessonDto
+            {
+                Id = l.Id, CourseId = l.CourseId,
+                TitleAr = l.TitleAr, TitleEn = l.TitleEn,
+                DescriptionAr = l.DescriptionAr, DescriptionEn = l.DescriptionEn,
+                VideoUrl = l.VideoUrl, SortOrder = l.SortOrder, IsActive = l.IsActive
+            })
+            .ToListAsync();
+
+        return new AcademyCourseDetailDto
+        {
+            Id = course.Id, TitleAr = course.TitleAr, TitleEn = course.TitleEn,
+            DescriptionAr = course.DescriptionAr, DescriptionEn = course.DescriptionEn,
+            Category = course.Category, Duration = course.Duration, Level = course.Level,
+            IsActive = course.IsActive, SortOrder = course.SortOrder,
+            Lessons = lessons
+        };
     }
 
     public async Task<AcademyCourseDto> CreateCourseAsync(UpsertAcademyCourseDto dto)
@@ -156,7 +187,114 @@ public class AcademyService : IAcademyService
         var course = await _context.Set<AcademyCourse>().FindAsync(id);
         if (course != null)
         {
+            var lessons = await _context.Set<AcademyLesson>().Where(l => l.CourseId == id).ToListAsync();
+            if (lessons.Count > 0) _context.Set<AcademyLesson>().RemoveRange(lessons);
+            var enrollments = await _context.Set<AcademyEnrollment>().Where(e => e.CourseId == id).ToListAsync();
+            if (enrollments.Count > 0) _context.Set<AcademyEnrollment>().RemoveRange(enrollments);
             _context.Set<AcademyCourse>().Remove(course);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<List<AcademyLessonDto>> GetLessonsAsync(long courseId, bool activeOnly = false)
+    {
+        var q = _context.Set<AcademyLesson>().Where(l => l.CourseId == courseId);
+        if (activeOnly) q = q.Where(l => l.IsActive);
+        return await q.OrderBy(l => l.SortOrder).ThenBy(l => l.Id)
+            .Select(l => new AcademyLessonDto
+            {
+                Id = l.Id, CourseId = l.CourseId,
+                TitleAr = l.TitleAr, TitleEn = l.TitleEn,
+                DescriptionAr = l.DescriptionAr, DescriptionEn = l.DescriptionEn,
+                VideoUrl = l.VideoUrl, SortOrder = l.SortOrder, IsActive = l.IsActive
+            })
+            .ToListAsync();
+    }
+
+    public async Task<AcademyLessonDto> CreateLessonAsync(long courseId, UpsertAcademyLessonDto dto)
+    {
+        var course = await _context.Set<AcademyCourse>().FindAsync(courseId)
+            ?? throw new InvalidOperationException("الدورة غير موجودة");
+        var lesson = new AcademyLesson
+        {
+            CourseId = courseId,
+            TitleAr = dto.TitleAr, TitleEn = dto.TitleEn,
+            DescriptionAr = dto.DescriptionAr, DescriptionEn = dto.DescriptionEn,
+            VideoUrl = dto.VideoUrl, SortOrder = dto.SortOrder, IsActive = dto.IsActive
+        };
+        _context.Set<AcademyLesson>().Add(lesson);
+        await _context.SaveChangesAsync();
+        return new AcademyLessonDto
+        {
+            Id = lesson.Id, CourseId = lesson.CourseId,
+            TitleAr = lesson.TitleAr, TitleEn = lesson.TitleEn,
+            DescriptionAr = lesson.DescriptionAr, DescriptionEn = lesson.DescriptionEn,
+            VideoUrl = lesson.VideoUrl, SortOrder = lesson.SortOrder, IsActive = lesson.IsActive
+        };
+    }
+
+    public async Task UpdateLessonAsync(long id, UpsertAcademyLessonDto dto)
+    {
+        var lesson = await _context.Set<AcademyLesson>().FindAsync(id) ?? throw new InvalidOperationException("غير موجود");
+        lesson.TitleAr = dto.TitleAr; lesson.TitleEn = dto.TitleEn;
+        lesson.DescriptionAr = dto.DescriptionAr; lesson.DescriptionEn = dto.DescriptionEn;
+        lesson.VideoUrl = dto.VideoUrl; lesson.SortOrder = dto.SortOrder; lesson.IsActive = dto.IsActive;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteLessonAsync(long id)
+    {
+        var lesson = await _context.Set<AcademyLesson>().FindAsync(id);
+        if (lesson != null)
+        {
+            _context.Set<AcademyLesson>().Remove(lesson);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task<List<AcademyEnrollmentDto>> GetEnrollmentsAsync(long? courseId = null)
+    {
+        var q = _context.Set<AcademyEnrollment>().AsQueryable();
+        if (courseId.HasValue) q = q.Where(e => e.CourseId == courseId.Value);
+        return await q.OrderByDescending(e => e.Id)
+            .Select(e => new AcademyEnrollmentDto
+            {
+                Id = e.Id, CourseId = e.CourseId,
+                CourseTitleAr = e.Course != null ? e.Course.TitleAr : "",
+                CourseTitleEn = e.Course != null ? e.Course.TitleEn : "",
+                ApplicantName = e.ApplicantName, Email = e.Email, Phone = e.Phone, Message = e.Message,
+                Status = e.Status, CreatedAt = e.CreatedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task EnrollAsync(long courseId, EnrollCourseDto dto)
+    {
+        var course = await _context.Set<AcademyCourse>().FindAsync(courseId)
+            ?? throw new InvalidOperationException("الدورة غير موجودة");
+        if (!course.IsActive) throw new InvalidOperationException("الدورة غير متاحة للتسجيل");
+        _context.Set<AcademyEnrollment>().Add(new AcademyEnrollment
+        {
+            CourseId = courseId,
+            ApplicantName = dto.ApplicantName, Email = dto.Email, Phone = dto.Phone, Message = dto.Message
+        });
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateEnrollmentStatusAsync(long id, string status)
+    {
+        var enrollment = await _context.Set<AcademyEnrollment>().FindAsync(id)
+            ?? throw new InvalidOperationException("التسجيل غير موجود");
+        enrollment.Status = status;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteEnrollmentAsync(long id)
+    {
+        var enrollment = await _context.Set<AcademyEnrollment>().FindAsync(id);
+        if (enrollment != null)
+        {
+            _context.Set<AcademyEnrollment>().Remove(enrollment);
             await _context.SaveChangesAsync();
         }
     }

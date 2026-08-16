@@ -17,13 +17,15 @@ public class StoreController : ControllerBase
     private readonly IPermissionCheckService _permCheck;
     private readonly AppDbContext _context;
     private readonly ICustomerNotificationService _customerNotificationService;
+    private readonly IStoreDesignService _designService;
 
-    public StoreController(IStoreService storeService, IPermissionCheckService permCheck, AppDbContext context, ICustomerNotificationService customerNotificationService)
+    public StoreController(IStoreService storeService, IPermissionCheckService permCheck, AppDbContext context, ICustomerNotificationService customerNotificationService, IStoreDesignService designService)
     {
         _storeService = storeService;
         _permCheck = permCheck;
         _context = context;
         _customerNotificationService = customerNotificationService;
+        _designService = designService;
     }
 
     private long GetUserId() =>
@@ -343,5 +345,28 @@ public class StoreController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    [HttpGet("design-request")]
+    public async Task<IActionResult> GetDesignRequest()
+    {
+        var storeId = await _permCheck.GetUserStoreIdAsync(GetUserId());
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+        var request = await _designService.GetOrCreateForStoreAsync(storeId.Value);
+        var messages = await _designService.GetMessagesAsync(request.Id);
+        return Ok(new { success = true, data = new { request, messages } });
+    }
+
+    [HttpPost("design-request/messages")]
+    public async Task<IActionResult> SendDesignMessage([FromBody] SendStoreDesignMessageDto dto)
+    {
+        var storeId = await _permCheck.GetUserStoreIdAsync(GetUserId());
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+        var request = await _designService.GetOrCreateForStoreAsync(storeId.Value);
+        var senderName = User.FindFirstValue(ClaimTypes.Name) ?? "صاحب المتجر";
+        var message = await _designService.SendMessageAsync(request.Id, "StoreOwner", senderName, dto);
+        return Ok(new { success = true, data = message, message = "تم إرسال رسالتك" });
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Admin;
 using FatooraRahatak.Application.DTOs.Platform;
+using FatooraRahatak.Application.DTOs.Stores;
 using FatooraRahatak.Application.Interfaces;
 namespace FatooraRahatak.API.Controllers;[ApiController]
 [Route("api/v1/admin")]
@@ -16,7 +17,8 @@ public class AdminController : ControllerBase
     private readonly IDashboardSectionService _dashboardSectionService;
     private readonly ICareerService _careerService;
     private readonly IAcademyService _academyService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService)
+    private readonly IStoreDesignService _designService;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService)
     {
         _adminService = adminService;
         _siteService = siteService;
@@ -25,6 +27,7 @@ public class AdminController : ControllerBase
         _dashboardSectionService = dashboardSectionService;
         _careerService = careerService;
         _academyService = academyService;
+        _designService = designService;
     }
     private bool IsSuperAdmin()
     {
@@ -745,5 +748,115 @@ public class AdminController : ControllerBase
         var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
         await _academyService.DeleteCourseAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpGet("courses/{courseId}/lessons")]
+    public async Task<IActionResult> GetCourseLessons(long courseId)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetLessonsAsync(courseId);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("courses/{courseId}/lessons")]
+    public async Task<IActionResult> CreateCourseLesson(long courseId, [FromBody] UpsertAcademyLessonDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var lesson = await _academyService.CreateLessonAsync(courseId, dto);
+            return Ok(new { success = true, data = lesson, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("courses/lessons/{id}")]
+    public async Task<IActionResult> UpdateCourseLesson(long id, [FromBody] UpsertAcademyLessonDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdateLessonAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("courses/lessons/{id}")]
+    public async Task<IActionResult> DeleteCourseLesson(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _academyService.DeleteLessonAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpGet("course-enrollments")]
+    public async Task<IActionResult> GetCourseEnrollments([FromQuery] long? courseId)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetEnrollmentsAsync(courseId);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("course-enrollments/{id}/status")]
+    public async Task<IActionResult> UpdateCourseEnrollmentStatus(long id, [FromBody] UpdateAcademyEnrollmentStatusDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdateEnrollmentStatusAsync(id, dto.Status);
+            return Ok(new { success = true, message = "تم تحديث الحالة" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("course-enrollments/{id}")]
+    public async Task<IActionResult> DeleteCourseEnrollment(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _academyService.DeleteEnrollmentAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // === Store design requests (chat with platform admin) ===
+    [HttpGet("design-requests")]
+    public async Task<IActionResult> GetDesignRequests()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _designService.GetRequestsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("design-requests/{id}/messages")]
+    public async Task<IActionResult> GetDesignRequestMessages(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _designService.GetMessagesAsync(id);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("design-requests/{id}/messages")]
+    public async Task<IActionResult> SendDesignRequestMessage(long id, [FromBody] SendStoreDesignMessageDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var senderName = User.FindFirstValue(ClaimTypes.Name) ?? "الإدارة";
+            var message = await _designService.SendMessageAsync(id, "Admin", senderName, dto);
+            return Ok(new { success = true, data = message, message = "تم إرسال الرد" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("design-requests/{id}/status")]
+    public async Task<IActionResult> UpdateDesignRequestStatus(long id, [FromBody] UpdateStoreDesignRequestStatusDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _designService.UpdateStatusAsync(id, dto.Status);
+            return Ok(new { success = true, message = "تم تحديث الحالة" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
     }
 }

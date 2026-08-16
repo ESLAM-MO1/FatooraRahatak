@@ -67,6 +67,73 @@ public class AcademyCourseDto
     public string Level { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public int SortOrder { get; set; }
+    public int LessonsCount { get; set; }
+}
+
+public class AcademyCourseDetailDto
+{
+    public long Id { get; set; }
+    public string TitleAr { get; set; } = string.Empty;
+    public string TitleEn { get; set; } = string.Empty;
+    public string DescriptionAr { get; set; } = string.Empty;
+    public string DescriptionEn { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string Duration { get; set; } = string.Empty;
+    public string Level { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public int SortOrder { get; set; }
+    public List<AcademyLessonDto> Lessons { get; set; } = new();
+}
+
+public class AcademyLessonDto
+{
+    public long Id { get; set; }
+    public long CourseId { get; set; }
+    public string TitleAr { get; set; } = string.Empty;
+    public string TitleEn { get; set; } = string.Empty;
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
+    public string? VideoUrl { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class UpsertAcademyLessonDto
+{
+    public string TitleAr { get; set; } = string.Empty;
+    public string TitleEn { get; set; } = string.Empty;
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
+    public string? VideoUrl { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public class AcademyEnrollmentDto
+{
+    public long Id { get; set; }
+    public long CourseId { get; set; }
+    public string CourseTitleAr { get; set; } = string.Empty;
+    public string CourseTitleEn { get; set; } = string.Empty;
+    public string ApplicantName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Message { get; set; }
+    public string Status { get; set; } = "New";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class EnrollCourseDto
+{
+    public string ApplicantName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Message { get; set; }
+}
+
+public class UpdateAcademyEnrollmentStatusDto
+{
+    public string Status { get; set; } = "New";
 }
 
 public class UpsertAcademyCourseDto

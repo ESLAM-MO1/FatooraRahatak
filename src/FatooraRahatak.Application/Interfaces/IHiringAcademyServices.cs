@@ -17,7 +17,18 @@ public interface ICareerService
 public interface IAcademyService
 {
     Task<List<AcademyCourseDto>> GetCoursesAsync(bool activeOnly = false);
+    Task<AcademyCourseDetailDto?> GetCourseByIdAsync(long id, bool activeOnly = false);
     Task<AcademyCourseDto> CreateCourseAsync(UpsertAcademyCourseDto dto);
     Task UpdateCourseAsync(long id, UpsertAcademyCourseDto dto);
     Task DeleteCourseAsync(long id);
+
+    Task<List<AcademyLessonDto>> GetLessonsAsync(long courseId, bool activeOnly = false);
+    Task<AcademyLessonDto> CreateLessonAsync(long courseId, UpsertAcademyLessonDto dto);
+    Task UpdateLessonAsync(long id, UpsertAcademyLessonDto dto);
+    Task DeleteLessonAsync(long id);
+
+    Task<List<AcademyEnrollmentDto>> GetEnrollmentsAsync(long? courseId = null);
+    Task EnrollAsync(long courseId, EnrollCourseDto dto);
+    Task UpdateEnrollmentStatusAsync(long id, string status);
+    Task DeleteEnrollmentAsync(long id);
 }

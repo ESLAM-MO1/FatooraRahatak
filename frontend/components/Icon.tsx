@@ -82,6 +82,7 @@ export const ICONS = {
   star: "M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.8-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3Z",
   lock: "M6 10V8a6 6 0 0 1 12 0v2M6 10h12v10H6V10Zm5 4v2M14 14v2",
   layout: "M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5Zm9-1v16M4 9h9",
+  palette: "M12 3a9 9 0 0 0 0 18h1.5a1.5 1.5 0 0 0 0-3H12a6 6 0 0 1 0-12c3.3 0 6 2.7 6 6v.5a1.5 1.5 0 0 1-3 0v-.5a3 3 0 0 0-3-3h-.01M12 8h.01M6.5 11h.01M7 15h.01",
 };
 export default function Icon({
   name,

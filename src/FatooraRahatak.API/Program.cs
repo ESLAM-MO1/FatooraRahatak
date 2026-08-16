@@ -98,6 +98,7 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IPayrollService
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICartService, FatooraRahatak.Infrastructure.Services.CartService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICouponService, FatooraRahatak.Infrastructure.Services.CouponService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAdminService, FatooraRahatak.Infrastructure.Services.AdminService>();
+        builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStoreDesignService, FatooraRahatak.Infrastructure.Services.StoreDesignService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IPublicStoreService, FatooraRahatak.Infrastructure.Services.PublicStoreService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOrderService, FatooraRahatak.Infrastructure.Services.OrderService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IOrderStockService, FatooraRahatak.Infrastructure.Services.OrderStockService>();

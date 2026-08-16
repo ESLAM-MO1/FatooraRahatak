@@ -109,6 +109,10 @@ public class AppDbContext : DbContext
     public DbSet<JobPosting> JobPostings => Set<JobPosting>();
     public DbSet<JobApplication> JobApplications => Set<JobApplication>();
     public DbSet<AcademyCourse> AcademyCourses => Set<AcademyCourse>();
+    public DbSet<AcademyLesson> AcademyLessons => Set<AcademyLesson>();
+    public DbSet<AcademyEnrollment> AcademyEnrollments => Set<AcademyEnrollment>();
+    public DbSet<StoreDesignRequest> StoreDesignRequests => Set<StoreDesignRequest>();
+    public DbSet<StoreDesignMessage> StoreDesignMessages => Set<StoreDesignMessage>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<AffiliateCommission> AffiliateCommissions => Set<AffiliateCommission>();
@@ -195,6 +199,30 @@ public class AppDbContext : DbContext
             .WithMany(p => p.Stores)
             .HasForeignKey(s => s.PackageId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StoreDesignRequest>()
+            .HasOne(r => r.Store)
+            .WithMany()
+            .HasForeignKey(r => r.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StoreDesignMessage>()
+            .HasOne(m => m.Request)
+            .WithMany()
+            .HasForeignKey(m => m.RequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AcademyLesson>()
+            .HasOne(l => l.Course)
+            .WithMany(c => c.Lessons)
+            .HasForeignKey(l => l.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AcademyEnrollment>()
+            .HasOne(e => e.Course)
+            .WithMany()
+            .HasForeignKey(e => e.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<CustomerAddress>()
             .HasOne(a => a.Store)

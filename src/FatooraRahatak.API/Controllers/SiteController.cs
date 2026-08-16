@@ -165,4 +165,26 @@ public class SiteController : ControllerBase
         var data = await _academyService.GetCoursesAsync(true);
         return Ok(new { success = true, data });
     }
+
+    [HttpGet("courses/{id}")]
+    public async Task<IActionResult> GetCourse(long id)
+    {
+        var data = await _academyService.GetCourseByIdAsync(id, true);
+        if (data == null) return NotFound(new { success = false, message = "غير موجود" });
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("courses/{id}/enroll")]
+    public async Task<IActionResult> EnrollCourse(long id, [FromBody] EnrollCourseDto dto)
+    {
+        try
+        {
+            await _academyService.EnrollAsync(id, dto);
+            return Ok(new { success = true, message = "تم تسجيلك في الدورة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 }

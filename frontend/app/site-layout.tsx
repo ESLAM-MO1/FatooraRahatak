@@ -10,7 +10,29 @@ import "@/lib/i18n/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
-const FEATURES_LINKS = [
+interface SiteMenuItem {
+  id: number;
+  location: string;
+  titleAr: string;
+  titleEn: string;
+  href: string;
+  icon?: string | null;
+  parentId?: number | null;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+interface ResolvedLink {
+  key: string;
+  href: string;
+  label: string;
+  icon?: string;
+  children: ResolvedLink[];
+}
+
+type LinkDef = { labelKey: string; href: string };
+
+const FEATURES_LINKS: LinkDef[] = [
   { labelKey: "page.accountingSystem", href: "/accounting-system" },
   { labelKey: "page.posSystem", href: "/pos-system" },
   { labelKey: "page.invoicing", href: "/invoicing" },
@@ -21,17 +43,18 @@ const FEATURES_LINKS = [
   { labelKey: "page.pos", href: "/pos" },
   { labelKey: "page.paymentGateway", href: "/payment-gateway" },
   { labelKey: "page.websiteIntegration", href: "/website-integration" },
-] as const;
+];
 
-const ABOUT_LINKS = [
+const ABOUT_LINKS: LinkDef[] = [
   { labelKey: "page.about", href: "/about" },
   { labelKey: "page.pricing", href: "/packages" },
   { labelKey: "page.affiliate", href: "/affiliate" },
   { labelKey: "page.careers", href: "/careers" },
+  { labelKey: "page.academy", href: "/academy" },
   { labelKey: "page.freeTools", href: "/free-tools" },
-] as const;
+];
 
-const FOOTER_TOOLS = [
+const FOOTER_TOOLS: LinkDef[] = [
   { labelKey: "page.accountingSystem", href: "/accounting-system" },
   { labelKey: "page.posSystem", href: "/pos-system" },
   { labelKey: "page.invoicing", href: "/invoicing" },
@@ -42,9 +65,9 @@ const FOOTER_TOOLS = [
   { labelKey: "page.pos", href: "/pos" },
   { labelKey: "page.paymentGateway", href: "/payment-gateway" },
   { labelKey: "page.websiteIntegration", href: "/website-integration" },
-] as const;
+];
 
-const FOOTER_ABOUT = [
+const FOOTER_ABOUT: LinkDef[] = [
   { labelKey: "page.about", href: "/about" },
   { labelKey: "page.pricing", href: "/packages" },
   { labelKey: "page.terms", href: "/terms" },
@@ -53,15 +76,16 @@ const FOOTER_ABOUT = [
   { labelKey: "page.returnPolicy", href: "/return-policy" },
   { labelKey: "page.affiliate", href: "/affiliate" },
   { labelKey: "page.careers", href: "/careers" },
+  { labelKey: "page.academy", href: "/academy" },
   { labelKey: "page.freeTools", href: "/free-tools" },
-] as const;
+];
 
-const FOOTER_HELP = [
+const FOOTER_HELP: LinkDef[] = [
   { labelKey: "page.contact", href: "/contact" },
   { labelKey: "page.faq", href: "/faq" },
   { labelKey: "page.helpCenter", href: "/help-center" },
   { labelKey: "page.terms", href: "/terms" },
-] as const;
+];
 
 interface BlogPost {
   id: number;
@@ -76,10 +100,6 @@ interface FooterData {
   copyright: string;
   social: { facebook: string; instagram: string; whatsapp: string };
 }
-
-const DEFAULT_FOOTER: Omit<FooterData, "description" | "copyright"> = {
-  social: { facebook: "#", instagram: "#", whatsapp: "#" },
-};
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   const { t, i18n } = useTranslation();
@@ -97,6 +117,17 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   const [aboutPos, setAboutPos] = useState<{ top: number; right: number } | null>(null);
   const [footer, setFooter] = useState<FooterData>({ description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#" } });
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [menus, setMenus] = useState<SiteMenuItem[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/site/menus`)
+      .then(r => r.json())
+      .then(json => {
+        const data = json.data || json;
+        if (Array.isArray(data)) setMenus(data);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`${API_BASE}/site/landing-page`).then(r => r.json()).then(json => {
@@ -162,6 +193,96 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
     };
   }, [aboutOpen]);
 
+  const resolved = (location: string, fallback: LinkDef[]): ResolvedLink[] => {
+    const isAr = i18n.language === "ar";
+    const active = menus.filter(m => m.location === location && m.isActive);
+    if (active.length > 0) {
+      const byId = new Map<number, ResolvedLink>();
+      const roots: ResolvedLink[] = [];
+      const sort = (a: SiteMenuItem, b: SiteMenuItem) => a.sortOrder - b.sortOrder || a.id - b.id;
+      active.sort(sort).forEach(m => {
+        byId.set(m.id, {
+          key: String(m.id),
+          href: m.href,
+          label: isAr ? (m.titleAr || m.titleEn) : (m.titleEn || m.titleAr),
+          icon: m.icon || undefined,
+          children: [],
+        });
+      });
+      active.sort(sort).forEach(m => {
+        const node = byId.get(m.id)!;
+        if (m.parentId && byId.has(m.parentId)) {
+          byId.get(m.parentId)!.children.push(node);
+        } else {
+          roots.push(node);
+        }
+      });
+      return roots;
+    }
+    return fallback.map((l, i) => ({ key: l.href + i, href: l.href, label: t(l.labelKey), children: [] }));
+  };
+
+  const featuresLinks = resolved("features", FEATURES_LINKS);
+  const aboutLinks = resolved("about", ABOUT_LINKS);
+  const footerTools = resolved("footer-tools", FOOTER_TOOLS);
+  const footerAbout = resolved("footer-about", FOOTER_ABOUT);
+  const footerHelp = resolved("footer-help", FOOTER_HELP);
+
+  const renderHeaderItems = (links: ResolvedLink[], withArrow: boolean, onOpen: () => void,
+    btnRef: React.RefObject<HTMLButtonElement>, dropdownRef: React.RefObject<HTMLDivElement>,
+    pos: { top: number; right: number } | null, width: string, colStyle: "grid2" | "list") => {
+    return (
+      <div className="relative">
+        <button
+          ref={btnRef}
+          className="flex items-center gap-1 px-3 py-2 rounded-lg text-[14px] font-bold transition-colors hover:bg-gray-100"
+          style={{ color: "var(--ink)" }}
+          onClick={onOpen}
+        >
+          {withArrow}
+        </button>
+        {pos && typeof document === "object" && createPortal(
+          <div
+            ref={dropdownRef}
+            className="rounded-xl border shadow-lg bg-white overflow-hidden"
+            style={{
+              position: "fixed",
+              top: pos.top,
+              right: pos.right,
+              width,
+              maxHeight: "calc(100vh - 100px)",
+              zIndex: 9999,
+              borderColor: "var(--border)",
+            }}
+          >
+            <div className="p-2">
+              <div className={colStyle === "grid2" ? "grid grid-cols-2 gap-1.5" : ""}>
+                {links.map(link => (
+                  <div key={link.key} className="relative group">
+                    <Link
+                      href={link.href}
+                      className="flex items-center gap-2 px-2 py-2 rounded-lg text-[12px] font-bold transition-colors hover:bg-gray-50"
+                      style={{ color: "var(--ink)" }}
+                      onClick={() => onOpen()}
+                    >
+                      {link.icon && (
+                        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>
+                          <Icon name={(link.icon as any) || "store"} size={16} />
+                        </span>
+                      )}
+                      {link.label}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
       <header
@@ -199,7 +320,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                     position: "fixed",
                     top: featuresPos.top,
                     right: featuresPos.right,
-                    width: "640px",
+                    width: "680px",
                     maxHeight: "calc(100vh - 100px)",
                     zIndex: 9999,
                     borderColor: "var(--border)",
@@ -207,22 +328,52 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 >
                   <div className="flex">
                     <div className="flex-1 grid grid-cols-2 gap-1.5 p-2">
-                      {FEATURES_LINKS.map((link, i) => (
-                        <Link
-                          key={link.href + i}
-                          href={link.href}
-                          className="flex items-center gap-2 px-2 py-2 rounded-lg text-[12px] font-bold transition-colors hover:bg-gray-50"
-                          style={{ color: "var(--ink)" }}
-                          onClick={() => setFeaturesOpen(false)}
-                        >
-                          <span
-                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                            style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}
+                      {featuresLinks.map(link => (
+                        <div key={link.key} className="relative group">
+                          <Link
+                            href={link.href}
+                            className="flex items-center gap-2 px-2 py-2 rounded-lg text-[12px] font-bold transition-colors hover:bg-gray-50"
+                            style={{ color: "var(--ink)" }}
+                            onClick={() => setFeaturesOpen(false)}
                           >
-                            <Icon name="store" size={16} />
-                          </span>
-                          {t(link.labelKey)}
-                        </Link>
+                            <span
+                              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}
+                            >
+                              <Icon name={(link.icon as any) || "store"} size={16} />
+                            </span>
+                            {link.label}
+                            {link.children.length > 0 && (
+                              <svg className="ms-auto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M9 6l6 6-6 6" />
+                              </svg>
+                            )}
+                          </Link>
+                          {link.children.length > 0 && (
+                            <div className="absolute top-0 left-full ml-1 hidden group-hover:block min-w-[200px] rounded-lg border shadow-lg bg-white p-1.5" style={{ borderColor: "var(--border)" }}>
+                              {link.children.map(child => (
+                                <Link
+                                  key={child.key}
+                                  href={child.href}
+                                  className="block px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors hover:bg-gray-50"
+                                  style={{ color: "var(--ink)" }}
+                                  onClick={() => setFeaturesOpen(false)}
+                                >
+                                  {child.label}
+                                  {child.children.length > 0 && (
+                                    <div className="mt-1 ml-3 border-s ps-2" style={{ borderColor: "var(--border)" }}>
+                                      {child.children.map(grand => (
+                                        <Link key={grand.key} href={grand.href} className="block py-1 text-[12px]" style={{ color: "var(--sub)" }} onClick={() => setFeaturesOpen(false)}>
+                                          {grand.label}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  )}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                     <div
@@ -266,23 +417,44 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                     position: "fixed",
                     top: aboutPos.top,
                     right: aboutPos.right,
-                    width: "208px",
+                    width: "240px",
                     maxHeight: "calc(100vh - 100px)",
                     zIndex: 9999,
                     borderColor: "var(--border)",
                   }}
                 >
                   <div className="p-2">
-                    {ABOUT_LINKS.map((link, i) => (
-                      <Link
-                        key={link.href + i}
-                        href={link.href}
-                        className="block px-4 py-2.5 rounded-lg text-[13.5px] font-bold transition-colors hover:bg-gray-50"
-                        style={{ color: "var(--ink)" }}
-                        onClick={() => setAboutOpen(false)}
-                      >
-                        {t(link.labelKey)}
-                      </Link>
+                    {aboutLinks.map(link => (
+                      <div key={link.key} className="relative group">
+                        <Link
+                          href={link.href}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-[13.5px] font-bold transition-colors hover:bg-gray-50"
+                          style={{ color: "var(--ink)" }}
+                          onClick={() => setAboutOpen(false)}
+                        >
+                          {link.label}
+                          {link.children.length > 0 && (
+                            <svg className="ms-auto" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
+                          )}
+                        </Link>
+                        {link.children.length > 0 && (
+                          <div className="absolute top-0 left-full ml-1 hidden group-hover:block min-w-[200px] rounded-lg border shadow-lg bg-white p-1.5" style={{ borderColor: "var(--border)" }}>
+                            {link.children.map(child => (
+                              <Link
+                                key={child.key}
+                                href={child.href}
+                                className="block px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors hover:bg-gray-50"
+                                style={{ color: "var(--ink)" }}
+                                onClick={() => setAboutOpen(false)}
+                              >
+                                {child.label}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>,
@@ -331,34 +503,66 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
               <p className="px-3 py-1 text-[12px] font-bold" style={{ color: "var(--sub)" }}>
                 {t("nav.mobileFeatures")}
               </p>
-              {FEATURES_LINKS.map((link, i) => (
-                <Link
-                  key={link.href + i}
-                  href={link.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-bold"
-                  style={{ color: "var(--ink)" }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <span style={{ color: "var(--blue)" }}>
-                    <Icon name="store" size={18} />
-                  </span>
-                  {t(link.labelKey)}
-                </Link>
+              {featuresLinks.map(link => (
+                <div key={link.key}>
+                  <Link
+                    href={link.href}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-bold"
+                    style={{ color: "var(--ink)" }}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <span style={{ color: "var(--blue)" }}>
+                      <Icon name={(link.icon as any) || "store"} size={18} />
+                    </span>
+                    {link.label}
+                  </Link>
+                  {link.children.length > 0 && (
+                    <div className="ms-4 border-s ps-3 space-y-1" style={{ borderColor: "var(--border)" }}>
+                      {link.children.map(child => (
+                        <Link
+                          key={child.key}
+                          href={child.href}
+                          className="block px-3 py-2 rounded-lg text-[13px] font-bold"
+                          style={{ color: "var(--sub)" }}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
               <div className="border-t my-3" style={{ borderColor: "var(--border)" }} />
               <p className="px-3 py-1 text-[12px] font-bold" style={{ color: "var(--sub)" }}>
                 {t("nav.mobileAbout")}
               </p>
-              {ABOUT_LINKS.map((link, i) => (
-                <Link
-                  key={link.href + i}
-                  href={link.href}
-                  className="block px-3 py-2.5 rounded-lg text-[14px] font-bold"
-                  style={{ color: "var(--ink)" }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {t(link.labelKey)}
-                </Link>
+              {aboutLinks.map(link => (
+                <div key={link.key}>
+                  <Link
+                    href={link.href}
+                    className="block px-3 py-2.5 rounded-lg text-[14px] font-bold"
+                    style={{ color: "var(--ink)" }}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                  {link.children.length > 0 && (
+                    <div className="ms-4 border-s ps-3 space-y-1" style={{ borderColor: "var(--border)" }}>
+                      {link.children.map(child => (
+                        <Link
+                          key={child.key}
+                          href={child.href}
+                          className="block px-3 py-2 rounded-lg text-[13px] font-bold"
+                          style={{ color: "var(--sub)" }}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
               <div className="border-t my-3" style={{ borderColor: "var(--border)" }} />
               <Link
@@ -414,11 +618,22 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.tools")}</h3>
               <ul className="space-y-3">
-                {FOOTER_TOOLS.map((link, i) => (
-                  <li key={link.href + i}>
+                {footerTools.map(link => (
+                  <li key={link.key}>
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
-                      {t(link.labelKey)}
+                      {link.label}
                     </Link>
+                    {link.children.length > 0 && (
+                      <ul className="mt-2 space-y-2 ms-3 border-s ps-3" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
+                        {link.children.map(child => (
+                          <li key={child.key}>
+                            <Link href={child.href} className="text-[12.5px] transition-colors hover:text-white" style={{ color: "#9FCBDD" }}>
+                              {child.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -427,11 +642,22 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.about")}</h3>
               <ul className="space-y-3">
-                {FOOTER_ABOUT.map((link, i) => (
-                  <li key={link.href + i}>
+                {footerAbout.map(link => (
+                  <li key={link.key}>
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
-                      {t(link.labelKey)}
+                      {link.label}
                     </Link>
+                    {link.children.length > 0 && (
+                      <ul className="mt-2 space-y-2 ms-3 border-s ps-3" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
+                        {link.children.map(child => (
+                          <li key={child.key}>
+                            <Link href={child.href} className="text-[12.5px] transition-colors hover:text-white" style={{ color: "#9FCBDD" }}>
+                              {child.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -440,11 +666,22 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div>
               <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.help")}</h3>
               <ul className="space-y-3">
-                {FOOTER_HELP.map((link, i) => (
-                  <li key={link.href + i}>
+                {footerHelp.map(link => (
+                  <li key={link.key}>
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
-                      {t(link.labelKey)}
+                      {link.label}
                     </Link>
+                    {link.children.length > 0 && (
+                      <ul className="mt-2 space-y-2 ms-3 border-s ps-3" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
+                        {link.children.map(child => (
+                          <li key={child.key}>
+                            <Link href={child.href} className="text-[12.5px] transition-colors hover:text-white" style={{ color: "#9FCBDD" }}>
+                              {child.label}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>

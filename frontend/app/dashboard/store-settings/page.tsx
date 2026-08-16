@@ -378,7 +378,7 @@ export default function StoreSettingsPage() {
   const [coverUploading, setCoverUploading] = useState(false);
   const [themeAutoSaving, setThemeAutoSaving] = useState(false);
   const themeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedTheme = useRef<{ themeName: string; colors: StoreColors; coverImage: string } | null>(null);
+  const lastSavedTheme = useRef<{ themeName: string; colors: StoreColors; coverImage: string; customCss: string } | null>(null);
 
   const [contactForm, setContactForm] = useState({ phone: "", email: "", address: "" });
   const [contactSaving, setContactSaving] = useState(false);
@@ -392,10 +392,11 @@ export default function StoreSettingsPage() {
   const [currencyLang, setCurrencyLang] = useState({ currency: "SAR", language: "ar" });
   const [currencySaving, setCurrencySaving] = useState(false);
 
-  const [themeForm, setThemeForm] = useState<{ themeName: string; colors: StoreColors; coverImage: string }>({
+  const [themeForm, setThemeForm] = useState<{ themeName: string; colors: StoreColors; coverImage: string; customCss: string }>({
     themeName: "professional-blue",
     colors: getDefaultColors("professional-blue"),
     coverImage: "",
+    customCss: "",
   });
   const [themeSaving, setThemeSaving] = useState(false);
   const [enabledThemes, setEnabledThemes] = useState<Set<string> | null>(null);
@@ -451,7 +452,7 @@ export default function StoreSettingsPage() {
       setCurrencyLang({ currency: d.currency || "SAR", language: d.defaultLanguage || "ar" });
       const resolvedTheme = resolveThemeConfig(d.themeName);
       const resolvedColors = parseStoreColors(resolvedTheme.id, d.colorsJson);
-      const initialTheme = { themeName: resolvedTheme.id, colors: resolvedColors, coverImage: d.coverImage || "" };
+      const initialTheme = { themeName: resolvedTheme.id, colors: resolvedColors, coverImage: d.coverImage || "", customCss: d.customCss || "" };
       setThemeForm(initialTheme);
       lastSavedTheme.current = initialTheme;
       setReturnPolicyText(d.returnPolicyText || "");
@@ -490,16 +491,16 @@ export default function StoreSettingsPage() {
     if (!store) return;
     const allValid = Object.values(themeForm.colors).every((c) => /^#[0-9a-fA-F]{6}$/.test(c));
     if (!allValid) return;
-    const snap = { themeName: themeForm.themeName, colors: themeForm.colors, coverImage: themeForm.coverImage || "" };
+    const snap = { themeName: themeForm.themeName, colors: themeForm.colors, coverImage: themeForm.coverImage || "", customCss: themeForm.customCss };
     const last = lastSavedTheme.current;
     const sameColors = last && JSON.stringify(last.colors) === JSON.stringify(snap.colors);
-    if (last && snap.themeName === last.themeName && sameColors && snap.coverImage === last.coverImage) return;
+    if (last && snap.themeName === last.themeName && sameColors && snap.coverImage === last.coverImage && snap.customCss === last.customCss) return;
 
     if (themeTimer.current) clearTimeout(themeTimer.current);
     themeTimer.current = setTimeout(async () => {
       setThemeAutoSaving(true);
       try {
-        const res = await api.put("/stores/theme", { themeName: snap.themeName, colorsJson: JSON.stringify(snap.colors), coverImage: snap.coverImage || null });
+        const res = await api.put("/stores/theme", { themeName: snap.themeName, colorsJson: JSON.stringify(snap.colors), coverImage: snap.coverImage || null, customCss: snap.customCss || null });
         lastSavedTheme.current = snap;
         setThemeSuccess(res.data.message || t("storeSettings.themeSaved"));
       } catch {
@@ -730,13 +731,13 @@ export default function StoreSettingsPage() {
       themeTimer.current = null;
     }
     try {
-      const res = await api.put("/stores/theme", { themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null });
+      const res = await api.put("/stores/theme", { themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null, customCss: themeForm.customCss || null });
       setThemeSuccess(res.data.message);
       const allValid = Object.values(themeForm.colors).every((c) => /^#[0-9a-fA-F]{6}$/.test(c));
       if (allValid) {
-        lastSavedTheme.current = { themeName: themeForm.themeName, colors: themeForm.colors, coverImage: themeForm.coverImage || "" };
+        lastSavedTheme.current = { themeName: themeForm.themeName, colors: themeForm.colors, coverImage: themeForm.coverImage || "", customCss: themeForm.customCss };
       }
-      setStore((prev) => (prev ? { ...prev, themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null } : prev));
+      setStore((prev) => (prev ? { ...prev, themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null, customCss: themeForm.customCss || null } : prev));
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.themeSaveError"));
     } finally {
@@ -1068,6 +1069,19 @@ export default function StoreSettingsPage() {
                     <input type="file" accept="image/*" onChange={handleUploadCover} className="hidden" />
                   </label>
                 </div>
+              </div>
+
+              <div>
+                <label>{t("storeSettings.customCss")}</label>
+                <p className="text-[11px] text-[var(--sub)] mb-2">{t("storeSettings.customCssDesc")}</p>
+                <textarea
+                  dir="ltr"
+                  value={themeForm.customCss}
+                  onChange={(e) => setThemeForm((f) => ({ ...f, customCss: e.target.value }))}
+                  placeholder={t("storeSettings.customCssPlaceholder")}
+                  className="w-full border rounded-xl px-3 py-2 text-[12px] font-mono leading-relaxed resize-y"
+                  style={{ borderColor: "var(--border)", minHeight: 120 }}
+                />
               </div>
 
               <Can code="StoreSettings.Edit">

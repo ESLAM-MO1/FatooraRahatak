@@ -63,11 +63,12 @@ export default function ProfilePage() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await api.post("/products/upload-image", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      const res = await api.post("/auth/profile-image", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setProfileImage(res.data.data.url);
       localStorage.setItem(getStorageKey(), res.data.data.url);
-      localStorage.removeItem("profileImage");
+      localStorage.setItem("profileImage", res.data.data.url);
       window.dispatchEvent(new Event("profileUpdated"));
+      setMessage({ type: "success", text: t("profile.uploadSuccess") });
     } catch (err) {
       setMessage({ type: "error", text: errMessage(err, t("profile.uploadFailed")) });
     }

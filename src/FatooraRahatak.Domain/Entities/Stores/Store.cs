@@ -55,6 +55,7 @@ public class Store : BaseEntity
     public string ThemeName { get; set; } = "professional-blue";
     public string? ColorsJson { get; set; } // JSON: {headerColor, buttonColor, accentColor, heroFrom, heroTo, footerColor, newsletterColor}
     public string? CoverImage { get; set; }
+    public string? CustomCss { get; set; } // قالب مخصص: CSS يُحقن في صفحات المتجر
 
     // حساب استقبال مدفوعات المتجر (Moyasar recipient)
     public PaymentAccountStatus PaymentAccountStatus { get; set; } = PaymentAccountStatus.NotSubmitted;

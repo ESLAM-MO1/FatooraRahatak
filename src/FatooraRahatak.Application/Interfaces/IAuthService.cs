@@ -14,6 +14,7 @@ public interface IAuthService
     Task ResetPasswordAsync(ResetPasswordDto dto);
     Task<string?> SendProfileUpdateCodeAsync(long userId);
     Task UpdateProfileAsync(long userId, UpdateProfileDto dto);
+    Task SaveProfileImageAsync(long userId, string imageUrl);
     Task<string?> SendPasswordChangeCodeAsync(long userId);
     Task ChangePasswordAsync(long userId, ChangePasswordDto dto);
 }

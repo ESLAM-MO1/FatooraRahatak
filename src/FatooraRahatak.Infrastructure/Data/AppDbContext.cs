@@ -104,6 +104,11 @@ public class AppDbContext : DbContext
     public DbSet<DomainRegistrationRequest> DomainRegistrationRequests => Set<DomainRegistrationRequest>();
     public DbSet<DomainBlacklistEntry> DomainBlacklistEntries => Set<DomainBlacklistEntry>();
     public DbSet<Theme> Themes => Set<Theme>();
+    public DbSet<SiteMenu> SiteMenus => Set<SiteMenu>();
+    public DbSet<DashboardSection> DashboardSections => Set<DashboardSection>();
+    public DbSet<JobPosting> JobPostings => Set<JobPosting>();
+    public DbSet<JobApplication> JobApplications => Set<JobApplication>();
+    public DbSet<AcademyCourse> AcademyCourses => Set<AcademyCourse>();
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<AffiliateCommission> AffiliateCommissions => Set<AffiliateCommission>();
@@ -946,6 +951,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Theme>()
             .HasIndex(t => t.ThemeKey)
             .IsUnique();
+
+        modelBuilder.Entity<SiteMenu>()
+            .HasOne(m => m.Parent)
+            .WithMany(m => m.Children)
+            .HasForeignKey(m => m.ParentId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<ReferralCode>()
             .HasIndex(r => r.Code)

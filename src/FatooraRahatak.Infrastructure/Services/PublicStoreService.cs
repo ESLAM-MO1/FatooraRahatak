@@ -70,6 +70,7 @@ public class PublicStoreService : IPublicStoreService
             ThemeName = store.ThemeName,
             ColorsJson = store.ColorsJson,
             CoverImage = store.CoverImage,
+            CustomCss = store.CustomCss,
             Currency = store.Currency,
             VatRate = store.IsVatRegistered ? 0.15m : 0,
             FreeShippingThreshold = store.FreeShippingThreshold,

@@ -359,6 +359,7 @@ public class StoreService : IStoreService
             ColorsJson = store.ColorsJson,
             Logo = store.Logo,
             CoverImage = store.CoverImage,
+            CustomCss = store.CustomCss,
             MaxThemes = package?.MaxThemes ?? 1,
             IsSearchEnabled = store.IsSearchEnabled,
             IsReviewsEnabled = store.IsReviewsEnabled,
@@ -511,7 +512,8 @@ public class StoreService : IStoreService
         {
             ThemeName = store.ThemeName,
             ColorsJson = store.ColorsJson,
-            CoverImage = store.CoverImage
+            CoverImage = store.CoverImage,
+            CustomCss = store.CustomCss
         };
     }
 
@@ -544,13 +546,15 @@ public class StoreService : IStoreService
         store.ThemeName = dto.ThemeName;
         store.ColorsJson = dto.ColorsJson;
         store.CoverImage = dto.CoverImage;
+        store.CustomCss = dto.CustomCss;
         await _context.SaveChangesAsync();
 
         return new StoreThemeResponseDto
         {
             ThemeName = store.ThemeName,
             ColorsJson = store.ColorsJson,
-            CoverImage = store.CoverImage
+            CoverImage = store.CoverImage,
+            CustomCss = store.CustomCss
         };
     }
 

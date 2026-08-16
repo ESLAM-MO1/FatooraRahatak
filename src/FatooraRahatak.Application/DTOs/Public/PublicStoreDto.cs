@@ -11,6 +11,7 @@ public class PublicStoreDto
     public string ThemeName { get; set; } = "professional-blue";
     public string? ColorsJson { get; set; }
     public string? CoverImage { get; set; }
+    public string? CustomCss { get; set; }
     public string Currency { get; set; } = "SAR";
     public decimal VatRate { get; set; } = 0;
     public decimal? FreeShippingThreshold { get; set; }

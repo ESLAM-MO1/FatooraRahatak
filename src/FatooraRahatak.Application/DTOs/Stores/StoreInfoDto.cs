@@ -24,6 +24,7 @@ public class StoreInfoDto
     public string? ColorsJson { get; set; }
     public string? Logo { get; set; }
     public string? CoverImage { get; set; }
+    public string? CustomCss { get; set; }
     public int MaxThemes { get; set; } = 1;
     public bool IsSearchEnabled { get; set; }
     public bool IsReviewsEnabled { get; set; }

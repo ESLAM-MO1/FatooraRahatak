@@ -19,6 +19,7 @@ public static class DataSeeder
         await SeedLandingPageContentAsync(context);
         await SeedAllSitePagesAsync(context);
         await SeedThemesAsync(context);
+        await SeedSiteMenusAsync(context);
     }
 
     private static async Task SeedRolesAndPermissionsAsync(AppDbContext context)
@@ -602,6 +603,62 @@ public static class DataSeeder
                 DisplayOrder = i + 1,
             });
         }
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedSiteMenusAsync(AppDbContext context)
+    {
+        if (await context.SiteMenus.AnyAsync())
+            return;
+
+        var menus = new[]
+        {
+            new SiteMenu { Location = "features", TitleAr = "Ù†Ø¸Ø§Ù… Ø§Ù„Ù…Ø­Ø§Ø³Ø¨ÙŠ Ø§Ù„Ù…ØªÙƒØ§Ù…Ù„", TitleEn = "Accounting System", Href = "/accounting-system", SortOrder = 1 },
+            new SiteMenu { Location = "features", TitleAr = "Ù†Ø¸Ø§Ù… Ù†Ù‚Ø§Ø· Ø§Ù„Ø¨ÙŠØ¹", TitleEn = "POS System", Href = "/pos-system", SortOrder = 2 },
+            new SiteMenu { Location = "features", TitleAr = "Ø§Ù„ÙÙˆØ§ØªÙŠØ± Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠØ©", TitleEn = "E-Invoicing", Href = "/invoicing", SortOrder = 3 },
+            new SiteMenu { Location = "features", TitleAr = "Ø§Ù„Ù…ØªØ¬Ø± Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ", TitleEn = "E-Commerce", Href = "/ecommerce", SortOrder = 4 },
+            new SiteMenu { Location = "features", TitleAr = "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø®Ø²ÙˆÙ†", TitleEn = "Inventory", Href = "/inventory-management", SortOrder = 5 },
+            new SiteMenu { Location = "features", TitleAr = "Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ± Ø§Ù„Ø°ÙƒÙŠØ©", TitleEn = "Smart Reports", Href = "/smart-reports", SortOrder = 6 },
+            new SiteMenu { Location = "features", TitleAr = "Ø±ÙˆØ§Ø¨Ø· Ø§Ù„Ø¯ÙØ¹", TitleEn = "Payment Links", Href = "/payment-links", SortOrder = 7 },
+            new SiteMenu { Location = "features", TitleAr = "Ø§Ù„ÙƒØ§Ø´ÙŠØ±", TitleEn = "POS", Href = "/pos", SortOrder = 8 },
+            new SiteMenu { Location = "features", TitleAr = "Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„Ø¯ÙØ¹", TitleEn = "Payment Gateway", Href = "/payment-gateway", SortOrder = 9 },
+            new SiteMenu { Location = "features", TitleAr = "Ø§Ù„Ø±Ø¨Ø· Ù…Ø¹ Ø§Ù„Ù…ÙˆØ§Ù‚Ø¹", TitleEn = "Website Integration", Href = "/website-integration", SortOrder = 10 },
+
+            new SiteMenu { Location = "about", TitleAr = "Ø¹Ù† Ø§Ù„Ù…Ù†ØµØ©", TitleEn = "About", Href = "/about", SortOrder = 1 },
+            new SiteMenu { Location = "about", TitleAr = "Ø§Ù„Ø¨Ø§Ù‚Ø§Øª ÙˆØ§Ù„Ø£Ø³Ø¹Ø§Ø±", TitleEn = "Pricing", Href = "/packages", SortOrder = 2 },
+            new SiteMenu { Location = "about", TitleAr = "Ø§Ù„ØªØ³ÙˆÙŠÙ‚ Ø¨Ø§Ù„Ø¹Ù…ÙˆÙ„Ø©", TitleEn = "Affiliate", Href = "/affiliate", SortOrder = 3 },
+            new SiteMenu { Location = "about", TitleAr = "Ø§Ù„ØªÙˆØ¸ÙŠÙ", TitleEn = "Careers", Href = "/careers", SortOrder = 4 },
+            new SiteMenu { Location = "about", TitleAr = "Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©", TitleEn = "Academy", Href = "/academy", SortOrder = 5 },
+            new SiteMenu { Location = "about", TitleAr = "Ø£Ø¯ÙˆØ§Øª Ù…Ø¬Ø§Ù†ÙŠØ©", TitleEn = "Free Tools", Href = "/free-tools", SortOrder = 6 },
+
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ù†Ø¸Ø§Ù… Ø§Ù„Ù…Ø­Ø§Ø³Ø¨ÙŠ Ø§Ù„Ù…ØªÙƒØ§Ù…Ù„", TitleEn = "Accounting System", Href = "/accounting-system", SortOrder = 1 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ù†Ø¸Ø§Ù… Ù†Ù‚Ø§Ø· Ø§Ù„Ø¨ÙŠØ¹", TitleEn = "POS", Href = "/pos-system", SortOrder = 2 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø§Ù„ÙÙˆØ§ØªÙŠØ± Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠØ©", TitleEn = "E-Invoicing", Href = "/invoicing", SortOrder = 3 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø§Ù„Ù…ØªØ¬Ø± Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ", TitleEn = "E-Commerce", Href = "/ecommerce", SortOrder = 4 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„Ù…Ø®Ø²ÙˆÙ†", TitleEn = "Inventory", Href = "/inventory-management", SortOrder = 5 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ± Ø§Ù„Ø°ÙƒÙŠØ©", TitleEn = "Smart Reports", Href = "/smart-reports", SortOrder = 6 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø±ÙˆØ§Ø¨Ø· Ø§Ù„Ø¯ÙØ¹", TitleEn = "Payment Links", Href = "/payment-links", SortOrder = 7 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø§Ù„ÙƒØ§Ø´ÙŠØ±", TitleEn = "POS", Href = "/pos", SortOrder = 8 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø¨ÙˆØ§Ø¨Ø© Ø§Ù„Ø¯ÙØ¹", TitleEn = "Payment Gateway", Href = "/payment-gateway", SortOrder = 9 },
+            new SiteMenu { Location = "footer-tools", TitleAr = "Ø§Ù„Ø±Ø¨Ø· Ù…Ø¹ Ø§Ù„Ù…ÙˆØ§Ù‚Ø¹", TitleEn = "Website Integration", Href = "/website-integration", SortOrder = 10 },
+
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø¹Ù† Ø§Ù„Ù…Ù†ØµØ©", TitleEn = "About", Href = "/about", SortOrder = 1 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø§Ù„Ø¨Ø§Ù‚Ø§Øª ÙˆØ§Ù„Ø£Ø³Ø¹Ø§Ø±", TitleEn = "Pricing", Href = "/packages", SortOrder = 2 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø´Ø±ÙˆØ· Ø§Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù…", TitleEn = "Terms", Href = "/terms", SortOrder = 3 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø®ØµÙˆØµÙŠØ©", TitleEn = "Privacy", Href = "/privacy", SortOrder = 4 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø´Ø­Ù†", TitleEn = "Shipping Policy", Href = "/shipping-policy", SortOrder = 5 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø§Ø³ØªØ±Ø¬Ø§Ø¹", TitleEn = "Return Policy", Href = "/return-policy", SortOrder = 6 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø§Ù„ØªØ³ÙˆÙŠÙ‚ Ø¨Ø§Ù„Ø¹Ù…ÙˆÙ„Ø©", TitleEn = "Affiliate", Href = "/affiliate", SortOrder = 7 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø§Ù„ØªÙˆØ¸ÙŠÙ", TitleEn = "Careers", Href = "/careers", SortOrder = 8 },
+            new SiteMenu { Location = "footer-about", TitleAr = "Ø§Ù„Ø£ÙƒØ§Ø¯ÙŠÙ…ÙŠØ©", TitleEn = "Academy", Href = "/academy", SortOrder = 9 },
+
+            new SiteMenu { Location = "footer-help", TitleAr = "ØªÙˆØ§ØµÙ„ Ù…Ø¹Ù†Ø§", TitleEn = "Contact", Href = "/contact", SortOrder = 1 },
+            new SiteMenu { Location = "footer-help", TitleAr = "Ø§Ù„Ø£Ø³Ø¦Ù„Ø© Ø§Ù„Ø´Ø§Ø¦Ø¹Ø©", TitleEn = "FAQ", Href = "/faq", SortOrder = 2 },
+            new SiteMenu { Location = "footer-help", TitleAr = "Ù…Ø±ÙƒØ² Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯Ø©", TitleEn = "Help Center", Href = "/help-center", SortOrder = 3 },
+            new SiteMenu { Location = "footer-help", TitleAr = "Ø´Ø±ÙˆØ· Ø§Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù…", TitleEn = "Terms", Href = "/terms", SortOrder = 4 },
+        };
+
+        context.SiteMenus.AddRange(menus);
         await context.SaveChangesAsync();
     }
 }

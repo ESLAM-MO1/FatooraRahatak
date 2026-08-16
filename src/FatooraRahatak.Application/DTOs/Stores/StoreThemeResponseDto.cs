@@ -5,4 +5,5 @@ public class StoreThemeResponseDto
     public string ThemeName { get; set; } = "professional-blue";
     public string? ColorsJson { get; set; }
     public string? CoverImage { get; set; }
+    public string? CustomCss { get; set; }
 }

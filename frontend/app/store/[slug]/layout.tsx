@@ -85,6 +85,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           themeName: d.themeName || "basic",
           colorsJson: d.colorsJson || null,
           coverImage: d.coverImage || null,
+          customCss: d.customCss || null,
           logo: d.logo || null,
           currency: d.currency || "SAR",
           defaultLanguage: lang,
@@ -134,6 +135,9 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
   return (
     <StoreProvider value={store}>
+      {store.customCss ? (
+        <style dangerouslySetInnerHTML={{ __html: store.customCss }} />
+      ) : null}
       <Suspense fallback={<LoadingFallback />}>
         <ThemeRouter
           themeMeta={themeMeta}

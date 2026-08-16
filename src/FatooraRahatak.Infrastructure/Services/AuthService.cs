@@ -340,6 +340,16 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
+    public async Task SaveProfileImageAsync(long userId, string imageUrl)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        user.ProfileImage = imageUrl;
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<string?> SendPasswordChangeCodeAsync(long userId)
     {
         var user = await _context.Users.FindAsync(userId);
@@ -377,13 +387,6 @@ public class AuthService : IAuthService
     private async Task<string?> SendOtpAsync(User user, VerificationCodeType type)
     {
         var now = DateTime.UtcNow;
-
-        var recentCodes = await _context.VerificationCodes
-            .Where(v => v.UserId == user.Id && v.Type == type && !v.IsUsed)
-            .ToListAsync();
-
-        foreach (var oldCode in recentCodes)
-            oldCode.IsUsed = true;
 
         var requestsInLastHour = await _context.VerificationCodes
             .CountAsync(v => v.UserId == user.Id && v.Type == type && v.CreatedAt > now.AddHours(-1));
@@ -509,37 +512,48 @@ public class AuthService : IAuthService
                 && !v.IsUsed
                 && v.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(v => v.CreatedAt)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        if (validCode == null)
+        if (validCode.Count == 0)
             throw new InvalidOperationException("رمز التحقق غير صحيح أو منتهي الصلاحية");
 
-        if (validCode.Attempts >= 5)
+        var codeValid = false;
+        foreach (var candidate in validCode)
         {
-            validCode.IsUsed = true;
-            await _context.SaveChangesAsync();
-            throw new InvalidOperationException("لقد تجاوزت الحد الأقصى من المحاولات، يرجى طلب كود جديد");
-        }
+            if (candidate.Attempts >= 5)
+                continue;
 
-        bool codeValid;
-        try
-        {
-            codeValid = BCrypt.Net.BCrypt.Verify(code, validCode.CodeHash);
-        }
-        catch
-        {
-            codeValid = false;
+            bool matches;
+            try
+            {
+                matches = BCrypt.Net.BCrypt.Verify(code, candidate.CodeHash);
+            }
+            catch
+            {
+                matches = false;
+            }
+
+            if (matches)
+            {
+                candidate.IsUsed = true;
+                candidate.Attempts++;
+                await _context.SaveChangesAsync();
+                codeValid = true;
+                break;
+            }
         }
 
         if (!codeValid)
         {
-            validCode.Attempts++;
+            var target = validCode.FirstOrDefault(c => c.Attempts < 5) ?? validCode[0];
+            target.Attempts++;
             await _context.SaveChangesAsync();
+
+            if (target.Attempts >= 5)
+                throw new InvalidOperationException("لقد تجاوزت الحد الأقصى من المحاولات، يرجى طلب كود جديد");
+
             throw new InvalidOperationException("رمز التحقق غير صحيح");
         }
-
-        validCode.IsUsed = true;
-        await _context.SaveChangesAsync();
     }
 
     private static string GenerateNumericCode()

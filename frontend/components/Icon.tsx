@@ -81,6 +81,7 @@ export const ICONS = {
   printer: "M6 9V3h12v6M6 13h12v8H6v-8ZM6 15H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2M10 17h4",
   star: "M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.8-5.4 2.8 1-6.1L3.2 9.4l6.1-.9L12 3Z",
   lock: "M6 10V8a6 6 0 0 1 12 0v2M6 10h12v10H6V10Zm5 4v2M14 14v2",
+  layout: "M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5Zm9-1v16M4 9h9",
 };
 export default function Icon({
   name,

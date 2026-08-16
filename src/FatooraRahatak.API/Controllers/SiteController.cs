@@ -11,7 +11,11 @@ namespace FatooraRahatak.API.Controllers;
 public class SiteController : ControllerBase
 {
     private readonly ISiteService _siteService;
-    public SiteController(ISiteService siteService) { _siteService = siteService; }
+    private readonly ISiteMenuService _siteMenuService;
+    private readonly IDashboardSectionService _dashboardSectionService;
+    private readonly ICareerService _careerService;
+    private readonly IAcademyService _academyService;
+    public SiteController(ISiteService siteService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService) { _siteService = siteService; _siteMenuService = siteMenuService; _dashboardSectionService = dashboardSectionService; _careerService = careerService; _academyService = academyService; }
     private long GetCurrentUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -92,5 +96,47 @@ public class SiteController : ControllerBase
     {
         var themes = await _siteService.GetEnabledThemesAsync();
         return Ok(new { success = true, data = themes });
+    }
+
+[HttpGet("menus")]
+    public async Task<IActionResult> GetMenus()
+    {
+        var data = await _siteMenuService.GetAllMenusAsync();
+        return Ok(new { success = true, data });
+    }
+
+[HttpGet("dashboard-sections")]
+    public async Task<IActionResult> GetDashboardSections([FromQuery] string? role)
+    {
+        var data = await _dashboardSectionService.GetAllAsync(role);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("jobs")]
+    public async Task<IActionResult> GetJobs()
+    {
+        var data = await _careerService.GetJobsAsync(true);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("jobs/{id}/apply")]
+    public async Task<IActionResult> ApplyJob(long id, [FromBody] ApplyJobDto dto)
+    {
+        try
+        {
+            await _careerService.ApplyAsync(id, dto);
+            return Ok(new { success = true, message = "تم استلام طلبك" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("courses")]
+    public async Task<IActionResult> GetCourses()
+    {
+        var data = await _academyService.GetCoursesAsync(true);
+        return Ok(new { success = true, data });
     }
 }

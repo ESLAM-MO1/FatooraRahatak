@@ -12,11 +12,19 @@ public class AdminController : ControllerBase
     private readonly IAdminService _adminService;
     private readonly ISiteService _siteService;
     private readonly IReferralService _referralService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService)
+    private readonly ISiteMenuService _siteMenuService;
+    private readonly IDashboardSectionService _dashboardSectionService;
+    private readonly ICareerService _careerService;
+    private readonly IAcademyService _academyService;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService)
     {
         _adminService = adminService;
         _siteService = siteService;
         _referralService = referralService;
+        _siteMenuService = siteMenuService;
+        _dashboardSectionService = dashboardSectionService;
+        _careerService = careerService;
+        _academyService = academyService;
     }
     private bool IsSuperAdmin()
     {
@@ -517,5 +525,213 @@ public class AdminController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    // === Site Menus (header/footer + nested sub-menus) ===
+    [HttpGet("site/menus")]
+    public async Task<IActionResult> GetAllMenus()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _siteMenuService.GetAllMenusAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("site/menus")]
+    public async Task<IActionResult> CreateMenu([FromBody] CreateSiteMenuDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var menu = await _siteMenuService.CreateMenuAsync(dto);
+            return Ok(new { success = true, data = menu, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("site/menus/{id}")]
+    public async Task<IActionResult> UpdateMenu(long id, [FromBody] CreateSiteMenuDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _siteMenuService.UpdateMenuAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("site/menus/{id}")]
+    public async Task<IActionResult> DeleteMenu(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteMenuService.DeleteMenuAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("site/menus/{id}/toggle")]
+    public async Task<IActionResult> ToggleMenu(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _siteMenuService.ToggleMenuActiveAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Dashboard Sections (sidebar groups & icons) ===
+    [HttpGet("dashboard-sections")]
+    public async Task<IActionResult> GetDashboardSections([FromQuery] string? role)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _dashboardSectionService.GetAllAsync(role);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("dashboard-sections")]
+    public async Task<IActionResult> CreateDashboardSection([FromBody] UpsertDashboardSectionDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var section = await _dashboardSectionService.CreateAsync(dto);
+            return Ok(new { success = true, data = section, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("dashboard-sections/{id}")]
+    public async Task<IActionResult> UpdateDashboardSection(long id, [FromBody] UpsertDashboardSectionDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _dashboardSectionService.UpdateAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("dashboard-sections/{id}")]
+    public async Task<IActionResult> DeleteDashboardSection(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _dashboardSectionService.DeleteAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("dashboard-sections/{id}/toggle")]
+    public async Task<IActionResult> ToggleDashboardSection(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _dashboardSectionService.ToggleAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Careers (job postings & applications) ===
+    [HttpGet("jobs")]
+    public async Task<IActionResult> GetJobs()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _careerService.GetJobsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("jobs")]
+    public async Task<IActionResult> CreateJob([FromBody] UpsertJobPostingDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var job = await _careerService.CreateJobAsync(dto);
+            return Ok(new { success = true, data = job, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("jobs/{id}")]
+    public async Task<IActionResult> UpdateJob(long id, [FromBody] UpsertJobPostingDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _careerService.UpdateJobAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("jobs/{id}")]
+    public async Task<IActionResult> DeleteJob(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _careerService.DeleteJobAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpGet("job-applications")]
+    public async Task<IActionResult> GetJobApplications([FromQuery] long? jobId)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _careerService.GetApplicationsAsync(jobId);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpDelete("job-applications/{id}")]
+    public async Task<IActionResult> DeleteJobApplication(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _careerService.DeleteApplicationAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // === Academy (courses) ===
+    [HttpGet("courses")]
+    public async Task<IActionResult> GetCourses()
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetCoursesAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("courses")]
+    public async Task<IActionResult> CreateCourse([FromBody] UpsertAcademyCourseDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            var course = await _academyService.CreateCourseAsync(dto);
+            return Ok(new { success = true, data = course, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("courses/{id}")]
+    public async Task<IActionResult> UpdateCourse(long id, [FromBody] UpsertAcademyCourseDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdateCourseAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("courses/{id}")]
+    public async Task<IActionResult> DeleteCourse(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        await _academyService.DeleteCourseAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
     }
 }

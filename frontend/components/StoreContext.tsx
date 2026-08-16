@@ -18,6 +18,7 @@ export interface StoreData {
   themeName: string;
   colorsJson: string | null;
   coverImage: string | null;
+  customCss: string | null;
   logo: string | null;
   currency: string;
   defaultLanguage: string;

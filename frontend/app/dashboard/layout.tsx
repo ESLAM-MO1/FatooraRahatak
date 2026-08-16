@@ -14,7 +14,7 @@ import api from "@/lib/api";
 import { useTranslation } from "react-i18next";
 import LangSwitch from "@/components/LangSwitch";
 import "@/lib/i18n/config";
-type NavItem = { href: string; label: string; icon: keyof typeof ICONS; quickAdd?: QuickAddType };
+type NavItem = { href: string; label: string; icon: keyof typeof ICONS; quickAdd?: QuickAddType; perm?: string };
 type NavGroup = { title?: string; items: NavItem[] };
 
 type NavItemKey = { href: string; labelKey: string; icon: keyof typeof ICONS; quickAdd?: QuickAddType; perm?: string };
@@ -139,7 +139,11 @@ const superAdminNavKeys: NavGroupKey[] = [
     titleKey: "nav.siteContent",
     items: [
       { href: "/dashboard/site-content", labelKey: "nav.siteContent", icon: "settings" },
+      { href: "/dashboard/dashboard-sections", labelKey: "nav.dashboardSections", icon: "layout" },
+      { href: "/dashboard/site-menus", labelKey: "nav.siteMenus", icon: "layers" },
       { href: "/dashboard/blog", labelKey: "nav.blog", icon: "edit" },
+      { href: "/dashboard/careers", labelKey: "nav.careers", icon: "users" },
+      { href: "/dashboard/academy", labelKey: "nav.academy", icon: "star" },
     ],
   },
 ];
@@ -176,6 +180,7 @@ export default function DashboardLayout({
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [customNavGroups, setCustomNavGroups] = useState<NavGroup[]>([]);
   const prevUnreadRef = useRef<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const helpRef = useRef<HTMLDivElement>(null);
@@ -273,6 +278,36 @@ const handler = () => {
   }, [ready]);
 
   useEffect(() => {
+    if (!ready) return;
+    api.get("/site/dashboard-sections").then((res) => {
+      const data: {
+        id: number; titleAr: string; titleEn: string; icon: string;
+        role: string; sortOrder: number; isActive: boolean;
+        links: { labelAr: string; labelEn: string; href: string; icon: string; perm: string | null }[];
+      }[] = res.data?.data || [];
+      const roleMatch = userType === "SuperAdmin" ? "SuperAdmin" : userType === "Employee" ? "Employee" : "Owner";
+      const rows = data
+        .filter(s => s.isActive && s.role === roleMatch)
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+      const groups: NavGroup[] = rows
+        .filter(s => s.links.some(l => l.href))
+        .map(s => ({
+          title: i18n.language === "ar" ? (s.titleAr || s.titleEn) : (s.titleEn || s.titleAr),
+          items: s.links
+            .filter(l => l.href && l.href.startsWith("/"))
+            .map(l => ({
+              href: l.href,
+              label: i18n.language === "ar" ? (l.labelAr || l.labelEn) : (l.labelEn || l.labelAr),
+              icon: (l.icon in ICONS ? l.icon : "settings") as keyof typeof ICONS,
+              perm: l.perm || undefined,
+            })) as NavItem[],
+        }))
+        .filter(g => g.items.length > 0);
+      setCustomNavGroups(groups);
+    }).catch(() => {});
+  }, [ready, i18n.language, userType]);
+
+  useEffect(() => {
     if (mobileSidebarOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -323,7 +358,12 @@ const handler = () => {
           .map((item) => ({ href: item.href, label: t(item.labelKey), icon: item.icon, quickAdd: item.quickAdd })),
       }))
       .filter((g) => g.items.length > 0);
-  const groups = resolveGroups(isSuperAdmin ? superAdminNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys);
+  const groups = [
+    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys),
+    ...customNavGroups
+      .map(g => ({ ...g, items: g.items.filter(item => hasPerm(item.perm)) }))
+      .filter(g => g.items.length > 0),
+  ];
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(href);

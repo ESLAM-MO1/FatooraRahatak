@@ -370,6 +370,11 @@ export default function StoreSettingsPage() {
   // ---- Active tab ----
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "designChat") setActiveTab("designChat");
+  }, []);
+
   // ---- Custom design chat ----
   const [designRequest, setDesignRequest] = useState<{ id: number; status: string } | null>(null);
   const [designMessages, setDesignMessages] = useState<{ id: number; senderType: string; senderName: string; body: string; cssPayload?: string | null; createdAt: string }[]>([]);
@@ -1490,7 +1495,6 @@ export default function StoreSettingsPage() {
                     </button>
                   </Can>
                 </div>
-                <p className="text-[10.5px] text-[var(--sub)] mt-2">{t("storeSettings.designChatHint")}</p>
               </form>
             </div>
           </SettingCard>

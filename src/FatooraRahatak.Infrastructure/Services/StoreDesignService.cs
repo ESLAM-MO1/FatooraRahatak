@@ -1,6 +1,8 @@
 using FatooraRahatak.Application.DTOs.Stores;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Stores;
+using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +11,12 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class StoreDesignService : IStoreDesignService
 {
     private readonly AppDbContext _context;
-    public StoreDesignService(AppDbContext context) { _context = context; }
+    private readonly INotificationService _notificationService;
+    public StoreDesignService(AppDbContext context, INotificationService notificationService)
+    {
+        _context = context;
+        _notificationService = notificationService;
+    }
 
     public async Task<List<StoreDesignRequestDto>> GetRequestsAsync()
     {
@@ -118,10 +125,7 @@ public class StoreDesignService : IStoreDesignService
         request.LastMessageAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        if (senderType == "Admin" && !string.IsNullOrWhiteSpace(dto.CssPayload))
-        {
-            await ApplyCssToStoreAsync(requestId, dto.CssPayload);
-        }
+        await NotifyNewMessageAsync(request, senderType, senderName, dto.Body);
 
         return new StoreDesignMessageDto
         {
@@ -134,17 +138,48 @@ public class StoreDesignService : IStoreDesignService
         };
     }
 
-    public async Task ApplyCssToStoreAsync(long requestId, string? css)
+    private async Task NotifyNewMessageAsync(StoreDesignRequest request, string senderType, string senderName, string body)
     {
-        var request = await _context.Set<StoreDesignRequest>().FindAsync(requestId)
-            ?? throw new InvalidOperationException("المحادثة غير موجودة");
-        var store = await _context.Set<Domain.Entities.Stores.Store>().FindAsync(request.StoreId);
-        if (store != null)
+        var preview = string.IsNullOrWhiteSpace(body) ? string.Empty : (body.Length > 80 ? body[..80] + "…" : body);
+        try
         {
-            store.CustomCss = string.IsNullOrWhiteSpace(css) ? null : css;
+            if (senderType == "StoreOwner")
+            {
+                var adminIds = await _context.Set<User>()
+                    .Where(u => u.UserType == UserType.SuperAdmin && u.IsActive)
+                    .Select(u => u.Id)
+                    .ToListAsync();
+                foreach (var adminId in adminIds)
+                {
+                    await _notificationService.CreateAsync(
+                        adminId,
+                        "رسالة جديدة في التصميم المخصص",
+                        string.IsNullOrEmpty(preview) ? "أرسل صاحب المتجر رسالة في محادثة التصميم" : $"أرسل {senderName} رسالة: \"{preview}\"",
+                        NotificationType.DesignRequestNew,
+                        "/dashboard/design-requests");
+                }
+            }
+            else if (senderType == "Admin")
+            {
+                var ownerUserId = await _context.Set<Domain.Entities.Stores.Store>()
+                    .Where(s => s.Id == request.StoreId)
+                    .Select(s => s.OwnerUserId)
+                    .FirstOrDefaultAsync();
+                if (ownerUserId != 0)
+                {
+                    await _notificationService.CreateAsync(
+                        ownerUserId,
+                        "رد جديد من فريق التصميم",
+                        string.IsNullOrEmpty(preview) ? "رد فريق التصميم على محادثتك" : $"رد فريق التصميم: \"{preview}\"",
+                        NotificationType.DesignRequestNew,
+                        "/dashboard/store-settings?tab=designChat");
+                }
+            }
         }
-        request.AppliedCss = string.IsNullOrWhiteSpace(css) ? null : css;
-        await _context.SaveChangesAsync();
+        catch
+        {
+            // الإشعار إضافي، فشله لا يمنع إرسال الرسالة
+        }
     }
 
     public async Task UpdateStatusAsync(long requestId, string status)

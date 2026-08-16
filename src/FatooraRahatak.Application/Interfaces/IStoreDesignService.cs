@@ -10,6 +10,5 @@ public interface IStoreDesignService
     Task<StoreDesignRequestDto> GetOrCreateForStoreAsync(long storeId);
     Task<List<StoreDesignMessageDto>> GetMessagesForStoreAsync(long storeId);
     Task<StoreDesignMessageDto> SendMessageAsync(long requestId, string senderType, string senderName, SendStoreDesignMessageDto dto);
-    Task ApplyCssToStoreAsync(long requestId, string? css);
     Task UpdateStatusAsync(long requestId, string status);
 }

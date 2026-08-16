@@ -14,7 +14,6 @@ interface DesignRequest {
   storeId: number;
   storeName: string;
   status: string;
-  appliedCss?: string | null;
   lastMessageAt?: string | null;
   createdAt: string;
 }
@@ -24,7 +23,6 @@ interface DesignMessage {
   senderType: string;
   senderName: string;
   body: string;
-  cssPayload?: string | null;
   createdAt: string;
 }
 
@@ -40,7 +38,6 @@ export default function DesignRequestsPage() {
   const [messages, setMessages] = useState<DesignMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState("");
-  const [cssText, setCssText] = useState("");
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -73,7 +70,6 @@ export default function DesignRequestsPage() {
   const open = async (r: DesignRequest) => {
     setSelected(r);
     setReply("");
-    setCssText(r.appliedCss || "");
     try {
       await loadMessages(r.id);
     } catch { setMessages([]); }
@@ -85,7 +81,7 @@ export default function DesignRequestsPage() {
 
   const sendReply = async () => {
     if (!selected) return;
-    if (!reply.trim() && !cssText.trim()) {
+    if (!reply.trim()) {
       setMessage({ type: "error", text: t("design.replyPlaceholder") });
       return;
     }
@@ -94,7 +90,6 @@ export default function DesignRequestsPage() {
     try {
       await api.post(`/admin/design-requests/${selected.id}/messages`, {
         body: reply.trim(),
-        cssPayload: cssText.trim() || null,
       });
       setReply("");
       await loadMessages(selected.id);
@@ -179,9 +174,6 @@ export default function DesignRequestsPage() {
                             {m.senderType === "Admin" ? t("design.platformAdmin") : t("design.storeOwner")}
                           </p>
                           {m.body && <p className="text-[13px] leading-relaxed" style={{ color: "var(--ink)" }}>{m.body}</p>}
-                          {m.cssPayload && (
-                            <pre className="mt-2 p-2 rounded-lg text-[11px] overflow-x-auto" dir="ltr" style={{ backgroundColor: "#0f172a", color: "#e2e8f0", whiteSpace: "pre-wrap" }}>{m.cssPayload}</pre>
-                          )}
                           <p className="text-[10.5px] text-[var(--sub)] mt-1.5">{fmtTime(m.createdAt)}</p>
                         </div>
                       </div>
@@ -192,10 +184,6 @@ export default function DesignRequestsPage() {
 
                 <div className="p-4 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
                   <div className="field-shell"><textarea rows={2} placeholder={t("design.replyPlaceholder")} value={reply} onChange={e => setReply(e.target.value)} /></div>
-                  <div>
-                    <p className="text-[12px] font-bold mb-1" style={{ color: "var(--ink)" }}>{t("design.applyCss")}</p>
-                    <textarea rows={5} dir="ltr" placeholder={t("design.cssPlaceholder")} value={cssText} onChange={e => setCssText(e.target.value)} className="w-full p-3 rounded-xl text-[12px] font-mono" style={{ border: "1px solid var(--border)", color: "#0f172a", background: "#f8fafc" }} />
-                  </div>
                   <button disabled={sending} className="btn btn-primary disabled:opacity-60" onClick={sendReply}>
                     {sending ? t("common.loading") : t("design.sendReply")}
                   </button>

@@ -36,6 +36,7 @@ public class JobApplicationDto
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? CvUrl { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -45,6 +46,7 @@ public class ApplyJobDto
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? CvUrl { get; set; }
 }
 
 public class AcademyCourseDto

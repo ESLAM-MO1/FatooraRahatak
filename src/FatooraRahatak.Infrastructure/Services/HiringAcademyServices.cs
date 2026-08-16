@@ -68,7 +68,7 @@ public class CareerService : ICareerService
                 Id = a.Id, JobPostingId = a.JobPostingId,
                 JobTitleAr = a.JobPosting != null ? a.JobPosting.TitleAr : "",
                 JobTitleEn = a.JobPosting != null ? a.JobPosting.TitleEn : "",
-                ApplicantName = a.ApplicantName, Email = a.Email, Phone = a.Phone, Message = a.Message,
+                ApplicantName = a.ApplicantName, Email = a.Email, Phone = a.Phone, Message = a.Message, CvUrl = a.CvUrl,
                 CreatedAt = a.CreatedAt
             })
             .ToListAsync();
@@ -82,7 +82,7 @@ public class CareerService : ICareerService
         _context.Set<JobApplication>().Add(new JobApplication
         {
             JobPostingId = jobId,
-            ApplicantName = dto.ApplicantName, Email = dto.Email, Phone = dto.Phone, Message = dto.Message
+            ApplicantName = dto.ApplicantName, Email = dto.Email, Phone = dto.Phone, Message = dto.Message, CvUrl = dto.CvUrl
         });
         await _context.SaveChangesAsync();
     }

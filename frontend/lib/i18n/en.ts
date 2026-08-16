@@ -228,6 +228,7 @@ const en: Record<string, string> = {
   "careers.deactivate": "Deactivate",
   "careers.saveSuccess": "Job saved",
   "careers.deleteSuccess": "Deleted",
+  "careers.downloadCv": "Download CV",
 
   // Public careers page
   "careersPublic.intro": "Join our team and help us build better tools for small businesses.",
@@ -237,6 +238,8 @@ const en: Record<string, string> = {
   "careersPublic.email": "Email",
   "careersPublic.phone": "Phone",
   "careersPublic.message": "Message / CV",
+  "careersPublic.cv": "Attach CV (PDF, DOC, DOCX)",
+  "careersPublic.cvRequired": "Please attach your CV.",
   "careersPublic.requiredError": "Please enter your name and email.",
   "careersPublic.successTitle": "Application sent",
   "careersPublic.successMsg": "We received your application and will contact you soon.",

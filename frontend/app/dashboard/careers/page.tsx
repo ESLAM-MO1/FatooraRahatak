@@ -31,6 +31,7 @@ interface JobApplication {
   email: string;
   phone: string;
   message: string;
+  cvUrl?: string;
   createdAt: string;
 }
 
@@ -208,6 +209,12 @@ export default function CareersAdminPage() {
                   <p className="text-[13.5px] font-bold" style={{ color: "var(--ink)" }}>{a.applicantName} <span className="text-[11px] font-normal text-[var(--sub)]">{a.email} · {a.phone}</span></p>
                   <p className="text-[12px] text-[var(--sub)]">{i18nText(a.jobTitleAr, a.jobTitleEn)} · {new Date(a.createdAt).toLocaleString()}</p>
                   {a.message && <p className="text-[12.5px] mt-2 p-3 rounded-lg bg-[var(--bg)]" style={{ color: "var(--ink)" }}>{a.message}</p>}
+                  {a.cvUrl && (
+                    <a href={a.cvUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-[12px] font-bold no-underline" style={{ color: "var(--blue)" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                      {t("careers.downloadCv")}
+                    </a>
+                  )}
                 </div>
                 <button className="btn btn-outline !px-2 !py-1 !text-[11px] !text-red-600" onClick={() => removeApp(a)}>{t("common.delete")}</button>
               </div>

@@ -232,6 +232,7 @@ const ar = {
   "careers.deactivate": "إيقاف",
   "careers.saveSuccess": "تم حفظ الوظيفة",
   "careers.deleteSuccess": "تم الحذف",
+  "careers.downloadCv": "تحميل السيرة الذاتية",
 
   // صفحة التوظيف العامة
   "careersPublic.intro": "انضم إلى فريقنا وساعدنا في بناء أدوات أفضل للأعمال الصغيرة.",
@@ -241,6 +242,8 @@ const ar = {
   "careersPublic.email": "البريد الإلكتروني",
   "careersPublic.phone": "رقم الهاتف",
   "careersPublic.message": "الرسالة / السيرة الذاتية",
+  "careersPublic.cv": "إرفاق السيرة الذاتية (PDF, DOC, DOCX)",
+  "careersPublic.cvRequired": "يرجى إرفاق السيرة الذاتية.",
   "careersPublic.requiredError": "يرجى إدخال الاسم والبريد الإلكتروني.",
   "careersPublic.successTitle": "تم إرسال طلبك",
   "careersPublic.successMsg": "لقد استلمنا طلبك وسنتواصل معك قريبًا.",

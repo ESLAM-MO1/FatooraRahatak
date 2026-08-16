@@ -119,6 +119,32 @@ public class SiteController : ControllerBase
         return Ok(new { success = true, data });
     }
 
+    [HttpPost("uploads/cv"), RequestSizeLimit(5 * 1024 * 1024)]
+    public async Task<IActionResult> UploadCv(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, message = "الملف مطلوب" });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowed = new[] { ".pdf", ".doc", ".docx" };
+        if (!allowed.Contains(ext))
+            return BadRequest(new { success = false, message = "صيغة الملف غير مدعومة. استخدم PDF أو DOC أو DOCX" });
+
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "cvs");
+        Directory.CreateDirectory(uploadsDir);
+
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var url = Helpers.UrlHelpers.AbsoluteUrl(Request, $"/uploads/cvs/{fileName}");
+        return Ok(new { success = true, data = new { url } });
+    }
+
     [HttpPost("jobs/{id}/apply")]
     public async Task<IActionResult> ApplyJob(long id, [FromBody] ApplyJobDto dto)
     {

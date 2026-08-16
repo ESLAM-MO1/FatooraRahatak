@@ -141,7 +141,7 @@ public class SiteController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        var url = Helpers.UrlHelpers.AbsoluteUrl(Request, $"/uploads/cvs/{fileName}");
+        var url = $"/uploads/cvs/{fileName}";
         return Ok(new { success = true, data = new { url } });
     }
 

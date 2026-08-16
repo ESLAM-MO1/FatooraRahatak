@@ -546,7 +546,8 @@ public class StoreService : IStoreService
         store.ThemeName = dto.ThemeName;
         store.ColorsJson = dto.ColorsJson;
         store.CoverImage = dto.CoverImage;
-        store.CustomCss = dto.CustomCss;
+        if (dto.CustomCss != null)
+            store.CustomCss = string.IsNullOrWhiteSpace(dto.CustomCss) ? null : dto.CustomCss;
         await _context.SaveChangesAsync();
 
         return new StoreThemeResponseDto

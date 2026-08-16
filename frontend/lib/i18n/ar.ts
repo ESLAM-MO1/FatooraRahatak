@@ -332,6 +332,10 @@ const ar = {
   "storeSettings.designChatStatus": "حالة الطلب",
   "storeSettings.designChatPlaceholder": "اكتب طلب التصميم هنا... (مثال: أريد ألواناً ذهبية داكنة وشعاراً في الأعلى)",
   "storeSettings.designChatSent": "تم إرسال رسالتك، وسيرد عليك فريق التصميم قريبًا.",
+  "storeSettings.designChatHeader": "فريق التصميم",
+  "storeSettings.designChatEmptyTitle": "ابدأ محادثتك مع فريق التصميم",
+  "storeSettings.designChatEmptyDesc": "اشرح لنا ما تريده وسنعاود التواصل معك بأقرب وقت.",
+  "storeSettings.designChatHint": "اضغط Enter للإرسال و Shift+Enter لسطر جديد",
 
   // صفحة الأكاديمية العامة
   "academyPublic.intro": "طوّر مهاراتك مع دوراتنا التدريبية العملية.",

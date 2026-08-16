@@ -328,6 +328,10 @@ const en: Record<string, string> = {
   "storeSettings.designChatStatus": "Request status",
   "storeSettings.designChatPlaceholder": "Write your design request here... (e.g. I want deep gold colors and a logo on top)",
   "storeSettings.designChatSent": "Your message has been sent; the design team will reply soon.",
+  "storeSettings.designChatHeader": "Design Team",
+  "storeSettings.designChatEmptyTitle": "Start a chat with our design team",
+  "storeSettings.designChatEmptyDesc": "Tell us what you want and we will get back to you as soon as possible.",
+  "storeSettings.designChatHint": "Press Enter to send and Shift+Enter for a new line",
 
   // Public academy page
   "academyPublic.intro": "Develop your skills with our practical training courses.",

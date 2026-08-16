@@ -83,6 +83,7 @@ export const ICONS = {
   lock: "M6 10V8a6 6 0 0 1 12 0v2M6 10h12v10H6V10Zm5 4v2M14 14v2",
   layout: "M4 5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5Zm9-1v16M4 9h9",
   palette: "M12 3a9 9 0 0 0 0 18h1.5a1.5 1.5 0 0 0 0-3H12a6 6 0 0 1 0-12c3.3 0 6 2.7 6 6v.5a1.5 1.5 0 0 1-3 0v-.5a3 3 0 0 0-3-3h-.01M12 8h.01M6.5 11h.01M7 15h.01",
+  send: "M22 2 11 13M22 2l-7 20-4-9-9-4 20-7",
 };
 export default function Icon({
   name,

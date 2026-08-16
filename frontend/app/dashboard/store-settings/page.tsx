@@ -401,8 +401,16 @@ export default function StoreSettingsPage() {
     designEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [designMessages]);
 
-  const handleSendDesign = async (e: FormEvent) => {
-    e.preventDefault();
+  const designStatusLabel = (s: string) => {
+    const v = t(`design.status${s}`);
+    return v === `design.status${s}` ? s : v;
+  };
+  const fmtShortTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " · " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const doSendDesign = async () => {
     if (!designText.trim()) return;
     setDesignSending(true);
     setDesignSuccess("");
@@ -415,6 +423,16 @@ export default function StoreSettingsPage() {
       setError(t("error.serverError"));
     } finally {
       setDesignSending(false);
+    }
+  };
+  const handleSendDesign = (e: FormEvent) => {
+    e.preventDefault();
+    doSendDesign();
+  };
+  const handleDesignKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      doSendDesign();
     }
   };
 
@@ -550,7 +568,7 @@ export default function StoreSettingsPage() {
     themeTimer.current = setTimeout(async () => {
       setThemeAutoSaving(true);
       try {
-        const res = await api.put("/stores/theme", { themeName: snap.themeName, colorsJson: JSON.stringify(snap.colors), coverImage: snap.coverImage || null, customCss: snap.customCss || null });
+        const res = await api.put("/stores/theme", { themeName: snap.themeName, colorsJson: JSON.stringify(snap.colors), coverImage: snap.coverImage || null });
         lastSavedTheme.current = snap;
         setThemeSuccess(res.data.message || t("storeSettings.themeSaved"));
       } catch {
@@ -781,13 +799,13 @@ export default function StoreSettingsPage() {
       themeTimer.current = null;
     }
     try {
-      const res = await api.put("/stores/theme", { themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null, customCss: themeForm.customCss || null });
+      const res = await api.put("/stores/theme", { themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null });
       setThemeSuccess(res.data.message);
       const allValid = Object.values(themeForm.colors).every((c) => /^#[0-9a-fA-F]{6}$/.test(c));
       if (allValid) {
         lastSavedTheme.current = { themeName: themeForm.themeName, colors: themeForm.colors, coverImage: themeForm.coverImage || "", customCss: themeForm.customCss };
       }
-      setStore((prev) => (prev ? { ...prev, themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null, customCss: themeForm.customCss || null } : prev));
+      setStore((prev) => (prev ? { ...prev, themeName: themeForm.themeName, colorsJson: JSON.stringify(themeForm.colors), coverImage: themeForm.coverImage || null } : prev));
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.themeSaveError"));
     } finally {
@@ -1121,19 +1139,6 @@ export default function StoreSettingsPage() {
                 </div>
               </div>
 
-              <div>
-                <label>{t("storeSettings.customCss")}</label>
-                <p className="text-[11px] text-[var(--sub)] mb-2">{t("storeSettings.customCssDesc")}</p>
-                <textarea
-                  dir="ltr"
-                  value={themeForm.customCss}
-                  onChange={(e) => setThemeForm((f) => ({ ...f, customCss: e.target.value }))}
-                  placeholder={t("storeSettings.customCssPlaceholder")}
-                  className="w-full border rounded-xl px-3 py-2 text-[12px] font-mono leading-relaxed resize-y"
-                  style={{ borderColor: "var(--border)", minHeight: 120 }}
-                />
-              </div>
-
               <Can code="StoreSettings.Edit">
                 <button type="submit" disabled={themeSaving} className="btn btn-primary btn-sm">
                   {themeSaving ? t("storeSettings.saving") : t("storeSettings.saveDesign")}
@@ -1395,46 +1400,97 @@ export default function StoreSettingsPage() {
             <p className="text-[12.5px] text-[var(--sub)] mb-4 leading-relaxed">{t("storeSettings.designChatIntro")}</p>
             <SuccessToast message={designSuccess} fixed className="mb-4" />
             <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", background: "#fff" }}>
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ borderColor: "var(--border)", background: "#f9fafb" }}>
-                <p className="text-[12.5px] font-bold text-[var(--ink)]">{t("storeSettings.designChatStatus")}</p>
+              <div className="flex items-center justify-between gap-3 px-4 py-3" style={{ background: "linear-gradient(135deg, #ffffff 0%, var(--blue-50, #eef4ff) 130%)", borderBottom: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "#fff", color: "var(--blue)", boxShadow: "0 1px 3px rgba(16,24,40,.1)" }}>
+                    <Icon name="palette" size={17} />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-extrabold leading-tight" style={{ color: "var(--ink)" }}>{t("storeSettings.designChatHeader")}</p>
+                    <p className="text-[11px] leading-tight mt-0.5" style={{ color: "var(--sub)" }}>{t("storeSettings.designChatStatus")}</p>
+                  </div>
+                </div>
                 {designRequest ? (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ color: "var(--blue)", backgroundColor: "var(--blue-50)" }}>
-                    {t(`design.status${designRequest.status}`)}
+                  <span className="px-3 py-1 rounded-full text-[11px] font-bold shrink-0" style={{ color: "var(--blue)", backgroundColor: "var(--blue-50)" }}>
+                    {designStatusLabel(designRequest.status)}
                   </span>
                 ) : (
-                  <span className="text-[11.5px] text-[var(--sub)]">{designLoading ? t("common.loading") : "—"}</span>
+                  <span className="text-[11.5px] text-[var(--sub)] shrink-0">{designLoading ? t("common.loading") : "—"}</span>
                 )}
               </div>
-              <div className="p-4 space-y-3 overflow-y-auto" style={{ maxHeight: 340 }}>
+
+              <div className="p-4 space-y-4 overflow-y-auto" style={{ maxHeight: 380, background: "#f8fafc" }}>
                 {designLoading ? (
-                  <p className="text-[12.5px] text-[var(--sub)] text-center py-10">{t("common.loading")}</p>
+                  <p className="text-[12.5px] text-[var(--sub)] text-center py-12">{t("common.loading")}</p>
                 ) : designMessages.length === 0 ? (
-                  <p className="text-[12.5px] text-[var(--sub)] text-center py-10">{t("design.noMessages")}</p>
-                ) : (
-                  designMessages.map(m => (
-                    <div key={m.id} className="flex flex-col" style={{ alignItems: m.senderType === "StoreOwner" ? "flex-end" : "flex-start" }}>
-                      <div className="max-w-[85%] rounded-2xl p-3" style={{ backgroundColor: m.senderType === "StoreOwner" ? "var(--blue-50)" : "var(--bg)", border: "1px solid var(--border)" }}>
-                        <p className="text-[11px] font-bold mb-1" style={{ color: "var(--blue)" }}>{m.senderName}</p>
-                        {m.body && <p className="text-[13px] leading-relaxed text-[var(--ink)]">{m.body}</p>}
-                        {m.cssPayload && (
-                          <pre className="mt-2 p-2 rounded-lg text-[11px] overflow-x-auto" dir="ltr" style={{ backgroundColor: "#0f172a", color: "#e2e8f0", whiteSpace: "pre-wrap" }}>{m.cssPayload}</pre>
-                        )}
-                        <p className="text-[10.5px] text-[var(--sub)] mt-1.5">{new Date(m.createdAt).toLocaleString()}</p>
-                      </div>
+                  <div className="text-center py-14">
+                    <div className="w-14 h-14 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
+                      <Icon name="palette" size={24} />
                     </div>
-                  ))
+                    <p className="text-[13px] font-bold" style={{ color: "var(--ink)" }}>{t("storeSettings.designChatEmptyTitle")}</p>
+                    <p className="text-[12px] text-[var(--sub)] mt-1">{t("storeSettings.designChatEmptyDesc")}</p>
+                  </div>
+                ) : (
+                  designMessages.map(m => {
+                    const isOwner = m.senderType === "StoreOwner";
+                    return (
+                      <div key={m.id} className="flex items-start gap-2.5" style={{ flexDirection: isOwner ? "row" : "row-reverse" }}>
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
+                          style={{ background: isOwner ? "#eef2ff" : "#ecfdf5", color: isOwner ? "#4f46e5" : "#059669" }}
+                        >
+                          {(m.senderName || (isOwner ? "م" : "أ")).charAt(0)}
+                        </div>
+                        <div className="max-w-[75%]">
+                          <div
+                            className="rounded-2xl px-4 py-2.5"
+                            style={{
+                              background: isOwner ? "#eef2ff" : "#fff",
+                              border: "1px solid " + (isOwner ? "#e0e7ff" : "var(--border)"),
+                              borderTopLeftRadius: isOwner ? 16 : 4,
+                              borderTopRightRadius: isOwner ? 4 : 16,
+                            }}
+                          >
+                            <p className="text-[11px] font-bold mb-1" style={{ color: isOwner ? "#4f46e5" : "#059669" }}>{m.senderName}</p>
+                            {m.body && <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--ink)" }}>{m.body}</p>}
+                            {m.cssPayload && (
+                              <div className="mt-2 rounded-lg overflow-hidden">
+                                <p className="px-3 py-1.5 text-[10.5px] font-bold" style={{ background: "#1e293b", color: "#cbd5e1" }}>CSS</p>
+                                <pre className="p-2.5 text-[11px] overflow-x-auto m-0" dir="ltr" style={{ background: "#0f172a", color: "#e2e8f0", whiteSpace: "pre-wrap" }}>{m.cssPayload}</pre>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-[10.5px] mt-1.5 px-1" style={{ color: "var(--sub)", textAlign: isOwner ? "right" : "left" }}>{fmtShortTime(m.createdAt)}</p>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
                 <div ref={designEndRef} />
               </div>
-              <form onSubmit={handleSendDesign} className="p-4 border-t" style={{ borderColor: "var(--border)" }}>
-                <textarea rows={3} placeholder={t("storeSettings.designChatPlaceholder")} value={designText} onChange={e => setDesignText(e.target.value)} />
-                <div className="flex justify-end mt-3">
+
+              <form onSubmit={handleSendDesign} className="p-4 border-t" style={{ borderColor: "var(--border)", background: "#fff" }}>
+                <div className="flex items-end gap-2">
+                  <textarea
+                    rows={1}
+                    value={designText}
+                    onChange={e => setDesignText(e.target.value)}
+                    onKeyDown={handleDesignKeyDown}
+                    placeholder={t("storeSettings.designChatPlaceholder")}
+                    className="flex-1 rounded-2xl border px-4 py-2.5 text-[13px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    style={{ borderColor: "var(--border)", minHeight: 46, maxHeight: 140, background: "#f8fafc" }}
+                  />
                   <Can code="StoreSettings.Edit">
-                    <button type="submit" disabled={designSending} className="btn btn-primary btn-sm">
-                      {designSending ? t("storeSettings.saving") : t("design.sendReply")}
+                    <button type="submit" disabled={designSending} className="w-11 h-11 rounded-full flex items-center justify-center text-white shrink-0 disabled:opacity-60 transition-transform hover:scale-105" style={{ background: "var(--blue)", boxShadow: "0 4px 12px rgba(37,99,235,.25)" }}>
+                      {designSending ? (
+                        <span className="inline-block w-4 h-4 rounded-full border-2 border-white/50 border-t-white animate-spin" />
+                      ) : (
+                        <Icon name="send" size={17} />
+                      )}
                     </button>
                   </Can>
                 </div>
+                <p className="text-[10.5px] text-[var(--sub)] mt-2">{t("storeSettings.designChatHint")}</p>
               </form>
             </div>
           </SettingCard>

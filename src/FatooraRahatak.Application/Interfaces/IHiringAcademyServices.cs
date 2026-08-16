@@ -10,6 +10,7 @@ public interface ICareerService
     Task DeleteJobAsync(long id);
     Task<List<JobApplicationDto>> GetApplicationsAsync(long? jobId = null);
     Task ApplyAsync(long jobId, ApplyJobDto dto);
+    Task UpdateApplicationStatusAsync(long id, string status);
     Task DeleteApplicationAsync(long id);
 }
 

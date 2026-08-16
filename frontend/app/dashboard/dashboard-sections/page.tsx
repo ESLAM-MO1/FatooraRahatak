@@ -170,6 +170,17 @@ export default function DashboardSectionsPage() {
     <div>
       <PageHeader icon="settings" title={t("admin.dashboardSections")} />
       <p className="mb-5 text-[13px]" style={{ color: "var(--sub)" }}>{t("dashboardSections.pageIntro")}</p>
+
+      <div className="mb-6 rounded-2xl border p-5" style={{ borderColor: "var(--border)", backgroundColor: "var(--blue-50)" }}>
+        <p className="text-[13px] font-bold mb-2" style={{ color: "var(--blue-deep)" }}>{t("dashboardSections.howTitle")}</p>
+        <ol className="list-decimal ms-5 space-y-1 text-[12.5px]" style={{ color: "var(--ink)" }}>
+          <li>{t("dashboardSections.howStep1")}</li>
+          <li>{t("dashboardSections.howStep2")}</li>
+          <li>{t("dashboardSections.howStep3")}</li>
+        </ol>
+        <p className="mt-2 text-[12px] font-bold" style={{ color: "var(--blue)" }}>{t("dashboardSections.example")}</p>
+      </div>
+
       {message && <Toast message={message.text} type={message.type} fixed />}
 
       <div className="flex items-center justify-between mb-4">

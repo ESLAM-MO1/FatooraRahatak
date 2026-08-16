@@ -32,6 +32,7 @@ interface JobApplication {
   phone: string;
   message: string;
   cvUrl?: string;
+  status: string;
   createdAt: string;
 }
 
@@ -53,6 +54,7 @@ export default function CareersAdminPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [selectedApp, setSelectedApp] = useState<JobApplication | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated() || getUserType() !== "SuperAdmin") {
@@ -75,9 +77,12 @@ export default function CareersAdminPage() {
 
   useEffect(() => {
     if (!ready) return;
-    loadJobs().catch(() => setMessage({ type: "error", text: t("error.serverError") })).finally(() => setLoading(false));
+    loadJobs()
+      .catch(() => setMessage({ type: "error", text: t("error.serverError") }))
+      .finally(() => setLoading(false));
+    loadApplications().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, loadJobs]);
+  }, [ready, loadJobs, loadApplications]);
 
   useEffect(() => {
     if (tab !== "applications") return;
@@ -152,7 +157,18 @@ export default function CareersAdminPage() {
     try {
       await api.delete(`/admin/job-applications/${a.id}`);
       await loadApplications();
+      setSelectedApp(null);
       setMessage({ type: "success", text: t("careers.deleteSuccess") });
+    } catch { setMessage({ type: "error", text: t("error.serverError") }); }
+  };
+
+  const updateStatus = async (a: JobApplication, status: string) => {
+    if (a.status === status) return;
+    try {
+      await api.put(`/admin/job-applications/${a.id}/status`, { status });
+      await loadApplications();
+      setSelectedApp({ ...a, status });
+      setMessage({ type: "success", text: t("careers.updateStatusSuccess") });
     } catch { setMessage({ type: "error", text: t("error.serverError") }); }
   };
 
@@ -203,20 +219,17 @@ export default function CareersAdminPage() {
       ) : (
         <div className="space-y-3">
           {applications.map(a => (
-            <div key={a.id} className="card p-4">
+            <div key={a.id} className="card p-4 cursor-pointer transition hover:shadow-md" onClick={() => setSelectedApp(a)}>
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13.5px] font-bold" style={{ color: "var(--ink)" }}>{a.applicantName} <span className="text-[11px] font-normal text-[var(--sub)]">{a.email} · {a.phone}</span></p>
-                  <p className="text-[12px] text-[var(--sub)]">{i18nText(a.jobTitleAr, a.jobTitleEn)} · {new Date(a.createdAt).toLocaleString()}</p>
-                  {a.message && <p className="text-[12.5px] mt-2 p-3 rounded-lg bg-[var(--bg)]" style={{ color: "var(--ink)" }}>{a.message}</p>}
-                  {a.cvUrl && (
-                    <a href={a.cvUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-2 text-[12px] font-bold no-underline" style={{ color: "var(--blue)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
-                      {t("careers.downloadCv")}
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--ink)" }}>{a.applicantName}</p>
+                    <span className="px-2 py-0.5 rounded-full text-[10.5px] font-bold shrink-0" style={{ ...statusStyle(a.status) }}>{statusLabel(a.status)}</span>
+                  </div>
+                  <p className="text-[12px] text-[var(--sub)] truncate">{a.email} · {a.phone}</p>
+                  <p className="text-[11.5px] text-[var(--sub)] truncate">{i18nText(a.jobTitleAr, a.jobTitleEn)} · {new Date(a.createdAt).toLocaleString()}</p>
                 </div>
-                <button className="btn btn-outline !px-2 !py-1 !text-[11px] !text-red-600" onClick={() => removeApp(a)}>{t("common.delete")}</button>
+                <span className="btn btn-outline !px-3 !py-1.5 !text-[11.5px] shrink-0" onClick={(e) => { e.stopPropagation(); setSelectedApp(a); }}>{t("careers.applicationDetails")}</span>
               </div>
             </div>
           ))}
@@ -278,10 +291,69 @@ export default function CareersAdminPage() {
           </div>
         </div>
       )}
+
+      {selectedApp && (
+        <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>{t("careers.applicationDetails")}</h3>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0" style={{ ...statusStyle(selectedApp.status) }}>{statusLabel(selectedApp.status)}</span>
+            </div>
+            <p className="text-[12.5px] mb-4 text-[var(--sub)]">{i18nText(selectedApp.jobTitleAr, selectedApp.jobTitleEn)} · {new Date(selectedApp.createdAt).toLocaleString()}</p>
+
+            <div className="space-y-2 text-[13px]">
+              <p style={{ color: "var(--ink)" }}><span className="font-bold">{t("careers.applicant")}: </span>{selectedApp.applicantName}</p>
+              <p dir="ltr" style={{ color: "var(--ink)" }}><span className="font-bold">{t("careersPublic.email")}: </span>{selectedApp.email}</p>
+              <p dir="ltr" style={{ color: "var(--ink)" }}><span className="font-bold">{t("careersPublic.phone")}: </span>{selectedApp.phone}</p>
+            </div>
+
+            {selectedApp.message && (
+              <div className="mt-4">
+                <p className="text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careersPublic.message")}</p>
+                <p className="text-[12.5px] p-3 rounded-lg" style={{ color: "var(--ink)", backgroundColor: "var(--bg)" }}>{selectedApp.message}</p>
+              </div>
+            )}
+
+            {selectedApp.cvUrl && (
+              <a href={selectedApp.cvUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-4 text-[12.5px] font-bold no-underline" style={{ color: "var(--blue)" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></svg>
+                {t("careers.downloadCv")}
+              </a>
+            )}
+
+            <p className="text-[12.5px] font-bold mt-5 mb-2 text-[var(--ink)]">{t("careers.markAs")}:</p>
+            <div className="flex flex-wrap gap-2">
+              {["New", "Reviewed", "Accepted", "Rejected"].map(s => (
+                <button key={s} className={`btn !px-3 !py-1.5 !text-[12px] ${selectedApp.status === s ? "btn-primary" : "btn-outline"}`} onClick={() => updateStatus(selectedApp, s)}>{statusLabel(s)}</button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button className="btn btn-outline !border-red-200 !text-red-600" onClick={() => removeApp(selectedApp)}>{t("common.delete")}</button>
+              <button className="btn btn-primary flex-1 ms-auto" onClick={() => setSelectedApp(null)}>{t("common.close")}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
   function i18nText(ar: string, en: string) {
     return i18n.language === "ar" ? (ar || en) : (en || ar);
+  }
+
+  function statusLabel(s: string) {
+    const v = t(`careers.status${s}`);
+    return v === `careers.status${s}` ? s : v;
+  }
+
+  function statusStyle(s: string) {
+    const map: Record<string, { color: string; backgroundColor: string }> = {
+      New: { color: "var(--blue)", backgroundColor: "var(--blue-50)" },
+      Reviewed: { color: "#b45309", backgroundColor: "#fef3c7" },
+      Accepted: { color: "var(--green)", backgroundColor: "#f0fdf4" },
+      Rejected: { color: "#dc2626", backgroundColor: "#fef2f2" },
+    };
+    return map[s] || { color: "var(--sub)", backgroundColor: "#f3f4f6" };
   }
 }

@@ -23,4 +23,5 @@ public class JobApplication : BaseEntity
     public string Phone { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string? CvUrl { get; set; }
+    public string Status { get; set; } = "New";
 }

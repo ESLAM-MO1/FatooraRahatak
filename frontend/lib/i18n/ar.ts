@@ -209,6 +209,11 @@ const ar = {
   "dashboardSections.saveSuccess": "تم حفظ القسم",
   "dashboardSections.deleteSuccess": "تم حذف القسم",
   "dashboardSections.count": "{{count}} قسم مخصص",
+  "dashboardSections.howTitle": "كيف يعمل هذا القسم؟",
+  "dashboardSections.howStep1": "أنشئ قسمًا واختر اسمه وأيقونته والدور الذي سيظهر له (مشرف / مالك / موظف).",
+  "dashboardSections.howStep2": "أضف الروابط داخل القسم: اسم الرابط + مسار الصفحة (مثال: /dashboard/reports).",
+  "dashboardSections.howStep3": "احفظ القسم؛ سيظهر فورًا في الشريط الجانبي للوحة تحكم الأدوار المحددة فقط.",
+  "dashboardSections.example": "مثال: قسم اسمه «التقارير» بأيقونة chart، فيه روابط: تقارير المبيعات، تقارير المخزون.",
 
   // صفحة إدارة التوظيف
   "nav.careers": "التوظيف",
@@ -233,6 +238,15 @@ const ar = {
   "careers.saveSuccess": "تم حفظ الوظيفة",
   "careers.deleteSuccess": "تم الحذف",
   "careers.downloadCv": "تحميل السيرة الذاتية",
+  "careers.applicationDetails": "تفاصيل الطلب",
+  "careers.applicant": "المتقدم",
+  "careers.date": "التاريخ",
+  "careers.statusNew": "جديد",
+  "careers.statusReviewed": "قيد المراجعة",
+  "careers.statusAccepted": "مقبول",
+  "careers.statusRejected": "مرفوض",
+  "careers.updateStatusSuccess": "تم تحديث الحالة",
+  "careers.markAs": "تغيير الحالة إلى",
 
   // صفحة التوظيف العامة
   "careersPublic.intro": "انضم إلى فريقنا وساعدنا في بناء أدوات أفضل للأعمال الصغيرة.",

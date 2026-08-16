@@ -69,9 +69,18 @@ public class CareerService : ICareerService
                 JobTitleAr = a.JobPosting != null ? a.JobPosting.TitleAr : "",
                 JobTitleEn = a.JobPosting != null ? a.JobPosting.TitleEn : "",
                 ApplicantName = a.ApplicantName, Email = a.Email, Phone = a.Phone, Message = a.Message, CvUrl = a.CvUrl,
+                Status = a.Status,
                 CreatedAt = a.CreatedAt
             })
             .ToListAsync();
+    }
+
+    public async Task UpdateApplicationStatusAsync(long id, string status)
+    {
+        var app = await _context.Set<JobApplication>().FindAsync(id)
+            ?? throw new InvalidOperationException("الطلب غير موجود");
+        app.Status = status;
+        await _context.SaveChangesAsync();
     }
 
     public async Task ApplyAsync(long jobId, ApplyJobDto dto)

@@ -686,6 +686,18 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, data });
     }
 
+    [HttpPut("job-applications/{id}/status")]
+    public async Task<IActionResult> UpdateJobApplicationStatus(long id, [FromBody] UpdateJobApplicationStatusDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _careerService.UpdateApplicationStatusAsync(id, dto.Status);
+            return Ok(new { success = true, message = "تم تحديث الحالة" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+
     [HttpDelete("job-applications/{id}")]
     public async Task<IActionResult> DeleteJobApplication(long id)
     {

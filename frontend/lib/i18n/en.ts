@@ -205,6 +205,11 @@ const en: Record<string, string> = {
   "dashboardSections.saveSuccess": "Section saved",
   "dashboardSections.deleteSuccess": "Section deleted",
   "dashboardSections.count": "{{count}} custom section(s)",
+  "dashboardSections.howTitle": "How does this work?",
+  "dashboardSections.howStep1": "Create a section with a title, icon, and the role it appears for (SuperAdmin / Owner / Employee).",
+  "dashboardSections.howStep2": "Add links inside the section: link label + page path (e.g. /dashboard/reports).",
+  "dashboardSections.howStep3": "Save the section; it instantly appears in the dashboard sidebar for the selected roles only.",
+  "dashboardSections.example": "Example: a section called «Reports» with the chart icon, containing links: Sales reports, Inventory reports.",
 
   // Careers admin page
   "nav.careers": "Careers",
@@ -229,6 +234,15 @@ const en: Record<string, string> = {
   "careers.saveSuccess": "Job saved",
   "careers.deleteSuccess": "Deleted",
   "careers.downloadCv": "Download CV",
+  "careers.applicationDetails": "Application details",
+  "careers.applicant": "Applicant",
+  "careers.date": "Date",
+  "careers.statusNew": "New",
+  "careers.statusReviewed": "Reviewed",
+  "careers.statusAccepted": "Accepted",
+  "careers.statusRejected": "Rejected",
+  "careers.updateStatusSuccess": "Status updated",
+  "careers.markAs": "Change status to",
 
   // Public careers page
   "careersPublic.intro": "Join our team and help us build better tools for small businesses.",

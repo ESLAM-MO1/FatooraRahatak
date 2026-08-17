@@ -27,6 +27,16 @@ interface MyCommission {
   paidAt: string | null;
 }
 
+interface MyWithdrawal {
+  id: number;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  processedAt: string | null;
+  adminNote: string | null;
+}
+
 interface Overview {
   code: string;
   balance: number;
@@ -54,14 +64,22 @@ function StatCard({ icon, label, value, accent }: { icon: string; label: string;
   );
 }
 
+const withdrawalBadge = (status: string) =>
+  status === "Paid" ? "badge--green" : status === "Rejected" ? "badge--red" : "badge--yellow";
+
 export default function ReferralsPage() {
   const { t } = useTranslation();
   const gate = usePackageFeature("hasAffiliateMarketing");
   const [data, setData] = useState<Overview | null>(null);
+  const [withdrawals, setWithdrawals] = useState<MyWithdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [copied, setCopied] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -76,9 +94,19 @@ export default function ReferralsPage() {
     }
   };
 
+  const loadWithdrawals = async () => {
+    try {
+      const res = await api.get("/referrals/withdrawals");
+      setWithdrawals(res.data.data || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("referrals.loadError"));
+    }
+  };
+
   useEffect(() => {
     if (!gate.ready || !gate.allowed) return;
     loadData();
+    loadWithdrawals();
   }, [gate.ready, gate.allowed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const referralLink = data ? `${REGISTER_BASE_URL}/register?ref=${data.code}` : "";
@@ -90,6 +118,28 @@ export default function ReferralsPage() {
       setTimeout(() => setter(false), 2000);
     } catch {
       setError(t("referrals.loadError"));
+    }
+  };
+
+  const submitWithdrawal = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (!amount || amount <= 0 || (data && amount > data.balance)) {
+      setError(t("referrals.invalidAmount"));
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      await api.post("/referrals/withdrawals", { amount });
+      setWithdrawOpen(false);
+      setWithdrawAmount("");
+      setSuccess(t("referrals.withdrawSuccess"));
+      await Promise.all([loadData(), loadWithdrawals()]);
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("referrals.actionError"));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -106,6 +156,7 @@ export default function ReferralsPage() {
       </PageHeader>
 
       {error && <div className="alert alert--danger">{error}</div>}
+      {success && <div className="alert alert--success">{success}</div>}
 
       {data && (
         <>
@@ -149,14 +200,21 @@ export default function ReferralsPage() {
           </div>
 
           <div className="card p-6">
-            <p className="text-[13px] font-bold text-[var(--ink)] mb-3">{t("referrals.stats")}</p>
+            <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+              <p className="text-[13px] font-bold text-[var(--ink)]">{t("referrals.stats")}</p>
+              {data.balance > 0 && (
+                <button type="button" onClick={() => setWithdrawOpen(true)} className="btn btn-primary btn-sm">
+                  {t("referrals.withdraw")}
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard icon="wallet" label={t("referrals.balance")} value={`${data.balance.toFixed(2)}`} accent="#12A8DB" />
               <StatCard icon="users" label={t("referrals.totalReferrals")} value={String(data.totalReferrals)} accent="#1FB983" />
               <StatCard icon="crown" label={t("referrals.convertedReferrals")} value={String(data.convertedReferrals)} accent="#C9A227" />
               <StatCard icon="clock" label={t("referrals.pendingCommissions")} value={`${data.pendingCommissions.toFixed(2)}`} accent="#F97316" />
             </div>
-            <p className="text-[11.5px] text-[var(--sub)] mt-3">{t("referrals.balanceHint")}</p>
+            <p className="text-[11.5px] text-[var(--sub)] mt-3">{t("referrals.withdrawHint")}</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -204,7 +262,71 @@ export default function ReferralsPage() {
               )}
             </div>
           </div>
+
+          <div className="card p-6">
+            <p className="text-[14px] font-bold text-[var(--ink)] mb-4">{t("referrals.myWithdrawals")}</p>
+            {withdrawals.length === 0 ? (
+              <p className="text-[12.5px] text-[var(--sub)]">{t("referrals.emptyWithdrawals")}</p>
+            ) : (
+              <div className="space-y-2">
+                {withdrawals.map((w) => (
+                  <div key={w.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                    <div>
+                      <p className="text-[13px] font-bold text-[var(--ink)]">
+                        {w.amount.toFixed(2)} {w.currency}
+                      </p>
+                      <p className="text-[11px] text-[var(--sub)]">
+                        {new Date(w.createdAt).toLocaleDateString()}
+                        {w.adminNote ? ` — ${w.adminNote}` : ""}
+                      </p>
+                    </div>
+                    <span className={`badge ${withdrawalBadge(w.status)}`}>
+                      {w.status === "Paid" ? t("referrals.withdrawalPaid") : w.status === "Rejected" ? t("referrals.withdrawalRejected") : t("referrals.withdrawalPending")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </>
+      )}
+
+      {withdrawOpen && (
+        <div
+          className="fixed inset-0 bg-[var(--blue-deep)]/50 flex items-center justify-center z-[100] p-4"
+          onClick={() => !submitting && setWithdrawOpen(false)}
+        >
+          <div className="card p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()} dir="rtl">
+            <h3 className="text-[16px] font-bold text-[var(--blue-deep)] mb-2">{t("referrals.withdrawTitle")}</h3>
+            <p className="text-[12.5px] text-[var(--ink)] leading-relaxed mb-4">{t("referrals.withdrawHint")}</p>
+
+            <div className="mb-4">
+              <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("referrals.withdrawAmount")}</p>
+              <div className="field-shell">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="text-left"
+                  dir="ltr"
+                />
+                <span className="text-[11px] text-[var(--sub)]">{t("common.sar")}</span>
+              </div>
+              <p className="text-[11px] text-[var(--sub)] mt-1.5">{t("referrals.balance")}: {data?.balance.toFixed(2)} {t("common.sar")}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setWithdrawOpen(false)} disabled={submitting} className="btn flex-1" style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}>
+                {t("common.cancel")}
+              </button>
+              <button type="button" onClick={submitWithdrawal} disabled={submitting} className="btn btn-primary flex-1">
+                {submitting ? t("common.loading") : t("referrals.submitWithdraw")}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -4,6 +4,8 @@ using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Admin;
 using FatooraRahatak.Application.DTOs.Platform;
 using FatooraRahatak.Application.DTOs.Stores;
+using FatooraRahatak.Application.DTOs.Settlement;
+using FatooraRahatak.Application.DTOs.Referral;
 using FatooraRahatak.Application.Interfaces;
 namespace FatooraRahatak.API.Controllers;[ApiController]
 [Route("api/v1/admin")]
@@ -18,7 +20,8 @@ public class AdminController : ControllerBase
     private readonly ICareerService _careerService;
     private readonly IAcademyService _academyService;
     private readonly IStoreDesignService _designService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService)
+    private readonly IMerchantVerificationService _verificationService;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService)
     {
         _adminService = adminService;
         _siteService = siteService;
@@ -28,6 +31,7 @@ public class AdminController : ControllerBase
         _careerService = careerService;
         _academyService = academyService;
         _designService = designService;
+        _verificationService = verificationService;
     }
     private bool IsSuperAdmin()
     {
@@ -523,6 +527,62 @@ public class AdminController : ControllerBase
         {
             await _referralService.MarkCommissionPaidAsync(id);
             return Ok(new { success = true, message = "تم تعليم العمولة كمصروفة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("referrals/withdrawals")]
+    public async Task<IActionResult> GetAllWithdrawals([FromQuery] string? status)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetAllWithdrawalsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/withdrawals/{id}/process")]
+    public async Task<IActionResult> ProcessWithdrawal(long id, [FromBody] ProcessWithdrawalDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.ProcessWithdrawalAsync(id, dto.Approve, dto.Note);
+            return Ok(new { success = true, message = dto.Approve ? "تمت الموافقة على طلب السحب" : "تم رفض طلب السحب" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // === Merchant Verification (حساب تاجر / مستندات) ===
+    [HttpGet("merchant-verifications")]
+    public async Task<IActionResult> GetAllVerifications([FromQuery] string? status)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _verificationService.GetAllVerificationsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("merchant-verifications/{id}")]
+    public async Task<IActionResult> GetVerification(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _verificationService.GetAdminVerificationAsync(id);
+        if (data == null) return NotFound(new { success = false, message = "طلب التوثيق غير موجود" });
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("merchant-verifications/{id}/review")]
+    public async Task<IActionResult> ReviewVerification(long id, [FromBody] ReviewVerificationDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _verificationService.ProcessVerificationAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تم اعتماد التوثيق" : "تم رفض التوثيق" });
         }
         catch (InvalidOperationException ex)
         {

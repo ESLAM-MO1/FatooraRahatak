@@ -191,6 +191,129 @@ public class ReferralService : IReferralService
         return await _context.AffiliateCommissions.CountAsync();
     }
 
+    public async Task<List<MyWithdrawalDto>> GetMyWithdrawalsAsync(long userId)
+    {
+        return await _context.AffiliateWithdrawalRequests
+            .Where(w => w.UserId == userId)
+            .OrderByDescending(w => w.CreatedAt)
+            .Select(w => new MyWithdrawalDto
+            {
+                Id = w.Id,
+                Amount = w.Amount,
+                Currency = w.Currency,
+                Status = w.Status.ToString(),
+                CreatedAt = w.CreatedAt,
+                ProcessedAt = w.ProcessedAt,
+                AdminNote = w.AdminNote,
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<AdminWithdrawalDto>> GetAllWithdrawalsAsync(string? status = null)
+    {
+        var query = _context.AffiliateWithdrawalRequests
+            .Include(w => w.User)
+            .OrderByDescending(w => w.CreatedAt);
+
+        var list = await query.ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (status.Equals("paid", StringComparison.OrdinalIgnoreCase))
+                list = list.Where(w => w.Status == AffiliateWithdrawalStatus.Paid).ToList();
+            else if (status.Equals("pending", StringComparison.OrdinalIgnoreCase))
+                list = list.Where(w => w.Status == AffiliateWithdrawalStatus.Pending).ToList();
+            else if (status.Equals("rejected", StringComparison.OrdinalIgnoreCase))
+                list = list.Where(w => w.Status == AffiliateWithdrawalStatus.Rejected).ToList();
+        }
+
+        return list.Select(w => new AdminWithdrawalDto
+        {
+            Id = w.Id,
+            UserId = w.UserId,
+            UserName = w.User.FullName,
+            UserEmail = w.User.Email,
+            Amount = w.Amount,
+            Currency = w.Currency,
+            Status = w.Status.ToString(),
+            CreatedAt = w.CreatedAt,
+            ProcessedAt = w.ProcessedAt,
+            AdminNote = w.AdminNote,
+        }).ToList();
+    }
+
+    public async Task<MyWithdrawalDto> RequestWithdrawalAsync(long userId, decimal amount)
+    {
+        if (amount <= 0)
+            throw new InvalidOperationException("المبلغ المطلوب سحبه غير صالح");
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (amount > user.AffiliateBalance)
+            throw new InvalidOperationException("المبلغ المطلوب يتجاوز رصيدك المتاح");
+
+        var hasPending = await _context.AffiliateWithdrawalRequests
+            .AnyAsync(w => w.UserId == userId && w.Status == AffiliateWithdrawalStatus.Pending);
+        if (hasPending)
+            throw new InvalidOperationException("لديك طلب سحب قيد المعالجة بالفعل");
+
+        var withdrawal = new AffiliateWithdrawalRequest
+        {
+            UserId = userId,
+            Amount = amount,
+            Currency = "SAR",
+            Status = AffiliateWithdrawalStatus.Pending,
+        };
+
+        _context.AffiliateWithdrawalRequests.Add(withdrawal);
+        await _context.SaveChangesAsync();
+
+        return new MyWithdrawalDto
+        {
+            Id = withdrawal.Id,
+            Amount = withdrawal.Amount,
+            Currency = withdrawal.Currency,
+            Status = withdrawal.Status.ToString(),
+            CreatedAt = withdrawal.CreatedAt,
+        };
+    }
+
+    public async Task ProcessWithdrawalAsync(long withdrawalId, bool approve, string? note)
+    {
+        var withdrawal = await _context.AffiliateWithdrawalRequests
+            .FirstOrDefaultAsync(w => w.Id == withdrawalId);
+        if (withdrawal == null)
+            throw new InvalidOperationException("طلب السحب غير موجود");
+        if (withdrawal.Status != AffiliateWithdrawalStatus.Pending)
+            throw new InvalidOperationException("تمت معالجة هذا الطلب مسبقًا");
+
+        var user = await _context.Users.FindAsync(withdrawal.UserId);
+        if (user == null)
+            throw new InvalidOperationException("مقدم الطلب غير موجود");
+
+        if (approve)
+        {
+            if (withdrawal.Amount > user.AffiliateBalance)
+                throw new InvalidOperationException("رصيد المستخدم لا يكفي لصرف هذا الطلب");
+
+            user.AffiliateBalance -= withdrawal.Amount;
+            withdrawal.Status = AffiliateWithdrawalStatus.Paid;
+        }
+        else
+        {
+            withdrawal.Status = AffiliateWithdrawalStatus.Rejected;
+        }
+
+        withdrawal.ProcessedAt = DateTime.UtcNow;
+        withdrawal.UpdatedAt = DateTime.UtcNow;
+        withdrawal.AdminNote = note;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
     private async Task<ReferralCode> CreateReferralCodeForUserAsync(long userId)
     {
         var user = await _context.Users.FindAsync(userId);

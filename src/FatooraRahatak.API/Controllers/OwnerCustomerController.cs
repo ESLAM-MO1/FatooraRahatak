@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Application.DTOs.Customers;
 using FatooraRahatak.Infrastructure.Data;
 using FatooraRahatak.API.Filters;
 
@@ -51,5 +52,23 @@ public class OwnerCustomerController : ControllerBase
             return NotFound(new { success = false, message = "العميل غير موجود" });
 
         return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("Customers.Add")]
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateStoreCustomerDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _ownerCustomerService.CreateStoreCustomerAsync(storeId.Value, dto);
+            return Ok(new { success = true, data = result, message = "تم إضافة العميل بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 }

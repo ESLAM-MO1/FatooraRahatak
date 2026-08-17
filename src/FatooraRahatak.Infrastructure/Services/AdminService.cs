@@ -8,6 +8,7 @@ using FatooraRahatak.Infrastructure.Data;
 using FatooraRahatak.Domain.Entities.Platform;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Audit;
+using FatooraRahatak.Domain.Entities.Affiliates;
 using ClosedXML.Excel;
 using Microsoft.Extensions.Options;
 using FatooraRahatak.Application.Common;
@@ -444,8 +445,15 @@ public class AdminService : IAdminService
         var totalStores = await _context.Stores.CountAsync();
         var activeStores = await _context.Stores.CountAsync(s => s.Status == StoreStatus.Active);
         var suspendedStores = await _context.Stores.CountAsync(s => s.Status == StoreStatus.Suspended);
+        var pendingStores = await _context.Stores.CountAsync(s => s.Status == StoreStatus.PendingApproval);
         var totalUsers = await _context.Users.CountAsync();
         var totalProducts = await _context.Products.CountAsync();
+        var totalOrders = await _context.Orders.LongCountAsync();
+        var totalRevenue = await _context.Orders.SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+        var totalReferrals = await _context.ReferralCodes.CountAsync();
+        var pendingCommissions = await _context.AffiliateCommissions
+            .Where(c => c.Status == AffiliateCommissionStatus.Pending)
+            .SumAsync(c => (decimal?)c.Amount) ?? 0m;
 
         var storesByPackage = await _context.Stores
             .Include(s => s.Package)
@@ -462,8 +470,13 @@ public class AdminService : IAdminService
             TotalStores = totalStores,
             ActiveStores = activeStores,
             SuspendedStores = suspendedStores,
+            PendingStores = pendingStores,
             TotalUsers = totalUsers,
             TotalProductsAcrossPlatform = totalProducts,
+            TotalOrders = totalOrders,
+            TotalRevenue = totalRevenue,
+            TotalReferrals = totalReferrals,
+            PendingReferralCommissions = pendingCommissions,
             StoresByPackage = storesByPackage
         };
     }

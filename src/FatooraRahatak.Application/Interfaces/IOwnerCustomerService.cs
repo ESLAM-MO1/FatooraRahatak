@@ -6,4 +6,5 @@ public interface IOwnerCustomerService
 {
     Task<List<OwnerCustomerListDto>> GetOwnerCustomersAsync(long storeId);
     Task<OwnerCustomerDetailDto?> GetOwnerCustomerDetailAsync(long storeId, string phone);
+    Task<StoreCustomerDto> CreateStoreCustomerAsync(long storeId, CreateStoreCustomerDto dto);
 }

@@ -61,3 +61,32 @@ public class AdminCommissionDto
     public DateTime CreatedAt { get; set; }
     public DateTime? PaidAt { get; set; }
 }
+
+public class MyWithdrawalDto
+{
+    public long Id { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "SAR";
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ProcessedAt { get; set; }
+    public string? AdminNote { get; set; }
+}
+
+public class AdminWithdrawalDto : MyWithdrawalDto
+{
+    public long UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public string UserEmail { get; set; } = string.Empty;
+}
+
+public class CreateWithdrawalDto
+{
+    public decimal Amount { get; set; }
+}
+
+public class ProcessWithdrawalDto
+{
+    public bool Approve { get; set; }
+    public string? Note { get; set; }
+}

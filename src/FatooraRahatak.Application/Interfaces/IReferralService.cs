@@ -12,4 +12,8 @@ public interface IReferralService
     Task<List<AdminCommissionDto>> GetAllCommissionsAsync(string? status = null);
     Task MarkCommissionPaidAsync(long commissionId);
     Task<int> UpgradeLegacyCodesAsync();
+    Task<List<MyWithdrawalDto>> GetMyWithdrawalsAsync(long userId);
+    Task<List<AdminWithdrawalDto>> GetAllWithdrawalsAsync(string? status = null);
+    Task<MyWithdrawalDto> RequestWithdrawalAsync(long userId, decimal amount);
+    Task ProcessWithdrawalAsync(long withdrawalId, bool approve, string? note);
 }

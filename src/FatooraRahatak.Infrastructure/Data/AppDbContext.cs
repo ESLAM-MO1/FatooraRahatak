@@ -116,11 +116,15 @@ public class AppDbContext : DbContext
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<AffiliateCommission> AffiliateCommissions => Set<AffiliateCommission>();
+    public DbSet<AffiliateWithdrawalRequest> AffiliateWithdrawalRequests => Set<AffiliateWithdrawalRequest>();
     public DbSet<ShippingCompany> ShippingCompanies => Set<ShippingCompany>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<ShipmentEvent> ShipmentEvents => Set<ShipmentEvent>();
     public DbSet<StoreApiKey> StoreApiKeys => Set<StoreApiKey>();
     public DbSet<MerchantBankDetails> MerchantBankDetails => Set<MerchantBankDetails>();
+    public DbSet<MerchantVerification> MerchantVerifications => Set<MerchantVerification>();
+    public DbSet<MerchantDocument> MerchantDocument => Set<MerchantDocument>();
+    public DbSet<StoreCustomer> StoreCustomers => Set<StoreCustomer>();
     public DbSet<SettlementBatch> SettlementBatches => Set<SettlementBatch>();
     public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();
     public DbSet<ZatcaCredential> ZatcaCredentials => Set<ZatcaCredential>();
@@ -1025,6 +1029,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AffiliateCommission>()
             .Property(c => c.Rate).HasPrecision(5, 2);
 
+        modelBuilder.Entity<AffiliateWithdrawalRequest>()
+            .HasOne(w => w.User)
+            .WithMany()
+            .HasForeignKey(w => w.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AffiliateWithdrawalRequest>()
+            .Property(w => w.Amount).HasPrecision(14, 2);
+
         modelBuilder.Entity<ShippingCompany>()
             .HasIndex(c => new { c.StoreId, c.Code })
             .IsUnique();
@@ -1132,6 +1145,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ZatcaCredential>()
             .Property(z => z.ComplianceRequestSecret).HasMaxLength(256);
         modelBuilder.Entity<ZatcaCredential>()
+            .Property(z => z.ComplianceRequestSecret).HasMaxLength(256);
+        modelBuilder.Entity<ZatcaCredential>()
             .Property(z => z.ProductionCsid).HasMaxLength(4096);
         modelBuilder.Entity<ZatcaCredential>()
             .Property(z => z.ProductionUuid).HasMaxLength(256);
@@ -1147,6 +1162,37 @@ public class AppDbContext : DbContext
             .Property(z => z.SolutionName).HasMaxLength(256);
         modelBuilder.Entity<ZatcaCredential>()
             .Property(z => z.ErrorMessage).HasMaxLength(2000);
+
+        modelBuilder.Entity<MerchantVerification>()
+            .HasOne(v => v.Store)
+            .WithMany()
+            .HasForeignKey(v => v.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MerchantVerification>()
+            .HasOne(v => v.ReviewedBy)
+            .WithMany()
+            .HasForeignKey(v => v.ReviewedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MerchantVerification>()
+            .HasIndex(v => v.StoreId)
+            .IsUnique();
+
+        modelBuilder.Entity<MerchantDocument>()
+            .HasOne(d => d.Verification)
+            .WithMany(v => v.Documents)
+            .HasForeignKey(d => d.VerificationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreCustomer>()
+            .HasOne(c => c.Store)
+            .WithMany()
+            .HasForeignKey(c => c.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreCustomer>()
+            .HasIndex(c => new { c.StoreId, c.Phone });
     }
     public override int SaveChanges()
     {

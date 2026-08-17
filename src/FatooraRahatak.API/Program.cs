@@ -118,6 +118,7 @@ builder.Services.AddScoped<IDashboardSectionService, DashboardSectionService>();
 builder.Services.AddScoped<ICareerService, CareerService>();
 builder.Services.AddScoped<IAcademyService, AcademyService>();
 builder.Services.AddScoped<IReferralService, ReferralService>();
+builder.Services.AddScoped<IMerchantVerificationService, MerchantVerificationService>();
 builder.Services.AddScoped<ICustomerNotificationService, CustomerNotificationService>();
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddScoped<IQuickLoginService, QuickLoginService>();

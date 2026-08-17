@@ -82,6 +82,7 @@ const ownerNavKeys: NavGroupKey[] = [
       { href: "/dashboard/payment-account", labelKey: "nav.paymentAccount", icon: "wallet", perm: "Payments.View" },
       { href: "/dashboard/settlements", labelKey: "nav.settlements", icon: "wallet", perm: "Payments.View" },
       { href: "/dashboard/referrals", labelKey: "nav.referrals", icon: "share", perm: "Referrals.View" },
+      { href: "/dashboard/merchant-verification", labelKey: "nav.verification", icon: "user" },
     ],
   },
 ];
@@ -131,6 +132,7 @@ const superAdminNavKeys: NavGroupKey[] = [
       { href: "/dashboard/kpis",    labelKey: "nav.kpis",    icon: "chart" },
       { href: "/dashboard/domains", labelKey: "nav.domains", icon: "settings" },
       { href: "/dashboard/admin-referrals", labelKey: "nav.referrals", icon: "share" },
+      { href: "/dashboard/admin-verifications", labelKey: "nav.adminVerifications", icon: "clipboard" },
       { href: "/dashboard/admin-settlements", labelKey: "nav.settlements", icon: "wallet" },
       { href: "/dashboard/settings",labelKey: "nav.settings", icon: "settings" },
     ],

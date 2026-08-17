@@ -462,7 +462,7 @@ export default function StoreSettingsPage() {
   const [vatNumber, setVatNumber] = useState("");
   const [vatNumberSaving, setVatNumberSaving] = useState(false);
 
-  const [socialForm, setSocialForm] = useState({ bioLink: "", facebook: "", instagram: "", whatsapp: "" });
+  const [socialForm, setSocialForm] = useState({ bioLink: "", facebook: "", instagram: "", whatsapp: "", snapchat: "", tiktok: "", telegram: "", linkedin: "" });
   const [socialSaving, setSocialSaving] = useState(false);
 
   const [currencyLang, setCurrencyLang] = useState({ currency: "SAR", language: "ar" });
@@ -521,7 +521,7 @@ export default function StoreSettingsPage() {
       setStore(d);
       setVatNumber(d.vatNumber || "");
       setContactForm({ phone: d.contactPhone || "", email: d.contactEmail || "", address: d.contactAddress || "" });
-      setSocialForm({ bioLink: d.bioLink || "", facebook: d.facebookUrl || "", instagram: d.instagramUrl || "", whatsapp: d.whatsappUrl || "" });
+      setSocialForm({ bioLink: d.bioLink || "", facebook: d.facebookUrl || "", instagram: d.instagramUrl || "", whatsapp: d.whatsappUrl || "", snapchat: d.snapchatUrl || "", tiktok: d.tiktokUrl || "", telegram: d.telegramUrl || "", linkedin: d.linkedinUrl || "" });
       setCurrencyLang({ currency: d.currency || "SAR", language: d.defaultLanguage || "ar" });
       const resolvedTheme = resolveThemeConfig(d.themeName);
       const resolvedColors = parseStoreColors(resolvedTheme.id, d.colorsJson);
@@ -724,7 +724,7 @@ export default function StoreSettingsPage() {
     setSocialSuccess("");
     setSocialSaving(true);
     try {
-      const res = await api.put("/stores/social", { bioLink: socialForm.bioLink || null, facebookUrl: socialForm.facebook || null, instagramUrl: socialForm.instagram || null, whatsappUrl: socialForm.whatsapp || null });
+      const res = await api.put("/stores/social", { bioLink: socialForm.bioLink || null, facebookUrl: socialForm.facebook || null, instagramUrl: socialForm.instagram || null, whatsappUrl: socialForm.whatsapp || null, snapchatUrl: socialForm.snapchat || null, tiktokUrl: socialForm.tiktok || null, telegramUrl: socialForm.telegram || null, linkedinUrl: socialForm.linkedin || null });
       setSocialSuccess(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.socialSaveError"));
@@ -1191,6 +1191,20 @@ export default function StoreSettingsPage() {
                   </FormField>
                   <FormField icon="whatsapp" label={t("storeSettings.whatsapp")}>
                     <input type="text" value={socialForm.whatsapp} onChange={(e) => setSocialForm((f) => ({ ...f, whatsapp: e.target.value }))} placeholder="https://wa.me/..." dir="ltr" />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField icon="snapchat" label={t("storeSettings.snapchat")}>
+                    <input type="text" value={socialForm.snapchat} onChange={(e) => setSocialForm((f) => ({ ...f, snapchat: e.target.value }))} placeholder="https://snapchat.com/..." dir="ltr" />
+                  </FormField>
+                  <FormField icon="tiktok" label={t("storeSettings.tiktok")}>
+                    <input type="text" value={socialForm.tiktok} onChange={(e) => setSocialForm((f) => ({ ...f, tiktok: e.target.value }))} placeholder="https://tiktok.com/..." dir="ltr" />
+                  </FormField>
+                  <FormField icon="telegram" label={t("storeSettings.telegram")}>
+                    <input type="text" value={socialForm.telegram} onChange={(e) => setSocialForm((f) => ({ ...f, telegram: e.target.value }))} placeholder="https://t.me/..." dir="ltr" />
+                  </FormField>
+                  <FormField icon="linkedin" label={t("storeSettings.linkedin")}>
+                    <input type="text" value={socialForm.linkedin} onChange={(e) => setSocialForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/..." dir="ltr" />
                   </FormField>
                 </div>
                 <Can code="StoreSettings.Edit">

@@ -898,12 +898,13 @@ const ar = {
 
   // ── Packages / Plans ──
   "packages.title": "الباقات",
-  "packages.month": "ريال/شهر",
+  "packages.month": "شهرياً",
   "packages.start": "ابدأ الآن",
   "packages.mostPopular": "الأكثر شيوعًا",
   "packages.compare": "قارن الباقات",
   "packages.feature": "الميزة",
   "packages.free": "المجانية",
+  "packages.freePrice": "مجاناً",
   "packages.pricing": "أسعار تناسب احتياجاتك",
   "packages.subtitle": "خطط مرنة تناسب جميع أحجام الأعمال، سواء كنت رائد أعمال أو جهة حكومية أو بنك.",
   "packages.noPackages": "لا توجد باقات متاحة حالياً",
@@ -2403,6 +2404,10 @@ const ar = {
   "storeSettings.facebook": "فيسبوك",
   "storeSettings.instagram": "إنستغرام",
   "storeSettings.whatsapp": "واتساب",
+  "storeSettings.snapchat": "سناب شات",
+  "storeSettings.tiktok": "تيك توك",
+  "storeSettings.telegram": "تيليجرام",
+  "storeSettings.linkedin": "لينكد إن",
   "storeSettings.storeAndTax": "المتجر والضريبة",
   "storeSettings.onlineToggleLabel": "المتجر متصل",
   "storeSettings.onlineToggleDesc": "تفعيل أو إخفاء المتجر",
@@ -3321,6 +3326,21 @@ const ar = {
   "storeContact.phoneLabel": "رقم الجوال",
   "storeContact.emailLabel": "البريد الإلكتروني",
   "storeContact.addressLabel": "العنوان",
+
+  // ── Help Center ──
+  "helpCenter.supportSection": "تواصل مع الدعم الفني",
+  "helpCenter.supportDesc": "فريقنا جاهز لمساعدتك في أي استفسار تقني أو مشكلة تواجهك.",
+  "helpCenter.salesSection": "تواصل مع المبيعات وخدمة العملاء",
+  "helpCenter.salesDesc": "للاستفسار عن الباقات والاشتراكات وتجديد المتاجر.",
+  "helpCenter.followUs": "تابعنا على وسائل التواصل",
+  "helpCenter.followDesc": "انضم إلى مجتمعنا وابقَ على اطلاع بآخر الأخبار والعروض.",
+  "helpCenter.call": "اتصال",
+  "helpCenter.whatsapp": "واتساب",
+  "helpCenter.email": "بريد إلكتروني",
+  "helpCenter.supportPhone": "+966531118224",
+  "helpCenter.salesPhone": "+966531158477",
+  "helpCenter.emailAddress": "faturatrahatik@gmail.com",
+  "helpCenter.available247": "متاح على مدار الساعة",
 
   // ── Subscription ──
   "subscription.paymentInitiated": "جارٍ تحويلك إلى صفحة الدفع الآمنة لدى مواسـر... بعد إتمام الدفع ستُحدَّث باقتك تلقائيًا.",

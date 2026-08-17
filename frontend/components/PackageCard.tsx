@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -131,16 +131,26 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
                 {t("subscription.savePercent").replace("{percent}", String(savePercent))}
               </span>
             ) : null}
-            <p className="text-[30px] font-extrabold leading-tight" style={{ color: pkg.color }}>
-              {formatMoney(totalPrice)} {t("common.sar")}
-            </p>
+            {totalPrice === 0 ? (
+              <p className="text-[30px] font-extrabold leading-tight text-emerald-600">
+                {t("packages.freePrice")}
+              </p>
+            ) : (
+              <p className="text-[30px] font-extrabold leading-tight" style={{ color: pkg.color }}>
+                {formatMoney(totalPrice)} <span className="text-[16px] font-bold text-[var(--ink-light)]">{t("common.sar")}</span>
+              </p>
+            )}
             <p className="text-[11px] text-[var(--sub)]">
               {formatMoney(pkg.monthlyPrice)} {t("common.sar")} / {t("packages.month")}
             </p>
           </>
+        ) : pkg.monthlyPrice === 0 ? (
+          <p className="text-[30px] font-extrabold leading-tight text-emerald-600">
+            {t("packages.freePrice")}
+          </p>
         ) : (
           <p className="text-[30px] font-extrabold leading-tight" style={{ color: pkg.color }}>
-            {formatMoney(pkg.monthlyPrice)} {t("common.sar")} / {t("packages.month")}
+            {formatMoney(pkg.monthlyPrice)} <span className="text-[16px] font-bold text-[var(--ink-light)]">{t("common.sar")}</span> / {t("packages.month")}
           </p>
         )}
       </div>

@@ -69,7 +69,7 @@ public class SearchService : ISearchService
             .Where(o => o.StoreId == storeId)
             .Select(o => o.Customer)
             .Distinct()
-            .Where(u => u != null && (u!.FullName.Contains(term) || u.Phone.Contains(term) || u.Email.Contains(term)))
+            .Where(u => u != null && (u!.FullName.Contains(term) || (u.Phone ?? "").Contains(term) || u.Email.Contains(term)))
             .Take(MaxPerType)
             .Select(u => new SearchResultDto
             {

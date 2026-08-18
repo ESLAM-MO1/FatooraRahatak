@@ -159,6 +159,7 @@ public class AdminService : IAdminService
         {
             FullName = dto.FullName,
             Email = dto.Email,
+            Phone = null,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             UserType = UserType.SupportStaff,
             IsActive = true,

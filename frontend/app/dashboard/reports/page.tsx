@@ -118,12 +118,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-[var(--blue-deep)]">{t("reports.storeDistributionByPackage")}</h2>
-          <button type="button" onClick={exportCsv} className="text-[12px] text-[var(--blue)] hover:underline">
-            {t("reports.exportCsv")}
-          </button>
-        </div>
+        <h2 className="font-bold text-[var(--blue-deep)] mb-4">{t("reports.storeDistributionByPackage")}</h2>
         {data.storesByPackage.length === 0 ? (
           <p className="text-[var(--sub)] text-sm">{t("reports.noData")}</p>
         ) : (

@@ -49,6 +49,7 @@ public class RoleService : IRoleService
             .Include(r => r.RolePermissions)
             .ThenInclude(rp => rp.Permission)
             .Where(r => r.RoleScope == RoleScope.Store
+                        && r.RoleName != "Owner"
                         && (r.StoreId == null || r.StoreId == store.Id))
             .OrderBy(r => r.RoleName)
             .ToListAsync();

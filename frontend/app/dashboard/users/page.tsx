@@ -35,6 +35,7 @@ interface StaffUser {
 }
 
 const ROLE_OPTIONS = [
+  { value: "Admin", labelKey: "users.roleAdmin" },
   { value: "Support", labelKey: "users.roleSupport" },
   { value: "Finance", labelKey: "users.roleFinance" },
   { value: "Technical", labelKey: "users.roleTechnical" },

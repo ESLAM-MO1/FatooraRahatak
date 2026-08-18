@@ -92,6 +92,10 @@ public class InvitationService : IInvitationService
         if (user == null)
             throw new InvalidOperationException("المستخدم غير موجود");
 
+        var invitedRole = await _context.Roles.FirstOrDefaultAsync(r => r.Id == invitation.RoleId);
+        if (invitedRole != null && invitedRole.RoleName == "Owner")
+            throw new InvalidOperationException("لا يمكن إسناد دور المالك إلى موظف");
+
         user.UserType = UserType.Employee;
         user.IsVerified = true;
 

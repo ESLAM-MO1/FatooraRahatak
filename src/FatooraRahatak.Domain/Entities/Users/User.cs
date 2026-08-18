@@ -12,6 +12,7 @@ public class User : BaseEntity
     public string? Phone { get; set; }
     public string? PasswordHash { get; set; }
     public string? GoogleId { get; set; }
+    public string? StaffRole { get; set; }
     public UserType UserType { get; set; }
     public bool IsActive { get; set; } = true;
     public bool IsVerified { get; set; } = false;

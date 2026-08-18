@@ -101,7 +101,7 @@ export default function DashboardHome() {
     const type = getUserType();
     setUserType(type);
 
-    if (type !== "SuperAdmin") {
+    if (type !== "SuperAdmin" && type !== "SupportStaff") {
       api
         .get("/subscriptions/status")
         .then((res) => setSubscriptionStatus(res.data.data))
@@ -156,11 +156,13 @@ export default function DashboardHome() {
               {greeting}
             </p>
             <h1 className="text-[24px] md:text-[29px] font-bold text-white leading-tight">
-              {userType === "SuperAdmin" ? t("dashboard.adminWelcome") : userType === "Employee" ? t("dashboard.employeeWelcome") : t("dashboard.ownerWelcome")}
+              {userType === "SuperAdmin" ? t("dashboard.adminWelcome") : userType === "SupportStaff" ? t("dashboard.staffWelcome") : userType === "Employee" ? t("dashboard.employeeWelcome") : t("dashboard.ownerWelcome")}
             </h1>
             <p className="text-[13.5px] text-[#BFE6F3] mt-3 max-w-md">
               {userType === "SuperAdmin"
                 ? t("dashboard.adminDesc")
+                : userType === "SupportStaff"
+                ? t("dashboard.staffDesc")
                 : userType === "Employee"
                 ? t("dashboard.employeeDesc")
                 : t("dashboard.ownerDesc")}
@@ -177,6 +179,11 @@ export default function DashboardHome() {
           <QuickLink href="/dashboard/stores" label={t("dashboard.manageStores")} desc={t("dashboard.manageStoresDesc")} icon="store" />
           <QuickLink href="/dashboard/packages" label={t("dashboard.managePackages")} desc={t("dashboard.managePackagesDesc")} icon="package" />
           <QuickLink href="/dashboard/users" label={t("dashboard.manageUsers")} desc={t("dashboard.manageUsersDesc")} icon="userGroup" />
+        </div>
+      ) : userType === "SupportStaff" ? (
+        <div className="card p-6">
+          <h2 className="text-[16px] font-bold text-[var(--ink)] mb-2">{t("dashboard.staffWelcome")}</h2>
+          <p className="text-[13.5px] text-[var(--sub)] leading-relaxed">{t("dashboard.staffDesc")}</p>
         </div>
       ) : (
         <>

@@ -160,6 +160,7 @@ public class AdminService : IAdminService
             FullName = dto.FullName,
             Email = dto.Email,
             Phone = null,
+            StaffRole = dto.RoleType,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             UserType = UserType.SupportStaff,
             IsActive = true,
@@ -189,7 +190,7 @@ public class AdminService : IAdminService
                 Id = u.Id,
                 FullName = u.FullName,
                 Email = u.Email,
-                RoleType = "Support",
+                RoleType = u.StaffRole ?? "Support",
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
             })

@@ -115,6 +115,10 @@ const employeeNavKeys: NavGroupKey[] = [
   },
 ];
 
+const supportStaffNavKeys: NavGroupKey[] = [
+  { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
+];
+
 const superAdminNavKeys: NavGroupKey[] = [
   { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
   {
@@ -290,7 +294,7 @@ const handler = () => {
         role: string; sortOrder: number; isActive: boolean;
         links: { labelAr: string; labelEn: string; href: string; icon: string; perm: string | null }[];
       }[] = res.data?.data || [];
-      const roleMatch = userType === "SuperAdmin" ? "SuperAdmin" : userType === "Employee" ? "Employee" : "Owner";
+      const roleMatch = isSuperAdmin ? "SuperAdmin" : isSupportStaff ? "SupportStaff" : userType === "Employee" ? "Employee" : "Owner";
       const rows = data
         .filter(s => s.isActive && s.role === roleMatch)
         .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
@@ -323,10 +327,12 @@ const handler = () => {
 
   const isSuperAdmin = userType === "SuperAdmin";
   const isEmployee = userType === "Employee";
+  const isSupportStaff = userType === "SupportStaff";
   const hasPerm = (code: string | undefined) => {
     if (!code) return true;
+    if (isSupportStaff) return false;
     if (isSuperAdmin) return true;
-    if (!isEmployee && !isSuperAdmin) return true;
+    if (!isEmployee) return true;
     return permissions.includes(code);
   };
   const permByHref = new Map<string, string>();
@@ -336,7 +342,8 @@ const handler = () => {
   const routePerm = pathname ? [...permByHref.entries()]
     .filter(([href]) => href !== "/dashboard" && pathname.startsWith(href))
     .sort((a, b) => b[0].length - a[0].length)[0]?.[1] : undefined;
-  const routeDenied = isEmployee && routePerm ? !permissions.includes(routePerm) : false;
+  const deniedAsStaff = isSupportStaff && !(pathname === "/dashboard" || pathname === "/dashboard/profile");
+  const routeDenied = deniedAsStaff || (isEmployee && routePerm ? !permissions.includes(routePerm) : false);
 
   useEffect(() => {
     if (!ready || !routeDenied) return;
@@ -364,7 +371,7 @@ const handler = () => {
       }))
       .filter((g) => g.items.length > 0);
   const groups = [
-    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys),
+    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isSupportStaff ? supportStaffNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys),
     ...customNavGroups
       .map(g => ({ ...g, items: g.items.filter(item => hasPerm(item.perm)) }))
       .filter(g => g.items.length > 0),
@@ -436,7 +443,7 @@ const handler = () => {
         <div className="leading-tight">
           <p className="text-[12px] font-bold text-[#F5F5F5] tracking-tight">{t("brand.name")}</p>
           <p className="text-[9px] text-[#9ca3af] mt-0.5">
-            {isSuperAdmin ? t("nav.dashboard") : isEmployee ? t("nav.dashboard") : t("nav.store")}
+            {isSuperAdmin ? t("nav.dashboard") : isEmployee || isSupportStaff ? t("nav.dashboard") : t("nav.store")}
           </p>
         </div>
       </div>
@@ -626,7 +633,7 @@ const handler = () => {
                 <div className="leading-tight">
                   <p className="text-[13px] font-bold text-[#F5F5F5] tracking-tight">{t("brand.name")}</p>
                   <p className="text-[9px] text-[#9ca3af] mt-0.5">
-                    {isSuperAdmin ? t("nav.dashboard") : isEmployee ? t("nav.dashboard") : t("nav.store")}
+                    {isSuperAdmin ? t("nav.dashboard") : isEmployee || isSupportStaff ? t("nav.dashboard") : t("nav.store")}
                   </p>
                 </div>
               </div>
@@ -760,7 +767,7 @@ const handler = () => {
 
           <div className="flex items-center gap-2 shrink-0">
             <LangSwitch />
-            {!isSuperAdmin && (
+            {!isSuperAdmin && !isSupportStaff && (
               <Link
                 href="/dashboard/subscription"
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-bold text-white"

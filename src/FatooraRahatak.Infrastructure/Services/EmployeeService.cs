@@ -34,6 +34,8 @@ public class EmployeeService : IEmployeeService
             && (r.StoreId == null || r.StoreId == storeId));
         if (role == null)
             throw new InvalidOperationException("الدور الوظيفي غير موجود");
+        if (role.RoleName == "Owner")
+            throw new InvalidOperationException("لا يمكن إسناد دور المالك إلى موظف");
 
         var emailExists = await _context.Users.AnyAsync(u => u.Email == dto.Email || u.Phone == dto.Phone);
         if (emailExists)

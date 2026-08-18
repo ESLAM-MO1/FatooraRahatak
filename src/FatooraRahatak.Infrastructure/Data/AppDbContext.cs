@@ -125,6 +125,7 @@ public class AppDbContext : DbContext
     public DbSet<MerchantVerification> MerchantVerifications => Set<MerchantVerification>();
     public DbSet<MerchantDocument> MerchantDocument => Set<MerchantDocument>();
     public DbSet<StoreCustomer> StoreCustomers => Set<StoreCustomer>();
+    public DbSet<MerchantAccount> MerchantAccounts => Set<MerchantAccount>();
     public DbSet<SettlementBatch> SettlementBatches => Set<SettlementBatch>();
     public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();
     public DbSet<ZatcaCredential> ZatcaCredentials => Set<ZatcaCredential>();
@@ -1193,6 +1194,16 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<StoreCustomer>()
             .HasIndex(c => new { c.StoreId, c.Phone });
+
+        modelBuilder.Entity<MerchantAccount>()
+            .HasOne(m => m.Store)
+            .WithMany()
+            .HasForeignKey(m => m.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<MerchantAccount>()
+            .HasIndex(m => m.StoreId)
+            .IsUnique();
     }
     public override int SaveChanges()
     {

@@ -82,6 +82,7 @@ const ownerNavKeys: NavGroupKey[] = [
       { href: "/dashboard/payment-account", labelKey: "nav.paymentAccount", icon: "wallet", perm: "Payments.View" },
       { href: "/dashboard/settlements", labelKey: "nav.settlements", icon: "wallet", perm: "Payments.View" },
       { href: "/dashboard/referrals", labelKey: "nav.referrals", icon: "share", perm: "Referrals.View" },
+      { href: "/dashboard/merchant-account", labelKey: "nav.merchantAccount", icon: "user" },
       { href: "/dashboard/merchant-verification", labelKey: "nav.verification", icon: "user" },
     ],
   },

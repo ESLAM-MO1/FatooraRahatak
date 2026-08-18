@@ -6,6 +6,7 @@ using FatooraRahatak.Application.DTOs.Platform;
 using FatooraRahatak.Application.DTOs.Stores;
 using FatooraRahatak.Application.DTOs.Settlement;
 using FatooraRahatak.Application.DTOs.Referral;
+using FatooraRahatak.Application.DTOs.Merchant;
 using FatooraRahatak.Application.Interfaces;
 namespace FatooraRahatak.API.Controllers;[ApiController]
 [Route("api/v1/admin")]
@@ -21,7 +22,8 @@ public class AdminController : ControllerBase
     private readonly IAcademyService _academyService;
     private readonly IStoreDesignService _designService;
     private readonly IMerchantVerificationService _verificationService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService)
+    private readonly IMerchantAccountService _merchantAccountService;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService, IMerchantAccountService merchantAccountService)
     {
         _adminService = adminService;
         _siteService = siteService;
@@ -32,6 +34,7 @@ public class AdminController : ControllerBase
         _academyService = academyService;
         _designService = designService;
         _verificationService = verificationService;
+        _merchantAccountService = merchantAccountService;
     }
     private bool IsSuperAdmin()
     {
@@ -583,6 +586,39 @@ public class AdminController : ControllerBase
         {
             await _verificationService.ProcessVerificationAsync(id, dto, GetCurrentUserId());
             return Ok(new { success = true, message = dto.Approve ? "تم اعتماد التوثيق" : "تم رفض التوثيق" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // === Merchant Accounts (حساب التاجر / مراجعة KYC) ===
+    [HttpGet("merchant-accounts")]
+    public async Task<IActionResult> GetAllMerchantAccounts([FromQuery] string? status)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _merchantAccountService.GetAllAccountsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("merchant-accounts/{id}")]
+    public async Task<IActionResult> GetMerchantAccount(long id)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var data = await _merchantAccountService.GetAdminAccountAsync(id);
+        if (data == null) return NotFound(new { success = false, message = "حساب التاجر غير موجود" });
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("merchant-accounts/{id}/review")]
+    public async Task<IActionResult> ReviewMerchantAccount(long id, [FromBody] ReviewMerchantAccountDto dto)
+    {
+        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        try
+        {
+            await _merchantAccountService.ProcessAccountReviewAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تم اعتماد حساب التاجر" : "تم رفض حساب التاجر" });
         }
         catch (InvalidOperationException ex)
         {

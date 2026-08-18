@@ -1,4 +1,5 @@
 using FatooraRahatak.Domain.Common;
+using FatooraRahatak.Domain.Entities.Users;
 
 namespace FatooraRahatak.Domain.Entities.Stores;
 
@@ -31,5 +32,20 @@ public class MerchantAccount : BaseEntity
     public bool IsSubmitted { get; set; } = false;
     public DateTime? SubmittedAt { get; set; }
 
+    // حالة المراجعة الإدارية (KYC)
+    public MerchantAccountStatus Status { get; set; } = MerchantAccountStatus.NotSubmitted;
+    public string? RejectionReason { get; set; }
+    public DateTime? ReviewedAt { get; set; }
+    public long? ReviewedByUserId { get; set; }
+
     public Store Store { get; set; } = null!;
+    public User? ReviewedBy { get; set; }
+}
+
+public enum MerchantAccountStatus
+{
+    NotSubmitted = 0,
+    Pending = 1,
+    Approved = 2,
+    Rejected = 3
 }

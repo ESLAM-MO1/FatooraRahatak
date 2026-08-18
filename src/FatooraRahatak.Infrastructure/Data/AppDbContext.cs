@@ -1204,6 +1204,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MerchantAccount>()
             .HasIndex(m => m.StoreId)
             .IsUnique();
+
+        modelBuilder.Entity<MerchantAccount>()
+            .HasOne(m => m.ReviewedBy)
+            .WithMany()
+            .HasForeignKey(m => m.ReviewedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
     public override int SaveChanges()
     {

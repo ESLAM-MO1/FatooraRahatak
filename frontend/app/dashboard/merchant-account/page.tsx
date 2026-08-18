@@ -128,6 +128,9 @@ export default function MerchantAccountPage() {
   const [logoName, setLogoName] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState("NotSubmitted");
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -156,6 +159,8 @@ export default function MerchantAccountPage() {
           nationalIdNumber: d.nationalIdNumber || "",
         });
         setLogoPath(d.logoPath || null);
+        setStatus(d.status || "NotSubmitted");
+        setRejectionReason(d.rejectionReason || null);
       })
       .catch((err: unknown) => {
         const e = err as { response?: { data?: { message?: string } } };
@@ -260,6 +265,8 @@ export default function MerchantAccountPage() {
         birthDate: form.birthDate ? new Date(form.birthDate).toISOString() : null,
         nationalIdNumber: form.nationalIdNumber || null,
       });
+      setStatus("NotSubmitted");
+      setRejectionReason(null);
       setSuccess(t("merchantAccount.saved"));
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -269,7 +276,26 @@ export default function MerchantAccountPage() {
     }
   };
 
+  const handleSubmitForReview = async () => {
+    setError("");
+    setSuccess("");
+    setSubmitting(true);
+    try {
+      const res = await api.post("/owner/merchant-account/submit");
+      setStatus(res.data.data.status || "Pending");
+      setRejectionReason(null);
+      setSuccess(t("merchantAccount.submitted"));
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || t("merchantAccount.submitError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) return <LoadingState />;
+
+  const locked = status === "Pending" || status === "Approved";
 
   const isAr = i18n.language !== "en";
   const licenseNumberLabelKey = LICENSE_NUMBER_LABEL_KEY[(form.licenseType as LicenseValue) || "LLC"];
@@ -286,6 +312,21 @@ export default function MerchantAccountPage() {
       {error && <div className="alert alert--danger">{error}</div>}
       {success && <div className="alert alert--success">{success}</div>}
 
+      {status === "Pending" && (
+        <div className="alert alert--warning">{t("merchantAccount.bannerPending")}</div>
+      )}
+      {status === "Approved" && (
+        <div className="alert alert--success">{t("merchantAccount.bannerApproved")}</div>
+      )}
+      {status === "Rejected" && (
+        <div className="alert alert--danger">
+          <span>
+            {t("merchantAccount.bannerRejected")}
+            {rejectionReason ? `: ${rejectionReason}` : ""}
+          </span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {/* ── 1) معلومات العلامة التجارية ── */}
         <SectionCard title={t("merchantAccount.sectionBrand")}>
@@ -299,6 +340,7 @@ export default function MerchantAccountPage() {
                 type="text"
                 value={form.brandName}
                 onChange={set("brandName")}
+                disabled={locked}
                 className={inputClass}
                 placeholder={isAr ? "اسم متجرك" : "Your store name"}
               />
@@ -314,6 +356,7 @@ export default function MerchantAccountPage() {
                 type="url"
                 value={form.websiteUrl}
                 onChange={set("websiteUrl")}
+                disabled={locked}
                 dir="ltr"
                 className={`${inputClass} text-left`}
                 placeholder="https://example.com"
@@ -345,7 +388,7 @@ export default function MerchantAccountPage() {
                   <span className="btn btn-outline btn-sm pointer-events-none">
                     {logoUploading ? t("common.loading") : t("merchantAccount.logoChoose")}
                   </span>
-                  <input type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" onChange={handleLogoChange} className="hidden" />
+                  <input type="file" accept=".png,.jpg,.jpeg,image/png,image/jpeg" onChange={handleLogoChange} disabled={locked} className="hidden" />
                 </label>
                 <p className="text-[11.5px] text-[var(--sub)] mt-1.5">
                   {logoName || t("merchantAccount.logoNoFile")}
@@ -369,6 +412,7 @@ export default function MerchantAccountPage() {
                 type="text"
                 value={form.legalName}
                 onChange={set("legalName")}
+                disabled={locked}
                 className={inputClass}
                 placeholder={isAr ? "الاسم القانوني المسجل" : "Registered legal name"}
               />
@@ -383,6 +427,7 @@ export default function MerchantAccountPage() {
               <select
                 value={form.licenseType}
                 onChange={set("licenseType")}
+                disabled={locked}
                 className={inputClass}
               >
                 <option value="" disabled>
@@ -406,6 +451,7 @@ export default function MerchantAccountPage() {
                 type="text"
                 value={form.licenseNumber}
                 onChange={set("licenseNumber")}
+                disabled={locked}
                 className={inputClass}
                 placeholder={t(licenseNumberLabelKey)}
               />
@@ -423,7 +469,7 @@ export default function MerchantAccountPage() {
                   {t("merchantAccount.firstName")}
                   <RequiredMark />
                 </FieldLabel>
-                <input type="text" value={form.ownerFirstName} onChange={set("ownerFirstName")} className={inputClass} />
+                <input type="text" value={form.ownerFirstName} onChange={set("ownerFirstName")} disabled={locked} className={inputClass} />
                 <FieldError message={errors.ownerFirstName} />
               </div>
               <div>
@@ -431,7 +477,7 @@ export default function MerchantAccountPage() {
                   {t("merchantAccount.middleName")}
                   <span className="text-[--sub-light]"> ({t("merchantAccount.optional")})</span>
                 </FieldLabel>
-                <input type="text" value={form.ownerMiddleName} onChange={set("ownerMiddleName")} className={inputClass} />
+                <input type="text" value={form.ownerMiddleName} onChange={set("ownerMiddleName")} disabled={locked} className={inputClass} />
               </div>
             </div>
 
@@ -440,7 +486,7 @@ export default function MerchantAccountPage() {
                 {t("merchantAccount.lastName")}
                 <RequiredMark />
               </FieldLabel>
-              <input type="text" value={form.ownerLastName} onChange={set("ownerLastName")} className={inputClass} />
+              <input type="text" value={form.ownerLastName} onChange={set("ownerLastName")} disabled={locked} className={inputClass} />
               <FieldError message={errors.ownerLastName} />
             </div>
 
@@ -453,6 +499,7 @@ export default function MerchantAccountPage() {
                 type="email"
                 value={form.ownerEmail}
                 onChange={set("ownerEmail")}
+                disabled={locked}
                 dir="ltr"
                 className={`${inputClass} text-left`}
                 placeholder="name@example.com"
@@ -471,6 +518,7 @@ export default function MerchantAccountPage() {
                   type="text"
                   value={form.ownerCountryCode}
                   onChange={set("ownerCountryCode")}
+                  disabled={locked}
                   dir="ltr"
                   className={`${inputClass} text-left`}
                   placeholder="966"
@@ -489,6 +537,7 @@ export default function MerchantAccountPage() {
                     const v = e.target.value.replace(/[^\d]/g, "");
                     setForm((f) => ({ ...f, ownerPhone: v }));
                   }}
+                  disabled={locked}
                   dir="ltr"
                   className={`${inputClass} text-left`}
                   placeholder="5xxxxxxxx"
@@ -504,7 +553,7 @@ export default function MerchantAccountPage() {
                   {t("merchantAccount.addressCountry")}
                   <RequiredMark />
                 </FieldLabel>
-                <select value={form.addressCountry} onChange={set("addressCountry")} className={inputClass}>
+                <select value={form.addressCountry} onChange={set("addressCountry")} disabled={locked} className={inputClass}>
                   <option value="" disabled>
                     {isAr ? "مثال: SA, EG, etc" : "Example: SA, EG, etc"}
                   </option>
@@ -521,7 +570,7 @@ export default function MerchantAccountPage() {
                   {t("merchantAccount.addressCity")}
                   <RequiredMark />
                 </FieldLabel>
-                <input type="text" value={form.addressCity} onChange={set("addressCity")} className={inputClass} />
+                <input type="text" value={form.addressCity} onChange={set("addressCity")} disabled={locked} className={inputClass} />
                 <FieldError message={errors.addressCity} />
               </div>
             </div>
@@ -532,7 +581,7 @@ export default function MerchantAccountPage() {
                   {t("merchantAccount.birthDate")}
                   <RequiredMark />
                 </FieldLabel>
-                <input type="date" value={form.birthDate} onChange={set("birthDate")} className={inputClass} />
+                <input type="date" value={form.birthDate} onChange={set("birthDate")} disabled={locked} className={inputClass} />
                 <p className="text-[11.5px] text-[var(--sub)] mt-1">YYYY-MM-DD</p>
                 <FieldError message={errors.birthDate} />
               </div>
@@ -541,16 +590,36 @@ export default function MerchantAccountPage() {
                   {t("merchantAccount.nationalId")}
                   <span className="text-[--sub-light]"> ({t("merchantAccount.optional")})</span>
                 </FieldLabel>
-                <input type="text" value={form.nationalIdNumber} onChange={set("nationalIdNumber")} className={inputClass} />
+                <input type="text" value={form.nationalIdNumber} onChange={set("nationalIdNumber")} disabled={locked} className={inputClass} />
               </div>
             </div>
           </div>
         </SectionCard>
 
         <div className="flex items-center justify-end gap-3">
-          <button type="submit" disabled={saving} className="btn btn-primary">
-            {saving ? t("merchantAccount.saving") : t("merchantAccount.save")}
-          </button>
+          {status === "Approved" ? (
+            <span className="text-sm text-[var(--sub)]">{t("merchantAccount.approvedNote")}</span>
+          ) : status === "Pending" ? (
+            <span className="text-sm text-[var(--sub)]">{t("merchantAccount.pendingNote")}</span>
+          ) : (
+            <>
+              <button
+                type="submit"
+                disabled={saving || submitting}
+                className="btn btn-ghost"
+              >
+                {saving ? t("merchantAccount.saving") : t("merchantAccount.save")}
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitForReview}
+                disabled={submitting || saving}
+                className="btn btn-primary"
+              >
+                {submitting ? t("merchantAccount.submitting") : t("merchantAccount.submitForReview")}
+              </button>
+            </>
+          )}
         </div>
       </form>
     </div>

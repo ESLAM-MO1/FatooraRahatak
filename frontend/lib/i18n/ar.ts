@@ -3678,6 +3678,7 @@ const ar = {
   "verification.replaceDocument": "استبدال المستند",
   "verification.replaceSuccess": "تم استبدال المستند بنجاح",
   "verification.addAnotherDocument": "إضافة مستند آخر",
+  "verification.documentsHelp": "يمكنك إضافة أكثر من مستند لنفس النوع أو استبدال أي مستند موجود",
   "verification.loadError": "حدث خطأ أثناء تحميل التوثيق",
   "verification.actionError": "حدث خطأ أثناء تنفيذ العملية",
   "verification.needAccountBanner": "لا تنسَ إكمال بيانات حساب التاجر من هنا — الاعتماد الكامل يتطلب اعتماد حساب التاجر ومستندات التوثيق معًا",

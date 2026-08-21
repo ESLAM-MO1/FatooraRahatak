@@ -292,44 +292,55 @@ export default function MerchantVerificationPage() {
             {data.documents.length === 0 ? (
               <p className="text-[12.5px] text-[var(--sub)]">{t("verification.emptyDocuments")}</p>
             ) : (
-              <div className="space-y-2">
-                {data.documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 flex-wrap">
-                    <div className="min-w-0">
-                      <p className="text-[13px] font-bold text-[var(--ink)]">{docTypeLabel(doc.documentType)}</p>
-                      <button
-                        type="button"
-                        onClick={() => handleViewDocument(doc)}
-                        disabled={viewingId === doc.id}
-                        className="text-[11.5px] text-[var(--blue)] hover:underline truncate block max-w-[260px] text-left"
-                        dir="ltr"
-                      >
-                        {viewingId === doc.id ? t("common.loading") : doc.fileName}
-                      </button>
-                      <p className="text-[11px] text-[var(--sub)]">{new Date(doc.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    {canEdit && (
-                      <div className="flex items-center gap-2 shrink-0">
+              <>
+                <div className="space-y-2">
+                  {data.documents.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 flex-wrap">
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-[var(--ink)]">{docTypeLabel(doc.documentType)}</p>
                         <button
                           type="button"
-                          onClick={() => handleReplaceClick(doc)}
-                          disabled={replacing === doc.id}
-                          className="btn btn-outline btn-sm"
+                          onClick={() => handleViewDocument(doc)}
+                          disabled={viewingId === doc.id}
+                          className="text-[11.5px] text-[var(--blue)] hover:underline truncate block max-w-[260px] text-left"
+                          dir="ltr"
                         >
-                          {replacing === doc.id ? t("common.loading") : t("verification.replaceDocument")}
+                          {viewingId === doc.id ? t("common.loading") : doc.fileName}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(doc.id)}
-                          className="text-[12px] text-[var(--danger)] hover:underline font-medium"
-                        >
-                          {t("verification.removeDoc")}
-                        </button>
+                        <p className="text-[11px] text-[var(--sub)]">{new Date(doc.createdAt).toLocaleDateString()}</p>
                       </div>
-                    )}
+                      {canEdit && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleReplaceClick(doc)}
+                            disabled={replacing === doc.id}
+                            className="btn btn-outline btn-sm"
+                          >
+                            {replacing === doc.id ? t("common.loading") : t("verification.replaceDocument")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(doc.id)}
+                            className="text-[12px] text-[var(--danger)] hover:underline font-medium"
+                          >
+                            {t("verification.removeDoc")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {canEdit && (
+                  <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-gray-100 flex-wrap">
+                    <p className="text-[12.5px] text-[var(--sub)]">{t("verification.documentsHelp")}</p>
+                    <button type="button" onClick={handleAddAnotherClick} disabled={submitting} className="btn btn-outline">
+                      {t("verification.addAnotherDocument")}
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         </>

@@ -3650,6 +3650,7 @@ const en: Record<string, string> = {
   "verification.replaceDocument": "Replace document",
   "verification.replaceSuccess": "Document replaced successfully",
   "verification.addAnotherDocument": "Add another document",
+  "verification.documentsHelp": "You can add more than one document of the same type or replace any existing document",
   "verification.loadError": "Error loading verification",
   "verification.actionError": "An error occurred while performing the action",
   "verification.needAccountBanner": "Don't forget to complete your merchant account details from here — full approval requires both your merchant account and verification documents.",

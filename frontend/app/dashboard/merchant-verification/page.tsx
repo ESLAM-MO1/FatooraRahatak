@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Link from "next/link";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import { openProtectedFile } from "@/lib/protectedFile";
+import KycAlert from "@/components/KycAlert";
 
 interface MerchantDocument {
   id: number;
@@ -142,12 +142,10 @@ export default function MerchantVerificationPage() {
       {success && <div className="alert alert--success">{success}</div>}
 
       {data && data.status !== "Approved" && (
-        <div className="alert alert--info flex items-center justify-between flex-wrap gap-2">
-          <span>{t("verification.needAccountBanner")}</span>
-          <Link href="/dashboard/merchant-account" className="btn btn-outline btn-sm shrink-0">
-            {t("merchantAccount.title")}
-          </Link>
-        </div>
+        <KycAlert
+          message={t("verification.needAccountBanner")}
+          links={[{ label: t("merchantAccount.title"), href: "/dashboard/merchant-account" }]}
+        />
       )}
 
       {data && (

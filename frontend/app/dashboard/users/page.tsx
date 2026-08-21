@@ -508,64 +508,68 @@ export default function UsersManagementPage() {
       )}
 
       {activeTab === "staff" && isSuperAdmin && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card p-5">
+        <div className="space-y-6">
+          <div className="card p-5 sm:p-6">
             <h3 className="text-[15px] font-bold text-[var(--ink)] mb-4">{t("users.addStaff")}</h3>
 
             {staffError && <div className="alert alert--danger mb-3">{staffError}</div>}
             <SuccessToast message={staffSuccess} fixed className="mb-3" />
 
             <form onSubmit={handleCreateStaff} className="space-y-4">
-              <div>
-                <label>{t("users.name")}</label>
-                <div className="field-shell">
-                  <input
-                    type="text"
-                    value={staffForm.fullName}
-                    onChange={(e) => setStaffForm({ ...staffForm, fullName: e.target.value })}
-                    required
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label>{t("users.name")}</label>
+                  <div className="field-shell">
+                    <input
+                      type="text"
+                      value={staffForm.fullName}
+                      onChange={(e) => setStaffForm({ ...staffForm, fullName: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label>{t("users.email")}</label>
+                  <div className="field-shell">
+                    <input
+                      type="email"
+                      value={staffForm.email}
+                      onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label>{t("users.tempPassword")}</label>
+                  <div className="field-shell">
+                    <input
+                      type="password"
+                      value={staffForm.password}
+                      onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label>{t("users.staffRole")}</label>
+                  <div className="field-shell">
+                    <select
+                      value={staffForm.roleType}
+                      onChange={(e) => setStaffForm({ ...staffForm, roleType: e.target.value })}
+                    >
+                      {ROLE_OPTIONS.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {t(r.labelKey)} — {t(r.descKey)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label>{t("users.email")}</label>
-                <div className="field-shell">
-                  <input
-                    type="email"
-                    value={staffForm.email}
-                    onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })}
-                    required
-                  />
-                </div>
+              <div className="flex justify-end">
+                <button type="submit" className="btn btn-primary">{t("users.addStaffBtn")}</button>
               </div>
-              <div>
-                <label>{t("users.tempPassword")}</label>
-                <div className="field-shell">
-                  <input
-                    type="password"
-                    value={staffForm.password}
-                    onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })}
-                    required
-                    minLength={6}
-                  />
-                </div>
-              </div>
-              <div>
-                <label>{t("users.staffRole")}</label>
-                <div className="field-shell">
-                  <select
-                    value={staffForm.roleType}
-                    onChange={(e) => setStaffForm({ ...staffForm, roleType: e.target.value })}
-                  >
-                    {ROLE_OPTIONS.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {t(r.labelKey)} — {t(r.descKey)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <button type="submit" className="btn-primary w-full">{t("users.addStaffBtn")}</button>
             </form>
           </div>
 

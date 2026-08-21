@@ -5,6 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
 import Icon from "@/components/Icon";
+import KycAlert from "@/components/KycAlert";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 
@@ -196,18 +197,14 @@ export default function DashboardHome() {
       ) : (
         <>
           {kyc && !kyc.isApproved && (
-            <div className="alert alert--warning mb-6 flex items-center justify-between flex-wrap gap-2">
-              <span>{t("dashboard.kycRequired")}</span>
-              <span className="flex items-center gap-2 flex-wrap">
-                <Link href="/dashboard/merchant-account" className="btn btn-outline btn-sm shrink-0">
-                  {t("nav.merchantAccount")}
-                </Link>
-                <span className="text-[12px] text-[var(--sub)]">{t("settlements.and")}</span>
-                <Link href="/dashboard/merchant-verification" className="btn btn-outline btn-sm shrink-0">
-                  {t("nav.verification")}
-                </Link>
-              </span>
-            </div>
+            <KycAlert
+              message={t("dashboard.kycRequired")}
+              links={[
+                { label: t("nav.merchantAccount"), href: "/dashboard/merchant-account" },
+                { label: t("nav.verification"), href: "/dashboard/merchant-verification" },
+              ]}
+              className="mb-6"
+            />
           )}
 
           {error && (

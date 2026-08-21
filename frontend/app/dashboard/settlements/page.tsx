@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Link from "next/link";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import Toast from "@/components/Toast";
+import KycAlert from "@/components/KycAlert";
 
 interface BankDetails {
   id: number;
@@ -104,18 +104,13 @@ export default function SettlementsPage() {
       {toast && <Toast message={toast.text} type={toast.type} onClose={() => setToast(null)} />}
 
       {data && !data.isKycApproved && (
-        <div className="alert alert--warning flex items-center justify-between flex-wrap gap-2">
-          <span>{t("settlements.kycRequired")}</span>
-          <span className="flex items-center gap-2 flex-wrap">
-            <Link href="/dashboard/merchant-account" className="btn btn-outline btn-sm shrink-0">
-              {t("settlements.kycLinkAccount")}
-            </Link>
-            <span className="text-[12px] text-[var(--sub)]">{t("settlements.and")}</span>
-            <Link href="/dashboard/merchant-verification" className="btn btn-outline btn-sm shrink-0">
-              {t("settlements.kycLinkVerification")}
-            </Link>
-          </span>
-        </div>
+        <KycAlert
+          message={t("settlements.kycRequired")}
+          links={[
+            { label: t("settlements.kycLinkAccount"), href: "/dashboard/merchant-account" },
+            { label: t("settlements.kycLinkVerification"), href: "/dashboard/merchant-verification" },
+          ]}
+        />
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

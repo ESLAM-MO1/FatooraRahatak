@@ -2,12 +2,12 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import Link from "next/link";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import { useConfirm } from "@/components/ConfirmDialog";
+import KycAlert from "@/components/KycAlert";
 
 type LicenseValue =
   | "CommercialRegister"
@@ -338,12 +338,10 @@ export default function MerchantAccountPage() {
       )}
 
       {status !== "Approved" && (
-        <div className="alert alert--info flex items-center justify-between flex-wrap gap-2">
-          <span>{t("merchantAccount.needDocsBanner")}</span>
-          <Link href="/dashboard/merchant-verification" className="btn btn-outline btn-sm shrink-0">
-            {t("verification.title")}
-          </Link>
-        </div>
+        <KycAlert
+          message={t("merchantAccount.needDocsBanner")}
+          links={[{ label: t("verification.title"), href: "/dashboard/merchant-verification" }]}
+        />
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>

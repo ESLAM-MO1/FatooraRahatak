@@ -480,9 +480,12 @@ label {
 }
 .toast--fixed {
   position: fixed;
-  top: 24px;
+  /* أسفل الـ header الثابت (ارتفاعه 60px في لوحة التحكم) مع مسافة 16px
+     حتى لا تظهر الرسالة مقصوصة/متداخلة معه في أي صفحة */
+  top: 76px;
   left: 50%;
-  z-index: 9999;
+  /* z-index مرتفع جدًا لضمان ظهوره فوق الـ header وأي عنصر آخر */
+  z-index: 100000;
   transform: translate(-50%, 0);
 }
 .toast--fixed.toast--success { box-shadow: 0 8px 30px rgba(22, 101, 52, 0.18); }

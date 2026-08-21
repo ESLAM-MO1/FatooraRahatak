@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
@@ -41,6 +41,11 @@ export default function MerchantVerificationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [viewingId, setViewingId] = useState<number | null>(null);
+  const [replacing, setReplacing] = useState<number | null>(null);
+
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const replaceTargetRef = useRef<MerchantDocument | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,6 +97,66 @@ export default function MerchantVerificationPage() {
       setError(err.response?.data?.message || t("verification.actionError"));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // "إضافة مستند آخر" — يفتح مُنتقي ملفات مباشرة بنفس النوع المختار
+  const handleAddAnotherClick = () => {
+    setError("");
+    setSuccess("");
+    addInputRef.current?.click();
+  };
+
+  const handleAddAnotherFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    const formData = new FormData();
+    formData.append("file", f);
+    formData.append("documentType", selectedType);
+    setSubmitting(true);
+    setError("");
+    setSuccess("");
+    try {
+      await api.post("/owner/verification/documents", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      setSuccess(t("verification.uploadSuccess"));
+      await load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("verification.actionError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // "استبدال المستند" — يرفع نسخة جديدة بنفس النوع ثم يحذف النسخة القديمة
+  const handleReplaceClick = (doc: MerchantDocument) => {
+    setError("");
+    setSuccess("");
+    replaceTargetRef.current = doc;
+    replaceInputRef.current?.click();
+  };
+
+  const handleReplaceFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    const target = replaceTargetRef.current;
+    e.target.value = "";
+    if (!f || !target) return;
+    setReplacing(target.id);
+    setError("");
+    setSuccess("");
+    try {
+      const formData = new FormData();
+      formData.append("file", f);
+      formData.append("documentType", target.documentType);
+      await api.post("/owner/verification/documents", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await api.delete(`/owner/verification/documents/${target.id}`);
+      setSuccess(t("verification.replaceSuccess"));
+      await load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("verification.actionError"));
+    } finally {
+      setReplacing(null);
+      replaceTargetRef.current = null;
     }
   };
 
@@ -199,6 +264,28 @@ export default function MerchantVerificationPage() {
                   </button>
                 </div>
                 <p className="text-[11.5px] text-[var(--sub)] mt-3">{t("verification.addDocHint")}</p>
+
+                {/* مُنتقيات ملفات مخفية لزرّي "إضافة مستند آخر" و"استبدال المستند" */}
+                <input
+                  ref={addInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.pdf"
+                  onChange={handleAddAnotherFile}
+                  className="hidden"
+                />
+                <input
+                  ref={replaceInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.pdf"
+                  onChange={handleReplaceFile}
+                  className="hidden"
+                />
+
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <button type="button" onClick={handleAddAnotherClick} disabled={submitting} className="btn btn-outline btn-sm">
+                    {t("verification.addAnotherDocument")}
+                  </button>
+                </div>
               </div>
             )}
 
@@ -207,7 +294,7 @@ export default function MerchantVerificationPage() {
             ) : (
               <div className="space-y-2">
                 {data.documents.map((doc) => (
-                  <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                  <div key={doc.id} className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 flex-wrap">
                     <div className="min-w-0">
                       <p className="text-[13px] font-bold text-[var(--ink)]">{docTypeLabel(doc.documentType)}</p>
                       <button
@@ -222,13 +309,23 @@ export default function MerchantVerificationPage() {
                       <p className="text-[11px] text-[var(--sub)]">{new Date(doc.createdAt).toLocaleDateString()}</p>
                     </div>
                     {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(doc.id)}
-                        className="text-[12px] text-[var(--danger)] hover:underline font-medium"
-                      >
-                        {t("verification.removeDoc")}
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleReplaceClick(doc)}
+                          disabled={replacing === doc.id}
+                          className="btn btn-outline btn-sm"
+                        >
+                          {replacing === doc.id ? t("common.loading") : t("verification.replaceDocument")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(doc.id)}
+                          className="text-[12px] text-[var(--danger)] hover:underline font-medium"
+                        >
+                          {t("verification.removeDoc")}
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}

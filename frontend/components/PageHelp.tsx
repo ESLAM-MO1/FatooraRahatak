@@ -9,7 +9,9 @@ import { PAGE_HELP_CONTENT } from "@/lib/pageHelpContent";
 const STORAGE_KEY = "pageHelpButtonPos";
 const BUTTON_SIZE = 48; // w-12 / h-12
 const MARGIN = 24; // نفس قيمة bottom-6 / left-6 الأصلية
-const DRAG_THRESHOLD = 6; // px
+// عتبة السحب 12px بدل 6px: اللمسة العادية على الموبايل بتحرك الإصبع 5-10px
+// فأي حركة أصغر من 12px تُعامَل كضغطة عادية (تفتح نافذة المساعدة) مش كسحب.
+const DRAG_THRESHOLD = 12; // px
 
 type Pos = { x: number; y: number };
 
@@ -37,6 +39,7 @@ export default function PageHelp() {
   const posRef = useRef<Pos>({ x: MARGIN, y: MARGIN });
   const draggingRef = useRef(false);
   const movedRef = useRef(false);
+  const suppressClickRef = useRef(false);
   const startRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
 
   // تحميل الموضع المحفوظ (أو الموضع الافتراضي) عند أول تحميل
@@ -74,6 +77,7 @@ export default function PageHelp() {
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    suppressClickRef.current = false;
     draggingRef.current = true;
     movedRef.current = false;
     startRef.current = {
@@ -111,6 +115,7 @@ export default function PageHelp() {
 
     if (movedRef.current) {
       // كان سحب: نحفظ الموضع النهائي ومنفتحش نافذة المساعدة
+      suppressClickRef.current = true; // منع الـ click اللي بعد السحب من فتح النافذة
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(posRef.current));
       } catch {
@@ -121,6 +126,16 @@ export default function PageHelp() {
       setOpen(true);
     }
     movedRef.current = false;
+  }, []);
+
+  // Fallback للموبايل: بعض المتصفحات بتأخر/تسقط حدث pointerup على اللمس،
+  // فبنفتح النافذة عبر click (واللي بيشتغل دائمًا بعد اللمس) مع منع فتحها بعد السحب.
+  const handleClick = useCallback(() => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    if (!draggingRef.current) setOpen(true);
   }, []);
 
   const entry = pathname ? PAGE_HELP_CONTENT[pathname] : undefined;
@@ -138,12 +153,13 @@ export default function PageHelp() {
         onPointerMove={handlePointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onClick={handleClick}
         style={
           pos
             ? { left: pos.x, top: pos.y, touchAction: "none" }
             : { left: MARGIN, bottom: MARGIN, touchAction: "none" }
         }
-        className="fixed z-[90] w-12 h-12 rounded-full bg-[var(--blue)] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity cursor-grab active:cursor-grabbing select-none touch-none"
+        className="fixed z-[95] w-12 h-12 rounded-full bg-[var(--blue)] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity cursor-grab active:cursor-grabbing select-none touch-none"
         aria-label={t("nav.help")}
         title={t("nav.help")}
       >

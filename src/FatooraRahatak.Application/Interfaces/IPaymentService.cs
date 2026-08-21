@@ -12,8 +12,6 @@ public interface IPaymentService
     Task HandleWebhookAsync(WebhookPayload payload);
     Task<PagedResult<PaymentListDto>> GetPaymentsAsync(long storeId, string? statusFilter = null, int page = 1, int pageSize = 20);
     Task<PaymentStatusResult> RefundPaymentAsync(long storeId, string paymentReference);
-    Task<StorePaymentAccountDto?> GetStorePaymentAccountAsync(long storeId);
-    Task<StorePaymentAccountDto> SubmitStorePaymentAccountAsync(long storeId, SubmitStorePaymentAccountDto dto);
     Task<BankTransferResult> UploadBankTransferReceiptAsync(string slug, string orderNumber, string? phone, long? customerId, string receiptUrl, string? reference);
     Task<PaymentStatusResult> ConfirmBankTransferAsync(long storeId, long orderId);
     Task<PaymentStatusResult> HandlePayPalWebhookAsync(PayPalWebhookPayload payload);

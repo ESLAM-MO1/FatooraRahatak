@@ -233,7 +233,7 @@ export default function LedgerPage() {
               <p className="p-6 text-[var(--sub)] text-sm">{t("ledger.noMovements")}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="hidden lg:table w-full text-sm">
                   <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                     <tr>
                       <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("ledger.date")}</th>
@@ -274,10 +274,54 @@ export default function LedgerPage() {
                         <td className="p-4 font-bold text-[var(--ink)]" dir="ltr">
                           {formatMoney(m.runningBalance)}
                         </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="lg:hidden space-y-3">
+                <div className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.openingLabel")}</p>
+                      <p className="text-[12px] font-bold text-[var(--ink)]" dir="ltr">{formatMoney(ledger.openingBalance)}</p>
+                    </div>
+                  </div>
+                </div>
+                {ledger.movements.map((m, idx) => (
+                  <div key={`${m.journalEntryId}-${idx}`} className="card p-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.date")}</p>
+                        <p className="text-[12px] text-[var(--ink)]">{m.entryDate}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.entryNumber")}</p>
+                        <p className="text-[12px] text-[var(--blue)] font-bold" dir="ltr">{m.entryNumber}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.description")}</p>
+                        <p className="text-[12px] text-[var(--sub)]">{m.lineDescription || m.description || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.debit")}</p>
+                        <p className="text-[12px] text-[var(--ink)]" dir="ltr">
+                          {m.debit > 0 ? formatMoney(m.debit) : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.credit")}</p>
+                        <p className="text-[12px] text-[var(--ink)]" dir="ltr">
+                          {m.credit > 0 ? formatMoney(m.credit) : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("ledger.runningBalance")}</p>
+                        <p className="text-[12px] font-bold text-[var(--ink)]" dir="ltr">{formatMoney(m.runningBalance)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
               </div>
             )}
           </div>

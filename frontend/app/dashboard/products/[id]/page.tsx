@@ -445,8 +445,9 @@ export default function ProductDetailsPage() {
         {variants.length === 0 ? (
           <p className="text-[var(--sub)] text-sm">{t("productDetail.noVariants")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("productDetail.variantNameCol")}</th>
@@ -499,6 +500,65 @@ export default function ProductDetailsPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {variants.map((variant) => (
+              <div key={variant.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="col-span-2">
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("productDetail.variantNameCol")}</p>
+                    <p className="text-[var(--ink)] font-medium">{variant.variantName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">SKU</p>
+                    <p className="text-[var(--sub)]" dir="ltr">{variant.sku}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("productDetail.priceDiffCol")}</p>
+                    <p className="text-[var(--sub)]">
+                      {variant.priceAdjustment >= 0 ? "+" : ""}
+                      {variant.priceAdjustment.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("productDetail.qtyCol")}</p>
+                    <p className="text-[var(--sub)]">{variant.availableQuantity}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("productDetail.attributesCol")}</p>
+                    <p className="text-[var(--sub)]">
+                      {variant.attributes.length > 0
+                        ? variant.attributes
+                            .map((a) => `${a.attributeName}: ${a.attributeValue}`)
+                            .join(" | ")
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  {hideOfferVariantIds.includes(variant.id) ? (
+                    <button
+                      onClick={() => handleDeactivateVariant(variant.id)}
+                      disabled={deactivatingVariantId === variant.id}
+                      className="text-[var(--gold-deep)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
+                    >
+                      {deactivatingVariantId === variant.id
+                        ? t("productDetail.hiding")
+                        : t("productDetail.hideVariant")}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleDeleteVariant(variant.id)}
+                      className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px]"
+                    >
+                      {t("common.delete")}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 

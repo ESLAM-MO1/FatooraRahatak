@@ -23,4 +23,16 @@ public class CheckoutRequestDto
     public string? CardExpiryMonth { get; set; }
     public string? CardExpiryYear { get; set; }
     public string? CardCvc { get; set; }
+
+    // تتبع التسويق: مصدر الزيارة (utm_source) والحملة (utm_campaign) — يُلتقط من رابط
+    // الإعلان وتُحفظ مع الطلب لعرض أداء القنوات في لوحة التسويق.
+    public string? MarketingSource { get; set; }
+    public string? MarketingCampaign { get; set; }
+
+    // تتبع التحويلات من السيرفر (Server-side Conversion Tracking): بتُلتقط من الكوكيز/الرابط في صفحة
+    // الدفع وتتبعت مع الطلب عشان تتبعت لـ Meta Conversions API و GA4 Measurement Protocol بدقة أعلى
+    // من بيكسل المتصفح وحده (غير متأثرة بحظر أدوات تتبع الطرف الثالث).
+    public string? GaClientId { get; set; }      // قيمة كوكي _ga (بدون بادئة GA1.x.)
+    public string? FbClickId { get; set; }        // قيمة كوكي _fbc أو fbclid من الرابط
+    public string? FbBrowserId { get; set; }       // قيمة كوكي _fbp
 }

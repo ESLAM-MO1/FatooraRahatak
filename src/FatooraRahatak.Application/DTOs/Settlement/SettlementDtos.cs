@@ -75,6 +75,11 @@ public class MerchantSettlementSummaryDto
     public bool HasBankDetails { get; set; }
     public MerchantBankDetailsDto? BankDetails { get; set; }
     public List<SettlementBatchDto> Batches { get; set; } = new();
+
+    // حالة اعتماد التاجر الموحدة (حساب التاجر + مستندات التوثيق)
+    public string MerchantAccountStatus { get; set; } = "NotSubmitted";
+    public string VerificationStatus { get; set; } = "NotSubmitted";
+    public bool IsKycApproved { get; set; }
 }
 
 public class ConfirmSettlementDto

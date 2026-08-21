@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function WarmModernTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -34,7 +36,6 @@ export default function WarmModernTemplate({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -42,6 +43,10 @@ export default function WarmModernTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const getDiscount = (p: { basePrice: number; discountPrice: number | null }) => hasDiscount(p) ? Math.round((1 - (p.discountPrice as number) / p.basePrice) * 100) : 0;
@@ -66,7 +71,7 @@ export default function WarmModernTemplate({
             : <div className="w-full h-full flex items-center justify-center" style={{ color: "#D1D5DB" }}><PackageIcon size={44} /></div>}
         </a>
         {hasDiscount(product) && <span className="absolute rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: colors.accentColor, color: "#fff", top: 12, insetInlineStart: 12 }}>-{getDiscount(product)}%</span>}
-        <button type="button" onClick={() => toggleWishlist(product.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 32, height: 32, background: "rgba(255,255,255,0.94)", top: 12, insetInlineEnd: 12, color: "#DC2626" }}>
+        <button type="button" onClick={() => toggleWishlist(product.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.94)", top: 12, insetInlineEnd: 12, color: "#DC2626" }}>
           {isWishlist(product.id) ? <HeartFilledIcon size={16} /> : <HeartIcon size={16} />}
         </button>
       </div>
@@ -104,11 +109,7 @@ export default function WarmModernTemplate({
             {logo && <img src={logo} alt={storeName} className="w-10 h-10 rounded-full object-cover" />}
             <span className="font-extrabold text-xl truncate" style={{ color: colors.headerColor }}>{storeName}</span>
           </a>
-          <nav className="hidden md:flex items-center gap-7 text-[15px] font-semibold ms-8">
-            <a href={`/store/${slug}`} className="hover:opacity-70" style={{ color: "#1C1917" }}>{t("storefront.home")}</a>
-            <a href={`/store/${slug}#products`} className="hover:opacity-70" style={{ color: "#1C1917" }}>{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:opacity-70" style={{ color: "#1C1917" }}>{t("storefront.contactUs")}</a>
-          </nav>
+          <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-7 text-[15px] font-semibold ms-8" linkClassName="hover:opacity-70" linkStyle={{ color: "#1C1917" }} />
           <div className="flex items-center gap-1 ms-auto shrink-0">
             <form onSubmit={handleSearchSubmit} className="hidden md:block"><div className="relative">
               <span className="absolute inset-y-0 inline-flex items-center ps-3 pointer-events-none" style={{ color: "#A8A29E" }}><SearchIcon size={16} /></span>
@@ -119,11 +120,7 @@ export default function WarmModernTemplate({
             <a href={`/store/${slug}/cart`} className="relative p-2 rounded-full" style={{ color: "#1C1917" }} aria-label={t("storefront.cart")}><BagIcon size={21} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
           </div>
         </div>
-        {mobileOpen && <div className="md:hidden px-4 pb-3 border-t" style={{ borderColor: "#F5F0E8", background: "rgba(255,255,255,0.98)" }}><form onSubmit={handleSearchSubmit} className="mt-3"><div className="relative"><span className="absolute inset-y-0 inline-flex items-center ps-3" style={{ color: "#A8A29E" }}><SearchIcon size={16} /></span><input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-full rounded-full outline-none text-[14px] ps-9 pe-3 py-2" style={{ background: "#F5F0E8", color: "#1C1917" }} /></div></form><div className="mt-3 space-y-2 text-[15px] font-semibold" style={{ color: "#1C1917" }}>
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
-        </div></div>}
+        {mobileOpen && <div className="md:hidden px-4 pb-3 border-t" style={{ borderColor: "#F5F0E8", background: "rgba(255,255,255,0.98)" }}><form onSubmit={handleSearchSubmit} className="mt-3"><div className="relative"><span className="absolute inset-y-0 inline-flex items-center ps-3" style={{ color: "#A8A29E" }}><SearchIcon size={16} /></span><input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-full rounded-full outline-none text-[14px] ps-9 pe-3 py-2" style={{ background: "#F5F0E8", color: "#1C1917" }} /></div></form><StoreMainMenu slug={slug} mobile containerClassName="mt-3 space-y-2 text-[15px] font-semibold" containerStyle={{ color: "#1C1917" }} linkClassName="block py-1.5" /></div>}
       </header>
 
       {!showHero && <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>}
@@ -183,7 +180,7 @@ export default function WarmModernTemplate({
           {productsLoading && <p className="text-center py-12" style={{ color: "#6B7280" }}>{t("storefront.loadingProducts")}</p>}
           {!productsLoading && displayProducts.length === 0 && <div className="flex flex-col items-center gap-3 py-16"><span style={{ color: "#D1D5DB" }}><PackageIcon size={48} /></span><p style={{ color: "#6B7280" }}>{t("storefront.noProducts")}</p></div>}
           {!productsLoading && displayProducts.length > 0 && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 items-start">
+            <div className="grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-3 items-start">
               {displayProducts.map((p, i) => <div key={p.id} className={i % 4 === 1 ? "lg:mt-10" : ""}><ProductCard product={p} tall={i % 5 === 2} /></div>)}
             </div>
           )}
@@ -212,14 +209,7 @@ export default function WarmModernTemplate({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div><h4 className="text-white font-extrabold text-lg">{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="text-white font-extrabold text-[14px] uppercase tracking-wider">{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-extrabold text-[14px] uppercase tracking-wider" listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "rgba(255,255,255,0.65)" }} linkClassName="hover:text-white" />
           </div>
           <div>
             <h4 className="text-white font-extrabold text-[14px] uppercase tracking-wider">{t("storefront.contactHeading")}</h4>
@@ -234,7 +224,7 @@ export default function WarmModernTemplate({
             <h4 className="text-white font-extrabold text-[14px] uppercase tracking-wider">{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
                 linkStyle={{ width: 36, height: 36, background: "rgba(255,255,255,0.15)", color: "#fff" }}
                 iconSize={17}

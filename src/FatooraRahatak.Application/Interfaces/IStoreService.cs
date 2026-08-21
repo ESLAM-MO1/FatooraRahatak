@@ -21,4 +21,5 @@ public interface IStoreService
     Task<StoreInfoDto> UpdateLogoAsync(long ownerUserId, UpdateStoreLogoDto dto);
     Task<StoreInfoDto> DeleteLogoAsync(long ownerUserId);
     Task<StoreInfoDto> UpdateShippingDiscountsAsync(long ownerUserId, UpdateShippingDiscountsDto dto);
+    Task<StoreInfoDto> UpdateMenuPagesAsync(long ownerUserId, UpdateMenuPagesDto dto);
 }

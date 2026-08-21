@@ -61,14 +61,14 @@ public static class DataSeeder
             ["Vouchers"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Approve },
             ["FixedAssets"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["Payroll"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete, PermissionAction.Approve },
-            ["FinancialReports"] = new[] { PermissionAction.View },
+            ["FinancialReports"] = new[] { PermissionAction.View, PermissionAction.Manage },
             ["Attendance"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
             ["LeaveRequests"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Approve },
 
             ["PaymentGateways"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["PaymentLinks"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Delete },
             ["ShippingCompanies"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
-            ["Referrals"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit },
+            ["Referrals"] = new[] { PermissionAction.View, PermissionAction.Add, PermissionAction.Edit, PermissionAction.Manage },
         };
 
         // Upsert permissions (idempotent — adds only the missing ones for existing DBs)
@@ -138,7 +138,9 @@ public static class DataSeeder
         {
             ["SuperAdmin"] = moduleActions
                 .Where(m => platformModules.Contains(m.Key))
-                .SelectMany(m => m.Value.Select(a => $"{m.Key}.{a}")).ToArray(),
+                .SelectMany(m => m.Value.Select(a => $"{m.Key}.{a}"))
+                .Concat(new[] { "FinancialReports.Manage", "Referrals.Manage" })
+                .ToArray(),
 
             ["SupportStaff"] = new[]
             {

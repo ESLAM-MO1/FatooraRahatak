@@ -140,7 +140,7 @@ export default function JournalEntriesPage() {
           <p className="p-6 text-[var(--sub)] text-sm">{t("journalEntry.noEntries")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="hidden lg:table w-full text-sm">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("journalEntry.number")}</th>
@@ -181,6 +181,48 @@ export default function JournalEntriesPage() {
                 ))}
               </tbody>
             </table>
+            <div className="lg:hidden space-y-3">
+              {entries.map((entry) => (
+                <div key={entry.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("journalEntry.number")}</p>
+                      <Link
+                        href={`/dashboard/accounting/journal-entries/${entry.id}`}
+                        className="text-[12px] text-[var(--blue)] font-bold hover:underline"
+                        dir="ltr"
+                      >
+                        {entry.entryNumber}
+                      </Link>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("journalEntry.status")}</p>
+                      <span className={statusStyles[entry.status] ?? "badge badge--gray"}>
+                        {t(statusLabels[entry.status] ?? "common.noData")}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("journalEntry.date")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{entry.entryDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("journalEntry.total")}</p>
+                      <p className="text-[12px] text-[var(--ink)]" dir="ltr">
+                        {entry.totalDebit.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("journalEntry.description")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{entry.description || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("journalEntry.createdBy")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{entry.createdByName}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -103,7 +103,7 @@ export default function AccountPage() {
 
       {msg && <div className="bg-green-50 text-green-700 p-3 rounded mb-4 text-sm">{msg}</div>}
 
-      <div className="flex gap-2 mb-5 border-b border-gray-200 pb-3">
+      <div className="flex flex-wrap gap-2 mb-5 border-b border-gray-200 pb-3">
         {(["orders", "addresses", "profile"] as Tab[]).map((key) => (
           <button
             key={key}
@@ -158,12 +158,12 @@ export default function AccountPage() {
             {customer.email && (
               <div className="flex justify-between border-b border-gray-50 pb-2">
                 <span className="text-gray-500">{t("account.email")}</span>
-                <span className="font-semibold text-gray-800" dir="ltr">{customer.email}</span>
+                <span className="font-semibold text-gray-800 min-w-0 break-all" dir="ltr">{customer.email}</span>
               </div>
             )}
             <div className="flex justify-between border-b border-gray-50 pb-2">
               <span className="text-gray-500">{t("account.phone")}</span>
-              <span className="font-semibold text-gray-800" dir="ltr">{customer.phone}</span>
+              <span className="font-semibold text-gray-800 min-w-0 break-all" dir="ltr">{customer.phone}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">{t("storefront.quickLoginOrders")}</span>

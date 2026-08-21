@@ -29,6 +29,8 @@ public class Order : BaseEntity
     public PaymentMethodType? PaymentMethodType { get; set; }
     public DateTime? SettledAt { get; set; }
     public long? SettlementBatchId { get; set; }
+    public string? MarketingSource { get; set; }
+    public string? MarketingCampaignName { get; set; }
 
     public Store Store { get; set; } = null!;
     public User? Customer { get; set; }

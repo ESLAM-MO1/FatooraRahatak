@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, CrossIcon, PlusIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function PharmacyTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,7 +28,6 @@ export default function PharmacyTemplate({
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -34,6 +35,10 @@ export default function PharmacyTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const displayProducts = isSearchActive ? searchResults : products.slice(0, showAllProducts ? products.length : 8);
@@ -48,9 +53,7 @@ export default function PharmacyTemplate({
             <a href={`/store/${slug}`} className="font-bold text-xl" style={{ color: colors.headerColor }}>{storeName}</a>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-[15px] font-semibold">
-            <a href={`/store/${slug}`} className="hover:opacity-70" style={{ color: colors.headerColor }}>{t("storefront.home")}</a>
-            <a href={`/store/${slug}#products`} className="hover:opacity-70" style={{ color: colors.headerColor }}>{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:opacity-70" style={{ color: colors.headerColor }}>{t("storefront.contactUs")}</a>
+            <StoreMainMenu slug={slug} mobile={false} containerClassName="flex items-center gap-8 text-[15px] font-semibold" linkClassName="hover:opacity-70" linkStyle={{ color: colors.headerColor }} />
           </nav>
           <div className="flex items-center gap-2">
             <QuickLoginButton slug={slug} />
@@ -60,9 +63,7 @@ export default function PharmacyTemplate({
           </div>
         </div>
         {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "#E3EDF3", background: "#fff" }}><div className="px-4 py-3 space-y-2 text-[15px] font-semibold" style={{ color: colors.headerColor }}>
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
+          <StoreMainMenu slug={slug} mobile containerClassName="space-y-2" linkClassName="block py-1.5" />
         </div></div>}
       </header>
 
@@ -108,7 +109,7 @@ export default function PharmacyTemplate({
           </div>
           {productsLoading && <p className="text-center py-12" style={{ color: "#6B7280" }}>{t("storefront.loadingProducts")}</p>}
           {!productsLoading && displayProducts.length === 0 && <div className="flex flex-col items-center gap-3 py-16"><span style={{ color: "#D1D5DB" }}><PackageIcon size={48} /></span><p style={{ color: "#6B7280" }}>{t("storefront.noProducts")}</p></div>}
-          {!productsLoading && displayProducts.length > 0 && <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {!productsLoading && displayProducts.length > 0 && <div className="grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {displayProducts.map(p => (
               <div key={p.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1" style={{ border: "1px solid #E3EDF3", boxShadow: "0 6px 20px rgba(3,105,161,0.08)" }}>
                 <div className="relative aspect-[4/3] bg-gray-50">
@@ -116,7 +117,7 @@ export default function PharmacyTemplate({
                     {p.primaryImageUrl ? <img src={p.primaryImageUrl} alt={p.nameAr} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center w-full h-full" style={{ color: "#D1D5DB" }}><PackageIcon size={40} /></div>}
                   </a>
                   {hasDiscount(p) && <span className="absolute top-3 right-3 px-2.5 py-1 text-xs font-bold rounded-full" style={{ background: colors.accentColor, color: "#fff" }}>{t("storefront.discount")}</span>}
-                  <button onClick={() => toggleWishlist(p.id)} className="absolute top-3 left-3 bg-white/90 rounded-full w-8 h-8 flex items-center justify-center transition-transform hover:scale-110" style={{ color: isWishlist(p.id) ? "#DC2626" : "#6B7280" }}>{isWishlist(p.id) ? <HeartFilledIcon size={17} /> : <HeartIcon size={17} />}</button>
+                  <button onClick={() => toggleWishlist(p.id)} className="absolute top-3 left-3 bg-white/90 rounded-full w-9 h-9 flex items-center justify-center transition-transform hover:scale-110" style={{ color: isWishlist(p.id) ? "#DC2626" : "#6B7280" }}>{isWishlist(p.id) ? <HeartFilledIcon size={17} /> : <HeartIcon size={17} />}</button>
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold text-gray-900 text-[16px]">{p.nameAr}</h3>
@@ -158,14 +159,7 @@ export default function PharmacyTemplate({
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div><h4 className="text-white font-bold text-lg">{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="text-white font-bold text-[14px]">{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-bold text-[14px]" listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "rgba(255,255,255,0.65)" }} linkClassName="hover:text-white" />
           </div>
           <div>
             <h4 className="text-white font-bold text-[14px]">{t("storefront.contactHeading")}</h4>
@@ -180,7 +174,7 @@ export default function PharmacyTemplate({
             <h4 className="text-white font-bold text-[14px]">{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center w-9 h-9 rounded-full"
                 linkStyle={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}
                 iconSize={16}

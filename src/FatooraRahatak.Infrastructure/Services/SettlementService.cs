@@ -13,15 +13,20 @@ public class SettlementService : ISettlementService
 {
     private readonly AppDbContext _context;
     private readonly IAccountingService _accountingService;
+    private readonly IMerchantAccountService _merchantAccountService;
 
-    public SettlementService(AppDbContext context, IAccountingService accountingService)
+    public SettlementService(AppDbContext context, IAccountingService accountingService, IMerchantAccountService merchantAccountService)
     {
         _context = context;
         _accountingService = accountingService;
+        _merchantAccountService = merchantAccountService;
     }
 
     public async Task<MerchantBankDetailsDto> SaveMerchantBankDetailsAsync(long storeId, SaveMerchantBankDetailsDto dto)
     {
+        if (!await _merchantAccountService.IsMerchantKycApprovedAsync(storeId))
+            throw new InvalidOperationException("يجب اعتماد بيانات ومستندات حساب التاجر أولًا قبل إضافة بيانات الاستلام البنكي");
+
         if (string.IsNullOrWhiteSpace(dto.Iban))
             throw new InvalidOperationException("رقم الآيبان (IBAN) مطلوب");
         if (string.IsNullOrWhiteSpace(dto.AccountHolderName))
@@ -29,9 +34,18 @@ public class SettlementService : ISettlementService
         if (string.IsNullOrWhiteSpace(dto.BankName))
             throw new InvalidOperationException("اسم البنك مطلوب");
 
-        var storeExists = await _context.Stores.AnyAsync(s => s.Id == storeId);
-        if (!storeExists)
+        var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
+        if (store == null)
             throw new InvalidOperationException("المتجر غير موجود");
+
+        // مزامنة البيانات البنكية مع بيانات المتجر (Store.Payout*) حتى تستمر
+        // طريقة "الحوالة البنكية" (BankTransfer) في المتجر بعرض نفس الحساب —
+        // بدون أي إنشاء لحساب مستلم لدى بوابة ميسرة ولا أي تفعيل تلقائي.
+        store.PayoutBankName = dto.BankName.Trim();
+        store.PayoutAccountHolder = dto.AccountHolderName.Trim();
+        store.PayoutIban = dto.Iban.Trim().ToUpperInvariant();
+        store.PayoutRejectionReason = null;
+        store.UpdatedAt = DateTime.UtcNow;
 
         var existing = await _context.MerchantBankDetails.FirstOrDefaultAsync(m => m.StoreId == storeId);
         if (existing == null)
@@ -311,6 +325,7 @@ public class SettlementService : ISettlementService
     public async Task<MerchantSettlementSummaryDto> GetMerchantSettlementSummaryAsync(long storeId)
     {
         var bank = await GetMerchantBankDetailsAsync(storeId);
+        var kyc = await _merchantAccountService.GetMerchantKycStatusAsync(storeId);
 
         var eligible = await GetEligibleOrdersAsync(DateTime.UtcNow);
         var pendingNet = eligible.Where(e => e.StoreId == storeId).Sum(e => e.Net);
@@ -349,7 +364,10 @@ public class SettlementService : ISettlementService
             SettledNetAmount = settledNet,
             HasBankDetails = bank != null,
             BankDetails = bank,
-            Batches = batches
+            Batches = batches,
+            MerchantAccountStatus = kyc.MerchantAccountStatus,
+            VerificationStatus = kyc.VerificationStatus,
+            IsKycApproved = kyc.IsApproved
         };
     }
 

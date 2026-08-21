@@ -72,9 +72,16 @@ export default function EmployeesPage() {
   }, [showModal, showInvModal, editingRole, showCreateModal]);
 
   const roleLabel = (name: string) => t(`role.${name}`, name);
-
   const moduleLabel = (mod: string) => t(`employee.module.${mod}`, mod);
   const actionLabel = (action: string) => t(`employee.action.${action}`, action);
+
+  const roleHint = (roleName: string) => {
+    const role = roles.find((r) => r.roleName === roleName);
+    if (!role) return "";
+    const modules = [...new Set(role.permissionCodes.map((c) => c.split(".")[0]))];
+    if (modules.length === 0) return t("employee.roleNoPerms");
+    return t("employee.rolePerms", { count: role.permissionCodes.length, modules: modules.map(moduleLabel).join("، ") });
+  };
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -308,7 +315,8 @@ export default function EmployeesPage() {
           <div><label>{t("employee.jobRole")}</label><div className="field-shell"><select value={form.roleName} onChange={e => setForm(f => ({ ...f, roleName: e.target.value }))} required>
             <option value="">{t("common.select")}</option>
             {roles.map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
-          </select></div></div>
+          </select></div>
+          {form.roleName && roleHint(form.roleName) && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(form.roleName)}</p>}</div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
           <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? t("common.loading") : t("employee.submitAdd")}</button>
         </form>
@@ -322,7 +330,8 @@ export default function EmployeesPage() {
           <div><label>{t("employee.jobTitle")}</label><div className="field-shell"><select value={invForm.roleId} onChange={e => setInvForm(f => ({ ...f, roleId: parseInt(e.target.value) || 0 }))} required>
             <option value="">{t("common.select")}</option>
             {roles.map(r => <option key={r.id} value={r.id}>{roleLabel(r.roleName)}</option>)}
-          </select></div></div>
+          </select></div>
+          {invForm.roleId > 0 && roleHint(roles.find(r => r.id === invForm.roleId)?.roleName || "") && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(roles.find(r => r.id === invForm.roleId)?.roleName || "")}</p>}</div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={invForm.salary} onChange={e => setInvForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
           <button type="submit" disabled={invSubmitting} className="btn btn-primary">{invSubmitting ? t("common.loading") : t("employee.sendInvite")}</button>
         </form>
@@ -359,7 +368,8 @@ export default function EmployeesPage() {
           <div><label>{t("employee.jobRole")}</label><div className="field-shell"><select value={editForm.roleName} onChange={e => setEditForm(f => ({ ...f, roleName: e.target.value }))} required>
             <option value="">{t("common.select")}</option>
             {roles.map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
-          </select></div></div>
+          </select></div>
+          {editForm.roleName && roleHint(editForm.roleName) && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(editForm.roleName)}</p>}</div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={editForm.salary} onChange={e => setEditForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setEditingEmployee(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>

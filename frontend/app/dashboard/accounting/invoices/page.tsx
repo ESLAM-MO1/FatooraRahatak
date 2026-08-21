@@ -157,8 +157,9 @@ export default function InvoicesPage() {
         ) : invoices.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">{t("invoice.noInvoices")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden lg:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("invoice.number")}</th>
@@ -216,6 +217,65 @@ export default function InvoicesPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden space-y-3">
+            {invoices.map((inv) => (
+              <div key={inv.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.number")}</p>
+                    <Link
+                      href={`/dashboard/accounting/invoices/${inv.id}`}
+                      className="text-[var(--blue)] font-bold hover:underline"
+                      dir="ltr"
+                    >
+                      {inv.invoiceNumber}
+                    </Link>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.invoiceType")}</p>
+                    <span className={typeStyles[inv.invoiceType] ?? "badge badge--gray"}>
+                      {typeLabels[inv.invoiceType] ?? inv.invoiceType}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.date")}</p>
+                    <p className="text-[var(--ink)]">{inv.invoiceDate}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.party")}</p>
+                    <p className="text-[var(--sub)]">{inv.partyName || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.paymentMethod")}</p>
+                    <p className="text-[var(--sub)]">
+                      {paymentLabels[inv.paymentMethod] ?? inv.paymentMethod}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.total")}</p>
+                    <p className="text-[var(--ink)] font-medium" dir="ltr">
+                      {inv.totalAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("invoice.relatedEntry")}</p>
+                    {inv.journalEntryId ? (
+                      <Link
+                        href={`/dashboard/accounting/journal-entries/${inv.journalEntryId}`}
+                        className="text-[var(--blue)] hover:underline text-[12px]"
+                        dir="ltr"
+                      >
+                        {inv.journalEntryNumber}
+                      </Link>
+                    ) : (
+                      <span className="text-[var(--sub)] text-[12px]">—</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
         <Pagination
           page={page}

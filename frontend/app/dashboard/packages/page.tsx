@@ -9,7 +9,6 @@ import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import { formatNumber } from "@/lib/formatNumber";
-import InfoTooltip from "@/components/InfoTooltip";
 
 interface Package {
   id: number;
@@ -89,9 +88,9 @@ const PACKAGE_COLORS = [
 ];
 
 const LIMIT_FIELDS = [
-  { key: "maxProducts" as keyof Package, label: "packagesAdmin.limitProducts", tooltipKey: "packagesAdmin.limitProductsTooltip" },
-  { key: "maxEmployees" as keyof Package, label: "packagesAdmin.limitEmployees", tooltipKey: "packagesAdmin.limitEmployeesTooltip" },
-  { key: "maxWarehouses" as keyof Package, label: "packagesAdmin.limitWarehouses", tooltipKey: "packagesAdmin.limitWarehousesTooltip" },
+  { key: "maxProducts" as keyof Package, label: "packagesAdmin.limitProducts" },
+  { key: "maxEmployees" as keyof Package, label: "packagesAdmin.limitEmployees" },
+  { key: "maxWarehouses" as keyof Package, label: "packagesAdmin.limitWarehouses" },
 ];
 
 const STATUS_STYLES: Record<string, { badge: string; labelKey: string }> = {
@@ -256,7 +255,7 @@ export default function PackagesPage() {
     return `${formatNumber(price)} ${t("packagesAdmin.perMonth")}`;
   };
 
-  const renderLimitField = (pkg: Package, field: { key: keyof Package; label: string; tooltipKey?: string }) => {
+  const renderLimitField = (pkg: Package, field: { key: keyof Package; label: string }) => {
     const isEditing = editingId === pkg.id;
     const value = pkg[field.key] as number | null;
     const editValue = editForm[field.key] as number | null | undefined;
@@ -264,7 +263,7 @@ export default function PackagesPage() {
     if (isEditing) {
       return (
         <div key={field.key} className="flex items-center justify-between text-[12.5px] mb-2 gap-3">
-          <label className="text-[var(--sub)] shrink-0 flex items-center gap-1">{t(field.label)}{field.tooltipKey && <InfoTooltip messageKey={field.tooltipKey} />}</label>
+          <label className="text-[var(--sub)] shrink-0 flex items-center gap-1">{t(field.label)}</label>
           <div className="field-shell py-1 px-2.5 w-24">
             <input
               type="number"
@@ -285,7 +284,7 @@ export default function PackagesPage() {
 
     return (
       <div key={field.key} className="flex justify-between text-[12.5px] mb-2">
-        <span className="text-[var(--sub)] flex items-center gap-1">{t(field.label)}{field.tooltipKey && <InfoTooltip messageKey={field.tooltipKey} />}</span>
+        <span className="text-[var(--sub)] flex items-center gap-1">{t(field.label)}</span>
         <span className="font-bold text-[var(--ink)]">{getLimitDisplay(value)}</span>
       </div>
     );
@@ -586,7 +585,7 @@ export default function PackagesPage() {
 
                 {isEditing && (
                   <div className="flex items-center gap-2 mb-4">
-                    <label className="text-[12.5px] text-[var(--sub)] shrink-0 flex items-center gap-1">{t("packagesAdmin.commission")}<InfoTooltip messageKey="packagesAdmin.commissionTooltip" /></label>
+                    <label className="text-[12.5px] text-[var(--sub)] shrink-0 flex items-center gap-1">{t("packagesAdmin.commission")}</label>
                     <div className="field-shell py-1 px-2.5 w-20">
                       <input
                         type="number"
@@ -603,7 +602,7 @@ export default function PackagesPage() {
 
                 {!isEditing && (
                   <div className="flex justify-between text-[12.5px] mb-4">
-                    <span className="text-[var(--sub)] flex items-center gap-1">{t("packagesAdmin.commission")}<InfoTooltip messageKey="packagesAdmin.commissionTooltip" /></span>
+                    <span className="text-[var(--sub)] flex items-center gap-1">{t("packagesAdmin.commission")}</span>
                     <span className="font-bold text-[var(--ink)]">{pkg.commissionPercentage}%</span>
                   </div>
                 )}
@@ -614,7 +613,7 @@ export default function PackagesPage() {
 
                 <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
                   <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.features")}</p>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {(Object.entries(FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
                       renderFeatureField(pkg, key, label)
                     )}
@@ -629,7 +628,7 @@ export default function PackagesPage() {
                   <div className="mt-1.5 mb-1.5">
                     {renderShippingCompaniesField(pkg)}
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {(Object.entries(SHIPPING_FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
                       renderFeatureField(pkg, key, label)
                     )}
@@ -747,7 +746,7 @@ export default function PackagesPage() {
               <p className="p-5 text-center text-[var(--sub)] text-sm">{t("packagesAdmin.noInvoices")}</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="hidden lg:table w-full text-sm">
                   <thead className="bg-[var(--border)] border-b" style={{ borderColor: "var(--border)" }}>
                     <tr>
                       <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.name")}</th>
@@ -782,6 +781,43 @@ export default function PackagesPage() {
                     })}
                   </tbody>
                 </table>
+                <div className="lg:hidden space-y-3">
+                  {invoices.map((inv, index) => {
+                    const st = STATUS_STYLES[inv.status] || STATUS_STYLES.Pending;
+                    return (
+                      <div key={inv.id ?? `${inv.storeId}-${index}`} className="card p-4 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.name")}</p>
+                            <p className="text-[12px] text-[var(--ink)] font-medium">{inv.storeName}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.slug")}</p>
+                            <p className="text-[12px] text-[var(--sub)]" dir="ltr">{inv.storeSlug}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.package")}</p>
+                            <p className="text-[12px] text-[var(--sub)]">{inv.packageName}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--sub)]">{t("packagesAdmin.invoiceAmount")}</p>
+                            <p className="text-[12px] text-[var(--ink)] font-bold" dir="ltr">{formatCurrency(inv.amount)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--sub)]">{t("packagesAdmin.dueDate")}</p>
+                            <p className="text-[12px] text-[var(--sub)]" dir="ltr">
+                              {new Date(inv.dueDate).toLocaleDateString("ar-SA-u-nu-latn")}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-bold text-[var(--sub)]">{t("packagesAdmin.invoiceStatus")}</p>
+                            <span className={st.badge}>{t(st.labelKey)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

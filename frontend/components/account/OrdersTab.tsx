@@ -109,7 +109,7 @@ export default function OrdersTab({ slug, token, orders, loading, error, onRefre
                 {t(STATUS_KEYS[order.status] || order.status)}
               </span>
             </div>
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[13px]">
               <div className="text-gray-500">
                 <span>{t("account.orderItems")}: {order.itemCount}</span>
                 <span className="mx-2">•</span>

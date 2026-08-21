@@ -142,6 +142,7 @@ public class AdminService : IAdminService
                 Id = u.Id,
                 FullName = u.FullName,
                 Email = u.Email,
+                Phone = u.Phone,
                 UserType = u.UserType.ToString(),
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt
@@ -149,8 +150,13 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
+    private static readonly string[] ValidStaffRoles = { "Admin", "Support", "Finance", "Technical" };
+
     public async Task<StaffUserDto> CreateStaffUserAsync(CreateStaffDto dto)
     {
+        if (!ValidStaffRoles.Contains(dto.RoleType))
+            throw new InvalidOperationException("الدور الوظيفي غير صالح");
+
         var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
         if (existing != null)
             throw new InvalidOperationException("البريد الإلكتروني مستخدم بالفعل");
@@ -195,6 +201,80 @@ public class AdminService : IAdminService
                 CreatedAt = u.CreatedAt
             })
             .ToListAsync();
+    }
+
+    public async Task UpdateUserAsync(long id, UpdateUserDto dto, long adminUserId)
+    {
+        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminUserId)
+            ?? throw new InvalidOperationException("المدير غير موجود");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (user.UserType == UserType.SuperAdmin && user.Id != adminUserId)
+            throw new InvalidOperationException("لا يمكن تعديل حساب سوبر أدمن آخر");
+
+        var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email && u.Id != id);
+        if (existing != null)
+            throw new InvalidOperationException("البريد الإلكتروني مستخدم بالفعل");
+
+        user.FullName = dto.FullName;
+        user.Email = dto.Email;
+        user.Phone = dto.Phone;
+
+        await _context.SaveChangesAsync();
+
+        await LogAuditActionAsync(adminUserId, admin.FullName, "UpdateUser", "User", id.ToString(),
+            $"تعديل بيانات المستخدم: {user.FullName}", null);
+    }
+
+    public async Task UpdateStaffUserAsync(long id, UpdateStaffDto dto, long adminUserId)
+    {
+        if (!ValidStaffRoles.Contains(dto.RoleType))
+            throw new InvalidOperationException("الدور الوظيفي غير صالح");
+
+        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminUserId)
+            ?? throw new InvalidOperationException("المدير غير موجود");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (user.UserType != UserType.SupportStaff)
+            throw new InvalidOperationException("هذا المستخدم ليس من فريق الدعم");
+
+        var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email && u.Id != id);
+        if (existing != null)
+            throw new InvalidOperationException("البريد الإلكتروني مستخدم بالفعل");
+
+        user.FullName = dto.FullName;
+        user.Email = dto.Email;
+        user.StaffRole = dto.RoleType;
+
+        await _context.SaveChangesAsync();
+
+        await LogAuditActionAsync(adminUserId, admin.FullName, "UpdateStaffUser", "User", id.ToString(),
+            $"تعديل بيانات الموظف: {user.FullName}", null);
+    }
+
+    public async Task DeleteStaffUserAsync(long id, long adminUserId)
+    {
+        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminUserId)
+            ?? throw new InvalidOperationException("المدير غير موجود");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (user.UserType != UserType.SupportStaff)
+            throw new InvalidOperationException("لا يمكن حذف مستخدم من هذا النوع");
+
+        _context.Users.Remove(user);
+        await _context.SaveChangesAsync();
+
+        await LogAuditActionAsync(adminUserId, admin.FullName, "DeleteStaffUser", "User", id.ToString(),
+            $"حذف الموظف: {user.FullName}", null);
     }
 
     public async Task LogAuditActionAsync(long adminUserId, string adminName, string action, string? targetType = null, string? targetId = null, string? details = null, string? ipAddress = null)
@@ -408,6 +488,7 @@ public class AdminService : IAdminService
                 Id = u.Id,
                 FullName = u.FullName,
                 Email = u.Email,
+                Phone = u.Phone,
                 UserType = u.UserType.ToString(),
                 IsActive = u.IsActive,
                 CreatedAt = u.CreatedAt

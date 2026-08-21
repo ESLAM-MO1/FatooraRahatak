@@ -167,7 +167,7 @@ export default function CouponsPage() {
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--border)] border-b" style={{ borderColor: "var(--border)" }}>
                 <tr>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("coupons.code")}</th>
@@ -220,6 +220,64 @@ export default function CouponsPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {coupons.map((coupon) => (
+              <div key={coupon.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("coupons.code")}</p>
+                    <p className="text-[12px] font-bold text-[var(--ink)]" dir="ltr">{coupon.code}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("coupons.discount")}</p>
+                    <p className="text-[12px] text-[var(--ink)]">
+                      {coupon.discountType === "Percentage"
+                        ? `${coupon.discountValue}%`
+                        : `${coupon.discountValue} ${t("common.sar")}`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("coupons.minOrder")}</p>
+                    <p className="text-[12px] text-[var(--sub)]">
+                      {coupon.minOrderAmount > 0 ? `${coupon.minOrderAmount} ${t("common.sar")}` : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("coupons.validFrom")}</p>
+                    <p className="text-[12px] text-[var(--sub)]">{formatDate(coupon.validFrom)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("coupons.validUntil")}</p>
+                    <p className="text-[12px] text-[var(--sub)]">{formatDate(coupon.validUntil)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("coupons.status")}</p>
+                    {coupon.isActive ? (
+                      <span className="badge badge--green">{t("coupons.active")}</span>
+                    ) : (
+                      <span className="badge badge--gray">{t("coupons.inactive")}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  {coupon.isActive ? (
+                    <Can code="Coupons.Edit">
+                      <button
+                        onClick={() => handleDeactivate(coupon)}
+                        disabled={deactivatingId === coupon.id}
+                        className="text-[12px] text-[var(--danger)] hover:underline disabled:opacity-50"
+                      >
+                        {deactivatingId === coupon.id ? t("common.saving") : t("coupons.deactivate")}
+                      </button>
+                    </Can>
+                  ) : (
+                    <span className="text-[12px] text-[var(--sub)]">—</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -251,7 +309,7 @@ export default function CouponsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("coupons.discountType")}</label>
                   <div className="field-shell">
@@ -281,7 +339,7 @@ export default function CouponsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("coupons.usageLimit")}</label>
                   <div className="field-shell">
@@ -312,7 +370,7 @@ export default function CouponsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("coupons.validFrom")}</label>
                   <div className="field-shell">

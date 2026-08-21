@@ -109,14 +109,23 @@ export default function BusinessReportsPage() {
     fetchReport();
   }, [fetchReport]);
 
-  const exportCsv = async (path: string) => {
+  const exportFile = async (format: "csv" | "excel" | "pdf") => {
     try {
-      const res = await api.get(path, { responseType: "blob" });
+      const params = new URLSearchParams();
+      if (needsDateRange) { params.set("from", from); params.set("to", to); }
+      if (needsThreshold) params.set("threshold", threshold);
+      if (needsCustomer) {
+        if (customerId) params.set("customerId", customerId);
+        if (customerPhone) params.set("phone", customerPhone);
+      }
+      if (format !== "csv") params.set("format", format);
+      const qs = params.toString();
+      const res = await api.get(`${exportPath[activeTab]}${qs ? `?${qs}` : ""}`, { responseType: "blob" });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement("a");
       a.href = url;
-      const match = path.split("/");
-      a.download = `${match[match.length - 2] || "report"}-${todayStr()}.csv`;
+      const match = exportPath[activeTab].split("/");
+      a.download = `${match[match.length - 2] || "report"}-${todayStr()}.${format === "pdf" ? "pdf" : format === "excel" ? "xlsx" : "csv"}`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {
@@ -202,8 +211,14 @@ export default function BusinessReportsPage() {
             </>
           )}
           <button onClick={fetchReport} className="btn-primary px-5">{t("report.run")}</button>
-          <button onClick={() => exportCsv(exportPath[activeTab])} className="btn btn-outline px-4">
+          <button onClick={() => exportFile("csv")} className="btn btn-outline px-4">
             <Icon name="download" /> {t("report.exportCsv")}
+          </button>
+          <button onClick={() => exportFile("excel")} className="btn btn-outline px-4">
+            <Icon name="download" /> {t("report.exportExcel")}
+          </button>
+          <button onClick={() => exportFile("pdf")} className="btn btn-outline px-4">
+            <Icon name="download" /> {t("report.exportPdf")}
           </button>
         </div>
       </div>
@@ -252,11 +267,13 @@ function EmptyState({ t }: { t: (k: string) => string }) {
   return <p className="p-6 text-[var(--sub)] text-sm">{t("report.noData")}</p>;
 }
 
-function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
+function Table({ head, rows, breakpoint = "md" }: { head: string[]; rows: (string | number)[][]; breakpoint?: "md" | "lg" }) {
+  const tableHidden = breakpoint === "lg" ? "hidden lg:table" : "hidden md:table";
+  const cardHidden = breakpoint === "lg" ? "lg:hidden" : "md:hidden";
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className={`${tableHidden} w-full text-sm`}>
           <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
             <tr>
               {head.map((h) => (
@@ -278,6 +295,25 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
             ))}
           </tbody>
         </table>
+      </div>
+      <div className={`${cardHidden} space-y-3 p-4`}>
+        {rows.map((row, i) => (
+          <div key={i} className="card p-4 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              {row.map((cell, j) => (
+                <div key={j}>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{head[j]}</p>
+                  <p
+                    className="text-[12px] text-[var(--ink)]"
+                    dir={typeof cell === "string" && /^[\d.,-]+$/.test(cell) ? "ltr" : undefined}
+                  >
+                    {cell}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -370,6 +406,7 @@ function MovementsView({ data, t }: { data: any; t: (k: string) => string }) {
         r.quantity,
         r.referenceType || "—",
       ])}
+      breakpoint="lg"
     />
   );
 }
@@ -388,6 +425,7 @@ function ValuationView({ data, t }: { data: any; t: (k: string) => string }) {
       <Table
         head={[t("report.product"), t("report.sku"), t("report.available"), t("report.costPrice"), t("report.retailPrice"), t("report.costValue"), t("report.retailValue")]}
         rows={data.rows.map((r: any) => [r.productName, r.sku, r.available, formatMoney(r.costPrice), formatMoney(r.retailPrice), formatMoney(r.costValue), formatMoney(r.retailValue)])}
+        breakpoint="lg"
       />
     </>
   );

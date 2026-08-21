@@ -195,7 +195,7 @@ export default function StoresPage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="hidden lg:table w-full text-sm">
               <thead className="bg-[var(--border)] border-b" style={{ borderColor: "var(--border)" }}>
                 <tr>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.name")}</th>
@@ -294,6 +294,99 @@ export default function StoresPage() {
                 ))}
               </tbody>
             </table>
+            <div className="lg:hidden space-y-3">
+              {filteredStores.map((store) => (
+                <div key={store.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.name")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium">{store.storeName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.status")}</p>
+                      <span className={statusBadgeClass(store.status)}>{statusLabel(store.status, t)}</span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.slug")}</p>
+                      <p className="text-[12px] text-[var(--sub)]" dir="ltr">{store.storeSlug}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.owner")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{store.ownerName}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.email")}</p>
+                      <p className="text-[12px] text-[var(--sub)]" dir="ltr">{store.ownerEmail}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.package")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{store.packageName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.consumption")}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-300"
+                            style={{
+                              width: `${Math.min(store.packageConsumptionPercent, 100)}%`,
+                              backgroundColor:
+                                store.packageConsumptionPercent > 90
+                                  ? "#ef4444"
+                                  : store.packageConsumptionPercent >= 70
+                                  ? "#f59e0b"
+                                  : "#10b981",
+                            }}
+                          />
+                        </div>
+                        <span
+                          className="text-[12px] font-bold shrink-0"
+                          style={{
+                            color:
+                              store.packageConsumptionPercent > 90
+                                ? "#ef4444"
+                                : store.packageConsumptionPercent >= 70
+                                ? "#f59e0b"
+                                : "#10b981",
+                          }}
+                        >
+                          {store.packageConsumptionPercent}%
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.registrationDate")}</p>
+                      <p className="text-[12px] text-[var(--sub)]" dir="ltr">
+                        {new Date(store.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <Link href={`/dashboard/stores/${store.id}`} className="text-[var(--blue)] hover:underline text-sm">
+                      {t("store.details")}
+                    </Link>
+                    {store.status === "Active" && (
+                      <button
+                        onClick={() => handleSuspend(store)}
+                        disabled={processingId === store.id}
+                        className="text-[var(--danger)] hover:underline text-sm disabled:opacity-50"
+                      >
+                        {processingId === store.id ? t("store.suspending") : t("store.suspend")}
+                      </button>
+                    )}
+                    {store.status === "Suspended" && (
+                      <button
+                        onClick={() => handleActivate(store)}
+                        disabled={processingId === store.id}
+                        className="text-[var(--green)] hover:underline text-sm disabled:opacity-50"
+                      >
+                        {processingId === store.id ? t("store.activating") : t("store.activate")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

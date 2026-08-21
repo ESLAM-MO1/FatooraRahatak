@@ -95,22 +95,42 @@ public class ReferralService : IReferralService
         return true;
     }
 
-    public async Task<List<AdminReferralDto>> GetAllReferralsAsync(string? status = null)
+    public async Task<List<AdminReferralDto>> GetAllReferralsAsync(string? status = null, DateTime? from = null, DateTime? to = null, string? search = null)
     {
         var query = _context.Referrals
             .Include(r => r.ReferrerUser)
             .Include(r => r.ReferredUser)
-            .OrderByDescending(r => r.CreatedAt);
-
-        var list = await query.ToListAsync();
+            .Include(r => r.ReviewedBy)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status))
         {
-            if (status.Equals("converted", StringComparison.OrdinalIgnoreCase))
-                list = list.Where(r => r.HasConverted).ToList();
-            else if (status.Equals("registered", StringComparison.OrdinalIgnoreCase))
-                list = list.Where(r => !r.HasConverted).ToList();
+            if (status.Equals("converted", StringComparison.OrdinalIgnoreCase) ||
+                status.Equals("approved", StringComparison.OrdinalIgnoreCase))
+                query = query.Where(r => r.HasConverted || r.Status == "Approved");
+            else if (status.Equals("registered", StringComparison.OrdinalIgnoreCase) ||
+                     status.Equals("pending", StringComparison.OrdinalIgnoreCase))
+                query = query.Where(r => !r.HasConverted && r.Status == "Pending");
+            else if (status.Equals("rejected", StringComparison.OrdinalIgnoreCase))
+                query = query.Where(r => r.Status == "Rejected");
         }
+
+        if (from.HasValue)
+            query = query.Where(r => r.ReferredAt >= from.Value);
+        if (to.HasValue)
+            query = query.Where(r => r.ReferredAt <= to.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            query = query.Where(r =>
+                r.ReferrerUser.FullName.Contains(s) || r.ReferrerUser.Email.Contains(s) ||
+                r.ReferredUser.FullName.Contains(s) || r.ReferredUser.Email.Contains(s));
+        }
+
+        var list = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
 
         return list.Select(r => new AdminReferralDto
         {
@@ -124,7 +144,125 @@ public class ReferralService : IReferralService
             ReferredAt = r.CreatedAt,
             HasConverted = r.HasConverted,
             ConvertedAt = r.ConvertedAt,
+            Status = r.Status,
+            ReviewedAt = r.ReviewedAt,
+            ReviewedByName = r.ReviewedBy?.FullName,
+            AdminNote = r.AdminNote,
         }).ToList();
+    }
+
+    public async Task ReviewReferralAsync(long referralId, bool approve, string? note, long adminUserId)
+    {
+        var referral = await _context.Referrals
+            .Include(r => r.Commissions)
+            .FirstOrDefaultAsync(r => r.Id == referralId);
+        if (referral == null)
+            throw new InvalidOperationException("الإحالة غير موجودة");
+
+        if (referral.Status != "Pending")
+            throw new InvalidOperationException("تمت مراجعة هذه الإحالة مسبقًا");
+
+        var pendingCommissions = referral.Commissions
+            .Where(c => c.Status == AffiliateCommissionStatus.Pending)
+            .ToList();
+
+        if (approve)
+        {
+            referral.Status = "Approved";
+            referral.HasConverted = true;
+            referral.ConvertedAt ??= DateTime.UtcNow;
+
+            // اعتماد العمولات المعلّقة المرتبطة بالإحالة وإضافتها فعليًا لرصيد صاحب الإحالة
+            if (pendingCommissions.Count > 0)
+            {
+                var referrer = await _context.Users.FindAsync(referral.ReferrerUserId);
+                if (referrer == null)
+                    throw new InvalidOperationException("صاحب الإحالة غير موجود");
+
+                foreach (var commission in pendingCommissions)
+                {
+                    commission.Status = AffiliateCommissionStatus.Paid;
+                    commission.PaidAt = DateTime.UtcNow;
+                    commission.UpdatedAt = DateTime.UtcNow;
+                    referrer.AffiliateBalance += commission.Amount;
+                }
+                referrer.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        else
+        {
+            referral.Status = "Rejected";
+
+            // رفض الإحالة يرفض معه أي عمولة معلّقة مرتبطة بها بدون إضافة أي رصيد
+            foreach (var commission in pendingCommissions)
+            {
+                commission.Status = AffiliateCommissionStatus.Rejected;
+                commission.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        referral.ReviewedAt = DateTime.UtcNow;
+        referral.ReviewedByUserId = adminUserId;
+        referral.AdminNote = note;
+        referral.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateCommissionRateAsync(long commissionId, decimal rate)
+    {
+        if (rate < 0 || rate > 100)
+            throw new InvalidOperationException("نسبة العمولة يجب أن تكون بين 0 و 100");
+
+        var commission = await _context.AffiliateCommissions.FirstOrDefaultAsync(c => c.Id == commissionId);
+        if (commission == null)
+            throw new InvalidOperationException("العمولة غير موجودة");
+        if (commission.Status != AffiliateCommissionStatus.Pending)
+            throw new InvalidOperationException("لا يمكن تعديل عمولة تمت مراجعتها بالفعل (معتمدة أو مرفوضة)");
+
+        if (commission.Rate > 0)
+            commission.Amount = Math.Round(commission.Amount * (rate / commission.Rate), 2);
+
+        commission.Rate = rate;
+        commission.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<ReferralSettingsDto> GetReferralSettingsAsync()
+    {
+        var setting = await _context.PlatformSettings
+            .FirstOrDefaultAsync(s => s.SettingKey == "Referral_DefaultCommissionRate");
+        return new ReferralSettingsDto
+        {
+            DefaultCommissionRate = setting != null && decimal.TryParse(setting.SettingValue, out var rate) ? rate : 0m
+        };
+    }
+
+    public async Task UpdateReferralSettingsAsync(decimal defaultCommissionRate)
+    {
+        if (defaultCommissionRate < 0 || defaultCommissionRate > 100)
+            throw new InvalidOperationException("نسبة العمولة يجب أن تكون بين 0 و 100");
+
+        var setting = await _context.PlatformSettings
+            .FirstOrDefaultAsync(s => s.SettingKey == "Referral_DefaultCommissionRate");
+
+        if (setting == null)
+        {
+            _context.PlatformSettings.Add(new FatooraRahatak.Domain.Entities.Platform.PlatformSetting
+            {
+                SettingKey = "Referral_DefaultCommissionRate",
+                SettingValue = defaultCommissionRate.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            setting.SettingValue = defaultCommissionRate.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            setting.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync();
     }
 
     public async Task<List<AdminCommissionDto>> GetAllCommissionsAsync(string? status = null)
@@ -142,6 +280,8 @@ public class ReferralService : IReferralService
                 list = list.Where(c => c.Status == AffiliateCommissionStatus.Paid).ToList();
             else if (status.Equals("pending", StringComparison.OrdinalIgnoreCase))
                 list = list.Where(c => c.Status == AffiliateCommissionStatus.Pending).ToList();
+            else if (status.Equals("rejected", StringComparison.OrdinalIgnoreCase))
+                list = list.Where(c => c.Status == AffiliateCommissionStatus.Rejected).ToList();
         }
 
         return list.Select(c => new AdminCommissionDto
@@ -162,156 +302,9 @@ public class ReferralService : IReferralService
         }).ToList();
     }
 
-    public async Task MarkCommissionPaidAsync(long commissionId)
-    {
-        var commission = await _context.AffiliateCommissions
-            .Include(c => c.Referral)
-            .FirstOrDefaultAsync(c => c.Id == commissionId);
-        if (commission == null)
-            throw new InvalidOperationException("العمولة غير موجودة");
-        if (commission.Status != AffiliateCommissionStatus.Pending)
-            throw new InvalidOperationException("هذه العمولة تم صرفها مسبقًا");
-
-        var referrer = await _context.Users.FindAsync(commission.Referral.ReferrerUserId);
-        if (referrer == null)
-            throw new InvalidOperationException("صاحب العمولة غير موجود");
-
-        commission.Status = AffiliateCommissionStatus.Paid;
-        commission.PaidAt = DateTime.UtcNow;
-        commission.UpdatedAt = DateTime.UtcNow;
-
-        referrer.AffiliateBalance += commission.Amount;
-        referrer.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-    }
-
     public async Task<int> GetCommissionSummaryAsync()
     {
         return await _context.AffiliateCommissions.CountAsync();
-    }
-
-    public async Task<List<MyWithdrawalDto>> GetMyWithdrawalsAsync(long userId)
-    {
-        return await _context.AffiliateWithdrawalRequests
-            .Where(w => w.UserId == userId)
-            .OrderByDescending(w => w.CreatedAt)
-            .Select(w => new MyWithdrawalDto
-            {
-                Id = w.Id,
-                Amount = w.Amount,
-                Currency = w.Currency,
-                Status = w.Status.ToString(),
-                CreatedAt = w.CreatedAt,
-                ProcessedAt = w.ProcessedAt,
-                AdminNote = w.AdminNote,
-            })
-            .ToListAsync();
-    }
-
-    public async Task<List<AdminWithdrawalDto>> GetAllWithdrawalsAsync(string? status = null)
-    {
-        var query = _context.AffiliateWithdrawalRequests
-            .Include(w => w.User)
-            .OrderByDescending(w => w.CreatedAt);
-
-        var list = await query.ToListAsync();
-
-        if (!string.IsNullOrWhiteSpace(status))
-        {
-            if (status.Equals("paid", StringComparison.OrdinalIgnoreCase))
-                list = list.Where(w => w.Status == AffiliateWithdrawalStatus.Paid).ToList();
-            else if (status.Equals("pending", StringComparison.OrdinalIgnoreCase))
-                list = list.Where(w => w.Status == AffiliateWithdrawalStatus.Pending).ToList();
-            else if (status.Equals("rejected", StringComparison.OrdinalIgnoreCase))
-                list = list.Where(w => w.Status == AffiliateWithdrawalStatus.Rejected).ToList();
-        }
-
-        return list.Select(w => new AdminWithdrawalDto
-        {
-            Id = w.Id,
-            UserId = w.UserId,
-            UserName = w.User.FullName,
-            UserEmail = w.User.Email,
-            Amount = w.Amount,
-            Currency = w.Currency,
-            Status = w.Status.ToString(),
-            CreatedAt = w.CreatedAt,
-            ProcessedAt = w.ProcessedAt,
-            AdminNote = w.AdminNote,
-        }).ToList();
-    }
-
-    public async Task<MyWithdrawalDto> RequestWithdrawalAsync(long userId, decimal amount)
-    {
-        if (amount <= 0)
-            throw new InvalidOperationException("المبلغ المطلوب سحبه غير صالح");
-
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null)
-            throw new InvalidOperationException("المستخدم غير موجود");
-
-        if (amount > user.AffiliateBalance)
-            throw new InvalidOperationException("المبلغ المطلوب يتجاوز رصيدك المتاح");
-
-        var hasPending = await _context.AffiliateWithdrawalRequests
-            .AnyAsync(w => w.UserId == userId && w.Status == AffiliateWithdrawalStatus.Pending);
-        if (hasPending)
-            throw new InvalidOperationException("لديك طلب سحب قيد المعالجة بالفعل");
-
-        var withdrawal = new AffiliateWithdrawalRequest
-        {
-            UserId = userId,
-            Amount = amount,
-            Currency = "SAR",
-            Status = AffiliateWithdrawalStatus.Pending,
-        };
-
-        _context.AffiliateWithdrawalRequests.Add(withdrawal);
-        await _context.SaveChangesAsync();
-
-        return new MyWithdrawalDto
-        {
-            Id = withdrawal.Id,
-            Amount = withdrawal.Amount,
-            Currency = withdrawal.Currency,
-            Status = withdrawal.Status.ToString(),
-            CreatedAt = withdrawal.CreatedAt,
-        };
-    }
-
-    public async Task ProcessWithdrawalAsync(long withdrawalId, bool approve, string? note)
-    {
-        var withdrawal = await _context.AffiliateWithdrawalRequests
-            .FirstOrDefaultAsync(w => w.Id == withdrawalId);
-        if (withdrawal == null)
-            throw new InvalidOperationException("طلب السحب غير موجود");
-        if (withdrawal.Status != AffiliateWithdrawalStatus.Pending)
-            throw new InvalidOperationException("تمت معالجة هذا الطلب مسبقًا");
-
-        var user = await _context.Users.FindAsync(withdrawal.UserId);
-        if (user == null)
-            throw new InvalidOperationException("مقدم الطلب غير موجود");
-
-        if (approve)
-        {
-            if (withdrawal.Amount > user.AffiliateBalance)
-                throw new InvalidOperationException("رصيد المستخدم لا يكفي لصرف هذا الطلب");
-
-            user.AffiliateBalance -= withdrawal.Amount;
-            withdrawal.Status = AffiliateWithdrawalStatus.Paid;
-        }
-        else
-        {
-            withdrawal.Status = AffiliateWithdrawalStatus.Rejected;
-        }
-
-        withdrawal.ProcessedAt = DateTime.UtcNow;
-        withdrawal.UpdatedAt = DateTime.UtcNow;
-        withdrawal.AdminNote = note;
-        user.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
     }
 
     private async Task<ReferralCode> CreateReferralCodeForUserAsync(long userId)

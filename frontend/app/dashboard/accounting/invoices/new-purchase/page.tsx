@@ -178,7 +178,7 @@ export default function NewPurchaseInvoicePage() {
 
       <form onSubmit={handleSubmit}>
         <div className="card p-5 mb-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.date")}</label>
               <div className="field-shell">
@@ -207,7 +207,7 @@ export default function NewPurchaseInvoicePage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
             <div>
               <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.supplierPhone")}</label>
               <div className="field-shell">

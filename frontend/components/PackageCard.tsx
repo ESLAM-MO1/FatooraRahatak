@@ -3,7 +3,6 @@
 import { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { formatMoney } from "@/lib/formatNumber";
-import InfoTooltip from "@/components/InfoTooltip";
 
 export interface PackageCardData {
   id: number;
@@ -156,14 +155,14 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
       </div>
 
       <div className="flex justify-between text-[12.5px] mb-4">
-        <span className="text-[var(--sub)] flex items-center gap-1.5">{t("packages.commission")}<InfoTooltip messageKey="packages.commissionTooltip" /></span>
+        <span className="text-[var(--sub)]">{t("packages.commission")}</span>
         <span className="font-bold text-[var(--ink)]">{pkg.commissionPercentage}%</span>
       </div>
 
       <div className="space-y-1 mb-4 border-t border-[var(--border)] pt-4">
         {LIMITS.map((limit) => (
           <div key={limit.key} className="flex justify-between text-[12.5px] mb-2">
-            <span className="text-[var(--sub)] flex items-center gap-1.5">{t(limit.labelKey)}<InfoTooltip messageKey={`packagesAdmin.limit${limit.key.replace("max", "")}Tooltip`} /></span>
+            <span className="text-[var(--sub)]">{t(limit.labelKey)}</span>
             <span className="font-bold text-[var(--ink)]">
               {getLimitLabel(pkg[limit.key] as number | null, t)}
             </span>

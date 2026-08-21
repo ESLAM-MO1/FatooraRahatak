@@ -329,6 +329,21 @@ public class StoreController : ControllerBase
     }
 
     [RequirePermission("StoreSettings.Edit")]
+    [HttpPut("menu-pages")]
+    public async Task<IActionResult> UpdateMenuPages([FromBody] UpdateMenuPagesDto dto)
+    {
+        try
+        {
+            var result = await _storeService.UpdateMenuPagesAsync(GetUserId(), dto);
+            return Ok(new { success = true, data = result, message = "تم حفظ القائمة والسياسات بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("StoreSettings.Edit")]
     [HttpPost("send-test-notification")]
     public async Task<IActionResult> SendTestNotification()
     {

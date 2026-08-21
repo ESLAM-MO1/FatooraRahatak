@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, PackageIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function BlackMinimalTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,7 +28,6 @@ export default function BlackMinimalTemplate({
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, false, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -34,6 +35,10 @@ export default function BlackMinimalTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
 
@@ -51,11 +56,7 @@ export default function BlackMinimalTemplate({
             {logo && <img src={logo} alt={storeName} className="w-7 h-7 object-cover" />}
             <span className="font-thin text-lg tracking-[0.28em] uppercase truncate text-white" style={{ fontWeight: 300 }}>{storeName}</span>
           </a>
-          <nav className="hidden md:flex items-center gap-8 text-[13px] font-medium tracking-wide text-white/70">
-            <a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a>
-            <a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactUs")}</a>
-          </nav>
+          <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-8 text-[13px] font-medium tracking-wide text-white/70" linkClassName="hover:text-white" />
           <div className="flex items-center gap-1">
             <QuickLoginButton slug={slug} />
             <a href={`/store/${slug}/wishlist`} className="relative p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[9px] font-bold text-black rounded-full" style={{ width: 15, height: 15, background: "#fff" }}>{wishlist.length}</span>}</a>
@@ -63,9 +64,7 @@ export default function BlackMinimalTemplate({
           </div>
         </div>
         {mobileOpen && <div className="md:hidden px-4 pb-4 space-y-2 text-[14px] font-medium text-white">
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
+          <StoreMainMenu slug={slug} mobile containerClassName="space-y-2" linkClassName="block py-1.5" />
         </div>}
       </header>
 
@@ -116,7 +115,7 @@ export default function BlackMinimalTemplate({
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <button type="button" onClick={() => toggleWishlist(p.id)} aria-label={t("storefront.wishlist")} className="p-1.5" style={{ color: isWishlist(p.id) ? "#DC2626" : "#171717" }}>{isWishlist(p.id) ? <HeartFilledIcon size={17} /> : <HeartIcon size={17} />}</button>
+                    <button type="button" onClick={() => toggleWishlist(p.id)} aria-label={t("storefront.wishlist")} className="w-9 h-9 flex items-center justify-center" style={{ color: isWishlist(p.id) ? "#DC2626" : "#171717" }}>{isWishlist(p.id) ? <HeartFilledIcon size={17} /> : <HeartIcon size={17} />}</button>
                     <button type="button" onClick={() => handleAddToCart(p.id)} className="px-5 py-2 text-[12px] font-bold tracking-[0.12em] uppercase" style={{ background: colors.buttonColor, color: "#fff", borderRadius: 0 }}>{t("storefront.addToCart")}</button>
                   </div>
                 </div>
@@ -144,13 +143,7 @@ export default function BlackMinimalTemplate({
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <h4 className="text-white font-thin text-lg tracking-[0.24em] uppercase" style={{ fontWeight: 300 }}>{storeName}</h4>
           <p className="mt-2 text-[13px]" style={{ color: "#A3A3A3" }}>{t("storefront.footerTagline")}</p>
-          <ul className="mt-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-[12px] tracking-wide" style={{ color: "#A3A3A3" }}>
-            <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-            <li><a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a></li>
-            <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-            <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-            <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-          </ul>
+          <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="mt-6 text-white font-thin text-[12px] tracking-[0.24em] uppercase" titleStyle={{ fontWeight: 300 }} listClassName="mt-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-[12px] tracking-wide" listStyle={{ color: "#A3A3A3" }} linkClassName="hover:text-white" />
           <div className="mt-6 flex flex-wrap justify-center gap-4 text-[13px]" style={{ color: "#A3A3A3" }}>
             {contactEmail && <span className="inline-flex items-center gap-1.5"><MailIcon size={13} /><span dir="ltr">{contactEmail}</span></span>}
             {contactPhone && <span className="inline-flex items-center gap-1.5"><PhoneIcon size={13} /><span dir="ltr">{contactPhone}</span></span>}
@@ -158,7 +151,7 @@ export default function BlackMinimalTemplate({
           </div>
           <div className="mt-5 flex justify-center gap-5">
             <StoreSocialLinks
-              urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+              urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
               containerClassName="mt-5 flex justify-center gap-5"
               linkClassName="hover:text-white"
               linkStyle={{ color: "#A3A3A3" }}

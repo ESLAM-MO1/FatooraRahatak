@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, CheckIcon, TruckIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function PinkElegantTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,7 +29,6 @@ export default function PinkElegantTemplate({
     cartCount, wishlist, toggleWishlist, searchInput, setSearchInput, handleSearchSubmit, isSearchActive, searchResults,
     currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -35,6 +36,10 @@ export default function PinkElegantTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const getDiscount = (p: { basePrice: number; discountPrice: number | null }) => hasDiscount(p) ? Math.round((1 - (p.discountPrice as number) / p.basePrice) * 100) : 0;
@@ -65,11 +70,7 @@ export default function PinkElegantTemplate({
       <header className="sticky top-0 z-40" style={{ background: "rgba(251,247,245,0.94)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
           <button className="md:hidden p-1.5 -ml-1.5" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: colors.headerColor }}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
-          <nav className="hidden md:flex items-center gap-9 text-[14px] font-semibold">
-            <a href={`/store/${slug}`} className="hover:opacity-70" style={{ color: colors.headerColor }}>{t("storefront.home")}</a>
-            <a href={`/store/${slug}#products`} className="hover:opacity-70" style={{ color: colors.headerColor }}>{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:opacity-70" style={{ color: colors.headerColor }}>{t("storefront.contactUs")}</a>
-          </nav>
+          <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-9 text-[14px] font-semibold" linkClassName="hover:opacity-70" linkStyle={{ color: colors.headerColor }} />
           <a href={`/store/${slug}`} className="flex items-center gap-2.5 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-9 h-9 rounded-full object-cover" />}
             <span className="font-bold text-xl tracking-wide truncate" style={{ color: colors.headerColor }}>{storeName}</span>
@@ -85,9 +86,7 @@ export default function PinkElegantTemplate({
           </div>
         </div>
         {mobileOpen && <div className="md:hidden px-4 pb-4 space-y-2 text-[15px] font-semibold" style={{ color: colors.headerColor }}>
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
+          <StoreMainMenu slug={slug} mobile containerClassName="space-y-2" linkClassName="block py-1.5" />
         </div>}
       </header>
 
@@ -155,7 +154,7 @@ export default function PinkElegantTemplate({
           )}
 
           {!productsLoading && restItems.length > 0 && (
-            <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-14 grid grid-cols-2 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {restItems.map(p => (
                 <div key={p.id} className="group">
                   <div className="relative overflow-hidden rounded-[4px]" style={{ aspectRatio: "4/5", background: "#F3E9E4" }}>
@@ -165,7 +164,7 @@ export default function PinkElegantTemplate({
                         : <div className="w-full h-full flex items-center justify-center" style={{ color: "#D8C4BC" }}><PackageIcon size={44} /></div>}
                     </a>
                     {hasDiscount(p) && <span className="absolute rounded-full px-2.5 py-1 text-[10px] font-bold" style={{ background: colors.accentColor, color: "#fff", top: 12, insetInlineStart: 12 }}>-{getDiscount(p)}%</span>}
-                    <button type="button" onClick={() => toggleWishlist(p.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 32, height: 32, background: "rgba(255,255,255,0.92)", top: 12, insetInlineEnd: 12, color: "#DC2626" }}>
+                    <button type="button" onClick={() => toggleWishlist(p.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.92)", top: 12, insetInlineEnd: 12, color: "#DC2626" }}>
                       {isWishlist(p.id) ? <HeartFilledIcon size={15} /> : <HeartIcon size={15} />}
                     </button>
                   </div>
@@ -203,14 +202,7 @@ export default function PinkElegantTemplate({
         <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div><h4 className="font-bold text-lg" style={{ color: colors.headerColor }}>{storeName}</h4><p className="mt-2 text-[13px] italic" style={{ color: "#6F5A55" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="font-bold text-[14px] tracking-wide" style={{ color: colors.headerColor }}>{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "#6F5A55" }}>
-              <li><a href={`/store/${slug}`} className="hover:opacity-70">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#products`} className="hover:opacity-70">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:opacity-70">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:opacity-70">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:opacity-70">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="font-bold text-[14px] tracking-wide" titleStyle={{ color: colors.headerColor }} listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "#6F5A55" }} linkClassName="hover:opacity-70" />
           </div>
           <div>
             <h4 className="font-bold text-[14px] tracking-wide" style={{ color: colors.headerColor }}>{t("storefront.contactHeading")}</h4>
@@ -225,7 +217,7 @@ export default function PinkElegantTemplate({
             <h4 className="font-bold text-[14px] tracking-wide" style={{ color: colors.headerColor }}>{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
                 linkStyle={{ width: 34, height: 34, border: "1px solid #E4D3CB", color: colors.accentColor }}
                 iconSize={16}

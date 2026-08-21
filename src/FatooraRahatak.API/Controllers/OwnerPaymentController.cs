@@ -48,36 +48,6 @@ public class OwnerPaymentController : ControllerBase
     }
 
     [RequirePermission("Payments.View")]
-    [HttpGet("account")]
-    public async Task<IActionResult> GetAccount()
-    {
-        var storeId = await GetStoreIdAsync();
-        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
-
-        var result = await _paymentService.GetStorePaymentAccountAsync(storeId.Value);
-        if (result == null) return NotFound(new { success = false, message = "المتجر غير موجود" });
-        return Ok(new { success = true, data = result });
-    }
-
-    [RequirePermission("Payments.Edit")]
-    [HttpPost("account")]
-    public async Task<IActionResult> SubmitAccount([FromBody] SubmitStorePaymentAccountDto dto)
-    {
-        var storeId = await GetStoreIdAsync();
-        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
-
-        try
-        {
-            var result = await _paymentService.SubmitStorePaymentAccountAsync(storeId.Value, dto);
-            return Ok(new { success = true, data = result, message = "تم إرسال بيانات حساب الدفع للمراجعة" });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { success = false, message = ex.Message });
-        }
-    }
-
-    [RequirePermission("Payments.View")]
     [HttpPost("refund")]
     public async Task<IActionResult> Refund([FromBody] RefundPaymentDto dto)
     {

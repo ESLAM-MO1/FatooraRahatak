@@ -163,7 +163,7 @@ export default function ThankYouPage() {
         <div className="bg-gray-50 rounded-xl border border-gray-100 p-4 mb-6 space-y-2 text-left">
           <div className="flex justify-between text-[13px]">
             <span className="text-gray-500">{t("storefront.orderNumber")}</span>
-            <span className="font-bold text-gray-900" dir="ltr">{orderNumber}</span>
+            <span className="font-bold text-gray-900 min-w-0 break-all" dir="ltr">{orderNumber}</span>
           </div>
           {!loading && total !== null && (
             <div className="flex justify-between text-[13px]">
@@ -194,7 +194,7 @@ export default function ThankYouPage() {
                 {order.bankTransfer.iban && (
                   <div className="flex justify-between text-[13px]">
                     <span className="text-gray-500">{t("storefront.bankIban")}</span>
-                    <span className="font-bold text-gray-900" dir="ltr">{order.bankTransfer.iban}</span>
+                    <span className="font-bold text-gray-900 min-w-0 break-all" dir="ltr">{order.bankTransfer.iban}</span>
                   </div>
                 )}
                 {order.bankTransfer.receiptUrl && (

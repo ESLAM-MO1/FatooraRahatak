@@ -26,8 +26,17 @@ export default function ContactPage() {
 
   const store = useStore();
 
-  const hasSocial = store &&
-    !!(store.facebookUrl || store.instagramUrl || store.whatsappUrl || store.snapchatUrl || store.tiktokUrl || store.telegramUrl || store.linkedinUrl);
+  const fbUrl = resolveSocialUrl(store?.facebookUrl);
+  const igUrl = resolveSocialUrl(store?.instagramUrl);
+  const waUrl = resolveSocialUrl(store?.whatsappUrl);
+  const scUrl = resolveSocialUrl(store?.snapchatUrl);
+  const tkUrl = resolveSocialUrl(store?.tiktokUrl);
+  const tgUrl = resolveSocialUrl(store?.telegramUrl);
+  const liUrl = resolveSocialUrl(store?.linkedinUrl);
+  const twUrl = resolveSocialUrl(store?.twitterUrl);
+  const ytUrl = resolveSocialUrl(store?.youtubeUrl);
+  const pinUrl = resolveSocialUrl(store?.pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
 
   useEffect(() => {
     const load = async () => {
@@ -115,13 +124,16 @@ export default function ContactPage() {
             <p className="text-[13px] font-bold text-gray-800 mb-3">{t("storefront.followUs")}</p>
             <StoreSocialLinks
               urls={{
-                facebook: resolveSocialUrl(store?.facebookUrl),
-                instagram: resolveSocialUrl(store?.instagramUrl),
-                whatsapp: resolveSocialUrl(store?.whatsappUrl),
-                snapchat: resolveSocialUrl(store?.snapchatUrl),
-                tiktok: resolveSocialUrl(store?.tiktokUrl),
-                telegram: resolveSocialUrl(store?.telegramUrl),
-                linkedin: resolveSocialUrl(store?.linkedinUrl),
+                facebook: fbUrl,
+                instagram: igUrl,
+                whatsapp: waUrl,
+                snapchat: scUrl,
+                tiktok: tkUrl,
+                telegram: tgUrl,
+                linkedin: liUrl,
+                twitter: twUrl,
+                youtube: ytUrl,
+                pinterest: pinUrl,
               }}
               linkClassName="flex items-center justify-center rounded-xl transition-transform hover:scale-105"
               linkStyle={{ width: 40, height: 40, background: "#f3f4f6", color: "#374151" }}

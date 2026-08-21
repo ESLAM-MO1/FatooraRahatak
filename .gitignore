@@ -60,3 +60,6 @@ api-*.log
 api_stdout.log
 api_stderr.log
 dir
+# Local backup/copy folders (deployment staging)
+_temp_zip/
+update/

@@ -132,7 +132,7 @@ export default function NewVoucherPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="card p-5 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("voucher.date")}</label>
             <div className="field-shell">

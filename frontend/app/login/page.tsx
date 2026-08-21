@@ -51,7 +51,7 @@ export default function LoginPage() {
       });
       (window as any).google.accounts.id.renderButton(
         document.getElementById("googleBtn"),
-        { theme: "outline", size: "large", width: 400, text: "signin_with" }
+        { theme: "outline", size: "large", text: "signin_with" }
       );
     }
   }, []);
@@ -171,7 +171,7 @@ export default function LoginPage() {
             <span className="flex-1 h-px bg-[var(--border)]" />
           </div>
 
-          <div id="googleBtn" className="flex justify-center mb-4" />
+          <div id="googleBtn" className="w-full flex justify-center mb-4" />
 
           <p className="text-center text-[13.5px] text-[var(--sub)]">
             {t("auth.noAccount")}{" "}

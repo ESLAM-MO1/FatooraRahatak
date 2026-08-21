@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
@@ -38,6 +39,9 @@ interface SettlementSummary {
   hasBankDetails: boolean;
   bankDetails: BankDetails | null;
   batches: Batch[];
+  merchantAccountStatus: string;
+  verificationStatus: string;
+  isKycApproved: boolean;
 }
 
 const SETTLEMENT_STATUS_BADGE: Record<string, string> = {
@@ -96,10 +100,23 @@ export default function SettlementsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="wallet" title={t("nav.settlements")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("settlements.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="wallet" title={t("nav.settlements")} />
       {toast && <Toast message={toast.text} type={toast.type} onClose={() => setToast(null)} />}
+
+      {data && !data.isKycApproved && (
+        <div className="alert alert--warning flex items-center justify-between flex-wrap gap-2">
+          <span>{t("settlements.kycRequired")}</span>
+          <span className="flex items-center gap-2 flex-wrap">
+            <Link href="/dashboard/merchant-account" className="btn btn-outline btn-sm shrink-0">
+              {t("settlements.kycLinkAccount")}
+            </Link>
+            <span className="text-[12px] text-[var(--sub)]">{t("settlements.and")}</span>
+            <Link href="/dashboard/merchant-verification" className="btn btn-outline btn-sm shrink-0">
+              {t("settlements.kycLinkVerification")}
+            </Link>
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card p-5">

@@ -23,17 +23,28 @@ public class KpiController : ControllerBase
         return role == "SuperAdmin";
     }
 
-    private IActionResult CheckSuperAdmin()
+    // KPI dashboard is part of the Reports module - same access rule as
+    // AdminController's "Reports" module (SuperAdmin, or staff with Admin/Finance role).
+    private IActionResult? CheckAccess()
     {
-        if (!IsSuperAdmin())
+        if (IsSuperAdmin())
+            return null;
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        if (role != "SupportStaff")
             return Forbid();
-        return null!;
+
+        var staffRole = User.FindFirstValue("StaffRole");
+        if (staffRole != "Admin" && staffRole != "Finance")
+            return Forbid();
+
+        return null;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetKpis()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _kpiService.GetKpiDashboardAsync();
         return Ok(new { success = true, data });

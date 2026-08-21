@@ -43,6 +43,26 @@ public class AdminReferralDto
     public DateTime ReferredAt { get; set; }
     public bool HasConverted { get; set; }
     public DateTime? ConvertedAt { get; set; }
+    public string Status { get; set; } = "Pending";
+    public DateTime? ReviewedAt { get; set; }
+    public string? ReviewedByName { get; set; }
+    public string? AdminNote { get; set; }
+}
+
+public class ReviewReferralDto
+{
+    public bool Approve { get; set; }
+    public string? Note { get; set; }
+}
+
+public class UpdateCommissionRateDto
+{
+    public decimal Rate { get; set; }
+}
+
+public class ReferralSettingsDto
+{
+    public decimal DefaultCommissionRate { get; set; }
 }
 
 public class AdminCommissionDto
@@ -60,33 +80,4 @@ public class AdminCommissionDto
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? PaidAt { get; set; }
-}
-
-public class MyWithdrawalDto
-{
-    public long Id { get; set; }
-    public decimal Amount { get; set; }
-    public string Currency { get; set; } = "SAR";
-    public string Status { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? ProcessedAt { get; set; }
-    public string? AdminNote { get; set; }
-}
-
-public class AdminWithdrawalDto : MyWithdrawalDto
-{
-    public long UserId { get; set; }
-    public string UserName { get; set; } = string.Empty;
-    public string UserEmail { get; set; } = string.Empty;
-}
-
-public class CreateWithdrawalDto
-{
-    public decimal Amount { get; set; }
-}
-
-public class ProcessWithdrawalDto
-{
-    public bool Approve { get; set; }
-    public string? Note { get; set; }
 }

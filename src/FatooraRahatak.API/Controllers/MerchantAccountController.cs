@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Application.DTOs.Merchant;
+using FatooraRahatak.Infrastructure.Helpers;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -32,6 +33,16 @@ public class MerchantAccountController : ControllerBase
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
         var data = await _accountService.GetByStoreAsync(storeId.Value);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("kyc-status")]
+    public async Task<IActionResult> GetMyKycStatus()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var data = await _accountService.GetMerchantKycStatusAsync(storeId.Value);
         return Ok(new { success = true, data });
     }
 
@@ -67,6 +78,20 @@ public class MerchantAccountController : ControllerBase
             if (file.Length > 2 * 1024 * 1024)
                 return BadRequest(new { success = false, message = "حجم الملف يتجاوز 2 ميجابايت" });
 
+            // تحقق من التوقيع الحقيقي للملف (Magic Bytes) قبل الحفظ
+            using var memoryStream = new MemoryStream();
+            await file.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var header = new byte[12];
+            var headerRead = memoryStream.Read(header, 0, header.Length);
+            var headerBytes = headerRead < header.Length
+                ? header.Take(headerRead).ToArray()
+                : header;
+
+            if (!FileSignatureValidator.MatchesExtension(headerBytes, ext))
+                return BadRequest(new { success = false, message = "الملف لا يطابق الصيغة المعلنة. تأكد أن الملف صورة حقيقية (PNG أو JPG)" });
+
             var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "merchant-accounts");
             Directory.CreateDirectory(uploadsDir);
 
@@ -75,7 +100,8 @@ public class MerchantAccountController : ControllerBase
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(stream);
+                memoryStream.Position = 0;
+                await memoryStream.CopyToAsync(stream);
             }
 
             var relative = $"/uploads/merchant-accounts/{uploadFileName}";

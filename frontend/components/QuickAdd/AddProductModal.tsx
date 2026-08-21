@@ -81,19 +81,19 @@ export default function AddProductModal({ onClose, onSuccess }: Props) {
               {categories.map(c => <option key={c.id} value={c.id}>{c.nameAr}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field-shell"><input type="text" value={form.nameAr} onChange={set("nameAr")} required placeholder={t("product.nameAr")} /></div>
             <div className="field-shell"><input type="text" value={form.nameEn} onChange={set("nameEn")} placeholder={t("product.nameEn")} /></div>
           </div>
           <div className="field-shell items-start"><textarea rows={2} value={form.descriptionAr} onChange={set("descriptionAr")} placeholder={t("product.descriptionAr")} /></div>
           <div className="field-shell items-start" dir="ltr"><textarea rows={2} value={form.descriptionEn} onChange={set("descriptionEn")} placeholder={t("product.descriptionEn")} /></div>
           <div className="field-shell"><input type="text" value={form.barcode} onChange={set("barcode")} placeholder={t("product.barcode")} /></div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="field-shell"><input type="number" min={0} step="0.01" value={form.basePrice} onChange={set("basePrice")} required placeholder={t("product.basePrice")} /></div>
             <div className="field-shell"><input type="number" min={0} step="0.01" value={form.discountPrice} onChange={set("discountPrice")} placeholder={t("product.discountPrice")} /></div>
             <div className="field-shell"><input type="number" min={0} step="0.01" value={form.costPrice} onChange={set("costPrice")} placeholder={t("product.costPrice")} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field-shell"><input type="number" min={0} step="0.01" value={form.weight} onChange={set("weight")} placeholder={t("product.weight")} /></div>
           </div>
           <div className="flex gap-3 mt-4">

@@ -10,7 +10,6 @@ import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import SuccessToast from "@/components/SuccessToast";
-import InfoTooltip from "@/components/InfoTooltip";
 import Can from "@/components/Can";
 
 interface Account {
@@ -276,7 +275,7 @@ export default function AccountsPage() {
 
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="card p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">
               {editingId ? t("accounts.editAccount") : t("accounts.addAccount")}
             </h2><button onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
@@ -285,7 +284,7 @@ export default function AccountsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.accountCode")}<InfoTooltip messageKey="accounts.accountCodeTooltip" /></label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.accountCode")}</label>
                 <div className="field-shell">
                   <input
                     type="text"
@@ -310,7 +309,7 @@ export default function AccountsPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.accountType")}<InfoTooltip messageKey="accounts.accountTypeTooltip" /></label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.accountType")}</label>
                 <div className="field-shell">
                   <select
                     value={form.accountType}
@@ -326,7 +325,7 @@ export default function AccountsPage() {
               </div>
 
               <div>
-                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.parentAccount")}<InfoTooltip messageKey="accounts.parentAccountTooltip" /></label>
+                <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5 flex items-center gap-1.5">{t("accounts.parentAccount")}</label>
                 <div className="field-shell">
                   <select
                     value={form.parentAccountId}

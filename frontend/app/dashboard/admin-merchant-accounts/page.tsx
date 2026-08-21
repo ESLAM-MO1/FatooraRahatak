@@ -36,9 +36,11 @@ interface AdminMerchantAccount {
   submittedAt: string | null;
   reviewedAt: string | null;
   reviewedByName: string | null;
+  suspensionReason: string | null;
+  suspendedAt: string | null;
 }
 
-type Filter = "all" | "NotSubmitted" | "Pending" | "Approved" | "Rejected";
+type Filter = "all" | "NotSubmitted" | "Pending" | "Approved" | "Rejected" | "Suspended";
 
 export default function AdminMerchantAccountsPage() {
   const { t } = useTranslation();
@@ -51,6 +53,7 @@ export default function AdminMerchantAccountsPage() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [rejectNote, setRejectNote] = useState<{ id: number; note: string } | null>(null);
+  const [suspendNote, setSuspendNote] = useState<{ id: number; note: string } | null>(null);
 
   const load = async (f: Filter = filter) => {
     setLoading(true);
@@ -71,16 +74,16 @@ export default function AdminMerchantAccountsPage() {
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const statusBadge = (status: string) =>
-    status === "Approved" ? "badge--green" : status === "Rejected" ? "badge--red" : status === "Pending" ? "badge--yellow" : "badge--blue";
+    status === "Approved" ? "badge--green" : status === "Rejected" ? "badge--red" : status === "Pending" ? "badge--yellow" : status === "Suspended" ? "badge--gray" : "badge--blue";
 
   const statusLabel = (status: string) =>
     status === "Approved" ? t("adminMerchantAccounts.statusApproved")
       : status === "Rejected" ? t("adminMerchantAccounts.statusRejected")
       : status === "Pending" ? t("adminMerchantAccounts.statusPending")
+      : status === "Suspended" ? t("adminMerchantAccounts.statusSuspended")
       : t("adminMerchantAccounts.statusNotSubmitted");
 
-  const handleReview = async (v: AdminMerchantAccount, approve: boolean) => {
-    let rejectionReason: string | undefined;
+  const handleReview = async (v: AdminMerchantAccount, approve: boolean) => {    let rejectionReason: string | undefined;
     if (!approve) {
       if (rejectNote?.id !== v.id) {
         setRejectNote({ id: v.id, note: "" });
@@ -110,19 +113,70 @@ export default function AdminMerchantAccountsPage() {
     }
   };
 
+  const handleSuspend = async (v: AdminMerchantAccount) => {
+    if (suspendNote?.id !== v.id) {
+      setSuspendNote({ id: v.id, note: "" });
+      return;
+    }
+    if (!suspendNote.note.trim()) {
+      setError(t("adminMerchantAccounts.suspendReasonRequired"));
+      return;
+    }
+    const ok = await confirm({
+      title: t("adminMerchantAccounts.suspend"),
+      message: `${v.storeName} — ${v.ownerName}`,
+      confirmLabel: t("common.confirm"),
+      danger: true,
+    });
+    if (!ok) return;
+    setProcessingId(v.id);
+    setError("");
+    setSuccess("");
+    try {
+      await api.put(`/admin/merchant-accounts/${v.id}/suspend`, { reason: suspendNote.note.trim() });
+      setSuccess(t("adminMerchantAccounts.suspended"));
+      setSuspendNote(null);
+      await load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("adminMerchantAccounts.actionError"));
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleActivate = async (v: AdminMerchantAccount) => {
+    const ok = await confirm({
+      title: t("adminMerchantAccounts.activate"),
+      message: `${v.storeName} — ${v.ownerName}`,
+      confirmLabel: t("common.confirm"),
+      danger: false,
+    });
+    if (!ok) return;
+    setProcessingId(v.id);
+    setError("");
+    setSuccess("");
+    try {
+      await api.put(`/admin/merchant-accounts/${v.id}/activate`);
+      setSuccess(t("adminMerchantAccounts.activated"));
+      await load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("adminMerchantAccounts.actionError"));
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   if (loading && rows.length === 0) return <LoadingState />;
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="store" title={t("adminMerchantAccounts.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("adminMerchantAccounts.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="store" title={t("adminMerchantAccounts.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
       <SuccessToast message={success} fixed className="mb-4" />
 
       <div className="flex items-center gap-2 flex-wrap">
-        {(["all", "Pending", "Approved", "Rejected", "NotSubmitted"] as Filter[]).map((f) => (
+        {(["all", "Pending", "Approved", "Rejected", "Suspended", "NotSubmitted"] as Filter[]).map((f) => (
           <button
             key={f}
             type="button"
@@ -141,7 +195,7 @@ export default function AdminMerchantAccountsPage() {
       ) : (
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-[13px] hidden md:table">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="text-right p-3 text-[var(--sub)]">{t("adminMerchantAccounts.store")}</th>
@@ -207,6 +261,37 @@ export default function AdminMerchantAccountsPage() {
                               </button>
                             </>
                           )}
+                          {v.status === "Suspended" && (
+                            <button
+                              type="button"
+                              onClick={() => handleActivate(v)}
+                              disabled={processingId === v.id}
+                              className="btn btn-outline btn-sm"
+                            >
+                              {t("adminMerchantAccounts.activate")}
+                            </button>
+                          )}
+                          {(v.status === "Approved" || v.status === "Suspended") && (
+                            <>
+                              {suspendNote?.id === v.id && (
+                                <input
+                                  type="text"
+                                  value={suspendNote.note}
+                                  onChange={(e) => setSuspendNote({ id: v.id, note: e.target.value })}
+                                  placeholder={t("adminMerchantAccounts.suspendReasonPlaceholder")}
+                                  className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-36"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleSuspend(v)}
+                                disabled={processingId === v.id}
+                                className="btn btn-outline btn-sm text-red-500"
+                              >
+                                {t("adminMerchantAccounts.suspend")}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -216,6 +301,11 @@ export default function AdminMerchantAccountsPage() {
                           {v.rejectionReason && (
                             <p className="text-[12px] text-[var(--danger)] mb-3">
                               {t("adminMerchantAccounts.rejectionReason")}: {v.rejectionReason}
+                            </p>
+                          )}
+                          {v.suspensionReason && (
+                            <p className="text-[12px] text-[var(--danger)] mb-3">
+                              {t("adminMerchantAccounts.suspensionReason")}: {v.suspensionReason}
                             </p>
                           )}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-[12px]">
@@ -271,6 +361,161 @@ export default function AdminMerchantAccountsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="md:hidden space-y-3">
+            {rows.map((v) => (
+              <div key={v.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminMerchantAccounts.store")}</p>
+                    <p className="font-bold text-[var(--ink)]">{v.brandName || v.storeName}</p>
+                    <p className="text-[11px] text-[var(--sub)]" dir="ltr">/{v.storeSlug}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminMerchantAccounts.owner")}</p>
+                    <p className="font-bold text-[var(--ink)]">{v.ownerName}</p>
+                    <p className="text-[11px] text-[var(--sub)]" dir="ltr">{v.ownerEmail}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminMerchantAccounts.status")}</p>
+                    <span className={`badge ${statusBadge(v.status)}`}>{statusLabel(v.status)}</span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminMerchantAccounts.date")}</p>
+                    <p className="text-[var(--sub)]">
+                      {v.submittedAt ? new Date(v.submittedAt).toLocaleDateString() : "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}
+                    className="btn btn-outline btn-sm"
+                  >
+                    {t("adminMerchantAccounts.view")}
+                  </button>
+                  {v.status === "Pending" && (
+                    <>
+                      {rejectNote?.id === v.id && (
+                        <input
+                          type="text"
+                          value={rejectNote.note}
+                          onChange={(e) => setRejectNote({ id: v.id, note: e.target.value })}
+                          placeholder={t("adminMerchantAccounts.reasonPlaceholder")}
+                          className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-full sm:w-40"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleReview(v, true)}
+                        disabled={processingId === v.id}
+                        className="btn btn-outline btn-sm"
+                      >
+                        {t("adminMerchantAccounts.approve")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReview(v, false)}
+                        disabled={processingId === v.id}
+                        className="btn btn-outline btn-sm"
+                      >
+                        {t("adminMerchantAccounts.reject")}
+                      </button>
+                    </>
+                  )}
+                  {v.status === "Suspended" && (
+                    <button
+                      type="button"
+                      onClick={() => handleActivate(v)}
+                      disabled={processingId === v.id}
+                      className="btn btn-outline btn-sm"
+                    >
+                      {t("adminMerchantAccounts.activate")}
+                    </button>
+                  )}
+                  {(v.status === "Approved" || v.status === "Suspended") && (
+                    <>
+                      {suspendNote?.id === v.id && (
+                        <input
+                          type="text"
+                          value={suspendNote.note}
+                          onChange={(e) => setSuspendNote({ id: v.id, note: e.target.value })}
+                          placeholder={t("adminMerchantAccounts.suspendReasonPlaceholder")}
+                          className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-full sm:w-40"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSuspend(v)}
+                        disabled={processingId === v.id}
+                        className="btn btn-outline btn-sm text-red-500"
+                      >
+                        {t("adminMerchantAccounts.suspend")}
+                      </button>
+                    </>
+                  )}
+                </div>
+                {expandedId === v.id && (
+                  <div className="pt-2 border-t border-gray-100 space-y-2 text-[12px]">
+                    {v.rejectionReason && (
+                      <p className="text-[12px] text-[var(--danger)]">
+                        {t("adminMerchantAccounts.rejectionReason")}: {v.rejectionReason}
+                      </p>
+                    )}
+                    {v.suspensionReason && (
+                      <p className="text-[12px] text-[var(--danger)]">
+                        {t("adminMerchantAccounts.suspensionReason")}: {v.suspensionReason}
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      <p className="font-bold text-[var(--sub)]">{t("adminMerchantAccounts.sectionBrand")}</p>
+                      {v.logoPath && (
+                        <img
+                          src={v.logoPath}
+                          alt={v.brandName}
+                          className="w-16 h-16 object-contain border border-gray-200 rounded-lg bg-white p-1"
+                        />
+                      )}
+                      <p className="text-[var(--ink)]">{v.brandName}</p>
+                      <p className="text-[var(--sub)] break-all" dir="ltr">{v.websiteUrl || "—"}</p>
+                      <p className="text-[var(--ink)]">{v.legalName}</p>
+                      <p className="text-[var(--sub)]">{v.licenseType} — {v.licenseNumber}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="font-bold text-[var(--sub)]">{t("adminMerchantAccounts.sectionOwner")}</p>
+                      <p className="text-[var(--ink)]">{v.ownerFirstName} {v.ownerMiddleName || ""} {v.ownerLastName}</p>
+                      <p className="text-[var(--sub)]" dir="ltr">+{v.ownerCountryCode} {v.ownerPhone}</p>
+                      {v.birthDate && <p className="text-[var(--sub)]">{new Date(v.birthDate).toLocaleDateString()}</p>}
+                      {v.nationalIdNumber && <p className="text-[var(--sub)]" dir="ltr">{v.nationalIdNumber}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="font-bold text-[var(--sub)]">{t("adminMerchantAccounts.sectionAddress")}</p>
+                      <p className="text-[var(--ink)]">{v.addressCountry} — {v.addressCity}</p>
+                      {v.reviewedAt && (
+                        <p className="text-[var(--sub)]">
+                          {t("adminMerchantAccounts.reviewedAt")}: {new Date(v.reviewedAt).toLocaleDateString()}
+                          {v.reviewedByName ? ` (${v.reviewedByName})` : ""}
+                        </p>
+                      )}
+                    </div>
+                    {v.status === "Pending" && (
+                      <div className="flex items-center gap-2 w-full">
+                        {rejectNote?.id === v.id && (
+                          <input
+                            type="text"
+                            value={rejectNote.note}
+                            onChange={(e) => setRejectNote({ id: v.id, note: e.target.value })}
+                            placeholder={t("adminMerchantAccounts.reasonPlaceholder")}
+                            className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] flex-1"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { isAuthenticated, getUserType, logout } from "@/lib/auth";
+import { isAuthenticated, getUserType, getStaffRole, logout } from "@/lib/auth";
 import { loadPermissions, savePermissions } from "@/lib/permissions";
 import GlobalSearch from "@/components/GlobalSearch";
 import Icon, { ICONS } from "@/components/Icon";
 import QuickAddManager, { QuickAddType } from "@/components/QuickAdd";
 import UpgradeModal from "@/components/UpgradeModal";
+import PageHelp from "@/components/PageHelp";
 
 import api from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -29,6 +30,7 @@ const ownerNavKeys: NavGroupKey[] = [
       { href: "/dashboard/categories", labelKey: "nav.categories", icon: "tag", perm: "Categories.View" },
       { href: "/dashboard/coupons", labelKey: "nav.coupons", icon: "tag", perm: "Coupons.View" },
       { href: "/dashboard/store-settings", labelKey: "nav.storeSettings", icon: "settings", perm: "StoreSettings.View" },
+      { href: "/dashboard/marketing", labelKey: "nav.marketing", icon: "share", perm: "StoreSettings.View" },
     ],
   },
   {
@@ -79,7 +81,6 @@ const ownerNavKeys: NavGroupKey[] = [
     items: [
       { href: "/dashboard/subscription", labelKey: "nav.subscription", icon: "crown", perm: "SubscriptionPackage.View" },
       { href: "/dashboard/transactions", labelKey: "nav.transactions", icon: "card", perm: "Payments.View" },
-      { href: "/dashboard/payment-account", labelKey: "nav.paymentAccount", icon: "wallet", perm: "Payments.View" },
       { href: "/dashboard/settlements", labelKey: "nav.settlements", icon: "wallet", perm: "Payments.View" },
       { href: "/dashboard/referrals", labelKey: "nav.referrals", icon: "share", perm: "Referrals.View" },
       { href: "/dashboard/merchant-account", labelKey: "nav.merchantAccount", icon: "user" },
@@ -115,9 +116,68 @@ const employeeNavKeys: NavGroupKey[] = [
   },
 ];
 
-const supportStaffNavKeys: NavGroupKey[] = [
-  { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
-];
+// Platform staff (UserType.SupportStaff) only ever see the modules their
+// specific StaffRole is granted on the backend (see AdminController.ModuleAccess,
+// plus DomainController/KpiController). This mirrors that matrix exactly so the
+// menu never shows a link the API would reject with 403.
+const STAFF_MODULE_NAV: Record<string, NavItemKey[]> = {
+  Stores: [{ href: "/dashboard/stores", labelKey: "nav.stores", icon: "store" }],
+  Packages: [{ href: "/dashboard/packages", labelKey: "nav.packages", icon: "package" }],
+  Users: [{ href: "/dashboard/users", labelKey: "nav.users", icon: "userGroup" }],
+  Reports: [
+    { href: "/dashboard/reports", labelKey: "nav.reports", icon: "chart" },
+    { href: "/dashboard/kpis", labelKey: "nav.kpis", icon: "chart" },
+  ],
+  Billing: [{ href: "/dashboard/admin-settlements", labelKey: "nav.settlements", icon: "wallet" }],
+  Notifications: [{ href: "/dashboard/users", labelKey: "nav.users", icon: "userGroup" }],
+  Settings: [{ href: "/dashboard/settings", labelKey: "nav.settings", icon: "settings" }],
+  SiteContent: [
+    { href: "/dashboard/site-content", labelKey: "nav.siteContent", icon: "settings" },
+    { href: "/dashboard/dashboard-sections", labelKey: "nav.dashboardSections", icon: "layout" },
+    { href: "/dashboard/site-menus", labelKey: "nav.siteMenus", icon: "layers" },
+    { href: "/dashboard/blog", labelKey: "nav.blog", icon: "edit" },
+    { href: "/dashboard/careers", labelKey: "nav.careers", icon: "users" },
+    { href: "/dashboard/academy", labelKey: "nav.academy", icon: "star" },
+    { href: "/dashboard/design-requests", labelKey: "nav.designRequests", icon: "palette" },
+    { href: "/dashboard/themes", labelKey: "nav.themes", icon: "layers" },
+  ],
+  SupportOps: [
+    { href: "/dashboard/admin-verifications", labelKey: "nav.adminVerifications", icon: "clipboard" },
+    { href: "/dashboard/stores", labelKey: "nav.stores", icon: "store" },
+  ],
+  Finance: [
+    { href: "/dashboard/admin-merchant-accounts", labelKey: "nav.adminMerchantAccounts", icon: "store" },
+    { href: "/dashboard/admin-referrals", labelKey: "nav.referrals", icon: "share" },
+  ],
+  Domains: [{ href: "/dashboard/domains", labelKey: "nav.domains", icon: "settings" }],
+};
+
+// Which modules each StaffRole can see - must stay in sync with the backend's
+// ModuleAccess table in AdminController (and DomainController/KpiController).
+const STAFF_ROLE_MODULES: Record<string, string[]> = {
+  Admin: ["Stores", "Packages", "Users", "Reports", "Billing", "Notifications", "Settings", "SiteContent", "SupportOps", "Finance", "Domains"],
+  Support: ["Stores", "Users", "Notifications", "SupportOps"],
+  Finance: ["Packages", "Reports", "Billing", "Finance"],
+  Technical: ["Settings", "SiteContent", "Domains"],
+};
+
+function getSupportStaffNavKeys(staffRole: string | null): NavGroupKey[] {
+  const modules = (staffRole && STAFF_ROLE_MODULES[staffRole]) || [];
+  const seen = new Set<string>();
+  const items: NavItemKey[] = [];
+  modules.forEach((mod) => {
+    (STAFF_MODULE_NAV[mod] || []).forEach((item) => {
+      if (!seen.has(item.href)) {
+        seen.add(item.href);
+        items.push(item);
+      }
+    });
+  });
+  return [
+    { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
+    ...(items.length > 0 ? [{ titleKey: "nav.platform", items }] : []),
+  ];
+}
 
 const superAdminNavKeys: NavGroupKey[] = [
   { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home" }] },
@@ -175,6 +235,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [userType, setUserType] = useState<string | null>(null);
+  const [staffRole, setStaffRole] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -243,6 +304,7 @@ export default function DashboardLayout({
       return;
     }
     setUserType(getUserType());
+    setStaffRole(getStaffRole());
     setFullName(localStorage.getItem("fullName") || "");
     setEmail(localStorage.getItem("email") || "");
     setProfileImage(
@@ -265,6 +327,11 @@ export default function DashboardLayout({
       if (Array.isArray(d.permissions)) {
         savePermissions(d.permissions);
         setPermissions(d.permissions);
+      }
+      if (typeof d.staffRole !== "undefined") {
+        if (d.staffRole) localStorage.setItem("staffRole", d.staffRole);
+        else localStorage.removeItem("staffRole");
+        setStaffRole(d.staffRole || null);
       }
     }).catch(() => {});
   }, [ready]);
@@ -342,7 +409,16 @@ const handler = () => {
   const routePerm = pathname ? [...permByHref.entries()]
     .filter(([href]) => href !== "/dashboard" && pathname.startsWith(href))
     .sort((a, b) => b[0].length - a[0].length)[0]?.[1] : undefined;
-  const deniedAsStaff = isSupportStaff && !(pathname === "/dashboard" || pathname === "/dashboard/profile");
+  const staffAllowedHrefs = new Set(
+    getSupportStaffNavKeys(staffRole).flatMap((g) => g.items.map((it) => it.href))
+  );
+  const deniedAsStaff =
+    isSupportStaff &&
+    !(
+      pathname === "/dashboard" ||
+      pathname === "/dashboard/profile" ||
+      [...staffAllowedHrefs].some((href) => href !== "/dashboard" && pathname?.startsWith(href))
+    );
   const routeDenied = deniedAsStaff || (isEmployee && routePerm ? !permissions.includes(routePerm) : false);
 
   useEffect(() => {
@@ -371,7 +447,7 @@ const handler = () => {
       }))
       .filter((g) => g.items.length > 0);
   const groups = [
-    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isSupportStaff ? supportStaffNavKeys : isEmployee ? employeeNavKeys : ownerNavKeys),
+    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isSupportStaff ? getSupportStaffNavKeys(staffRole) : isEmployee ? employeeNavKeys : ownerNavKeys),
     ...customNavGroups
       .map(g => ({ ...g, items: g.items.filter(item => hasPerm(item.perm)) }))
       .filter(g => g.items.length > 0),
@@ -525,7 +601,7 @@ const handler = () => {
                         <button
                           onClick={() => setQuickAddType(item.quickAdd!)}
                           title={t("common.add")}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-[#C9A227] hover:bg-[#C9A227]/20 transition-colors shrink-0"
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-[#C9A227] hover:bg-[#C9A227]/20 transition-colors shrink-0"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 5v14M5 12h14" />
@@ -639,7 +715,7 @@ const handler = () => {
               </div>
               <button
                 onClick={() => setMobileSidebarOpen(false)}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#9ca3af] hover:text-[#F5F5F5] hover:bg-white/10 transition-colors"
+                className="w-9 h-9 rounded-lg flex items-center justify-center text-[#9ca3af] hover:text-[#F5F5F5] hover:bg-white/10 transition-colors"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M18 6L6 18M6 6l12 12" />
@@ -899,6 +975,7 @@ const handler = () => {
       />
 
       <UpgradeModal />
+      <PageHelp />
     </div>
   );
 }

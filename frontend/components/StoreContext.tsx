@@ -12,6 +12,7 @@ export interface StoreTrustBadge {
 }
 
 export interface StoreData {
+  id: number;
   storeName: string;
   storeSlug: string;
   isOnline: boolean;
@@ -33,7 +34,12 @@ export interface StoreData {
   tiktokUrl: string | null;
   telegramUrl: string | null;
   linkedinUrl: string | null;
+  twitterUrl: string | null;
+  youtubeUrl: string | null;
+  pinterestUrl: string | null;
   returnPolicyText: string | null;
+  menuConfigJson: string | null;
+  storePagesJson: string | null;
   shippingMethods: StoreMethodInfo[];
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;

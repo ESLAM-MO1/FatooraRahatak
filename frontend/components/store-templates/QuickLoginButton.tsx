@@ -138,7 +138,7 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
     <>
       <button type="button" onClick={openModal} className="shrink-0" style={btnStyle} aria-label={t("storefront.quickLogin")}>
         <span style={{ fontSize: compact ? 13 : 15 }}><UserIcon size={compact ? 14 : 16} /></span>
-        <span className="max-w-[90px] truncate">{customer ? customer.fullName : t("storefront.quickLogin")}</span>
+        <span className="hidden sm:inline max-w-[90px] truncate">{customer ? customer.fullName : t("storefront.quickLogin")}</span>
       </button>
 
       {open && (
@@ -146,7 +146,7 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl" style={{ maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[16px] font-bold" style={{ color: "#0F172A" }}>{t("storefront.quickLogin")}</h3>
-              <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-[20px] leading-none">×</button>
+              <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-[20px] leading-none w-9 h-9 flex items-center justify-center rounded-full">×</button>
             </div>
 
             {step === "phone" && (

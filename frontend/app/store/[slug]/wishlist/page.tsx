@@ -120,8 +120,8 @@ export default function WishlistPage() {
       ) : (
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100">
           {products.map((product) => (
-            <div key={product.id} className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4 min-w-0">
+            <div key={product.id} className="p-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+              <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto sm:flex-1">
                 {product.primaryImageUrl ? (
                   <img
                     src={product.primaryImageUrl}

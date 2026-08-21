@@ -11,4 +11,8 @@ public interface IMerchantVerificationService
     Task<List<AdminVerificationDto>> GetAllVerificationsAsync(string? status = null);
     Task<AdminVerificationDto?> GetAdminVerificationAsync(long id);
     Task ProcessVerificationAsync(long id, ReviewVerificationDto dto, long adminUserId);
+    Task ReviewDocumentAsync(long verificationId, long documentId, ReviewDocumentDto dto, long adminUserId);
+
+    /// <summary>بيانات ملف مستند توثيق للتحميل عبر endpoint محمي.</summary>
+    Task<MerchantDocumentFileDto?> GetDocumentFileAsync(long documentId);
 }

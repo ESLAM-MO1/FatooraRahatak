@@ -275,7 +275,7 @@ export default function AcademyAdminPage() {
       <p className="mb-5 text-[13px]" style={{ color: "var(--sub)" }}>{t("academy.pageIntro")}</p>
       {message && <Toast message={message.text} type={message.type} fixed />}
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <button className={`btn ${tab === "courses" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("courses")}>{t("academy.courses")} ({courses.length})</button>
         <button className={`btn ${tab === "lessons" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("lessons")}>{t("academy.lessons")}</button>
         <button className={`btn ${tab === "enrollments" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("enrollments")}>{t("academy.enrollments")} ({enrollments.length})</button>
@@ -294,7 +294,7 @@ export default function AcademyAdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sorted.map(c => (
               <div key={c.id} className="card p-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--ink)" }}>{i18nText(c.titleAr, c.titleEn)}</p>
                     <p className="text-[11.5px] text-[var(--sub)] truncate">{categoryLabel(c.category)} · {c.level} · {c.duration} · {c.lessonsCount || 0} {t("academy.lessonCount")}</p>
@@ -375,7 +375,7 @@ export default function AcademyAdminPage() {
               {editingId ? t("academy.editCourse") : t("academy.addCourse")}
             </h3>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.titleAr")}</label>
                   <div className="field-shell"><input type="text" value={form.titleAr} onChange={e => setForm({ ...form, titleAr: e.target.value })} /></div>
@@ -393,7 +393,7 @@ export default function AcademyAdminPage() {
                 <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.descriptionEn")}</label>
                 <div className="field-shell"><textarea rows={3} dir="ltr" value={form.descriptionEn} onChange={e => setForm({ ...form, descriptionEn: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.category")}</label>
                   <select className="w-full border rounded-lg px-3 py-2 text-[13px]" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
@@ -411,10 +411,10 @@ export default function AcademyAdminPage() {
                   <div className="field-shell"><input type="text" dir="ltr" value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} placeholder="10 hrs" /></div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.sortOrder")}</label>
-                  <div className="field-shell"><input type="number" min={1} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) || 1 })} /></div>
+                  <div className="field-shell"><input type="number" min={0} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
                 </div>
                 <label className="flex items-center gap-2 text-[13px] font-bold cursor-pointer pt-6">
                   <input type="checkbox" checked={form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
@@ -439,7 +439,7 @@ export default function AcademyAdminPage() {
               {editingLessonId ? t("academy.editLesson") : t("academy.addLesson")}
             </h3>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.lessonTitleAr")}</label>
                   <div className="field-shell"><input type="text" value={lessonForm.titleAr} onChange={e => setLessonForm({ ...lessonForm, titleAr: e.target.value })} /></div>
@@ -461,10 +461,10 @@ export default function AcademyAdminPage() {
                 <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.videoUrl")}</label>
                 <div className="field-shell"><input type="text" dir="ltr" value={lessonForm.videoUrl} onChange={e => setLessonForm({ ...lessonForm, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=..." /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.sortOrder")}</label>
-                  <div className="field-shell"><input type="number" min={1} value={lessonForm.sortOrder} onChange={e => setLessonForm({ ...lessonForm, sortOrder: Number(e.target.value) || 1 })} /></div>
+                  <div className="field-shell"><input type="number" min={0} value={lessonForm.sortOrder} onChange={e => setLessonForm({ ...lessonForm, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
                 </div>
                 <label className="flex items-center gap-2 text-[13px] font-bold cursor-pointer pt-6">
                   <input type="checkbox" checked={lessonForm.isActive} onChange={e => setLessonForm({ ...lessonForm, isActive: e.target.checked })} />

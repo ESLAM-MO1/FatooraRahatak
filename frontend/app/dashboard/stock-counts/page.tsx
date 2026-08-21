@@ -139,8 +139,9 @@ export default function StockCountsPage() {
         {counts.length === 0 ? (
           <p className="p-5 text-[var(--sub)] text-sm">{t("stockCount.noCounts")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm mt-3">
+            <table className="w-full text-sm mt-3 hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("stockCount.warehouseCol")}</th>
@@ -173,11 +174,47 @@ export default function StockCountsPage() {
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden space-y-3">
+              {counts.map((c) => (
+                <div key={c.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("stockCount.warehouseCol")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium">{c.warehouseName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("stockCount.itemsCount")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{c.itemsCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("stockCount.statusCol")}</p>
+                      <span className={countStatusStyles[c.status] ?? "badge badge--gray"}>
+                        {countStatusLabel(c.status)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("stockCount.dateCol")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{new Date(c.createdAt).toLocaleString("ar-SA-u-nu-latn")}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <a
+                      href={`/dashboard/stock-counts/${c.id}`}
+                      className="text-[var(--blue)] hover:underline text-[13px] font-medium"
+                    >
+                      {t("stockCount.viewDetails")}
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
   );
 }

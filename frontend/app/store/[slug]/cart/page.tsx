@@ -217,8 +217,8 @@ export default function CartPage() {
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100 mb-6">
             {cart.items.map((item) => (
-              <div key={item.id} className="p-4 flex items-center justify-between gap-4">
-                <div className="flex-1">
+              <div key={item.id} className="p-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                <div className="w-full sm:w-auto sm:flex-1 min-w-0">
                   <p className="text-gray-800 font-medium">{item.productNameAr}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     {t("cart.pricePerUnit", { price: item.priceAtAdd.toFixed(2) })}
@@ -229,7 +229,7 @@ export default function CartPage() {
                   <button
                     onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                     disabled={updatingItemId === item.id || item.quantity <= 1}
-                    className="w-8 h-8 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+                    className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
                   >
                     −
                   </button>
@@ -237,7 +237,7 @@ export default function CartPage() {
                   <button
                     onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                     disabled={updatingItemId === item.id}
-                    className="w-8 h-8 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+                    className="w-9 h-9 flex items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
                   >
                     +
                   </button>

@@ -26,8 +26,9 @@ public class OrderService : IOrderService
     private readonly IPaymentService _paymentService;
     private readonly IOrderStockService _orderStockService;
     private readonly IConfiguration _config;
+    private readonly IConversionTrackingService _conversionTrackingService;
 
-    public OrderService(AppDbContext context, INotificationService notificationService, ICustomerNotificationService customerNotificationService, IAccountingService accountingService, IPaymentService paymentService, IOrderStockService orderStockService, IConfiguration config)
+    public OrderService(AppDbContext context, INotificationService notificationService, ICustomerNotificationService customerNotificationService, IAccountingService accountingService, IPaymentService paymentService, IOrderStockService orderStockService, IConfiguration config, IConversionTrackingService conversionTrackingService)
     {
         _context = context;
         _notificationService = notificationService;
@@ -36,6 +37,7 @@ public class OrderService : IOrderService
         _paymentService = paymentService;
         _orderStockService = orderStockService;
         _config = config;
+        _conversionTrackingService = conversionTrackingService;
     }
 
     public async Task<OrderConfirmationDto> CheckoutAsync(string slug, long? customerId, CheckoutRequestDto dto)
@@ -285,7 +287,9 @@ public class OrderService : IOrderService
                 CouponId = appliedCoupon?.Id,
                 Notes = dto.Notes,
                 ShippingMethodType = shippingMethod,
-                PaymentMethodType = paymentMethod
+                PaymentMethodType = paymentMethod,
+                MarketingSource = string.IsNullOrWhiteSpace(dto.MarketingSource) ? null : dto.MarketingSource.Trim(),
+                MarketingCampaignName = string.IsNullOrWhiteSpace(dto.MarketingCampaign) ? null : dto.MarketingCampaign.Trim()
             };
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
@@ -432,6 +436,29 @@ public class OrderService : IOrderService
                 {
                     await _customerNotificationService.SendOrderCreatedNotificationAsync(store, order);
                 }
+            }
+            catch { }
+
+            // ⚠️ إضافة (تتبع التحويلات من السيرفر): إرسال حدث "شراء" لـ Meta Conversions API و/أو
+            // GA4 Measurement Protocol لو التاجر مفعّل تتبع السيرفر على قناة فيسبوك بيكسل/جوجل أناليتكس.
+            // بيشتغل بالتوازي مع بيكسل المتصفح (event_id = رقم الطلب) لمنع الاحتساب المزدوج.
+            try
+            {
+                string? trackCustomerEmail = order.GuestEmail;
+                string? trackCustomerPhone = order.GuestPhone;
+                if (order.CustomerId != null)
+                {
+                    var trackCustomer = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == order.CustomerId);
+                    trackCustomerEmail = trackCustomer?.Email ?? trackCustomerEmail;
+                    trackCustomerPhone = trackCustomer?.Phone ?? trackCustomerPhone;
+                }
+
+                var storefrontHost = !string.IsNullOrWhiteSpace(store.CustomDomain) ? store.CustomDomain : $"{store.StoreSlug}.fatoorarahatak.com";
+                var eventSourceUrl = $"https://{storefrontHost}/checkout";
+
+                await _conversionTrackingService.TrackPurchaseAsync(
+                    store, order, trackCustomerEmail, trackCustomerPhone, eventSourceUrl,
+                    dto.FbClickId, dto.FbBrowserId, dto.GaClientId);
             }
             catch { }
 

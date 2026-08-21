@@ -17,11 +17,13 @@ export interface RegisterData {
 
 export async function login(data: LoginData) {
   const response = await api.post("/auth/login", data);
-  const { accessToken, refreshToken, userType, fullName, email, userId } = response.data.data;
+  const { accessToken, refreshToken, userType, staffRole, fullName, email, userId } = response.data.data;
 
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
   localStorage.setItem("userType", userType);
+  if (staffRole) localStorage.setItem("staffRole", staffRole);
+  else localStorage.removeItem("staffRole");
   localStorage.setItem("fullName", fullName);
   localStorage.setItem("email", email);
   if (userId) localStorage.setItem("userId", String(userId));
@@ -48,6 +50,7 @@ export function logout() {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
   localStorage.removeItem("userType");
+  localStorage.removeItem("staffRole");
   localStorage.removeItem("fullName");
   localStorage.removeItem("email");
   localStorage.removeItem("userId");
@@ -66,13 +69,23 @@ export function getUserType(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("userType");
 }
+
+// Only meaningful when getUserType() === "SupportStaff": one of
+// "Admin" | "Support" | "Finance" | "Technical". Determines which
+// platform modules the staff member can see and use.
+export function getStaffRole(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("staffRole");
+}
 export async function googleAuth(idToken: string) {
   const response = await api.post("/auth/google", { idToken });
-  const { accessToken, refreshToken, userType, fullName, email, userId } = response.data.data;
+  const { accessToken, refreshToken, userType, staffRole, fullName, email, userId } = response.data.data;
 
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
   localStorage.setItem("userType", userType);
+  if (staffRole) localStorage.setItem("staffRole", staffRole);
+  else localStorage.removeItem("staffRole");
   localStorage.setItem("fullName", fullName);
   localStorage.setItem("email", email);
   if (userId) localStorage.setItem("userId", String(userId));

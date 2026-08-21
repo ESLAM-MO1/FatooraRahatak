@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n/config";
 import { StoreProvider, StoreData, StoreMethodInfo } from "@/components/StoreContext";
 import ThemeRouter from "@/components/store-templates/ThemeRouter";
+import MarketingScripts from "@/components/store-templates/MarketingScripts";
 import { resolveThemeConfig, parseStoreColors } from "@/components/store-templates/configs";
+import { parseMenuConfig, parseStorePages } from "@/lib/storePages";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
@@ -35,11 +37,16 @@ export interface StoreTemplateProps {
   tiktokUrl: string | null;
   telegramUrl: string | null;
   linkedinUrl: string | null;
+  twitterUrl: string | null;
+  youtubeUrl: string | null;
+  pinterestUrl: string | null;
   shippingMethods: StoreMethodInfo[];
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;
   isReviewsEnabled: boolean;
   trustBadges: StoreTrustBadge[];
+  menuConfigJson: string | null;
+  storePagesJson: string | null;
 }
 
 function LoadingFallback() {
@@ -83,6 +90,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         document.documentElement.lang = lang;
         document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
         setStore({
+          id: d.id ?? 0,
           storeName: d.storeName || "",
           storeSlug: slug,
           isOnline: d.isOnline,
@@ -104,12 +112,17 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           tiktokUrl: d.tiktokUrl || null,
           telegramUrl: d.telegramUrl || null,
           linkedinUrl: d.linkedinUrl || null,
+          twitterUrl: d.twitterUrl || null,
+          youtubeUrl: d.youtubeUrl || null,
+          pinterestUrl: d.pinterestUrl || null,
           returnPolicyText: d.returnPolicyText || null,
           shippingMethods: d.shippingMethods || [],
           paymentMethods: d.paymentMethods || [],
           isSearchEnabled: d.isSearchEnabled ?? true,
           isReviewsEnabled: d.isReviewsEnabled ?? false,
           trustBadges: d.trustBadges || [],
+          menuConfigJson: d.menuConfigJson || null,
+          storePagesJson: d.storePagesJson || null,
         });
       } catch {
         setIsOffline(false);
@@ -168,15 +181,21 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           tiktokUrl={store.tiktokUrl}
           telegramUrl={store.telegramUrl}
           linkedinUrl={store.linkedinUrl}
+          twitterUrl={store.twitterUrl}
+          youtubeUrl={store.youtubeUrl}
+          pinterestUrl={store.pinterestUrl}
           shippingMethods={store.shippingMethods}
           paymentMethods={store.paymentMethods}
           isSearchEnabled={store.isSearchEnabled}
           isReviewsEnabled={store.isReviewsEnabled}
           trustBadges={store.trustBadges}
+          menuConfigJson={store.menuConfigJson}
+          storePagesJson={store.storePagesJson}
         >
           {children}
         </ThemeRouter>
       </Suspense>
+      <MarketingScripts slug={slug} />
     </StoreProvider>
   );
 }

@@ -26,6 +26,8 @@ public class Store : BaseEntity
     public string? ContactPhone { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactAddress { get; set; }
+    public string? BranchName { get; set; }
+    public string? CommercialRegistrationNumber { get; set; }
     public string? BioLink { get; set; }
     public string? FacebookUrl { get; set; }
     public string? InstagramUrl { get; set; }
@@ -34,6 +36,9 @@ public class Store : BaseEntity
     public string? TiktokUrl { get; set; }
     public string? TelegramUrl { get; set; }
     public string? LinkedinUrl { get; set; }
+    public string? TwitterUrl { get; set; }
+    public string? YoutubeUrl { get; set; }
+    public string? PinterestUrl { get; set; }
     public string Currency { get; set; } = "SAR";
     public User Owner { get; set; } = null!;
     public Package Package { get; set; } = null!;
@@ -44,6 +49,8 @@ public class Store : BaseEntity
     public ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>();
     public ICollection<Cart> Carts { get; set; } = new List<Cart>();
     public ICollection<Coupon> Coupons { get; set; } = new List<Coupon>();
+    public ICollection<StoreFaqItem> FaqItems { get; set; } = new List<StoreFaqItem>();
+    public ICollection<StoreBlogPost> BlogPosts { get; set; } = new List<StoreBlogPost>();
     public bool IsSearchEnabled { get; set; } = true;
     public bool IsReviewsEnabled { get; set; } = false;
     public int? LowStockThreshold { get; set; }
@@ -60,6 +67,13 @@ public class Store : BaseEntity
     public string? ColorsJson { get; set; } // JSON: {headerColor, buttonColor, accentColor, heroFrom, heroTo, footerColor, newsletterColor}
     public string? CoverImage { get; set; }
     public string? CustomCss { get; set; } // قالب مخصص: CSS يُحقن في صفحات المتجر
+
+    // إعدادات القائمة الرئيسية: JSON array من { id, isEnabled, order }
+    public string? MenuConfigJson { get; set; }
+
+    // صفحات المتجر (من نحن/المدونة/الأسئلة الشائعة/السياسات):
+    // JSON array من { key, titleAr, titleEn, contentAr, contentEn, isEnabled }
+    public string? StorePagesJson { get; set; }
 
     // حساب استقبال مدفوعات المتجر (Moyasar recipient)
     public PaymentAccountStatus PaymentAccountStatus { get; set; } = PaymentAccountStatus.NotSubmitted;

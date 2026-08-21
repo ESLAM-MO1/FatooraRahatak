@@ -47,6 +47,10 @@ public class PdfService : IPdfService
                                 left.Item().Text(invoice.ContactAddress).FontSize(9).FontColor("#6b7280");
                             if (!string.IsNullOrWhiteSpace(invoice.VatNumber))
                                 left.Item().Text($"الرقم الضريبي: {invoice.VatNumber}").FontSize(9).FontColor("#6b7280");
+                            if (!string.IsNullOrWhiteSpace(invoice.BranchName))
+                                left.Item().Text($"الفرع: {invoice.BranchName}").FontSize(9).FontColor("#6b7280");
+                            if (!string.IsNullOrWhiteSpace(invoice.CommercialRegistrationNumber))
+                                left.Item().Text($"رقم السجل التجاري: {invoice.CommercialRegistrationNumber}").FontSize(9).FontColor("#6b7280");
                         });
 
                         row.ConstantItem(200).Column(right =>

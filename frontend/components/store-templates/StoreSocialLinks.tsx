@@ -7,6 +7,9 @@ import {
   TikTokIcon,
   TelegramIcon,
   LinkedInIcon,
+  TwitterIcon,
+  YouTubeIcon,
+  PinterestIcon,
 } from "@/components/store-templates/icons";
 
 export interface SocialLinksInputs {
@@ -17,6 +20,18 @@ export interface SocialLinksInputs {
   tiktok?: string | null;
   telegram?: string | null;
   linkedin?: string | null;
+  twitter?: string | null;
+  youtube?: string | null;
+  pinterest?: string | null;
+}
+
+// بيرجع true لو فيه رابط سوشيال واحد على الأقل هيتعرض فعليًا بعد الفلترة
+export function hasVisibleSocial(urls: SocialLinksInputs): boolean {
+  return !!(
+    urls.whatsapp || urls.facebook || urls.instagram || urls.snapchat ||
+    urls.tiktok || urls.telegram || urls.linkedin || urls.twitter ||
+    urls.youtube || urls.pinterest
+  );
 }
 
 interface StoreSocialLinksProps {
@@ -42,6 +57,9 @@ export default function StoreSocialLinks({
     { url: urls.tiktok, label: "TikTok", Icon: TikTokIcon },
     { url: urls.telegram, label: "Telegram", Icon: TelegramIcon },
     { url: urls.linkedin, label: "LinkedIn", Icon: LinkedInIcon },
+    { url: urls.twitter, label: "X (Twitter)", Icon: TwitterIcon },
+    { url: urls.youtube, label: "YouTube", Icon: YouTubeIcon },
+    { url: urls.pinterest, label: "Pinterest", Icon: PinterestIcon },
   ];
 
   return (

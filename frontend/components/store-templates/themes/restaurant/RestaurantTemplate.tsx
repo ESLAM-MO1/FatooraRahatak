@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, TruckIcon, SparklesIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function RestaurantTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,7 +28,6 @@ export default function RestaurantTemplate({
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType, orderType, setOrderType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -34,6 +35,10 @@ export default function RestaurantTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const displayProducts = isSearchActive ? searchResults : products.slice(0, showAllProducts ? products.length : 8);
@@ -47,11 +52,7 @@ export default function RestaurantTemplate({
             {logo && <img src={logo} alt={storeName} className="w-10 h-10 rounded-full object-cover" />}
             <a href={`/store/${slug}`} className="font-bold text-xl text-white" style={{ letterSpacing: "0.5px" }}>{storeName}</a>
           </div>
-          <nav className="hidden md:flex items-center gap-8 text-[15px] font-bold text-white">
-            <a href={`/store/${slug}`} className="hover:opacity-75">{t("storefront.home")}</a>
-            <a href={`/store/${slug}#menu`} className="hover:opacity-75">{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:opacity-75">{t("storefront.contactUs")}</a>
-          </nav>
+          <StoreMainMenu slug={slug} containerClassName="hidden md:flex items-center gap-8 text-[15px] font-bold text-white" linkClassName="hover:opacity-75" />
           <div className="flex items-center gap-2">
             <QuickLoginButton slug={slug} />
             <a href={`/store/${slug}/wishlist`} className="relative p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={20} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
@@ -59,11 +60,7 @@ export default function RestaurantTemplate({
             <button className="md:hidden p-2 text-white" onClick={() => setMobileOpen(!mobileOpen)} aria-label={t("storefront.menu")}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           </div>
         </div>
-        {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "rgba(255,255,255,0.15)", background: colors.headerColor }}><div className="px-4 py-3 space-y-2 text-white text-[15px] font-bold">
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#menu`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
-        </div></div>}
+        {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "rgba(255,255,255,0.15)", background: colors.headerColor }}><StoreMainMenu slug={slug} mobile containerClassName="px-4 py-3 space-y-2 text-white text-[15px] font-bold" linkClassName="block py-1.5" /></div>}
       </header>
 
       {!showHero && <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
@@ -120,7 +117,7 @@ export default function RestaurantTemplate({
                 <div className="flex-1 p-4 flex flex-col">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-bold text-gray-900 text-[16px]">{p.nameAr}</h3>
-                    <button onClick={() => toggleWishlist(p.id)} className="shrink-0 transition-transform hover:scale-110" style={{ color: isWishlist(p.id) ? "#DC2626" : "#6B7280" }}>{isWishlist(p.id) ? <HeartFilledIcon size={18} /> : <HeartIcon size={18} />}</button>
+                    <button onClick={() => toggleWishlist(p.id)} className="shrink-0 w-9 h-9 flex items-center justify-center rounded-full transition-transform hover:scale-110" style={{ color: isWishlist(p.id) ? "#DC2626" : "#6B7280" }}>{isWishlist(p.id) ? <HeartFilledIcon size={18} /> : <HeartIcon size={18} />}</button>
                   </div>
                   {(p.ratingCount ?? 0) > 0 && (<div className="mt-1"><ProductRating rating={p.averageRating} count={p.ratingCount} size={12} /></div>)}
                   <div className="mt-2 flex items-baseline gap-2">
@@ -157,14 +154,7 @@ export default function RestaurantTemplate({
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div><h4 className="text-white font-bold text-lg">{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="text-white font-bold text-[14px]">{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#menu`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-bold text-[14px]" listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "rgba(255,255,255,0.65)" }} linkClassName="hover:text-white" />
           </div>
           <div>
             <h4 className="text-white font-bold text-[14px]">{t("storefront.contactHeading")}</h4>
@@ -179,7 +169,7 @@ export default function RestaurantTemplate({
             <h4 className="text-white font-bold text-[14px]">{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center w-9 h-9 rounded-full"
                 linkStyle={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}
                 iconSize={16}

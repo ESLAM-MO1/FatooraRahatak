@@ -6,5 +6,6 @@ public enum PermissionAction
     Add,
     Edit,
     Delete,
-    Approve
+    Approve,
+    Manage
 }

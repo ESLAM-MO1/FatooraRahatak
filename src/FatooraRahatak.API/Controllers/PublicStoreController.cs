@@ -13,13 +13,15 @@ public class PublicStoreController : ControllerBase
     private readonly IQuickLoginService _quickLoginService;
     private readonly ICustomerSessionService _customerSessionService;
     private readonly IPaymentService _paymentService;
-    public PublicStoreController(IPublicStoreService publicStoreService, IOrderService orderService, IQuickLoginService quickLoginService, ICustomerSessionService customerSessionService, IPaymentService paymentService)
+    private readonly IMarketingService _marketingService;
+    public PublicStoreController(IPublicStoreService publicStoreService, IOrderService orderService, IQuickLoginService quickLoginService, ICustomerSessionService customerSessionService, IPaymentService paymentService, IMarketingService marketingService)
     {
         _publicStoreService = publicStoreService;
         _orderService = orderService;
         _quickLoginService = quickLoginService;
         _customerSessionService = customerSessionService;
         _paymentService = paymentService;
+        _marketingService = marketingService;
     }
 
     private string? GetCustomerPhone()
@@ -44,6 +46,14 @@ public class PublicStoreController : ControllerBase
         if (store == null)
             return NotFound(new { success = false, message = "المتجر غير موجود أو غير نشط" });
         return Ok(new { success = true, data = store });
+    }
+    // سكربتات التتبع التسويقي (بكسلات الإعلانات + واتساب) الخاصة بالمتجر المفعّلة —
+    // تستدعيها واجهة المتجر لحقن أكواد التتبع في كل صفحات المتجر.
+    [HttpPost("{slug}/scripts")]
+    public async Task<IActionResult> GetStoreScripts(string slug)
+    {
+        var data = await _marketingService.GetPublicScriptsBySlugAsync(slug);
+        return Ok(new { success = true, data });
     }
     [HttpGet("{slug}/categories")]
     public async Task<IActionResult> GetCategories(string slug)
@@ -76,6 +86,38 @@ public class PublicStoreController : ControllerBase
         if (policy == null)
             return NotFound(new { success = false, message = "المتجر غير موجود أو غير نشط" });
         return Ok(new { success = true, data = policy });
+    }
+    [HttpGet("{slug}/pages/{pageKey}")]
+    public async Task<IActionResult> GetStorePage(string slug, string pageKey)
+    {
+        var page = await _publicStoreService.GetStorePageAsync(slug, pageKey);
+        if (page == null)
+            return NotFound(new { success = false, message = "هذه الصفحة غير متاحة" });
+        return Ok(new { success = true, data = page });
+    }
+    [HttpGet("{slug}/faq")]
+    public async Task<IActionResult> GetStoreFaq(string slug)
+    {
+        var faq = await _publicStoreService.GetStoreFaqAsync(slug);
+        if (faq == null)
+            return NotFound(new { success = false, message = "المتجر غير موجود أو غير نشط" });
+        return Ok(new { success = true, data = faq });
+    }
+    [HttpGet("{slug}/blog")]
+    public async Task<IActionResult> GetStoreBlogPosts(string slug)
+    {
+        var posts = await _publicStoreService.GetStoreBlogPostsAsync(slug);
+        if (posts == null)
+            return NotFound(new { success = false, message = "المتجر غير موجود أو غير نشط" });
+        return Ok(new { success = true, data = posts });
+    }
+    [HttpGet("{slug}/blog/{slugKey}")]
+    public async Task<IActionResult> GetStoreBlogPost(string slug, string slugKey)
+    {
+        var post = await _publicStoreService.GetStoreBlogPostAsync(slug, slugKey);
+        if (post == null)
+            return NotFound(new { success = false, message = "المقال غير موجود" });
+        return Ok(new { success = true, data = post });
     }
     [HttpGet("{slug}/contact")]
     public async Task<IActionResult> GetContact(string slug)

@@ -10,4 +10,7 @@ public class StoreSocialResponseDto
     public string? TiktokUrl { get; set; }
     public string? TelegramUrl { get; set; }
     public string? LinkedinUrl { get; set; }
+    public string? TwitterUrl { get; set; }
+    public string? YoutubeUrl { get; set; }
+    public string? PinterestUrl { get; set; }
 }

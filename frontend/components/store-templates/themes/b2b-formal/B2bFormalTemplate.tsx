@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, PackageIcon, CheckIcon, BuildingIcon, HeadsetIcon, ScaleIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function B2bFormalTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -26,7 +28,6 @@ export default function B2bFormalTemplate({
   const { categories, products, productsLoading, selectedCategoryId, setSelectedCategoryId, showAllProducts, setShowAllProducts,
     cartCount, wishlist, toggleWishlist, isSearchActive, searchResults, currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType, quoteRequested, handleQuoteRequest } = useStorefront(slug, storeId, currency, false, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -34,6 +35,10 @@ export default function B2bFormalTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
 
@@ -69,11 +74,7 @@ export default function B2bFormalTemplate({
             {logo && <img src={logo} alt={storeName} className="w-8 h-8 object-contain" />}
             <span className="font-extrabold text-lg truncate" style={{ color: colors.headerColor }}>{storeName}</span>
           </a>
-          <nav className="hidden md:flex items-center gap-7 text-[14px] font-semibold" style={{ color: "#374151" }}>
-            <a href={`/store/${slug}`} className="hover:text-black">{t("storefront.home")}</a>
-            <a href={`/store/${slug}#catalog`} className="hover:text-black">{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:text-black">{t("storefront.contactUs")}</a>
-          </nav>
+          <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-7 text-[14px] font-semibold" containerStyle={{ color: "#374151" }} linkClassName="hover:text-black" />
           <div className="flex items-center gap-2">
             <QuickLoginButton slug={slug} />
             <a href={`/store/${slug}/wishlist`} className="relative p-2 rounded" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}><HeartIcon size={19} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
@@ -82,9 +83,7 @@ export default function B2bFormalTemplate({
           </div>
         </div>
         {mobileOpen && <div className="md:hidden px-4 pb-4 space-y-2 text-[15px] font-semibold" style={{ color: "#111827" }}>
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#catalog`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
+          <StoreMainMenu slug={slug} mobile containerClassName="space-y-2" linkClassName="block py-1.5" />
           <a href={`/store/${slug}/contact`} className="inline-block px-5 py-2.5 text-[13px] font-bold rounded" style={{ background: colors.buttonColor, color: "#fff" }}>{t("storefront.requestQuote")}</a>
         </div>}
       </header>
@@ -136,12 +135,12 @@ export default function B2bFormalTemplate({
                     <a href={`/store/${slug}/products/${p.id}`} className="block"><h3 className="font-bold text-[15px]" style={{ color: "#111827" }}>{p.nameAr}</h3></a>
                     {(p.ratingCount ?? 0) > 0 && (<div className="mt-1"><ProductRating rating={p.averageRating} count={p.ratingCount} size={12} /></div>)}
                   </div>
-                  <div className="col-span-6 md:col-span-3 flex items-baseline gap-2">
+                  <div className="col-span-12 md:col-span-3 flex items-baseline gap-2">
                     <span className="font-bold text-[15px]" style={{ color: colors.accentColor }}>{p.discountPrice || p.basePrice} {currencySymbol}</span>
                     <span className="text-[11px]" style={{ color: "#9CA3AF" }}>{t("storefront.perUnit")}</span>
                     {hasDiscount(p) && <span className="text-[11px] line-through" style={{ color: "#9CA3AF" }}>{p.basePrice}</span>}
                   </div>
-                  <div className="col-span-6 md:col-span-3 flex gap-2 justify-end">
+                  <div className="col-span-12 md:col-span-3 flex flex-wrap gap-2 md:justify-end">
                     <button type="button" onClick={() => handleQuoteRequest(p.id)} className="px-4 py-2 text-[12px] font-bold rounded" style={{ background: quoteRequested === p.id ? "#22C55E" : "transparent", border: `1px solid ${colors.accentColor}`, color: quoteRequested === p.id ? "#fff" : colors.accentColor }}>{quoteRequested === p.id ? t("storefront.quoteSentDone") : t("storefront.requestQuote")}</button>
                     <button type="button" onClick={() => handleAddToCart(p.id)} className="px-4 py-2 text-[12px] font-bold rounded" style={{ background: colors.buttonColor, color: "#fff" }}>{t("storefront.addToCart")}</button>
                   </div>
@@ -174,17 +173,10 @@ export default function B2bFormalTemplate({
             </ul>
           </div>
           <div>
-            <h4 className="text-white font-extrabold text-[14px] uppercase tracking-wider">{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#catalog`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-extrabold text-[14px] uppercase tracking-wider" listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "rgba(255,255,255,0.6)" }} linkClassName="hover:text-white" />
             <div className="mt-4 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center rounded transition-opacity hover:opacity-70"
                 linkStyle={{ width: 32, height: 32, background: "rgba(255,255,255,0.12)", color: "#fff" }}
                 iconSize={15}

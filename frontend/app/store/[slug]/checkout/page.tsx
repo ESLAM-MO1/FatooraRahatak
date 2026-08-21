@@ -10,6 +10,22 @@ import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import PhoneInputField from "@/components/PhoneInputField";
 
+// === تتبع التحويلات من السيرفر: قراءة كوكيز بيكسل فيسبوك وجوجل أناليتكس (لو موجودة) ===
+function getCookie(name: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
+// كوكي _ga بيكون بالشكل GA1.2.XXXXXXXXXX.YYYYYYYYYY — الـ client_id المطلوب هو آخر جزئين
+function getGa4ClientId(): string | undefined {
+  const raw = getCookie("_ga");
+  if (!raw) return undefined;
+  const parts = raw.split(".");
+  if (parts.length >= 4) return `${parts[2]}.${parts[3]}`;
+  return undefined;
+}
+
 interface CustomerAddress {
   id: number;
   fullName: string;
@@ -304,6 +320,11 @@ export default function CheckoutPage() {
         notes?: string;
         shippingMethod: string | null;
         paymentMethod: string | null;
+        marketingSource?: string;
+        marketingCampaign?: string;
+        gaClientId?: string;
+        fbClickId?: string;
+        fbBrowserId?: string;
       } = {
         sessionId,
         guestName: guestName.trim() || undefined,
@@ -313,6 +334,13 @@ export default function CheckoutPage() {
         notes: notes.trim() || undefined,
         shippingMethod: selectedShipping,
         paymentMethod: selectedPayment,
+        marketingSource: typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("utm_source") || undefined : undefined,
+        marketingCampaign: typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("utm_campaign") || undefined : undefined,
+        // تتبع التحويلات من السيرفر: بتُقرأ من كوكيز بيكسل فيسبوك وجوجل أناليتكس (لو موجودة على المتصفح)
+        // وبتتبعت مع الطلب لإرسالها لاحقًا عبر Meta Conversions API / GA4 Measurement Protocol
+        gaClientId: getGa4ClientId(),
+        fbClickId: getCookie("_fbc") || (typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("fbclid") || undefined : undefined),
+        fbBrowserId: getCookie("_fbp"),
       };
       const res = await api.post(`/public/stores/${slug}/checkout`, body);
 

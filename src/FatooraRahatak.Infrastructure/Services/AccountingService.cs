@@ -1234,6 +1234,8 @@ public class AccountingService : IAccountingService
         dto.ContactPhone = store.ContactPhone;
         dto.ContactEmail = store.ContactEmail;
         dto.ContactAddress = store.ContactAddress;
+        dto.BranchName = store.BranchName;
+        dto.CommercialRegistrationNumber = store.CommercialRegistrationNumber;
         dto.VatNumber = store.VatNumber;
         dto.IsVatRegistered = store.IsVatRegistered;
         dto.VatRate = VatRate;

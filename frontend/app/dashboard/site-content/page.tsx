@@ -464,7 +464,7 @@ function FaqManager() {
                 <p className="text-[12px] text-[var(--sub)] mt-1 line-clamp-2">{item.answerAr}</p>
                 <p className="text-[11px] text-[var(--sub)] mt-1">EN: {item.questionEn}</p>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 <button onClick={() => togglePublish(item.id)} className={`btn btn-sm ${item.isPublished ? "btn-outline" : "btn-warning"}`} title={item.isPublished ? t("common.hide") : t("common.show")}>
                   {item.isPublished ? t("common.show") : t("common.hide")}
                 </button>
@@ -501,7 +501,7 @@ function FaqManager() {
               <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.answerEn")}</label>
               <textarea dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',minHeight:'100px'}} value={editing.answerEn} onChange={e => setEditing({...editing, answerEn: e.target.value})} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.displayOrder")}</label>
                 <input type="number" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={editing.displayOrder} onChange={e => setEditing({...editing, displayOrder: parseInt(e.target.value) || 0})} />
@@ -716,7 +716,7 @@ function MessagesList() {
       </div>
 
       <div className="table-wrap">
-        <table>
+        <table className="hidden md:table">
           <thead>
             <tr>
               <th>#</th>
@@ -762,6 +762,60 @@ function MessagesList() {
             ))}
           </tbody>
         </table>
+        <div className="md:hidden space-y-3 p-4">
+          {messages.map(msg => (
+            <div key={msg.id} className="card p-4 space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">#</p>
+                  <p className="text-[var(--sub)]">{msg.id}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("admin.ticketNumber")}</p>
+                  <p className="font-mono text-[12px] text-[var(--blue)]" dir="ltr">{msg.ticketNumber || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("admin.messageName")}</p>
+                  <p className="font-medium">{msg.name}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("common.status")}</p>
+                  <span className={STATUS_BADGES[msg.status] || "badge badge--gray"}>{t(STATUS_LABEL_KEYS[msg.status] || msg.status)}</span>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("admin.messageEmail")}</p>
+                  <p className="text-[var(--sub)]">{msg.email}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("admin.messagePhone")}</p>
+                  <p className="text-[var(--sub)]">{msg.phone || "-"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("admin.messageSubject")}</p>
+                  <p className="text-[var(--sub)]">{msg.subject}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("admin.messageDate")}</p>
+                  <p className="text-[var(--sub)] text-[12px]">{fmtDate(msg.createdAt, i18n.language)}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                <button onClick={() => openDetails(msg)} className="btn btn-outline btn-sm">{t("admin.view")}</button>
+                <select className="rounded-lg border px-2 py-1 text-[12px] outline-none" style={{borderColor:'var(--border)'}} value={msg.status} disabled={updatingId === msg.id} onChange={e => updateStatus(msg.id, e.target.value)}>
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{t(STATUS_LABEL_KEYS[s] || s)}</option>)}
+                </select>
+                {deleteConfirmId === msg.id ? (
+                  <>
+                    <button onClick={() => handleDelete(msg.id)} disabled={updatingId === msg.id} className="btn btn-danger btn-sm">{t("common.confirm")}</button>
+                    <button onClick={() => setDeleteConfirmId(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
+                  </>
+                ) : (
+                  <button onClick={() => setDeleteConfirmId(msg.id)} className="btn btn-danger btn-sm">{t("common.delete")}</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
         {messages.length === 0 && <p className="text-center text-[var(--sub)] py-8">{t("admin.noMessages")}</p>}
       </div>
 

@@ -26,6 +26,40 @@ public class MerchantVerificationController : ControllerBase
 
     private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
 
+    /// <summary>
+    /// هل المستخدم أدمن بصلاحية SupportOps (أو SuperAdmin) — يُسمح له بتحميل مستندات أي تاجر؟
+    /// نفس منطق ModuleAccess["SupportOps"] في AdminController.
+    /// </summary>
+    private bool IsSupportOpsAdmin()
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        if (role == "SuperAdmin") return true;
+        if (role != "SupportStaff") return false;
+
+        var staffRole = User.FindFirstValue("StaffRole");
+        return staffRole == "Admin" || staffRole == "Support";
+    }
+
+    [HttpGet("documents/{documentId}/file")]
+    public async Task<IActionResult> GetDocumentFile(long documentId)
+    {
+        var doc = await _verificationService.GetDocumentFileAsync(documentId);
+        if (doc == null)
+            return NotFound(new { success = false, message = "المستند غير موجود" });
+
+        if (!IsSupportOpsAdmin())
+        {
+            var storeId = await GetStoreIdAsync();
+            if (storeId == null || doc.StoreId != storeId.Value)
+                return Forbid();
+        }
+
+        if (!doc.FileExists)
+            return NotFound(new { success = false, message = "ملف المستند غير موجود" });
+
+        return PhysicalFile(doc.AbsolutePath, doc.ContentType);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetMyVerification()
     {

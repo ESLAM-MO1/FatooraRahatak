@@ -108,8 +108,9 @@ export default function CustomersPage() {
             {search ? t("customer.noResults") : t("customer.noCustomers")}
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("customer.name")}</th>
@@ -155,6 +156,52 @@ export default function CustomersPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden space-y-3">
+            {filteredCustomers.map((customer, idx) => (
+              <div key={customer.phone || idx} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("customer.name")}</p>
+                    <p className="text-[var(--ink)] font-medium">
+                      {customer.name}
+                      {customer.isGuest && (
+                        <span className="mr-2 badge badge--yellow">{t("customer.guest")}</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("customer.phone")}</p>
+                    <p className="text-[var(--sub)]" dir="ltr">{customer.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("customer.totalOrders")}</p>
+                    <p className="text-[var(--ink)]">{customer.ordersCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("customer.totalSpent")}</p>
+                    <p className="text-[var(--ink)]">
+                      {customer.totalSpent.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("customer.lastOrder")}</p>
+                    <p className="text-[var(--sub)]">
+                      {new Date(customer.lastOrderDate).toLocaleDateString("ar-SA-u-nu-latn")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <Link
+                    href={`/dashboard/customers/${encodeURIComponent(customer.phone)}`}
+                    className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[12px]"
+                  >
+                    {t("customer.viewDetails")}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 

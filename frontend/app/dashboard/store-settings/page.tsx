@@ -14,7 +14,9 @@ import "@/lib/i18n/config";
 import { STORE_THEMES, resolveThemeConfig, getDefaultColors, parseStoreColors } from "@/components/store-templates/configs";
 import type { StoreThemeMeta, StoreColors } from "@/components/store-templates/configs";
 import PhoneInputField from "@/components/PhoneInputField";
-import InfoTooltip from "@/components/InfoTooltip";
+import { PAGE_DEFS, parseStorePages } from "@/lib/storePages";
+import StoreFaqManager from "@/components/store-managers/StoreFaqManager";
+import StoreBlogManager from "@/components/store-managers/StoreBlogManager";
 
 type DomainStatus = "None" | "Pending" | "Active";
 
@@ -33,6 +35,7 @@ interface StoreData {
   id: number;
   storeName: string;
   storeSlug: string;
+  logo: string | null;
   customDomain: string | null;
   customDomainStatus: DomainStatus;
   isVatRegistered: boolean;
@@ -43,10 +46,19 @@ interface StoreData {
   contactPhone: string | null;
   contactEmail: string | null;
   contactAddress: string | null;
+  branchName: string | null;
+  commercialRegistrationNumber: string | null;
   bioLink: string | null;
   facebookUrl: string | null;
   instagramUrl: string | null;
   whatsappUrl: string | null;
+  snapchatUrl: string | null;
+  tiktokUrl: string | null;
+  telegramUrl: string | null;
+  linkedinUrl: string | null;
+  twitterUrl: string | null;
+  youtubeUrl: string | null;
+  pinterestUrl: string | null;
   currency: string;
   defaultLanguage: string;
   themeName: string;
@@ -62,7 +74,20 @@ interface StoreData {
   customerNotificationWhatsapp: boolean;
   trustBadgesJson: string | null;
   returnPolicyDays: number | null;
+  menuConfigJson: string | null;
+  storePagesJson: string | null;
 }
+
+interface PageEditableItem {
+  key: string;
+  labelKey: string;
+  titleAr: string;
+  titleEn: string;
+  contentAr: string;
+  contentEn: string;
+}
+
+const PAGE_KEYS = ["about", "terms", "privacy-policy", "shipping-policy", "usage-policy"];
 
 const statusConfig: Record<DomainStatus, { labelKey: string; className: string }> = {
   None: { labelKey: "storeSettings.statusNone", className: "badge badge--gray" },
@@ -100,7 +125,7 @@ const COLOR_FIELDS: { key: keyof StoreColors; labelKey: string }[] = [
 // named sections — reachable from one tab strip — keeps every field exactly
 // where it was, just organized around the questions a merchant actually asks
 // ("what does my store look like?" vs "how do people pay?").
-type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "policies" | "advanced" | "designChat";
+type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "pages" | "advanced" | "designChat" | "faq" | "blog";
 
 const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "overview", labelKey: "storeSettings.tabOverview", icon: "hash" },
@@ -109,8 +134,20 @@ const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "domain", labelKey: "storeSettings.tabDomain", icon: "link" },
   { id: "contact", labelKey: "storeSettings.tabContact", icon: "phone" },
   { id: "commerce", labelKey: "storeSettings.tabCommerce", icon: "truck" },
-  { id: "policies", labelKey: "storeSettings.tabPolicies", icon: "edit" },
+  { id: "pages", labelKey: "storeSettings.tabPages", icon: "book" },
+  { id: "faq", labelKey: "storeFaq.title", icon: "book" },
+  { id: "blog", labelKey: "storeBlog.title", icon: "edit" },
   { id: "advanced", labelKey: "storeSettings.tabAdvanced", icon: "card" },
+];
+
+// تجميع التبويبات في مجموعات منسّقة لتظهر كقائمة جانبية سهلة الاستخدام
+const TAB_GROUPS: { key: string; labelKey: string; items: TabId[] }[] = [
+  { key: "general", labelKey: "storeSettings.groupGeneral", items: ["overview"] },
+  { key: "appearance", labelKey: "storeSettings.groupAppearance", items: ["design", "designChat"] },
+  { key: "presence", labelKey: "storeSettings.groupPresence", items: ["domain", "contact"] },
+  { key: "commerce", labelKey: "storeSettings.groupCommerce", items: ["commerce"] },
+  { key: "content", labelKey: "storeSettings.groupContent", items: ["pages", "faq", "blog"] },
+  { key: "advanced", labelKey: "storeSettings.groupAdvanced", items: ["advanced"] },
 ];
 
 const TAB_FALLBACK: Record<TabId, string> = {
@@ -120,7 +157,9 @@ const TAB_FALLBACK: Record<TabId, string> = {
   domain: "النطاق المخصص",
   contact: "التواصل والسوشيال",
   commerce: "الشحن والدفع",
-  policies: "السياسات",
+  pages: "صفحات المتجر",
+  faq: "الأسئلة الشائعة",
+  blog: "المدونة",
   advanced: "إعدادات متقدمة",
 };
 
@@ -192,14 +231,12 @@ function ToggleRow({
   enabled,
   onToggle,
   disabled,
-  tooltipKey,
 }: {
   label: string;
   desc?: string;
   enabled: boolean;
   onToggle: () => void;
   disabled?: boolean;
-  tooltipKey?: string;
 }) {
   const { t } = useTranslation();
   return (
@@ -207,7 +244,6 @@ function ToggleRow({
       <div>
         <p className="text-[14px] font-bold text-[var(--ink)] flex items-center gap-1.5">
           {label}
-          {tooltipKey && <InfoTooltip messageKey={tooltipKey} />}
         </p>
         {desc && <p className="text-[12px] text-[var(--sub)] mt-0.5">{desc}</p>}
       </div>
@@ -227,12 +263,11 @@ function ToggleRow({
   );
 }
 
-function FormField({ icon, label, tooltipKey, children }: { icon: string; label: string; tooltipKey?: string; children: React.ReactNode }) {
+function FormField({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="flex items-center gap-1.5">
         {label}
-        {tooltipKey && <InfoTooltip messageKey={tooltipKey} />}
       </label>
       <div className="field-shell">
         <Icon name={icon as any} size={16} className="text-[var(--sub-light)]" />
@@ -452,17 +487,21 @@ export default function StoreSettingsPage() {
   const [themeSuccess, setThemeSuccess] = useState("");
   const [advancedSuccess, setAdvancedSuccess] = useState("");
   const [coverUploading, setCoverUploading] = useState(false);
+  const [logoSuccess, setLogoSuccess] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoRemoving, setLogoRemoving] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
   const [themeAutoSaving, setThemeAutoSaving] = useState(false);
   const themeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedTheme = useRef<{ themeName: string; colors: StoreColors; coverImage: string; customCss: string } | null>(null);
 
-  const [contactForm, setContactForm] = useState({ phone: "", email: "", address: "" });
+  const [contactForm, setContactForm] = useState({ phone: "", email: "", address: "", branchName: "", crNumber: "" });
   const [contactSaving, setContactSaving] = useState(false);
 
   const [vatNumber, setVatNumber] = useState("");
   const [vatNumberSaving, setVatNumberSaving] = useState(false);
 
-  const [socialForm, setSocialForm] = useState({ bioLink: "", facebook: "", instagram: "", whatsapp: "", snapchat: "", tiktok: "", telegram: "", linkedin: "" });
+  const [socialForm, setSocialForm] = useState({ bioLink: "", facebook: "", instagram: "", whatsapp: "", snapchat: "", tiktok: "", telegram: "", linkedin: "", twitter: "", youtube: "", pinterest: "" });
   const [socialSaving, setSocialSaving] = useState(false);
 
   const [currencyLang, setCurrencyLang] = useState({ currency: "SAR", language: "ar" });
@@ -494,6 +533,11 @@ export default function StoreSettingsPage() {
   const [notifTesting, setNotifTesting] = useState(false);
   const [notifTestSuccess, setNotifTestSuccess] = useState("");
 
+  const [pageEditable, setPageEditable] = useState<PageEditableItem[]>([]);
+  const [openPageKey, setOpenPageKey] = useState<string | null>(null);
+  const [pagesSaving, setPagesSaving] = useState(false);
+  const [pagesSuccess, setPagesSuccess] = useState("");
+
   const availableThemes = enabledThemes ? STORE_THEMES.filter((th) => enabledThemes.has(th.id)) : STORE_THEMES;
 
   const themeLimit = store?.maxThemes ?? -1;
@@ -520,8 +564,8 @@ export default function StoreSettingsPage() {
       const d = res.data.data;
       setStore(d);
       setVatNumber(d.vatNumber || "");
-      setContactForm({ phone: d.contactPhone || "", email: d.contactEmail || "", address: d.contactAddress || "" });
-      setSocialForm({ bioLink: d.bioLink || "", facebook: d.facebookUrl || "", instagram: d.instagramUrl || "", whatsapp: d.whatsappUrl || "", snapchat: d.snapchatUrl || "", tiktok: d.tiktokUrl || "", telegram: d.telegramUrl || "", linkedin: d.linkedinUrl || "" });
+      setContactForm({ phone: d.contactPhone || "", email: d.contactEmail || "", address: d.contactAddress || "", branchName: d.branchName || "", crNumber: d.commercialRegistrationNumber || "" });
+      setSocialForm({ bioLink: d.bioLink || "", facebook: d.facebookUrl || "", instagram: d.instagramUrl || "", whatsapp: d.whatsappUrl || "", snapchat: d.snapchatUrl || "", tiktok: d.tiktokUrl || "", telegram: d.telegramUrl || "", linkedin: d.linkedinUrl || "", twitter: d.twitterUrl || "", youtube: d.youtubeUrl || "", pinterest: d.pinterestUrl || "" });
       setCurrencyLang({ currency: d.currency || "SAR", language: d.defaultLanguage || "ar" });
       const resolvedTheme = resolveThemeConfig(d.themeName);
       const resolvedColors = parseStoreColors(resolvedTheme.id, d.colorsJson);
@@ -539,6 +583,20 @@ export default function StoreSettingsPage() {
         returnPolicyDays: d.returnPolicyDays ?? null,
       });
       setTrustBadges(parseTrustBadges(d.trustBadgesJson));
+      const pagesCfg = parseStorePages(d.storePagesJson);
+      setPageEditable(
+        PAGE_KEYS.map((key) => {
+          const cfg = pagesCfg.find((p) => p.key === key);
+          return {
+            key,
+            labelKey: PAGE_DEFS[key]?.titleKey || `storePages.${key}Title`,
+            titleAr: cfg?.titleAr || "",
+            titleEn: cfg?.titleEn || "",
+            contentAr: cfg?.contentAr || "",
+            contentEn: cfg?.contentEn || "",
+          };
+        })
+      );
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.loadError"));
     } finally {
@@ -692,7 +750,7 @@ export default function StoreSettingsPage() {
     setContactSuccess("");
     setContactSaving(true);
     try {
-      const res = await api.put("/stores/contact", { contactPhone: contactForm.phone || null, contactEmail: contactForm.email || null, contactAddress: contactForm.address || null });
+      const res = await api.put("/stores/contact", { contactPhone: contactForm.phone || null, contactEmail: contactForm.email || null, contactAddress: contactForm.address || null, branchName: contactForm.branchName || null, commercialRegistrationNumber: contactForm.crNumber || null });
       setContactSuccess(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.contactSaveError"));
@@ -724,7 +782,7 @@ export default function StoreSettingsPage() {
     setSocialSuccess("");
     setSocialSaving(true);
     try {
-      const res = await api.put("/stores/social", { bioLink: socialForm.bioLink || null, facebookUrl: socialForm.facebook || null, instagramUrl: socialForm.instagram || null, whatsappUrl: socialForm.whatsapp || null, snapchatUrl: socialForm.snapchat || null, tiktokUrl: socialForm.tiktok || null, telegramUrl: socialForm.telegram || null, linkedinUrl: socialForm.linkedin || null });
+      const res = await api.put("/stores/social", { bioLink: socialForm.bioLink || null, facebookUrl: socialForm.facebook || null, instagramUrl: socialForm.instagram || null, whatsappUrl: socialForm.whatsapp || null, snapchatUrl: socialForm.snapchat || null, tiktokUrl: socialForm.tiktok || null, telegramUrl: socialForm.telegram || null, linkedinUrl: socialForm.linkedin || null, twitterUrl: socialForm.twitter || null, youtubeUrl: socialForm.youtube || null, pinterestUrl: socialForm.pinterest || null });
       setSocialSuccess(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.socialSaveError"));
@@ -779,8 +837,8 @@ export default function StoreSettingsPage() {
   const updateBadge = (idx: number, patch: Partial<TrustBadge>) => setTrustBadges((prev) => prev.map((b, i) => (i === idx ? { ...b, ...patch } : b)));
   const removeBadge = (idx: number) => setTrustBadges((prev) => prev.filter((_, i) => i !== idx));
 
-  const handleSaveReturnPolicy = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveReturnPolicy = async (e?: React.FormEvent) => {
+    e?.preventDefault?.();
     setError("");
     setReturnPolicySuccess("");
     setReturnPolicySaving(true);
@@ -791,6 +849,35 @@ export default function StoreSettingsPage() {
       setError(err.response?.data?.message || t("storeSettings.returnPolicySaveError"));
     } finally {
       setReturnPolicySaving(false);
+    }
+  };
+
+  const handleUpdatePage = (key: string, patch: Partial<PageEditableItem>) => {
+    setPageEditable((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)));
+  };
+
+  const handleSavePages = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setPagesSuccess("");
+    setPagesSaving(true);
+    try {
+      const storePagesJson = JSON.stringify(
+        pageEditable.map((p) => ({
+          key: p.key,
+          titleAr: p.titleAr.trim() || null,
+          titleEn: p.titleEn.trim() || null,
+          contentAr: p.contentAr.trim() || null,
+          contentEn: p.contentEn.trim() || null,
+        }))
+      );
+      const res = await api.put("/stores/menu-pages", { storePagesJson });
+      setPagesSuccess(res.data.message || t("storeSettings.pagesSaved"));
+      setStore((prev) => (prev ? { ...prev, storePagesJson } : prev));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("storeSettings.pagesSaveError"));
+    } finally {
+      setPagesSaving(false);
     }
   };
 
@@ -830,6 +917,45 @@ export default function StoreSettingsPage() {
       setError(err.response?.data?.message || t("storeSettings.currencyLangSaveError"));
     } finally {
       setCurrencySaving(false);
+    }
+  };
+
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    setError("");
+    setLogoSuccess("");
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("read-failed"));
+        reader.readAsDataURL(file);
+      });
+      const res = await api.put("/stores/logo", { logoBase64: base64 });
+      setStore((prev) => (prev ? { ...prev, logo: res.data.data.logo } : prev));
+      setLogoSuccess(res.data.message || t("storeSettings.logoSaved"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("storeSettings.logoUploadError"));
+    } finally {
+      setLogoUploading(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteLogo = async () => {
+    setLogoRemoving(true);
+    setError("");
+    setLogoSuccess("");
+    try {
+      const res = await api.delete("/stores/logo");
+      setStore((prev) => (prev ? { ...prev, logo: res.data.data.logo } : prev));
+      setLogoSuccess(res.data.message || t("storeSettings.logoRemoved"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("storeSettings.logoRemoveError"));
+    } finally {
+      setLogoRemoving(false);
     }
   };
 
@@ -933,19 +1059,33 @@ export default function StoreSettingsPage() {
         </div>
       </div>
 
-      {/* Tab strip — replaces the old wall of stacked cards */}
-      <div className="ss-tabbar mb-6">
-        {TABS.map((tab) => (
-          <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`ss-tab ${activeTab === tab.id ? "ss-tab--active" : ""}`}>
-            <Icon name={tab.icon as any} size={15} />
-            <span>{tabLabel(tab.id, tab.labelKey)}</span>
-          </button>
-        ))}
-      </div>
+      {/* Sidebar nav + content — replaces the old wall of stacked cards */}
+      <div className="ss-nav-wrap">
+        <nav className="ss-sidebar">
+          {TAB_GROUPS.map((group) => (
+            <div key={group.key} className="ss-nav-group">
+              <p className="ss-nav-group-label">{t(group.labelKey)}</p>
+              {group.items.map((tabId) => {
+                const tab = TABS.find((x) => x.id === tabId)!;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`ss-nav-item ${activeTab === tab.id ? "ss-nav-item--active" : ""}`}
+                  >
+                    <Icon name={tab.icon as any} size={16} />
+                    <span>{tabLabel(tab.id, tab.labelKey)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
 
-      <div key={activeTab} className="ss-tab-panel">
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div key={activeTab} className="ss-tab-panel">
+          {activeTab === "overview" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SettingCard icon="hash" title={t("storeSettings.storeAndTax")} accent="green">
               <SuccessToast message={storeTaxSuccess} fixed className="mb-4" />
               <ToggleRow label={t("storeSettings.onlineToggleLabel")} desc={t("storeSettings.onlineToggleDesc")} enabled={store?.isOnline || false} onToggle={handleToggleOnline} disabled={toggling} />
@@ -955,10 +1095,9 @@ export default function StoreSettingsPage() {
                 enabled={store?.isVatRegistered || false}
                 onToggle={handleToggleVat}
                 disabled={togglingVat}
-                tooltipKey="storeSettings.vatToggleTooltip"
               />
               <form onSubmit={handleSaveVatNumber} className="pt-3">
-                <FormField icon="hash" label={t("storeSettings.vatNumber")} tooltipKey="storeSettings.vatNumberTooltip">
+                <FormField icon="hash" label={t("storeSettings.vatNumber")}>
                   <input type="text" value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder="300000000000003" dir="ltr" maxLength={15} />
                 </FormField>
                 <p className="text-[11px] text-[var(--sub)] mt-1 mb-3">{t("storeSettings.vatNumberDesc")}</p>
@@ -999,19 +1138,44 @@ export default function StoreSettingsPage() {
               </form>
             </SettingCard>
 
-            <SettingCard icon="edit" title={t("storeSettings.returnPolicy")} accent="gold">
-              <SuccessToast message={returnPolicySuccess} fixed className="mb-4" />
-              <form onSubmit={handleSaveReturnPolicy}>
-                <label>{t("storeSettings.returnPolicyText")}</label>
-                <div className="field-shell mt-1 mb-4">
-                  <textarea value={returnPolicyText} onChange={(e) => setReturnPolicyText(e.target.value)} placeholder={t("storeSettings.returnPolicyPlaceholder")} rows={4} />
+            <SettingCard icon="palette" title={t("storeSettings.logo")} desc={t("storeSettings.logoDesc")} accent="gold">
+              <SuccessToast message={logoSuccess} fixed className="mb-4" />
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-2xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {store?.logo ? (
+                    <img src={store.logo} alt={t("storeSettings.logoAlt")} className="w-full h-full object-contain" />
+                  ) : (
+                    <Icon name="palette" size={22} className="text-[var(--sub)]" />
+                  )}
                 </div>
-                <Can code="StoreSettings.Edit">
-                  <button type="submit" disabled={returnPolicySaving} className="btn btn-primary btn-sm">
-                    {returnPolicySaving ? t("storeSettings.saving") : t("storeSettings.saveReturnPolicy")}
-                  </button>
-                </Can>
-              </form>
+                <div className="min-w-0 flex-1">
+                  {!store?.logo && <p className="text-[12px] text-[var(--sub)] mb-2">{t("storeSettings.noLogo")}</p>}
+                  <p className="text-[11px] text-[var(--sub)] mb-3">{t("storeSettings.logoHint")}</p>
+                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadLogo} />
+                  <Can code="StoreSettings.Edit">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={logoUploading}
+                        className="btn btn-primary btn-sm"
+                      >
+                        {logoUploading ? t("storeSettings.saving") : store?.logo ? t("storeSettings.changeLogo") : t("storeSettings.uploadLogo")}
+                      </button>
+                      {store?.logo && (
+                        <button
+                          type="button"
+                          onClick={handleDeleteLogo}
+                          disabled={logoRemoving}
+                          className="btn btn-outline btn-sm"
+                        >
+                          {logoRemoving ? t("storeSettings.saving") : t("storeSettings.removeLogo")}
+                        </button>
+                      )}
+                    </div>
+                  </Can>
+                </div>
+              </div>
             </SettingCard>
           </div>
         )}
@@ -1028,9 +1192,9 @@ export default function StoreSettingsPage() {
             <SuccessToast message={domainSuccess} fixed className="mb-4" />
 
             <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-5 py-4 mb-5 border border-gray-100">
-              <div>
+              <div className="min-w-0">
                 <p className="text-[12px] text-[var(--sub)] mb-1">{t("storeSettings.currentDomain")}</p>
-                <p className="text-[15px] font-bold text-[var(--ink)]" dir="ltr">
+                <p className="text-[15px] font-bold text-[var(--ink)] break-all" dir="ltr">
                   {store?.customDomain || "—"}
                 </p>
               </div>
@@ -1128,7 +1292,7 @@ export default function StoreSettingsPage() {
                       <button
                         type="button"
                         onClick={() => setThemeForm((f) => ({ ...f, coverImage: "" }))}
-                        className="absolute top-1.5 left-1.5 rounded-full bg-black/60 text-white w-6 h-6 flex items-center justify-center text-[13px] hover:bg-black/80 transition-colors"
+                        className="absolute top-1.5 left-1.5 rounded-full bg-black/60 text-white w-9 h-9 flex items-center justify-center text-[13px] hover:bg-black/80 transition-colors"
                         aria-label={t("common.remove")}
                       >
                         ×
@@ -1168,6 +1332,12 @@ export default function StoreSettingsPage() {
                 <FormField icon="location" label={t("storeSettings.address")}>
                   <input type="text" value={contactForm.address} onChange={(e) => setContactForm((f) => ({ ...f, address: e.target.value }))} placeholder={t("storeSettings.addressPlaceholder")} />
                 </FormField>
+                <FormField icon="store" label={t("storeSettings.branchName")}>
+                  <input type="text" value={contactForm.branchName} onChange={(e) => setContactForm((f) => ({ ...f, branchName: e.target.value }))} placeholder={t("storeSettings.branchNamePlaceholder")} />
+                </FormField>
+                <FormField icon="clipboard" label={t("storeSettings.crNumber")}>
+                  <input type="text" value={contactForm.crNumber} onChange={(e) => setContactForm((f) => ({ ...f, crNumber: e.target.value }))} placeholder={t("storeSettings.crNumberPlaceholder")} dir="ltr" />
+                </FormField>
                 <Can code="StoreSettings.Edit">
                   <button type="submit" disabled={contactSaving} className="btn btn-primary btn-sm">
                     {contactSaving ? t("storeSettings.saving") : t("storeSettings.save")}
@@ -1205,6 +1375,15 @@ export default function StoreSettingsPage() {
                   </FormField>
                   <FormField icon="linkedin" label={t("storeSettings.linkedin")}>
                     <input type="text" value={socialForm.linkedin} onChange={(e) => setSocialForm((f) => ({ ...f, linkedin: e.target.value }))} placeholder="https://linkedin.com/..." dir="ltr" />
+                  </FormField>
+                  <FormField icon="twitter" label={t("storeSettings.twitter")}>
+                    <input type="text" value={socialForm.twitter} onChange={(e) => setSocialForm((f) => ({ ...f, twitter: e.target.value }))} placeholder="https://x.com/..." dir="ltr" />
+                  </FormField>
+                  <FormField icon="youtube" label={t("storeSettings.youtube")}>
+                    <input type="text" value={socialForm.youtube} onChange={(e) => setSocialForm((f) => ({ ...f, youtube: e.target.value }))} placeholder="https://youtube.com/..." dir="ltr" />
+                  </FormField>
+                  <FormField icon="pinterest" label={t("storeSettings.pinterest")}>
+                    <input type="text" value={socialForm.pinterest} onChange={(e) => setSocialForm((f) => ({ ...f, pinterest: e.target.value }))} placeholder="https://pinterest.com/..." dir="ltr" />
                   </FormField>
                 </div>
                 <Can code="StoreSettings.Edit">
@@ -1251,15 +1430,110 @@ export default function StoreSettingsPage() {
           </div>
         )}
 
-        {activeTab === "policies" && (
-          <SettingCard icon="edit" title={t("storeSettings.returnPolicy")} accent="gold">
-            <SuccessToast message={returnPolicySuccess} fixed className="mb-4" />
-            <form onSubmit={handleSaveReturnPolicy}>
-              <label>{t("storeSettings.returnPolicyText")}</label>
-              <div className="field-shell mt-1 mb-4">
-                <textarea value={returnPolicyText} onChange={(e) => setReturnPolicyText(e.target.value)} placeholder={t("storeSettings.returnPolicyPlaceholder")} rows={6} />
+        {activeTab === "pages" && (
+          <form onSubmit={handleSavePages} className="space-y-6">
+            <SuccessToast message={pagesSuccess} fixed className="mb-4" />
+
+            <SettingCard icon="book" title={t("storeSettings.pagesSection")} desc={t("storeSettings.pagesSectionDesc")} accent="gold">
+              <div className="space-y-2">
+                {pageEditable.map((page) => {
+                  const open = openPageKey === page.key;
+                  const hasCustom = page.titleAr || page.titleEn || page.contentAr || page.contentEn;
+                  return (
+                    <div key={page.key} className="border border-gray-100 rounded-xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setOpenPageKey(open ? null : page.key)}
+                        className="w-full flex items-center gap-2 px-3.5 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-start"
+                      >
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[13.5px] font-bold text-[var(--ink)] truncate">{t(page.labelKey)}</span>
+                          {hasCustom && <span className="block text-[11px] text-[var(--sub)] truncate mt-0.5">{page.titleAr || page.titleEn || t(page.labelKey)}</span>}
+                        </span>
+                        {hasCustom && (
+                          <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-full shrink-0" style={{ background: "rgba(200, 158, 63, 0.15)", color: "#8a6d1d" }}>
+                            {t("storeSettings.pagesCustom")}
+                          </span>
+                        )}
+                        <span className="text-[11px] text-[var(--sub)] shrink-0">{open ? "▲" : "▼"}</span>
+                      </button>
+
+                      {open && (
+                        <div className="p-4 space-y-4 border-t border-gray-100">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-[12px] font-bold text-[var(--ink)] mb-1 block">{t("storeSettings.pagesTitleAr")}</label>
+                              <input
+                                type="text"
+                                dir="rtl"
+                                value={page.titleAr}
+                                onChange={(e) => handleUpdatePage(page.key, { titleAr: e.target.value })}
+                                placeholder={t(page.labelKey)}
+                                className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[var(--blue)]"
+                                style={{ borderColor: "var(--border)" }}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[12px] font-bold text-[var(--ink)] mb-1 block">{t("storeSettings.pagesTitleEn")}</label>
+                              <input
+                                type="text"
+                                dir="ltr"
+                                value={page.titleEn}
+                                onChange={(e) => handleUpdatePage(page.key, { titleEn: e.target.value })}
+                                placeholder={t(PAGE_DEFS[page.key]?.titleKey || `storePages.${page.key}Title`)}
+                                className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[var(--blue)]"
+                                style={{ borderColor: "var(--border)" }}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[12px] font-bold text-[var(--ink)] mb-1 block">{t("storeSettings.pagesContentAr")}</label>
+                            <textarea
+                              dir="rtl"
+                              rows={6}
+                              value={page.contentAr}
+                              onChange={(e) => handleUpdatePage(page.key, { contentAr: e.target.value })}
+                              placeholder={t(PAGE_DEFS[page.key]?.contentKey || `storePages.${page.key}Content`)}
+                              className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[var(--blue)]"
+                              style={{ borderColor: "var(--border)", minHeight: 140, lineHeight: 1.8 }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[12px] font-bold text-[var(--ink)] mb-1 block">{t("storeSettings.pagesContentEn")}</label>
+                            <textarea
+                              dir="ltr"
+                              rows={6}
+                              value={page.contentEn}
+                              onChange={(e) => handleUpdatePage(page.key, { contentEn: e.target.value })}
+                              placeholder={t(PAGE_DEFS[page.key]?.contentKey || `storePages.${page.key}Content`)}
+                              className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[var(--blue)]"
+                              style={{ borderColor: "var(--border)", minHeight: 120, lineHeight: 1.8 }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.pagesHint")}</p>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdatePage(page.key, { titleAr: "", titleEn: "", contentAr: "", contentEn: "" })}
+                              className="text-[11.5px] font-bold text-[var(--blue)] hover:text-[var(--blue-deep)]"
+                            >
+                              {t("storeSettings.pagesReset")}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <FormField icon="hash" label={t("storeSettings.returnPeriodDays")} tooltipKey="storeSettings.returnPeriodDaysTooltip">
+            </SettingCard>
+
+            <SettingCard icon="edit" title={t("storeSettings.returnPolicy")} desc={t("storeSettings.returnPolicyDesc")} accent="green">
+              <div className="field-shell mb-3">
+                <textarea value={returnPolicyText} onChange={(e) => setReturnPolicyText(e.target.value)} placeholder={t("storeSettings.returnPolicyPlaceholder")} rows={4} />
+              </div>
+              <label>{t("storeSettings.returnPeriodDays")}</label>
+              <div className="field-shell mt-1 mb-2 py-1 px-2.5 w-24">
                 <input
                   type="number"
                   value={advancedSettings.returnPolicyDays ?? ""}
@@ -1268,14 +1542,35 @@ export default function StoreSettingsPage() {
                   dir="ltr"
                   placeholder="--"
                 />
-              </FormField>
-              <p className="text-[11px] text-[var(--sub)] mt-1 mb-4">{t("storeSettings.returnPeriodDaysDesc")}</p>
+              </div>
+              <p className="text-[11px] text-[var(--sub)] mb-4">{t("storeSettings.returnPeriodDaysDesc")}</p>
               <Can code="StoreSettings.Edit">
-                <button type="submit" disabled={returnPolicySaving} className="btn btn-primary btn-sm">
+                <button type="button" onClick={() => handleSaveReturnPolicy()} disabled={returnPolicySaving} className="btn btn-outline btn-sm">
                   {returnPolicySaving ? t("storeSettings.saving") : t("storeSettings.saveReturnPolicy")}
                 </button>
               </Can>
-            </form>
+              <SuccessToast message={returnPolicySuccess} fixed className="mt-3" />
+            </SettingCard>
+
+            <div className="flex justify-end">
+              <Can code="StoreSettings.Edit">
+                <button type="submit" disabled={pagesSaving} className="btn btn-primary">
+                  {pagesSaving ? t("storeSettings.saving") : t("storeSettings.savePages")}
+                </button>
+              </Can>
+            </div>
+          </form>
+        )}
+
+        {activeTab === "faq" && (
+          <SettingCard icon="book" title={t("storeFaq.title")} accent="green">
+            <StoreFaqManager />
+          </SettingCard>
+        )}
+
+        {activeTab === "blog" && (
+          <SettingCard icon="edit" title={t("storeBlog.title")} accent="blue">
+            <StoreBlogManager />
           </SettingCard>
         )}
 
@@ -1288,7 +1583,6 @@ export default function StoreSettingsPage() {
                   <div>
                     <p className="text-[13px] font-bold text-[var(--ink)] flex items-center gap-1.5">
                       {t("storeSettings.searchInStore")}
-                      <InfoTooltip messageKey="storeSettings.searchInStoreTooltip" />
                     </p>
                     <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.searchInStoreDesc")}</p>
                   </div>
@@ -1298,7 +1592,6 @@ export default function StoreSettingsPage() {
                   <div>
                     <p className="text-[13px] font-bold text-[var(--ink)] flex items-center gap-1.5">
                       {t("storeSettings.reviews")}
-                      <InfoTooltip messageKey="storeSettings.reviewsTooltip" />
                     </p>
                     <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.reviewsDesc")}</p>
                   </div>
@@ -1308,7 +1601,6 @@ export default function StoreSettingsPage() {
                   <div>
                     <p className="text-[13px] font-bold text-[var(--ink)] flex items-center gap-1.5">
                       {t("storeSettings.coupons")}
-                      <InfoTooltip messageKey="storeSettings.couponsTooltip" />
                     </p>
                     <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.couponsDesc")}</p>
                   </div>
@@ -1353,7 +1645,6 @@ export default function StoreSettingsPage() {
                   <div>
                     <p className="text-[13px] font-bold text-[var(--ink)] flex items-center gap-1.5">
                       {t("storeSettings.lowStockThreshold")}
-                      <InfoTooltip messageKey="storeSettings.lowStockThresholdTooltip" />
                     </p>
                     <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.lowStockThresholdDesc")}</p>
                   </div>
@@ -1513,7 +1804,8 @@ export default function StoreSettingsPage() {
             </div>
           </SettingCard>
         )}
-      </div>
+        </div>
+        </div>
 
       <style jsx>{`
         .ss-hero {
@@ -1540,39 +1832,72 @@ export default function StoreSettingsPage() {
           box-shadow: 0 0 0 3px rgba(34, 155, 108, 0.18);
         }
 
-        .ss-tabbar {
-          display: flex;
-          gap: 6px;
-          overflow-x: auto;
-          padding: 5px;
-          background: #f3f4f6;
+        .ss-nav-wrap {
+          display: grid;
+          grid-template-columns: 250px 1fr;
+          gap: 20px;
+          align-items: start;
+        }
+        @media (max-width: 900px) {
+          .ss-nav-wrap {
+            grid-template-columns: 1fr;
+          }
+          .ss-sidebar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+          }
+          .ss-nav-group {
+            display: contents;
+          }
+          .ss-nav-group-label {
+            display: none;
+          }
+          .ss-nav-item {
+            width: auto;
+          }
+        }
+        .ss-sidebar {
+          position: sticky;
+          top: 16px;
           border-radius: 16px;
-          scrollbar-width: none;
+          border: 1px solid #eef0f3;
+          background: #fff;
+          padding: 10px;
+          overflow: hidden;
         }
-        .ss-tabbar::-webkit-scrollbar {
-          display: none;
+        .ss-nav-group + .ss-nav-group {
+          margin-top: 10px;
         }
-        .ss-tab {
+        .ss-nav-group-label {
+          font-size: 10.5px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #9aa1ab;
+          padding: 4px 10px 6px;
+        }
+        .ss-nav-item {
           display: flex;
           align-items: center;
-          gap: 7px;
-          white-space: nowrap;
-          padding: 9px 16px;
-          border-radius: 12px;
+          gap: 10px;
+          width: 100%;
+          text-align: right;
+          padding: 9px 10px;
+          border-radius: 10px;
           font-size: 13px;
           font-weight: 700;
           color: var(--sub);
           background: transparent;
-          transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-          flex-shrink: 0;
+          transition: background 0.13s ease, color 0.13s ease;
         }
-        .ss-tab:hover {
+        .ss-nav-item:hover {
+          background: #f6f7f9;
           color: var(--ink);
         }
-        .ss-tab--active {
-          background: #fff;
-          color: var(--blue-deep);
-          box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
+        .ss-nav-item--active {
+          background: var(--blue-50, #eef4ff);
+          color: var(--blue-deep, #1e3a8a);
         }
 
         .ss-tab-panel {
@@ -1581,11 +1906,9 @@ export default function StoreSettingsPage() {
         @keyframes ss-fade-in {
           from {
             opacity: 0;
-            transform: translateY(6px);
           }
           to {
             opacity: 1;
-            transform: translateY(0);
           }
         }
         @media (prefers-reduced-motion: reduce) {

@@ -110,6 +110,18 @@ export const LinkedInIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M6.5 8H4v12h2.5V8z" /><circle cx="5.5" cy="5" r="1.8" /><path d="M20 13.4c0-3-1.6-4.6-3.8-4.6-1.3 0-2 .5-2.5 1.2V8.9H11V20h2.6v-6.1c0-1.2.6-2.1 1.8-2.1s1.6.9 1.6 2.1V20H20v-6.6z" /></svg>
 );
 
+export const TwitterIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M4 4l7.2 9.6L4.4 20H7l5.6-5 4.4 5H20l-7.5-9.9L19.4 4h-2.6l-5.1 4.6L7.6 4H4z" /></svg>
+);
+
+export const YouTubeIcon = (p: IconProps) => (
+  <svg {...base(p)}><rect x="3" y="6" width="18" height="12" rx="3" /><path d="M11 9.5v5l4-2.5z" fill="currentColor" stroke="none" /></svg>
+);
+
+export const PinterestIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M9 20c.3-1.5 1-4.5 1.4-6.3M12 6.5c2.5 0 4 1.6 4 3.7 0 2.7-1.5 5-3.7 5-1 0-1.8-.5-2-1.1" /></svg>
+);
+
 export const ChevronDownIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M6 9l6 6 6-6" /></svg>
 );

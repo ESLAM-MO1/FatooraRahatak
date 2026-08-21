@@ -33,6 +33,18 @@ public class MerchantDocument : BaseEntity
     public string DocumentType { get; set; } = "Other"; // CommercialRegister / IdCard / License / VatCertificate / Other
     public string FileName { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
+    public DocumentStatus Status { get; set; } = DocumentStatus.Pending;
+    public string? RejectReason { get; set; }
+    public long? ReviewedByUserId { get; set; }
+    public DateTime? ReviewedAt { get; set; }
 
     public MerchantVerification Verification { get; set; } = null!;
+    public User? ReviewedBy { get; set; }
+}
+
+public enum DocumentStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2
 }

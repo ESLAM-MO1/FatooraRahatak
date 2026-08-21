@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, LeafIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -48,7 +50,7 @@ function ProductCard({ product, slug, currencySymbol, colors, t, isWishlist, has
               : <div className="w-full h-full flex items-center justify-center" style={{ color: "#C6D8C6" }}><LeafIcon size={44} /></div>}
           </a>
           {hasDiscount(product) && <span className="absolute rounded-full px-2.5 py-1 text-[11px] font-bold" style={{ background: colors.accentColor, color: "#fff", top: 12, insetInlineStart: 12 }}>-{getDiscount(product)}%</span>}
-          <button type="button" onClick={() => onWishlist(product.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 32, height: 32, background: "rgba(255,255,255,0.94)", top: 12, insetInlineEnd: 12, color: "#DC2626" }}>
+          <button type="button" onClick={() => onWishlist(product.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.94)", top: 12, insetInlineEnd: 12, color: "#DC2626" }}>
             {isWishlist(product.id) ? <HeartFilledIcon size={16} /> : <HeartIcon size={16} />}
           </button>
         </div>
@@ -72,7 +74,7 @@ function ProductCard({ product, slug, currencySymbol, colors, t, isWishlist, has
 
 export default function NaturalGreenTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -81,7 +83,6 @@ export default function NaturalGreenTemplate({
     cartCount, wishlist, toggleWishlist, searchInput, setSearchInput, handleSearchSubmit, isSearchActive, searchResults,
     currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -89,6 +90,10 @@ export default function NaturalGreenTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const getDiscount = (p: { basePrice: number; discountPrice: number | null }) => hasDiscount(p) ? Math.round((1 - (p.discountPrice as number) / p.basePrice) * 100) : 0;
@@ -118,15 +123,9 @@ export default function NaturalGreenTemplate({
             <a href={`/store/${slug}/cart`} className="relative p-2 rounded-full" style={{ color: "#1C1917" }} aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
           </div>
         </div>
-        <nav className="hidden md:flex items-center justify-center gap-8 pb-3 text-[14px] font-semibold">
-          <a href={`/store/${slug}`} className="hover:opacity-70" style={{ color: "#44403C" }}>{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="hover:opacity-70" style={{ color: "#44403C" }}>{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="hover:opacity-70" style={{ color: "#44403C" }}>{t("storefront.contactUs")}</a>
-        </nav>
+        <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center justify-center gap-8 pb-3 text-[14px] font-semibold" linkClassName="hover:opacity-70" linkStyle={{ color: "#44403C" }} />
         {mobileOpen && <div className="md:hidden px-4 pb-3 space-y-2 text-[15px] font-semibold" style={{ color: "#1C1917" }}>
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
+          <StoreMainMenu slug={slug} mobile containerClassName="space-y-2" linkClassName="block py-1.5" />
         </div>}
       </header>
 
@@ -175,7 +174,7 @@ export default function NaturalGreenTemplate({
           </div>
           {productsLoading && <p className="text-center py-12" style={{ color: "#6B7280" }}>{t("storefront.loadingProducts")}</p>}
           {!productsLoading && displayProducts.length === 0 && <div className="flex flex-col items-center gap-3 py-16"><span style={{ color: "#D1D5DB" }}><LeafIcon size={48} /></span><p style={{ color: "#6B7280" }}>{t("storefront.noProducts")}</p></div>}
-          {!productsLoading && displayProducts.length > 0 && <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
+          {!productsLoading && displayProducts.length > 0 && <div className="grid grid-cols-2 gap-7 sm:grid-cols-2 lg:grid-cols-3">
             {displayProducts.map(p => <ProductCard key={p.id} product={p} slug={slug} currencySymbol={currencySymbol} colors={colors} t={t} isWishlist={isWishlist} hasDiscount={hasDiscount} getDiscount={getDiscount} onWishlist={toggleWishlist} onAddToCart={handleAddToCart} />)}
           </div>}
           {!isSearchActive && !showAllProducts && products.length > 8 && <div className="mt-10 text-center"><button type="button" onClick={() => setShowAllProducts(true)} className="px-9 py-3 rounded-full font-bold text-sm" style={{ border: `1px solid ${colors.accentColor}`, color: colors.accentColor }}>{t("storefront.viewAll")}</button></div>}
@@ -201,14 +200,7 @@ export default function NaturalGreenTemplate({
         <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div><h4 className="text-white font-extrabold text-lg">{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="text-white font-extrabold text-[14px]">{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-extrabold text-[14px]" listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "rgba(255,255,255,0.65)" }} linkClassName="hover:text-white" />
           </div>
           <div>
             <h4 className="text-white font-extrabold text-[14px]">{t("storefront.contactHeading")}</h4>
@@ -223,7 +215,7 @@ export default function NaturalGreenTemplate({
             <h4 className="text-white font-extrabold text-[14px]">{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center rounded-full transition-opacity hover:opacity-70"
                 linkStyle={{ width: 36, height: 36, background: "rgba(255,255,255,0.14)", color: "#fff" }}
                 iconSize={17}

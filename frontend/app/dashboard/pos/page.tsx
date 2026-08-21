@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import Can from "@/components/Can";
+import { InvoiceDetail, printInvoice } from "@/lib/invoicePrint";
 
 interface Product {
   id: number; categoryId: number | null; nameAr: string; sku: string; barcode: string | null;
@@ -20,17 +21,6 @@ interface PosShift {
   id: number; openedByName: string; openedAt: string;
   startingCash: number; totalSales: number; isOpen: boolean;
 }
-interface SaleResult {
-  invoiceNumber: string;
-  subTotal: number;
-  taxAmount: number;
-  totalAmount: number;
-  paymentMethod: string;
-  paymentStatus: string;
-  items: { productNameSnapshot: string; quantity: number; unitPrice: number }[];
-  partyName?: string | null;
-  invoiceDate?: string;
-}
 
 const VAT_RATE = 0.15;
 
@@ -41,55 +31,6 @@ const PAYMENT_METHODS = [
 
 function fmt(n: number): string {
   return (Math.round(n * 100) / 100).toFixed(2);
-}
-
-function printReceipt(inv: SaleResult, t: (k: string) => string, change: number) {
-  const rows = (inv.items || [])
-    .map(
-      (it) =>
-        `<tr><td>${it.productNameSnapshot}</td><td style="text-align:center">${it.quantity}</td><td style="text-align:center">${fmt(it.unitPrice)}</td><td style="text-align:center">${fmt(it.unitPrice * it.quantity)}</td></tr>`
-    )
-    .join("");
-  const w = window.open("", "_blank", "width=320,height=600");
-  if (!w) return;
-  w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
-<title>${t("pos.receipt")}</title>
-<style>
-  body { font-family: "Segoe UI", Tahoma, Arial, sans-serif; width: 280px; margin: 0 auto; padding: 12px; font-size: 12px; color: #111; }
-  .center { text-align: center; }
-  h2 { font-size: 15px; margin: 0 0 2px; }
-  .muted { color: #555; font-size: 11px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { padding: 3px 2px; border-bottom: 1px dashed #ccc; }
-  th { font-size: 11px; color: #444; }
-  td:first-child, th:first-child { text-align: right; }
-  .line { border-top: 1px dashed #999; margin: 8px 0; }
-  .totals div { display: flex; justify-content: space-between; padding: 2px 0; }
-  .grand { font-size: 14px; font-weight: 800; border-top: 1px solid #111; padding-top: 4px; margin-top: 4px; }
-  .big { font-size: 16px; font-weight: 800; }
-</style></head><body>
-  <div class="center">
-    <h2>${t("pos.receipt")}</h2>
-    <div class="muted">${t("pos.invoiceNumber")}: <b>${inv.invoiceNumber}</b></div>
-    <div class="muted">${t("pos.dateLabel")}: ${new Date().toLocaleString("ar-SA")}</div>
-    <div class="muted">${t("pos.paymentMethod")}: ${inv.paymentMethod === "Cash" ? t("pos.cash") : t("pos.card")}</div>
-  </div>
-  <table>
-    <tr><th>${t("invoice.product")}</th><th>${t("pos.qty")}</th><th>${t("pos.price")}</th><th>${t("invoice.lineTotal")}</th></tr>
-    ${rows}
-  </table>
-  <div class="line"></div>
-  <div class="totals">
-    <div><span>${t("pos.subtotal")}</span><span>${fmt(inv.subTotal)}</span></div>
-    <div><span>${t("pos.tax")}</span><span>${fmt(inv.taxAmount)}</span></div>
-    <div class="grand"><span>${t("pos.totalDue")}</span><span>${fmt(inv.totalAmount)}</span></div>
-    ${change > 0 ? `<div><span>${t("pos.receivedAmount")}</span><span>${fmt(change + inv.totalAmount)}</span></div><div class="big"><span>${t("pos.change")}</span><span>${fmt(change)}</span></div>` : ""}
-  </div>
-  <div class="center muted" style="margin-top:10px">${t("invoice.sellerSignature") || ""}</div>
-</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 300);
 }
 
 export default function CashierPage() {
@@ -108,7 +49,7 @@ export default function CashierPage() {
   const [vatRegistered, setVatRegistered] = useState(false);
   const [scanInput, setScanInput] = useState("");
   const [receivedAmount, setReceivedAmount] = useState("");
-  const [lastInvoice, setLastInvoice] = useState<SaleResult | null>(null);
+  const [lastInvoice, setLastInvoice] = useState<InvoiceDetail | null>(null);
   const [changeDue, setChangeDue] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -441,7 +382,7 @@ export default function CashierPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => { setShowReceipt(false); }} className="btn btn-outline flex-1">{t("pos.done")}</button>
-              <button onClick={() => printReceipt(lastInvoice, t, changeDue)} className="btn btn-primary flex-1"><Icon name="printer" size={14} /> {t("pos.printReceipt")}</button>
+              <button onClick={() => printInvoice(lastInvoice, t)} className="btn btn-primary flex-1"><Icon name="printer" size={14} /> {t("pos.printReceipt")}</button>
             </div>
           </div>
         </div>

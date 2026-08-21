@@ -430,7 +430,7 @@ function TrialBalanceView({ data, t }: { data: TrialBalanceResponse; t: (key: st
           <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noMovements")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="hidden md:table w-full text-sm">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("accountingReport.code")}</th>
@@ -471,6 +471,54 @@ function TrialBalanceView({ data, t }: { data: TrialBalanceResponse; t: (key: st
                 </tr>
               </tfoot>
             </table>
+            <div className="md:hidden space-y-3">
+              {data.lines.map((l) => (
+                <div key={l.accountId} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.code")}</p>
+                      <p className="text-[12px] text-[var(--blue)] font-bold" dir="ltr">{l.accountCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.type")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{l.accountType}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.account")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{l.accountNameAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.debit")}</p>
+                      <p className="text-[12px] text-[var(--ink)]" dir="ltr">
+                        {l.debitBalance > 0 ? formatMoney(l.debitBalance) : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.credit")}</p>
+                      <p className="text-[12px] text-[var(--ink)]" dir="ltr">
+                        {l.creditBalance > 0 ? formatMoney(l.creditBalance) : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.total")}</p>
+                    <p className="text-[12px] font-bold text-[var(--ink)]">{t("accountingReport.debit")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.debit")}</p>
+                    <p className="text-[12px] font-bold text-[var(--ink)]" dir="ltr">{formatMoney(data.totalDebit)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.credit")}</p>
+                    <p className="text-[12px] font-bold text-[var(--ink)]" dir="ltr">{formatMoney(data.totalCredit)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -514,7 +562,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
             <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noRevenues")}</p>
           ) : (
             <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="hidden md:table w-full text-sm">
               <tbody>
                 {data.revenueLines.map((l) => (
                   <tr key={l.accountId} className="border-b border-[var(--border)]">
@@ -531,6 +579,26 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3">
+              {data.revenueLines.map((l) => (
+                <div key={l.accountId} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.code")}</p>
+                      <p className="text-[12px] text-[var(--blue)] font-bold" dir="ltr">{l.accountCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.account")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{l.accountNameAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.total")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-bold" dir="ltr">{formatMoney(l.amount)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
             </div>
           )}
         </div>
@@ -543,7 +611,7 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
             <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noExpenses")}</p>
           ) : (
             <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="hidden md:table w-full text-sm">
               <tbody>
                 {data.expenseLines.map((l) => (
                   <tr key={l.accountId} className="border-b border-[var(--border)]">
@@ -560,6 +628,26 @@ function IncomeStatementView({ data, t }: { data: IncomeStatementResponse; t: (k
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3">
+              {data.expenseLines.map((l) => (
+                <div key={l.accountId} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.code")}</p>
+                      <p className="text-[12px] text-[var(--blue)] font-bold" dir="ltr">{l.accountCode}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.account")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{l.accountNameAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.total")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-bold" dir="ltr">{formatMoney(l.amount)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
             </div>
           )}
         </div>
@@ -609,7 +697,7 @@ function BalanceSheetView({ data, t }: { data: BalanceSheetResponse; t: (key: st
               <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noData")}</p>
             ) : (
               <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="hidden md:table w-full text-sm">
                 <tbody>
                   {s.lines.map((l) => (
                     <tr key={`${s.title}-${l.accountId}`} className="border-b border-[var(--border)]">
@@ -626,6 +714,26 @@ function BalanceSheetView({ data, t }: { data: BalanceSheetResponse; t: (key: st
                   ))}
                 </tbody>
               </table>
+              <div className="md:hidden space-y-3">
+                {s.lines.map((l) => (
+                  <div key={`${s.title}-${l.accountId}`} className="card p-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.code")}</p>
+                        <p className="text-[12px] text-[var(--blue)] font-bold" dir="ltr">{l.accountCode}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.account")}</p>
+                        <p className="text-[12px] text-[var(--ink)]">{l.accountNameAr}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.total")}</p>
+                        <p className="text-[12px] text-[var(--ink)] font-bold" dir="ltr">{formatMoney(l.amount)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
               </div>
             )}
           </div>
@@ -667,7 +775,7 @@ function CashFlowView({ data, t }: { data: CashFlowResponse; t: (key: string) =>
           <p className="p-6 text-[var(--sub)] text-sm">{t("accountingReport.noCashMovements")}</p>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="hidden md:table w-full text-sm">
             <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
               <tr>
                 <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("accountingReport.source")}</th>
@@ -688,6 +796,27 @@ function CashFlowView({ data, t }: { data: CashFlowResponse; t: (key: string) =>
               ))}
             </tbody>
           </table>
+          <div className="md:hidden space-y-3">
+            {data.movementsBySource.map((m) => (
+              <div key={m.sourceType} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.source")}</p>
+                    <p className="text-[12px] text-[var(--ink)]">{t(sourceTypeLabels[m.sourceType] || m.sourceType)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("accountingReport.netMovement")}</p>
+                    <p
+                      className={`text-[12px] font-bold ${m.netAmount >= 0 ? "text-[var(--green)]" : "text-[var(--danger)]"}`}
+                      dir="ltr"
+                    >
+                      {formatMoney(m.netAmount)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
           </div>
         )}
       </div>

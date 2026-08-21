@@ -215,7 +215,7 @@ useEffect(() => {
 
       <form onSubmit={handleSubmit}>
         <div className="card p-5 mb-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("invoice.date")}</label>
               <div className="field-shell">
@@ -263,11 +263,11 @@ useEffect(() => {
                     placeholder={t("invoice.guestNamePlaceholder")}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="field-shell">
-                    <input
-                      type="text"
-                      value={guestPhone}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="field-shell">
+            <input
+              type="text"
+              value={guestPhone}
                       onChange={(e) => setGuestPhone(e.target.value)}
                       placeholder={t("invoice.guestPhonePlaceholder")}
                       dir="ltr"

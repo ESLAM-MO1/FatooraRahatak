@@ -36,6 +36,8 @@ public class AppDbContext : DbContext
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<StoreShippingMethod> StoreShippingMethods => Set<StoreShippingMethod>();
     public DbSet<StorePaymentMethod> StorePaymentMethods => Set<StorePaymentMethod>();
+    public DbSet<StoreFaqItem> StoreFaqItems => Set<StoreFaqItem>();
+    public DbSet<StoreBlogPost> StoreBlogPosts => Set<StoreBlogPost>();
 
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -76,6 +78,9 @@ public class AppDbContext : DbContext
     public DbSet<Coupon> Coupons => Set<Coupon>();
     public DbSet<CouponUsage> CouponUsages => Set<CouponUsage>();
     public DbSet<PlatformSetting> PlatformSettings => Set<PlatformSetting>();
+    public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
+    public DbSet<MarketingIntegration> MarketingIntegrations => Set<MarketingIntegration>();
+    public DbSet<MarketingCampaign> MarketingCampaigns => Set<MarketingCampaign>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
@@ -116,7 +121,6 @@ public class AppDbContext : DbContext
     public DbSet<ReferralCode> ReferralCodes => Set<ReferralCode>();
     public DbSet<Referral> Referrals => Set<Referral>();
     public DbSet<AffiliateCommission> AffiliateCommissions => Set<AffiliateCommission>();
-    public DbSet<AffiliateWithdrawalRequest> AffiliateWithdrawalRequests => Set<AffiliateWithdrawalRequest>();
     public DbSet<ShippingCompany> ShippingCompanies => Set<ShippingCompany>();
     public DbSet<Shipment> Shipments => Set<Shipment>();
     public DbSet<ShipmentEvent> ShipmentEvents => Set<ShipmentEvent>();
@@ -960,6 +964,25 @@ public class AppDbContext : DbContext
             .HasIndex(m => new { m.StoreId, m.Type })
             .IsUnique();
 
+        modelBuilder.Entity<StoreFaqItem>()
+            .HasOne(f => f.Store)
+            .WithMany(s => s.FaqItems)
+            .HasForeignKey(f => f.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreFaqItem>()
+            .HasIndex(f => new { f.StoreId, f.DisplayOrder });
+
+        modelBuilder.Entity<StoreBlogPost>()
+            .HasOne(b => b.Store)
+            .WithMany(s => s.BlogPosts)
+            .HasForeignKey(b => b.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreBlogPost>()
+            .HasIndex(b => new { b.StoreId, b.SlugAr })
+            .IsUnique();
+
         modelBuilder.Entity<PosShift>()
             .HasOne(s => s.Store)
             .WithMany()
@@ -1029,15 +1052,6 @@ public class AppDbContext : DbContext
             .Property(c => c.Amount).HasPrecision(14, 2);
         modelBuilder.Entity<AffiliateCommission>()
             .Property(c => c.Rate).HasPrecision(5, 2);
-
-        modelBuilder.Entity<AffiliateWithdrawalRequest>()
-            .HasOne(w => w.User)
-            .WithMany()
-            .HasForeignKey(w => w.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<AffiliateWithdrawalRequest>()
-            .Property(w => w.Amount).HasPrecision(14, 2);
 
         modelBuilder.Entity<ShippingCompany>()
             .HasIndex(c => new { c.StoreId, c.Code })

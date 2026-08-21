@@ -5,6 +5,9 @@ using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Orders;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -468,6 +471,220 @@ public class ReportService : IReportService
             }));
         return CsvExport.ToBytes(
             new[] { "الشريحة", "رقم الفاتورة", "التاريخ", "العميل", "المبلغ", "أيام التأخير" }, rows);
+    }
+
+    // ---------- تصدير Excel و PDF ----------
+
+    public async Task<byte[]> ExportSalesReportExcelAsync(long userId, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetSalesReportAsync(userId, from, to);
+        return ExcelExport.ToBytes("المبيعات",
+            new[] { "التاريخ", "عدد الطلبات", "الإيراد" },
+            report.DailyRows.Select(r => new[] { r.Date.ToString("yyyy-MM-dd"), r.OrdersCount.ToString(), r.Revenue.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportSalesReportPdfAsync(long userId, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetSalesReportAsync(userId, from, to);
+        return PdfReportExport.ToBytes("تقرير المبيعات", $"الفترة: {report.From:yyyy-MM-dd} إلى {report.To:yyyy-MM-dd}",
+            new[] { "التاريخ", "عدد الطلبات", "الإيراد" },
+            report.DailyRows.Select(r => new[] { r.Date.ToString("yyyy-MM-dd"), r.OrdersCount.ToString(), r.Revenue.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportDiscountsReportExcelAsync(long userId, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetDiscountsReportAsync(userId, from, to);
+        return ExcelExport.ToBytes("الخصومات",
+            new[] { "كود الكوبون", "عدد مرات الاستخدام", "إجمالي الخصم" },
+            report.Rows.Select(r => new[] { r.CouponCode, r.TimesUsed.ToString(), r.TotalDiscount.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportDiscountsReportPdfAsync(long userId, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetDiscountsReportAsync(userId, from, to);
+        return PdfReportExport.ToBytes("تقرير الخصومات", $"الفترة: {report.From:yyyy-MM-dd} إلى {report.To:yyyy-MM-dd}",
+            new[] { "كود الكوبون", "عدد مرات الاستخدام", "إجمالي الخصم" },
+            report.Rows.Select(r => new[] { r.CouponCode, r.TimesUsed.ToString(), r.TotalDiscount.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportTaxReportExcelAsync(long userId, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetTaxReportAsync(userId, from, to);
+        return ExcelExport.ToBytes("الضرائب",
+            new[] { "رقم الفاتورة", "التاريخ", "الضريبة" },
+            report.Rows.Select(r => new[] { r.InvoiceNumber, r.InvoiceDate.ToString("yyyy-MM-dd"), r.TaxAmount.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportTaxReportPdfAsync(long userId, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetTaxReportAsync(userId, from, to);
+        return PdfReportExport.ToBytes("تقرير الضرائب", $"الفترة: {report.From:yyyy-MM-dd} إلى {report.To:yyyy-MM-dd}",
+            new[] { "رقم الفاتورة", "التاريخ", "الضريبة" },
+            report.Rows.Select(r => new[] { r.InvoiceNumber, r.InvoiceDate.ToString("yyyy-MM-dd"), r.TaxAmount.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportLowStockExcelAsync(long userId, int? threshold)
+    {
+        var rows = await GetLowStockAsync(userId, threshold);
+        return ExcelExport.ToBytes("مخزون منخفض",
+            new[] { "المنتج", "SKU", "المتوفر", "الحد الأدنى" },
+            rows.Select(r => new[] { r.ProductName, r.Sku, r.Available.ToString(), r.Threshold.ToString() }));
+    }
+
+    public async Task<byte[]> ExportLowStockPdfAsync(long userId, int? threshold)
+    {
+        var rows = await GetLowStockAsync(userId, threshold);
+        return PdfReportExport.ToBytes("تقرير المخزون المنخفض", "",
+            new[] { "المنتج", "SKU", "المتوفر", "الحد الأدنى" },
+            rows.Select(r => new[] { r.ProductName, r.Sku, r.Available.ToString(), r.Threshold.ToString() }));
+    }
+
+    public async Task<byte[]> ExportInventoryMovementsExcelAsync(long userId, DateOnly? from, DateOnly? to, long? productId)
+    {
+        var rows = await GetInventoryMovementsAsync(userId, from, to, productId);
+        return ExcelExport.ToBytes("حركة المخزون",
+            new[] { "التاريخ", "المنتج", "المستودع", "النوع", "الكمية" },
+            rows.Select(r => new[] { r.Date.ToString("yyyy-MM-dd HH:mm"), r.ProductName, r.WarehouseName, r.Type, r.Quantity.ToString() }));
+    }
+
+    public async Task<byte[]> ExportInventoryMovementsPdfAsync(long userId, DateOnly? from, DateOnly? to, long? productId)
+    {
+        var rows = await GetInventoryMovementsAsync(userId, from, to, productId);
+        return PdfReportExport.ToBytes("تقرير حركة المخزون", "",
+            new[] { "التاريخ", "المنتج", "المستودع", "النوع", "الكمية" },
+            rows.Select(r => new[] { r.Date.ToString("yyyy-MM-dd HH:mm"), r.ProductName, r.WarehouseName, r.Type, r.Quantity.ToString() }));
+    }
+
+    public async Task<byte[]> ExportInventoryValuationExcelAsync(long userId)
+    {
+        var report = await GetInventoryValuationAsync(userId);
+        return ExcelExport.ToBytes("تقييم المخزون",
+            new[] { "المنتج", "SKU", "المتوفر", "قيمة التكلفة", "قيمة البيع" },
+            report.Rows.Select(r => new[] { r.ProductName, r.Sku, r.Available.ToString(), r.CostValue.ToString("0.00"), r.RetailValue.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportInventoryValuationPdfAsync(long userId)
+    {
+        var report = await GetInventoryValuationAsync(userId);
+        return PdfReportExport.ToBytes("تقرير تقييم المخزون", "",
+            new[] { "المنتج", "SKU", "المتوفر", "قيمة التكلفة", "قيمة البيع" },
+            report.Rows.Select(r => new[] { r.ProductName, r.Sku, r.Available.ToString(), r.CostValue.ToString("0.00"), r.RetailValue.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportCustomerStatementExcelAsync(long userId, long? customerId, string? phone, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetCustomerStatementAsync(userId, customerId, phone, from, to);
+        return ExcelExport.ToBytes("كشف حساب عميل",
+            new[] { "التاريخ", "المرجع", "النوع", "مدين", "دائن" },
+            report.Lines.Select(r => new[] { r.Date.ToString("yyyy-MM-dd HH:mm"), r.Reference, r.Type, r.Debit.ToString("0.00"), r.Credit.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportCustomerStatementPdfAsync(long userId, long? customerId, string? phone, DateOnly? from, DateOnly? to)
+    {
+        var report = await GetCustomerStatementAsync(userId, customerId, phone, from, to);
+        return PdfReportExport.ToBytes("كشف حساب عميل", $"العميل: {report.CustomerName ?? report.Phone ?? "—"}",
+            new[] { "التاريخ", "المرجع", "النوع", "مدين", "دائن" },
+            report.Lines.Select(r => new[] { r.Date.ToString("yyyy-MM-dd HH:mm"), r.Reference, r.Type, r.Debit.ToString("0.00"), r.Credit.ToString("0.00") }));
+    }
+
+    public async Task<byte[]> ExportARAgingExcelAsync(long userId)
+    {
+        var aging = await GetARAgingAsync(userId);
+        var rows = aging.Buckets
+            .SelectMany(b => b.Invoices.Select(i => new[]
+            {
+                b.Name, i.InvoiceNumber, i.InvoiceDate.ToString("yyyy-MM-dd"), i.PartyName,
+                i.TotalAmount.ToString("0.00"), i.DaysOverdue.ToString()
+            }));
+        return ExcelExport.ToBytes("أعمار الذمم",
+            new[] { "الشريحة", "رقم الفاتورة", "التاريخ", "العميل", "المبلغ", "أيام التأخير" }, rows);
+    }
+
+    public async Task<byte[]> ExportARAgingPdfAsync(long userId)
+    {
+        var aging = await GetARAgingAsync(userId);
+        var rows = aging.Buckets
+            .SelectMany(b => b.Invoices.Select(i => new[]
+            {
+                b.Name, i.InvoiceNumber, i.InvoiceDate.ToString("yyyy-MM-dd"), i.PartyName,
+                i.TotalAmount.ToString("0.00"), i.DaysOverdue.ToString()
+            }));
+        return PdfReportExport.ToBytes("تقرير أعمار الذمم", "",
+            new[] { "الشريحة", "رقم الفاتورة", "التاريخ", "العميل", "المبلغ", "أيام التأخير" }, rows);
+    }
+}
+
+public static class ExcelExport
+{
+    public static byte[] ToBytes(string sheetName, string[] headers, IEnumerable<string[]> rows)
+    {
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var ws = workbook.Worksheets.Add(sheetName);
+        for (int i = 0; i < headers.Length; i++)
+        {
+            var cell = ws.Cell(1, i + 1);
+            cell.Value = headers[i];
+            cell.Style.Font.Bold = true;
+        }
+        int rowIndex = 2;
+        foreach (var row in rows)
+        {
+            for (int i = 0; i < row.Length; i++)
+                ws.Cell(rowIndex, i + 1).Value = row[i];
+            rowIndex++;
+        }
+        ws.Columns().AdjustToContents();
+        using var ms = new MemoryStream();
+        workbook.SaveAs(ms);
+        return ms.ToArray();
+    }
+}
+
+public static class PdfReportExport
+{
+    public static byte[] ToBytes(string title, string subtitle, string[] headers, IEnumerable<string[]> rows)
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+        return Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(28);
+                page.DefaultTextStyle(t => t
+                    .FontFamily("Arial")
+                    .FontSize(9)
+                    .LineHeight(1.5f)
+                    .FontColor("#1f2937"));
+
+                page.Header().Column(col =>
+                {
+                    col.Item().Text(t => t.Span(title).FontSize(16).Bold().FontColor("#1d4ed8"));
+                    if (!string.IsNullOrWhiteSpace(subtitle))
+                        col.Item().Text(subtitle).FontSize(9).FontColor("#6b7280");
+                    col.Item().PaddingVertical(8).LineHorizontal(1).LineColor("#e5e7eb");
+                });
+
+                page.Content().Table(table =>
+                {
+                    table.ColumnsDefinition(cols =>
+                    {
+                        for (int i = 0; i < headers.Length; i++)
+                            cols.RelativeColumn();
+                    });
+                    table.Header(header =>
+                    {
+                        foreach (var h in headers)
+                            header.Cell().Background("#1d4ed8").AlignRight().Padding(4)
+                                .Text(h).FontSize(8.5f).Bold().FontColor("#ffffff");
+                    });
+                    foreach (var row in rows)
+                        foreach (var cell in row)
+                            table.Cell().BorderBottom(0.5f).BorderColor("#e5e7eb").Padding(3)
+                                .AlignRight().Text(cell).FontSize(8.5f).FontColor("#374151");
+                });
+            });
+        }).GeneratePdf();
     }
 }
 

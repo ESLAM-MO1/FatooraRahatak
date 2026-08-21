@@ -217,7 +217,7 @@ export default function CategoriesPage() {
 
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="card p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="card p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">
               {editingId ? t("category.edit") : t("category.add")}
             </h2><button onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>

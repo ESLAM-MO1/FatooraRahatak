@@ -280,7 +280,7 @@ export default function JournalEntryDetailPage() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm hidden md:table">
             <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
               <tr>
                 <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("journalEntry.account")}</th>
@@ -322,6 +322,45 @@ export default function JournalEntryDetailPage() {
               </tr>
             </tfoot>
           </table>
+        </div>
+        <div className="md:hidden space-y-3">
+          {entry.lines.map((line) => (
+            <div key={line.id} className="card p-4 space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="col-span-2">
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("journalEntry.account")}</p>
+                  <p className="text-[var(--ink)]">
+                    <span className="text-[var(--sub)]" dir="ltr">
+                      {line.accountCode}
+                    </span>{" "}
+                    {line.accountNameAr}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("journalEntry.lineDescription")}</p>
+                  <p className="text-[var(--sub)]">{line.lineDescription || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("journalEntry.debit")}</p>
+                  <p className="text-[var(--ink)]" dir="ltr">
+                    {line.debit > 0 ? line.debit.toLocaleString("ar-SA-u-nu-latn") : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("journalEntry.credit")}</p>
+                  <p className="text-[var(--ink)]" dir="ltr">
+                    {line.credit > 0 ? line.credit.toLocaleString("ar-SA-u-nu-latn") : "—"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+          <div className="card p-4 flex items-center justify-between text-sm font-bold bg-[#FAFBFC]">
+            <span className="text-[var(--ink)]">{t("journalEntry.total")}</span>
+            <span className="text-[var(--ink)]" dir="ltr">
+              {t("journalEntry.debit")}: {entry.totalDebit.toLocaleString("ar-SA-u-nu-latn")} · {t("journalEntry.credit")}: {entry.totalCredit.toLocaleString("ar-SA-u-nu-latn")}
+            </span>
+          </div>
         </div>
       </div>
     </div>

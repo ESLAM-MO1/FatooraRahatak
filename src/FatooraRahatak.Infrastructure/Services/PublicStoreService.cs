@@ -85,7 +85,12 @@ public class PublicStoreService : IPublicStoreService
             TiktokUrl = store.TiktokUrl,
             TelegramUrl = store.TelegramUrl,
             LinkedinUrl = store.LinkedinUrl,
+            TwitterUrl = store.TwitterUrl,
+            YoutubeUrl = store.YoutubeUrl,
+            PinterestUrl = store.PinterestUrl,
             ReturnPolicyText = store.ReturnPolicyText,
+            MenuConfigJson = store.MenuConfigJson,
+            StorePagesJson = store.StorePagesJson,
             IsCouponsEnabled = store.IsCouponsEnabled,
             IsSearchEnabled = store.IsSearchEnabled,
             IsReviewsEnabled = store.IsReviewsEnabled,
@@ -338,6 +343,30 @@ public class PublicStoreService : IPublicStoreService
         };
     }
 
+    public async Task<PublicStorePageDto?> GetStorePageAsync(string slug, string pageKey)
+    {
+        var store = await GetActiveStoreBySlugAsync(slug);
+        if (store == null || string.IsNullOrWhiteSpace(pageKey))
+            return null;
+
+        var key = pageKey.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(store.StorePagesJson))
+            return null;
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var pages = JsonSerializer.Deserialize<List<PublicStorePageDto>>(store.StorePagesJson, options);
+            var page = pages?.FirstOrDefault(p =>
+                string.Equals(p.Key, key, StringComparison.OrdinalIgnoreCase) && p.IsEnabled);
+            return page;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<ReturnPolicyDto?> GetReturnPolicyAsync(string slug)
     {
         var store = await GetOnlineStoreBySlugAsync(slug);
@@ -347,6 +376,80 @@ public class PublicStoreService : IPublicStoreService
         {
             ReturnPolicyText = store.ReturnPolicyText,
             ReturnPolicyDays = store.ReturnPolicyDays
+        };
+    }
+
+    public async Task<List<PublicStoreFaqItemDto>?> GetStoreFaqAsync(string slug)
+    {
+        var store = await GetOnlineStoreBySlugAsync(slug);
+        if (store == null) return null;
+
+        return await _context.StoreFaqItems
+            .Where(f => f.StoreId == store.Id && f.IsPublished)
+            .OrderBy(f => f.DisplayOrder)
+            .ThenBy(f => f.Id)
+            .Select(f => new PublicStoreFaqItemDto
+            {
+                Id = f.Id,
+                QuestionAr = f.QuestionAr,
+                QuestionEn = f.QuestionEn,
+                AnswerAr = f.AnswerAr,
+                AnswerEn = f.AnswerEn,
+                DisplayOrder = f.DisplayOrder
+            })
+            .ToListAsync();
+    }
+
+    public async Task<List<PublicStoreBlogPostDto>?> GetStoreBlogPostsAsync(string slug)
+    {
+        var store = await GetOnlineStoreBySlugAsync(slug);
+        if (store == null) return null;
+
+        return await _context.StoreBlogPosts
+            .Where(b => b.StoreId == store.Id && b.Status == "Published")
+            .OrderByDescending(b => b.PublishedAt)
+            .ThenByDescending(b => b.CreatedAt)
+            .Select(b => new PublicStoreBlogPostDto
+            {
+                Id = b.Id,
+                TitleAr = b.TitleAr,
+                TitleEn = b.TitleEn,
+                SlugAr = b.SlugAr,
+                SlugEn = b.SlugEn,
+                ContentAr = b.ContentAr,
+                ContentEn = b.ContentEn,
+                FeaturedImage = b.FeaturedImage,
+                AuthorName = b.AuthorName,
+                PublishedAt = b.PublishedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<PublicStoreBlogPostDto?> GetStoreBlogPostAsync(string slug, string slugKey)
+    {
+        var store = await GetOnlineStoreBySlugAsync(slug);
+        if (store == null) return null;
+
+        var post = await _context.StoreBlogPosts
+            .FirstOrDefaultAsync(b =>
+                b.StoreId == store.Id &&
+                b.Status == "Published" &&
+                (b.SlugAr == slugKey || b.SlugEn == slugKey));
+
+        if (post == null) return null;
+
+        return new PublicStoreBlogPostDto
+        {
+            Id = post.Id,
+            TitleAr = post.TitleAr,
+            TitleEn = post.TitleEn,
+            SlugAr = post.SlugAr,
+            SlugEn = post.SlugEn,
+            ContentAr = post.ContentAr,
+            ContentEn = post.ContentEn,
+            FeaturedImage = post.FeaturedImage,
+            AuthorName = post.AuthorName,
+            PublishedAt = post.PublishedAt
         };
     }
 

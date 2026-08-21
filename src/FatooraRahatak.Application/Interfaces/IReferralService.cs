@@ -8,12 +8,11 @@ public interface IReferralService
     Task<ReferralOverviewDto> GetMyOverviewAsync(long userId);
     Task<ReferralCode> GetOrCreateReferralCodeAsync(long userId);
     Task<bool> RecordReferralAsync(string code, long referredUserId);
-    Task<List<AdminReferralDto>> GetAllReferralsAsync(string? status = null);
+    Task<List<AdminReferralDto>> GetAllReferralsAsync(string? status = null, DateTime? from = null, DateTime? to = null, string? search = null);
     Task<List<AdminCommissionDto>> GetAllCommissionsAsync(string? status = null);
-    Task MarkCommissionPaidAsync(long commissionId);
+    Task ReviewReferralAsync(long referralId, bool approve, string? note, long adminUserId);
+    Task UpdateCommissionRateAsync(long commissionId, decimal rate);
+    Task<ReferralSettingsDto> GetReferralSettingsAsync();
+    Task UpdateReferralSettingsAsync(decimal defaultCommissionRate);
     Task<int> UpgradeLegacyCodesAsync();
-    Task<List<MyWithdrawalDto>> GetMyWithdrawalsAsync(long userId);
-    Task<List<AdminWithdrawalDto>> GetAllWithdrawalsAsync(string? status = null);
-    Task<MyWithdrawalDto> RequestWithdrawalAsync(long userId, decimal amount);
-    Task ProcessWithdrawalAsync(long withdrawalId, bool approve, string? note);
 }

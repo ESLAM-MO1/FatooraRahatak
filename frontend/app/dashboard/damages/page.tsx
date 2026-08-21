@@ -74,8 +74,9 @@ export default function DamagesPage() {
         {damages.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">{t("damages.noResults")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("damages.warehouse")}</th>
@@ -122,6 +123,55 @@ export default function DamagesPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {damages.map((d) => (
+              <div key={d.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("damages.warehouse")}</p>
+                    <p className="text-[12px] text-[var(--ink)] font-medium">{d.warehouseName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("damages.product")}</p>
+                    <p className="text-[12px] text-[var(--ink)]">{d.productNameAr}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("damages.quantity")}</p>
+                    <p className="text-[12px] text-[var(--sub)]">{d.quantity}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("damages.status")}</p>
+                    <span className={d.isApproved ? "badge badge--green" : "badge badge--yellow"}>
+                      {d.isApproved ? t("damages.statusApproved") : t("damages.statusPending")}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("damages.reason")}</p>
+                    <p className="text-[12px] text-[var(--sub)]">{d.reason}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("damages.date")}</p>
+                    <p className="text-[12px] text-[var(--sub)]">{new Date(d.createdAt).toLocaleString("ar-SA-u-nu-latn")}</p>
+                  </div>
+                </div>
+                {!d.isApproved && (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <Can code="DamagedStock.Approve">
+                      <button
+                        onClick={() => handleApprove(d.id)}
+                        disabled={processingId === d.id}
+                        className="btn btn-sm btn-primary disabled:opacity-60"
+                      >
+                        {processingId === d.id ? t("common.saving") : t("damages.approve")}
+                      </button>
+                    </Can>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </div>

@@ -362,7 +362,7 @@ export default function OrderDetailPage() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
         <p className="text-sm text-gray-500">{t("order.orderNumberLabel")}</p>
-        <p className="text-lg font-bold text-gray-800 mb-4">{order.orderNumber}</p>
+        <p className="text-lg font-bold text-gray-800 mb-4 break-all">{order.orderNumber}</p>
 
         <p className="text-sm text-gray-500">{t("order.shippingAddressLabel")}</p>
         <p className="text-gray-800 mb-4">{order.shippingAddress}</p>
@@ -399,13 +399,13 @@ export default function OrderDetailPage() {
             {order.bankTransfer.iban && (
               <p className="text-[13px] text-gray-700">
                 <span className="text-gray-500">{t("storefront.bankIban")}: </span>
-                <b dir="ltr">{order.bankTransfer.iban}</b>
+                <b dir="ltr" className="break-all">{order.bankTransfer.iban}</b>
               </p>
             )}
             {order.bankTransfer.transferReference && (
               <p className="text-[13px] text-gray-700">
                 <span className="text-gray-500">{t("storefront.transferReferencePlaceholder")}: </span>
-                <b dir="ltr">{order.bankTransfer.transferReference}</b>
+                <b dir="ltr" className="break-all">{order.bankTransfer.transferReference}</b>
               </p>
             )}
             {order.bankTransfer.receiptUrl && (
@@ -432,7 +432,7 @@ export default function OrderDetailPage() {
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-gray-800">{shipment.shippingCompanyName}</p>
                     {shipment.awb && (
-                      <span className="text-xs text-gray-500" dir="ltr">{shipment.awb}</span>
+                      <span className="text-xs text-gray-500 break-all" dir="ltr">{shipment.awb}</span>
                     )}
                   </div>
                   <span className="text-xs font-bold text-[var(--theme)] px-2.5 py-1 rounded-full bg-[var(--theme)]/10">
@@ -470,13 +470,13 @@ export default function OrderDetailPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 divide-y divide-gray-100 mb-6">
         {order.items.map((item, idx) => (
           <div key={idx} className="p-4 flex items-center justify-between gap-4">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <p className="text-gray-800 font-medium">{item.productNameSnapshot}</p>
               <p className="text-sm text-gray-500 mt-1">
                 {item.quantity} × {t("cart.priceSAR", { price: item.unitPriceSnapshot.toFixed(2) })}
               </p>
             </div>
-            <p className="font-bold text-gray-800">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
+            <p className="font-bold text-gray-800 shrink-0">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
           </div>
         ))}
       </div>

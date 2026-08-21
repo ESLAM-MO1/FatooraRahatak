@@ -99,12 +99,16 @@ export default function KpisPage() {
   const [data, setData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedKpis, setSelectedKpis] = useState<string[]>([]);
 
   useEffect(() => {
     api.get("/admin/kpis")
       .then(res => setData(res.data.data))
       .catch(() => setError(t("kpis.loadError")))
       .finally(() => setLoading(false));
+    api.get("/admin/reports/config")
+      .then(res => setSelectedKpis(res.data.data?.selectedKpis || []))
+      .catch(() => {});
   }, [t]);
 
   if (loading) return <LoadingState />;
@@ -134,35 +138,47 @@ export default function KpisPage() {
 
   const ROW_STYLES = ["bg-white", "bg-[var(--blue-50)]"];
 
+  const isKpiVisible = (id: string) => selectedKpis.length === 0 || selectedKpis.includes(id);
+
   return (
     <div className="space-y-6">
       <PageHeader icon="chart" title={t("kpis.title")} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {isKpiVisible("Mrr") && (
         <div className="card p-4 flex flex-col items-center text-center">
           <p className="text-[13px] text-[var(--sub)] mb-1">{t("kpis.mrr")}</p>
           <p className="text-[22px] font-bold text-[var(--blue)]">{formatCurrency(data.mrr)}</p>
         </div>
+        )}
+        {isKpiVisible("Arr") && (
         <div className="card p-4 flex flex-col items-center text-center">
           <p className="text-[13px] text-[var(--sub)] mb-1">{t("kpis.arr")}</p>
           <p className="text-[22px] font-bold text-[var(--blue)]">{formatCurrency(data.arr)}</p>
         </div>
+        )}
+        {isKpiVisible("ActiveStores") && (
         <div className="card p-4 flex flex-col items-center text-center">
           <p className="text-[13px] text-[var(--sub)] mb-1">{t("kpis.activeStores")}</p>
           <p className="text-[22px] font-bold text-[var(--green)]">{data.activeStoresCount}</p>
         </div>
+        )}
+        {isKpiVisible("TrialToPaidConversion") && (
         <div className="card p-4 flex flex-col items-center text-center">
           <p className="text-[13px] text-[var(--sub)] mb-1">{t("kpis.conversion")}</p>
           <p className={`text-[22px] font-bold ${data.trialToPaidConversion >= 30 ? "text-[var(--green)]" : data.trialToPaidConversion >= 15 ? "text-[var(--gold)]" : "text-red-500"}`}>
             {data.trialToPaidConversion}%
           </p>
         </div>
+        )}
+        {isKpiVisible("ChurnRate") && (
         <div className="card p-4 flex flex-col items-center text-center">
           <p className="text-[13px] text-[var(--sub)] mb-1">{t("kpis.churnRate")}</p>
           <p className={`text-[22px] font-bold ${data.churnRate <= 5 ? "text-[var(--green)]" : data.churnRate <= 10 ? "text-[var(--gold)]" : "text-red-500"}`}>
             {data.churnRate}%
           </p>
         </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -208,7 +224,7 @@ export default function KpisPage() {
         </div>
         {data.topRevenueStores.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="hidden md:table w-full">
               <thead>
                 <tr className="text-[12px] font-bold text-[var(--sub)] bg-[var(--blue-50)]">
                   <th className="px-4 py-3 text-right">#</th>
@@ -228,6 +244,30 @@ export default function KpisPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {data.topRevenueStores.map((s, i) => (
+                <div key={s.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">#</p>
+                      <p className="text-[12px] text-[var(--sub)]">{i + 1}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.storeName")}</p>
+                      <p className="text-[12px] font-bold text-[var(--ink)]">{safeDisplay(s.storeName)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.packageName")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{safeDisplay(s.packageName)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.monthlyRevenue")}</p>
+                      <p className="text-[12px] font-bold text-[var(--green)]">{formatCurrency(s.monthlyRevenue)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <p className="text-[13px] text-[var(--sub)] py-8 text-center">{t("kpis.noData")}</p>
@@ -243,7 +283,7 @@ export default function KpisPage() {
         </div>
         {data.atRiskStores.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="hidden md:table w-full">
               <thead>
                 <tr className="text-[12px] font-bold text-[var(--sub)] bg-[var(--blue-50)]">
                   <th className="px-4 py-3 text-right">{t("kpis.storeName")}</th>
@@ -270,6 +310,35 @@ export default function KpisPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {data.atRiskStores.map((s, i) => (
+                <div key={s.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.storeName")}</p>
+                      <p className="text-[12px] font-bold text-[var(--ink)]">{safeDisplay(s.storeName)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.ownerName")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">
+                        {safeDisplay(s.ownerName)}
+                        {s.ownerEmail && s.ownerEmail !== "string" && !/^\?{2,}/.test(s.ownerEmail) ? (
+                          <><br /><span className="text-[11px]">{s.ownerEmail}</span></>
+                        ) : null}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.packageName")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{safeDisplay(s.packageName)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("kpis.lastLogin")}</p>
+                      <span className="badge badge--red">{formatDate(s.lastLoginAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <p className="text-[13px] text-[var(--sub)] py-8 text-center">{t("kpis.noAtRisk")}</p>

@@ -8,7 +8,6 @@ import Icon from "@/components/Icon";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
-import InfoTooltip from "@/components/InfoTooltip";
 import Can from "@/components/Can";
 
 interface Warehouse {
@@ -276,15 +275,16 @@ export default function InventoryPage() {
           ) : stock.length === 0 ? (
             <p className="text-[var(--sub)] text-[13.5px]">{t("inventory.noStock")}</p>
           ) : (
+            <>
             <div className="table-wrap overflow-x-auto">
-              <table>
+              <table className="hidden md:table">
                 <thead>
                   <tr>
                     <th>{t("inventory.product")}</th>
                     <th>{t("inventory.warehouse")}</th>
                     <th>{t("inventory.availableQty")}</th>
                     <th>{t("inventory.reservedQty")}</th>
-                    <th>{t("inventory.reorderLevel")} <span className="inline-flex align-middle"><InfoTooltip messageKey="inventory.reorderLevelTooltip" /></span></th>
+                    <th>{t("inventory.reorderLevel")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -300,6 +300,36 @@ export default function InventoryPage() {
                 </tbody>
               </table>
             </div>
+
+            <div className="md:hidden space-y-3">
+              {stock.map((item, index) => (
+                <div key={`${item.warehouseId}-${item.productId}-${index}`} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("inventory.product")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{item.productNameAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("inventory.warehouse")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{item.warehouseName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("inventory.availableQty")}</p>
+                      <p className="text-[12px] font-bold">{item.quantityAvailable}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("inventory.reservedQty")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{item.quantityReserved}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("inventory.reorderLevel")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{item.reorderLevel}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
           )}
         </div>
       )}
@@ -320,7 +350,7 @@ export default function InventoryPage() {
           )}
 
           <form onSubmit={handleCreateTransfer}>
-            <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
               <div>
                 <label htmlFor="transferFrom" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
                   {t("inventory.fromWarehouse")}

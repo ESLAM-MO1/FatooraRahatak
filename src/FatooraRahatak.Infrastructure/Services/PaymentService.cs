@@ -724,6 +724,8 @@ public class PaymentService : IPaymentService
         if (referral == null)
             return;
 
+        // الدفع بيأكد إن الإحالة "اتحولت" لعميل فعلي، بس الموافقة النهائية (وإضافة الرصيد)
+        // بتفضل بايد الأدمن يدويًا من لوحة الإدارة (ReviewReferralAsync) — الحالة تفضل Pending هنا
         referral.HasConverted = true;
         referral.ConvertedAt = DateTime.UtcNow;
         referral.UpdatedAt = DateTime.UtcNow;
@@ -942,67 +944,6 @@ public class PaymentService : IPaymentService
             Amount = payment.Amount,
             RefundedAt = payment.RefundedAt?.ToString("o"),
             Message = "تم إتمام الاسترداد بنجاح"
-        };
-    }
-
-    public async Task<StorePaymentAccountDto?> GetStorePaymentAccountAsync(long storeId)
-    {
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
-        if (store == null) return null;
-
-        return new StorePaymentAccountDto
-        {
-            Status = store.PaymentAccountStatus,
-            BankName = store.PayoutBankName,
-            AccountHolder = store.PayoutAccountHolder,
-            Iban = store.PayoutIban,
-            RecipientId = store.MoyasarRecipientId,
-            RejectionReason = store.PayoutRejectionReason
-        };
-    }
-
-    public async Task<StorePaymentAccountDto> SubmitStorePaymentAccountAsync(long storeId, SubmitStorePaymentAccountDto dto)
-    {
-        if (string.IsNullOrWhiteSpace(dto.BankName))
-            throw new InvalidOperationException("اسم البنك مطلوب");
-        if (string.IsNullOrWhiteSpace(dto.AccountHolder))
-            throw new InvalidOperationException("اسم صاحب الحساب مطلوب");
-        if (string.IsNullOrWhiteSpace(dto.Iban))
-            throw new InvalidOperationException("رقم الآيبان مطلوب");
-
-        var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId)
-            ?? throw new InvalidOperationException("المتجر غير موجود");
-
-        store.PayoutBankName = dto.BankName.Trim();
-        store.PayoutAccountHolder = dto.AccountHolder.Trim();
-        store.PayoutIban = dto.Iban.Trim();
-        store.PayoutRejectionReason = null;
-
-        // ❗️ إنشاء حساب المستلم في ميسرة أوتوماتيك — من غير موافقة أدمن
-        var recipient = await _provider.CreateRecipientAsync(store.PayoutAccountHolder, store.PayoutBankName, store.PayoutIban);
-
-        if (recipient.Success && !string.IsNullOrWhiteSpace(recipient.RecipientId))
-        {
-            store.MoyasarRecipientId = recipient.RecipientId;
-            store.PaymentAccountStatus = PaymentAccountStatus.Approved;
-        }
-        else
-        {
-            store.PaymentAccountStatus = PaymentAccountStatus.Rejected;
-            store.PayoutRejectionReason = recipient.ErrorMessage ?? "تعذر إنشاء حساب استقبال المدفوعات لدى بوابة ميسرة";
-        }
-
-        store.UpdatedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
-
-        return new StorePaymentAccountDto
-        {
-            Status = store.PaymentAccountStatus,
-            BankName = store.PayoutBankName,
-            AccountHolder = store.PayoutAccountHolder,
-            Iban = store.PayoutIban,
-            RecipientId = store.MoyasarRecipientId,
-            RejectionReason = store.PayoutRejectionReason
         };
     }
 

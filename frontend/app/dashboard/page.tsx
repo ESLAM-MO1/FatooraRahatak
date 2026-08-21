@@ -96,6 +96,7 @@ export default function DashboardHome() {
   const [error, setError] = useState("");
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [kyc, setKyc] = useState<{ isApproved: boolean } | null>(null);
 
   useEffect(() => {
     const type = getUserType();
@@ -113,6 +114,13 @@ export default function DashboardHome() {
         .then((res) => setStats(res.data.data))
         .catch(() => {})
         .finally(() => setStatsLoading(false));
+
+      if (type === "Owner") {
+        api
+          .get("/owner/merchant-account/kyc-status")
+          .then((res) => setKyc(res.data.data))
+          .catch(() => {});
+      }
     } else {
       setLoading(false);
       setStatsLoading(false);
@@ -187,6 +195,21 @@ export default function DashboardHome() {
         </div>
       ) : (
         <>
+          {kyc && !kyc.isApproved && (
+            <div className="alert alert--warning mb-6 flex items-center justify-between flex-wrap gap-2">
+              <span>{t("dashboard.kycRequired")}</span>
+              <span className="flex items-center gap-2 flex-wrap">
+                <Link href="/dashboard/merchant-account" className="btn btn-outline btn-sm shrink-0">
+                  {t("nav.merchantAccount")}
+                </Link>
+                <span className="text-[12px] text-[var(--sub)]">{t("settlements.and")}</span>
+                <Link href="/dashboard/merchant-verification" className="btn btn-outline btn-sm shrink-0">
+                  {t("nav.verification")}
+                </Link>
+              </span>
+            </div>
+          )}
+
           {error && (
             <div className="alert alert--warning mb-6">
               <Icon name="alert" size={16} className="shrink-0 mt-0.5 text-[var(--gold)]" />

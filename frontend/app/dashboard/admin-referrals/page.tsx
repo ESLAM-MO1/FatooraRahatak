@@ -18,6 +18,10 @@ interface AdminReferral {
   referredAt: string;
   hasConverted: boolean;
   convertedAt: string | null;
+  status: string;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+  adminNote: string | null;
 }
 
 interface AdminCommission {
@@ -32,47 +36,47 @@ interface AdminCommission {
   paidAt: string | null;
 }
 
-interface AdminWithdrawal {
-  id: number;
-  userId: number;
-  userName: string;
-  userEmail: string;
-  amount: number;
-  currency: string;
-  status: string;
-  createdAt: string;
-  processedAt: string | null;
-  adminNote: string | null;
-}
-
 export default function AdminReferralsPage() {
   const { t } = useTranslation();
   const confirm = useConfirm();
-  const [tab, setTab] = useState<"referrals" | "commissions" | "withdrawals">("referrals");
-  const [refFilter, setRefFilter] = useState<"all" | "converted" | "registered">("all");
-  const [commFilter, setCommFilter] = useState<"all" | "paid" | "pending">("all");
-  const [withdrawFilter, setWithdrawFilter] = useState<"all" | "pending" | "paid" | "rejected">("all");
+  const [tab, setTab] = useState<"referrals" | "commissions">("referrals");
+  const [refFilter, setRefFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [commFilter, setCommFilter] = useState<"all" | "paid" | "pending" | "rejected">("all");
   const [referrals, setReferrals] = useState<AdminReferral[]>([]);
   const [commissions, setCommissions] = useState<AdminCommission[]>([]);
-  const [withdrawals, setWithdrawals] = useState<AdminWithdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [markingId, setMarkingId] = useState<number | null>(null);
   const [processingId, setProcessingId] = useState<number | null>(null);
-  const [rejectNote, setRejectNote] = useState<{ id: number; note: string } | null>(null);
+  const [refNote, setRefNote] = useState<{ id: number; note: string; approve: boolean } | null>(null);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [search, setSearch] = useState("");
+  const [rateEdits, setRateEdits] = useState<Record<number, string>>({});
+  const [rateSavingId, setRateSavingId] = useState<number | null>(null);
+  const [globalRate, setGlobalRate] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
 
-  const loadReferrals = async (filter: "all" | "converted" | "registered") => {
+  const buildParams = (filter: string, extra = "") => {
+    const p = new URLSearchParams();
+    if (filter !== "all") p.set("status", filter);
+    if (fromDate) p.set("from", `${fromDate}T00:00:00`);
+    if (toDate) p.set("to", `${toDate}T23:59:59`);
+    if (search.trim()) p.set("search", search.trim());
+    const q = p.toString();
+    return q ? `?${q}${extra}` : extra;
+  };
+
+  const loadReferrals = async (filter: string) => {
     try {
-      const params = filter === "all" ? "" : `?status=${filter}`;
-      const res = await api.get(`/admin/referrals${params}`);
+      const res = await api.get(`/admin/referrals${buildParams(filter)}`);
       setReferrals(res.data.data);
     } catch (err: any) {
       setError(err.response?.data?.message || t("adminReferrals.loadError"));
     }
   };
 
-  const loadCommissions = async (filter: "all" | "paid" | "pending") => {
+  const loadCommissions = async (filter: string) => {
     try {
       const params = filter === "all" ? "" : `?status=${filter}`;
       const res = await api.get(`/admin/referrals/commissions${params}`);
@@ -82,72 +86,48 @@ export default function AdminReferralsPage() {
     }
   };
 
-  const loadWithdrawals = async (filter: "all" | "pending" | "paid" | "rejected") => {
+  const loadSettings = async () => {
     try {
-      const params = filter === "all" ? "" : `?status=${filter}`;
-      const res = await api.get(`/admin/referrals/withdrawals${params}`);
-      setWithdrawals(res.data.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("adminReferrals.loadError"));
-    }
+      const res = await api.get("/admin/referrals/settings");
+      setGlobalRate(String(res.data.data?.defaultCommissionRate ?? ""));
+    } catch {}
   };
 
   useEffect(() => {
     setLoading(true);
     setError("");
     setSuccess("");
-    Promise.all([loadReferrals(refFilter), loadCommissions(commFilter), loadWithdrawals(withdrawFilter)]).finally(() => setLoading(false));
+    Promise.all([loadReferrals(refFilter), loadCommissions(commFilter), loadSettings()]).finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadReferrals(refFilter); }, [refFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadReferrals(refFilter); }, [refFilter, fromDate, toDate, search]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { loadCommissions(commFilter); }, [commFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { loadWithdrawals(withdrawFilter); }, [withdrawFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleMarkPaid = async (commission: AdminCommission) => {
-    const ok = await confirm({
-      title: t("adminReferrals.markPaid"),
-      message: `${commission.referrerName} - ${commission.amount.toFixed(2)} ${commission.currency}`,
-      confirmLabel: t("common.confirm"),
-    });
-    if (!ok) return;
-    setMarkingId(commission.id);
-    setError("");
-    setSuccess("");
-    try {
-      await api.put(`/admin/referrals/commissions/${commission.id}/paid`);
-      setSuccess(t("adminReferrals.markedPaid"));
-      await loadCommissions(commFilter);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("adminReferrals.actionError"));
-    } finally {
-      setMarkingId(null);
-    }
-  };
-
-  const handleProcessWithdrawal = async (w: AdminWithdrawal, approve: boolean) => {
+  const handleReviewReferral = async (r: AdminReferral, approve: boolean) => {
+    if (r.status === "Approved" || r.status === "Rejected") return;
     let note: string | undefined;
     if (!approve) {
-      if (rejectNote?.id !== w.id) {
-        setRejectNote({ id: w.id, note: "" });
+      if (refNote?.id !== r.id || refNote.approve !== false) {
+        setRefNote({ id: r.id, note: "", approve: false });
         return;
       }
-      note = rejectNote.note.trim() || undefined;
+      note = refNote.note.trim() || undefined;
     }
     const ok = await confirm({
-      title: approve ? t("adminReferrals.approveWithdrawal") : t("adminReferrals.rejectWithdrawal"),
-      message: `${w.userName} - ${w.amount.toFixed(2)} ${w.currency}`,
+      title: approve ? t("adminReferrals.approveReferral") : t("adminReferrals.rejectReferral"),
+      message: `${r.referrerName} ← ${r.referredName}`,
       confirmLabel: t("common.confirm"),
       danger: !approve,
     });
     if (!ok) return;
-    setProcessingId(w.id);
+    setProcessingId(r.id);
     setError("");
     setSuccess("");
     try {
-      await api.put(`/admin/referrals/withdrawals/${w.id}/process`, { approve, note });
-      setSuccess(approve ? t("adminReferrals.withdrawalApproved") : t("adminReferrals.withdrawalRejected"));
-      setRejectNote(null);
-      await loadWithdrawals(withdrawFilter);
+      await api.put(`/admin/referrals/${r.id}/review`, { approve, note });
+      setSuccess(approve ? t("adminReferrals.referralApproved") : t("adminReferrals.referralRejected"));
+      setRefNote(null);
+      await loadReferrals(refFilter);
     } catch (err: any) {
       setError(err.response?.data?.message || t("adminReferrals.actionError"));
     } finally {
@@ -155,18 +135,51 @@ export default function AdminReferralsPage() {
     }
   };
 
+  const handleUpdateRate = async (c: AdminCommission) => {
+    const val = parseFloat(rateEdits[c.id]);
+    if (isNaN(val)) return;
+    setRateSavingId(c.id);
+    setError("");
+    try {
+      await api.put(`/admin/referrals/commissions/${c.id}/rate`, { rate: val });
+      setSuccess(t("adminReferrals.rateUpdated"));
+      await loadCommissions(commFilter);
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("adminReferrals.actionError"));
+    } finally {
+      setRateSavingId(null);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    const val = parseFloat(globalRate);
+    if (isNaN(val) || val < 0 || val > 100) {
+      setError(t("adminReferrals.rateInvalid"));
+      return;
+    }
+    setSavingSettings(true);
+    setError("");
+    try {
+      await api.put("/admin/referrals/settings", { defaultCommissionRate: val });
+      setSuccess(t("adminReferrals.settingsSaved"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("adminReferrals.actionError"));
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   if (loading) return <LoadingState />;
 
-  const badgeFor = (val: boolean | string, good: string, bad: string, goodCls: string, badCls: string) => {
-    const isGood = typeof val === "string" ? val === good : val;
-    return <span className={`badge ${isGood ? goodCls : badCls}`}>{isGood ? good : bad}</span>;
+  const referralBadge = (status: string) => {
+    if (status === "Approved") return <span className="badge badge--green">{t("adminReferrals.statusApproved")}</span>;
+    if (status === "Rejected") return <span className="badge badge--red">{t("adminReferrals.statusRejected")}</span>;
+    return <span className="badge badge--yellow">{t("adminReferrals.statusPendingBadge")}</span>;
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="share" title={t("adminReferrals.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("adminReferrals.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="share" title={t("adminReferrals.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
       <SuccessToast message={success} fixed className="mb-4" />
@@ -186,19 +199,32 @@ export default function AdminReferralsPage() {
         >
           {t("adminReferrals.tabCommissions")}
         </button>
-        <button
-          type="button"
-          onClick={() => setTab("withdrawals")}
-          className={`btn btn-sm ${tab === "withdrawals" ? "btn-primary" : "btn-outline"}`}
-        >
-          {t("adminReferrals.tabWithdrawals")}
+      </div>
+
+      <div className="card p-5 flex items-end gap-3 flex-wrap">
+        <div className="flex-1 min-w-[200px]">
+          <label>{t("adminReferrals.defaultRateLabel")}</label>
+          <div className="field-shell">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={globalRate}
+              onChange={(e) => setGlobalRate(e.target.value)}
+              placeholder="%"
+            />
+          </div>
+        </div>
+        <button type="button" onClick={handleSaveSettings} disabled={savingSettings} className="btn-primary btn-sm">
+          {savingSettings ? t("common.loading") : t("adminReferrals.saveSettings")}
         </button>
       </div>
 
       {tab === "referrals" ? (
         <div className="card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            {(["all", "converted", "registered"] as const).map((f) => (
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {(["all", "pending", "approved", "rejected"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
@@ -210,45 +236,186 @@ export default function AdminReferralsPage() {
             ))}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div>
+              <label>{t("adminReferrals.filterSearch")}</label>
+              <div className="field-shell">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={t("adminReferrals.searchPlaceholder")}
+                />
+              </div>
+            </div>
+            <div>
+              <label>{t("adminReferrals.filterFrom")}</label>
+              <div className="field-shell">
+                <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label>{t("adminReferrals.filterTo")}</label>
+              <div className="field-shell">
+                <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
           {referrals.length === 0 ? (
             <p className="text-[13px] text-[var(--sub)]">{t("adminReferrals.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="data-table w-full text-[13px]">
+              <table className="data-table w-full text-[13px] hidden md:table">
                 <thead>
                   <tr>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.referrer")}</th>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.referred")}</th>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.date")}</th>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.status")}</th>
+                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.adminNote")}</th>
+                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {referrals.map((r) => (
-                    <tr key={r.id} className="border-b border-gray-50">
-                      <td className="p-3">
-                        <p className="font-bold text-[var(--ink)]">{r.referrerName}</p>
-                        <p className="text-[11px] text-[var(--sub)]" dir="ltr">{r.referrerEmail}</p>
-                      </td>
-                      <td className="p-3">
-                        <p className="font-bold text-[var(--ink)]">{r.referredName}</p>
-                        <p className="text-[11px] text-[var(--sub)]" dir="ltr">{r.referredEmail}</p>
-                      </td>
-                      <td className="p-3 text-[var(--sub)]">{new Date(r.referredAt).toLocaleDateString()}</td>
-                      <td className="p-3">
-                        {badgeFor(r.hasConverted, t("referrals.statusConverted"), t("referrals.statusRegistered"), "badge--green", "badge--blue")}
-                      </td>
-                    </tr>
-                  ))}
+                  {referrals.map((r) => {
+                    const editable = r.status === "Pending";
+                    return (
+                      <tr key={r.id} className="border-b border-gray-50">
+                        <td className="p-3">
+                          <p className="font-bold text-[var(--ink)]">{r.referrerName}</p>
+                          <p className="text-[11px] text-[var(--sub)]" dir="ltr">{r.referrerEmail}</p>
+                        </td>
+                        <td className="p-3">
+                          <p className="font-bold text-[var(--ink)]">{r.referredName}</p>
+                          <p className="text-[11px] text-[var(--sub)]" dir="ltr">{r.referredEmail}</p>
+                        </td>
+                        <td className="p-3 text-[var(--sub)]">{new Date(r.referredAt).toLocaleDateString()}</td>
+                        <td className="p-3">
+                          {referralBadge(r.status)}
+                          {r.status === "Approved" && r.hasConverted && (
+                            <span className="block text-[10.5px] text-[var(--sub)] mt-1">{t("adminReferrals.convertedTag")}</span>
+                          )}
+                          {r.reviewedByName && (
+                            <span className="block text-[10.5px] text-[var(--sub)] mt-1">
+                              {t("adminReferrals.reviewedBy")}: {r.reviewedByName}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-[var(--sub)] text-[12px]">{r.adminNote || "—"}</td>
+                        <td className="p-3">
+                          {editable && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {refNote?.id === r.id && !refNote.approve && (
+                                <input
+                                  type="text"
+                                  value={refNote.note}
+                                  onChange={(e) => setRefNote({ id: r.id, note: e.target.value, approve: false })}
+                                  placeholder={t("adminReferrals.noteLabel")}
+                                  className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-40"
+                                />
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleReviewReferral(r, true)}
+                                disabled={processingId === r.id}
+                                className="btn btn-outline btn-sm"
+                              >
+                                {t("adminReferrals.approveReferral")}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReviewReferral(r, false)}
+                                disabled={processingId === r.id}
+                                className="btn btn-outline btn-sm"
+                              >
+                                {t("adminReferrals.rejectReferral")}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+              <div className="md:hidden space-y-3">
+                {referrals.map((r) => {
+                  const editable = r.status === "Pending";
+                  return (
+                    <div key={r.id} className="card p-4 space-y-2">
+                      <div className="grid grid-cols-2 gap-2 text-[12px]">
+                        <div>
+                          <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.referrer")}</p>
+                          <p className="font-bold text-[var(--ink)]">{r.referrerName}</p>
+                          <p className="text-[11px] text-[var(--sub)]" dir="ltr">{r.referrerEmail}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.referred")}</p>
+                          <p className="font-bold text-[var(--ink)]">{r.referredName}</p>
+                          <p className="text-[11px] text-[var(--sub)]" dir="ltr">{r.referredEmail}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.date")}</p>
+                          <p className="text-[var(--sub)]">{new Date(r.referredAt).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.status")}</p>
+                          {referralBadge(r.status)}
+                          {r.status === "Approved" && r.hasConverted && (
+                            <span className="block text-[10.5px] text-[var(--sub)] mt-1">{t("adminReferrals.convertedTag")}</span>
+                          )}
+                          {r.reviewedByName && (
+                            <span className="block text-[10.5px] text-[var(--sub)] mt-1">
+                              {t("adminReferrals.reviewedBy")}: {r.reviewedByName}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.adminNote")}</p>
+                          <p className="text-[var(--sub)] text-[12px]">{r.adminNote || "—"}</p>
+                        </div>
+                      </div>
+                      {editable && (
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                          {refNote?.id === r.id && !refNote.approve && (
+                            <input
+                              type="text"
+                              value={refNote.note}
+                              onChange={(e) => setRefNote({ id: r.id, note: e.target.value, approve: false })}
+                              placeholder={t("adminReferrals.noteLabel")}
+                              className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-full sm:w-40"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleReviewReferral(r, true)}
+                            disabled={processingId === r.id}
+                            className="btn btn-outline btn-sm"
+                          >
+                            {t("adminReferrals.approveReferral")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleReviewReferral(r, false)}
+                            disabled={processingId === r.id}
+                            className="btn btn-outline btn-sm"
+                          >
+                            {t("adminReferrals.rejectReferral")}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       ) : tab === "commissions" ? (
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-4">
-            {(["all", "paid", "pending"] as const).map((f) => (
+            {(["all", "paid", "pending", "rejected"] as const).map((f) => (
               <button
                 key={f}
                 type="button"
@@ -264,7 +431,7 @@ export default function AdminReferralsPage() {
             <p className="text-[13px] text-[var(--sub)]">{t("adminReferrals.empty")}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="data-table w-full text-[13px]">
+              <table className="data-table w-full text-[13px] hidden md:table">
                 <thead>
                   <tr>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.referrer")}</th>
@@ -272,7 +439,6 @@ export default function AdminReferralsPage() {
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.commissionRate")}</th>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.date")}</th>
                     <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.commissionStatus")}</th>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -283,118 +449,110 @@ export default function AdminReferralsPage() {
                         <p className="text-[11px] text-[var(--sub)]" dir="ltr">{c.referrerEmail}</p>
                       </td>
                       <td className="p-3 font-bold text-[var(--ink)]">{c.amount.toFixed(2)} {c.currency}</td>
-                      <td className="p-3 text-[var(--sub)]">{c.rate}%</td>
-                      <td className="p-3 text-[var(--sub)]">{new Date(c.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3">
-                        {badgeFor(c.status, "Paid", "Pending", "badge--green", "badge--yellow")}
-                      </td>
-                      <td className="p-3">
-                        {c.status === "Pending" && (
-                          <button
-                            type="button"
-                            onClick={() => handleMarkPaid(c)}
-                            disabled={markingId === c.id}
-                            className="btn btn-outline btn-sm"
-                          >
-                            {t("adminReferrals.markPaid")}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            {(["all", "pending", "paid", "rejected"] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setWithdrawFilter(f)}
-                className={`text-[11.5px] font-bold px-3 py-1.5 rounded-lg transition-colors ${withdrawFilter === f ? "bg-[var(--blue)] text-white" : "bg-gray-100 text-[var(--sub)] hover:bg-gray-200"}`}
-              >
-                {t(`adminReferrals.${f === "all" ? "filterAll" : f === "pending" ? "filterPending" : f === "paid" ? "filterPaid" : "filterRejected"}`)}
-              </button>
-            ))}
-          </div>
-
-          {withdrawals.length === 0 ? (
-            <p className="text-[13px] text-[var(--sub)]">{t("adminReferrals.empty")}</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="data-table w-full text-[13px]">
-                <thead>
-                  <tr>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.user")}</th>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.withdrawalAmount")}</th>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.date")}</th>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.withdrawalStatus")}</th>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]">{t("adminReferrals.adminNote")}</th>
-                    <th className="text-right p-3 border-b border-gray-100 text-[var(--sub)]"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {withdrawals.map((w) => (
-                    <tr key={w.id} className="border-b border-gray-50">
-                      <td className="p-3">
-                        <p className="font-bold text-[var(--ink)]">{w.userName}</p>
-                        <p className="text-[11px] text-[var(--sub)]" dir="ltr">{w.userEmail}</p>
-                      </td>
-                      <td className="p-3 font-bold text-[var(--ink)]">{w.amount.toFixed(2)} {w.currency}</td>
-                      <td className="p-3 text-[var(--sub)]">{new Date(w.createdAt).toLocaleDateString()}</td>
-                      <td className="p-3">
-                        {w.status === "Paid" ? (
-                          <span className="badge badge--green">{t("adminVerifications.statusApproved")}</span>
-                        ) : w.status === "Rejected" ? (
-                          <span className="badge badge--red">{t("adminVerifications.statusRejected")}</span>
-                        ) : (
-                          <span className="badge badge--yellow">{t("adminVerifications.statusPending")}</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-[var(--sub)] text-[12px]">{w.adminNote || "—"}</td>
-                      <td className="p-3">
-                        {w.status === "Pending" && (
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {rejectNote?.id === w.id && (
-                              <input
-                                type="text"
-                                value={rejectNote.note}
-                                onChange={(e) => setRejectNote({ id: w.id, note: e.target.value })}
-                                placeholder={t("adminReferrals.noteLabel")}
-                                className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-40"
-                              />
-                            )}
+                      <td className="p-3 text-[var(--sub)]">
+                        {c.status === "Pending" ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={rateEdits[c.id] ?? String(c.rate)}
+                              onChange={(e) => setRateEdits({ ...rateEdits, [c.id]: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-20"
+                              dir="ltr"
+                            />
+                            <span>%</span>
                             <button
                               type="button"
-                              onClick={() => handleProcessWithdrawal(w, true)}
-                              disabled={processingId === w.id}
+                              onClick={() => handleUpdateRate(c)}
+                              disabled={rateSavingId === c.id}
                               className="btn btn-outline btn-sm"
                             >
-                              {t("adminReferrals.approveWithdrawal")}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleProcessWithdrawal(w, false)}
-                              disabled={processingId === w.id}
-                              className="btn btn-outline btn-sm"
-                            >
-                              {t("adminReferrals.rejectWithdrawal")}
+                              {t("adminReferrals.saveRate")}
                             </button>
                           </div>
+                        ) : (
+                          `${c.rate}%`
+                        )}
+                      </td>
+                      <td className="p-3 text-[var(--sub)]">{new Date(c.createdAt).toLocaleDateString()}</td>
+                      <td className="p-3">
+                        {c.status === "Paid" ? (
+                          <span className="badge badge--green">{t("referrals.commissionPaid")}</span>
+                        ) : c.status === "Rejected" ? (
+                          <span className="badge badge--red">{t("referrals.commissionRejected")}</span>
+                        ) : (
+                          <span className="badge badge--yellow">{t("referrals.commissionPending")}</span>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <div className="md:hidden space-y-3">
+                {commissions.map((c) => (
+                  <div key={c.id} className="card p-4 space-y-2">
+                    <div className="grid grid-cols-2 gap-2 text-[12px]">
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.referrer")}</p>
+                        <p className="font-bold text-[var(--ink)]">{c.referrerName}</p>
+                        <p className="text-[11px] text-[var(--sub)]" dir="ltr">{c.referrerEmail}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.commissionAmount")}</p>
+                        <p className="font-bold text-[var(--ink)]">{c.amount.toFixed(2)} {c.currency}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.commissionRate")}</p>
+                        {c.status === "Pending" ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              step="0.01"
+                              value={rateEdits[c.id] ?? String(c.rate)}
+                              onChange={(e) => setRateEdits({ ...rateEdits, [c.id]: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-2 py-1 text-[12px] w-20"
+                              dir="ltr"
+                            />
+                            <span>%</span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateRate(c)}
+                              disabled={rateSavingId === c.id}
+                              className="btn btn-outline btn-sm"
+                            >
+                              {t("adminReferrals.saveRate")}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[var(--sub)]">{`${c.rate}%`}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.date")}</p>
+                        <p className="text-[var(--sub)]">{new Date(c.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-[var(--sub)]">{t("adminReferrals.commissionStatus")}</p>
+                        {c.status === "Paid" ? (
+                          <span className="badge badge--green">{t("referrals.commissionPaid")}</span>
+                        ) : c.status === "Rejected" ? (
+                          <span className="badge badge--red">{t("referrals.commissionRejected")}</span>
+                        ) : (
+                          <span className="badge badge--yellow">{t("referrals.commissionPending")}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -437,9 +437,7 @@ export default function ShippingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="truck" title={t("shipping.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("shipping.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="truck" title={t("shipping.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
       {actionError && <div className="alert alert--danger">{actionError}</div>}
@@ -779,11 +777,11 @@ export default function ShippingPage() {
 
           {detail && (
             <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 mt-4 space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h4 className="font-bold text-[var(--ink)]">
                   {t("shipping.shipmentDetails")} — {detail.orderNumber}
                 </h4>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <button onClick={() => handleSync(detail.id)} className="btn btn-outline btn-sm">
                     {t("shipping.syncTracking")}
                   </button>

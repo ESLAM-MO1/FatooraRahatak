@@ -139,8 +139,9 @@ export default function CustomerDetailPage() {
         {customer.orders.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">{t("customerDetail.noOrders")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm mt-3">
+            <table className="w-full text-sm mt-3 hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("customerDetail.orderNumberCol")}</th>
@@ -180,6 +181,48 @@ export default function CustomerDetailPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {customer.orders.map((order) => (
+              <div key={order.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("customerDetail.orderNumberCol")}</p>
+                    <p className="text-[var(--ink)] font-medium" dir="ltr">{order.orderNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("customerDetail.itemsCountCol")}</p>
+                    <p className="text-[var(--sub)]">{order.itemsCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("customerDetail.totalCol")}</p>
+                    <p className="text-[var(--ink)]">{order.totalAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("customerDetail.statusCol")}</p>
+                    <span className={statusStyles[order.status] ?? "badge badge--gray"}>
+                      {statusLabel(order.status)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("customerDetail.dateCol")}</p>
+                    <p className="text-[var(--sub)]">
+                      {new Date(order.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <Link
+                    href={`/dashboard/orders/${order.id}`}
+                    className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[13px]"
+                  >
+                    {t("customerDetail.viewDetails")}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
     </div>

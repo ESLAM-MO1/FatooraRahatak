@@ -21,4 +21,21 @@ public interface IReportService
     Task<byte[]> ExportInventoryValuationCsvAsync(long userId);
     Task<byte[]> ExportCustomerStatementCsvAsync(long userId, long? customerId, string? phone, DateOnly? from, DateOnly? to);
     Task<byte[]> ExportARAgingCsvAsync(long userId);
+
+    Task<byte[]> ExportSalesReportExcelAsync(long userId, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportSalesReportPdfAsync(long userId, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportDiscountsReportExcelAsync(long userId, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportDiscountsReportPdfAsync(long userId, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportTaxReportExcelAsync(long userId, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportTaxReportPdfAsync(long userId, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportLowStockExcelAsync(long userId, int? threshold);
+    Task<byte[]> ExportLowStockPdfAsync(long userId, int? threshold);
+    Task<byte[]> ExportInventoryMovementsExcelAsync(long userId, DateOnly? from, DateOnly? to, long? productId);
+    Task<byte[]> ExportInventoryMovementsPdfAsync(long userId, DateOnly? from, DateOnly? to, long? productId);
+    Task<byte[]> ExportInventoryValuationExcelAsync(long userId);
+    Task<byte[]> ExportInventoryValuationPdfAsync(long userId);
+    Task<byte[]> ExportCustomerStatementExcelAsync(long userId, long? customerId, string? phone, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportCustomerStatementPdfAsync(long userId, long? customerId, string? phone, DateOnly? from, DateOnly? to);
+    Task<byte[]> ExportARAgingExcelAsync(long userId);
+    Task<byte[]> ExportARAgingPdfAsync(long userId);
 }

@@ -163,7 +163,7 @@ export default function SiteMenusPage() {
     const kids = childrenOf(m.id);
     return (
       <div key={m.id} className={depth > 0 ? "ms-6" : ""}>
-        <div className="flex items-center gap-2 py-2 border-b border-[var(--border)]">
+        <div className="flex items-center gap-2 py-2 border-b border-[var(--border)] flex-wrap">
           <span className="w-6 text-center text-[12px] font-bold" style={{ color: "var(--sub)" }}>{m.sortOrder}</span>
           <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -243,7 +243,7 @@ export default function SiteMenusPage() {
                 <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("siteMenus.href")}</label>
                 <div className="field-shell"><input type="text" dir="ltr" value={form.href} onChange={e => setForm({ ...form, href: e.target.value })} placeholder="/features" /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("siteMenus.location")}</label>
                   <select className="w-full border rounded-lg px-3 py-2 text-[13px]" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })}>
@@ -252,7 +252,7 @@ export default function SiteMenusPage() {
                 </div>
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("siteMenus.sortOrder")}</label>
-                  <div className="field-shell"><input type="number" min={1} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) || 1 })} /></div>
+                  <div className="field-shell"><input type="number" min={0} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
                 </div>
               </div>
               <div>

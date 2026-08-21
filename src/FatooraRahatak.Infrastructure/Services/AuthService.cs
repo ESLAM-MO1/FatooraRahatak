@@ -588,6 +588,7 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             Email = user.Email,
             UserType = user.UserType.ToString(),
+            StaffRole = user.UserType == UserType.SupportStaff ? user.StaffRole : null,
             AccessToken = accessToken,
             RefreshToken = refreshTokenValue,
             AccessTokenExpiry = expiry
@@ -605,6 +606,14 @@ public class AuthService : IAuthService
             new(ClaimTypes.Role, user.UserType.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+
+        // Platform staff (UserType.SupportStaff) carry their specific staff role
+        // (Admin/Support/Finance/Technical) so the API can enforce module-scoped
+        // permissions instead of treating every staff member as a super admin.
+        if (user.UserType == UserType.SupportStaff && !string.IsNullOrEmpty(user.StaffRole))
+        {
+            claims.Add(new Claim("StaffRole", user.StaffRole));
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

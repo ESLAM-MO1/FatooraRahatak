@@ -26,7 +26,12 @@ public class PublicStoreDto
     public string? TiktokUrl { get; set; }
     public string? TelegramUrl { get; set; }
     public string? LinkedinUrl { get; set; }
+    public string? TwitterUrl { get; set; }
+    public string? YoutubeUrl { get; set; }
+    public string? PinterestUrl { get; set; }
     public string? ReturnPolicyText { get; set; }
+    public string? MenuConfigJson { get; set; }
+    public string? StorePagesJson { get; set; }
     public bool IsCouponsEnabled { get; set; }
     public bool IsSearchEnabled { get; set; } = true;
     public bool IsReviewsEnabled { get; set; } = false;
@@ -51,6 +56,16 @@ public class PublicTrustBadgeDto
 {
     public string Icon { get; set; } = string.Empty;
     public string Text { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; } = true;
+}
+
+public class PublicStorePageDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string? TitleAr { get; set; }
+    public string? TitleEn { get; set; }
+    public string? ContentAr { get; set; }
+    public string? ContentEn { get; set; }
     public bool IsEnabled { get; set; } = true;
 }
 

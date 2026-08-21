@@ -2,10 +2,12 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 type LicenseValue =
   | "CommercialRegister"
@@ -102,6 +104,7 @@ const inputClass =
 
 export default function MerchantAccountPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -246,6 +249,15 @@ export default function MerchantAccountPage() {
     setError("");
     setSuccess("");
     if (!validate()) return;
+    if (status === "Approved") {
+      const ok = await confirm({
+        title: t("merchantAccount.confirmReapprovalTitle"),
+        message: t("merchantAccount.confirmReapprovalMessage"),
+        confirmLabel: t("common.confirm"),
+        danger: false,
+      });
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       await api.put("/owner/merchant-account", {
@@ -295,7 +307,7 @@ export default function MerchantAccountPage() {
 
   if (loading) return <LoadingState />;
 
-  const locked = status === "Pending" || status === "Approved";
+  const locked = status === "Pending";
 
   const isAr = i18n.language !== "en";
   const licenseNumberLabelKey = LICENSE_NUMBER_LABEL_KEY[(form.licenseType as LicenseValue) || "LLC"];
@@ -305,9 +317,7 @@ export default function MerchantAccountPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="userGroup" title={t("merchantAccount.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("merchantAccount.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="userGroup" title={t("merchantAccount.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
       {success && <div className="alert alert--success">{success}</div>}
@@ -324,6 +334,15 @@ export default function MerchantAccountPage() {
             {t("merchantAccount.bannerRejected")}
             {rejectionReason ? `: ${rejectionReason}` : ""}
           </span>
+        </div>
+      )}
+
+      {status !== "Approved" && (
+        <div className="alert alert--info flex items-center justify-between flex-wrap gap-2">
+          <span>{t("merchantAccount.needDocsBanner")}</span>
+          <Link href="/dashboard/merchant-verification" className="btn btn-outline btn-sm shrink-0">
+            {t("verification.title")}
+          </Link>
         </div>
       )}
 
@@ -597,27 +616,26 @@ export default function MerchantAccountPage() {
         </SectionCard>
 
         <div className="flex items-center justify-end gap-3">
-          {status === "Approved" ? (
-            <span className="text-sm text-[var(--sub)]">{t("merchantAccount.approvedNote")}</span>
-          ) : status === "Pending" ? (
+          {status === "Pending" ? (
             <span className="text-sm text-[var(--sub)]">{t("merchantAccount.pendingNote")}</span>
           ) : (
             <>
-              <button
-                type="submit"
-                disabled={saving || submitting}
-                className="btn btn-ghost"
-              >
+              {status === "Approved" && (
+                <span className="text-sm text-[var(--sub)]">{t("merchantAccount.approvedNote")}</span>
+              )}
+              <button type="submit" disabled={saving || submitting} className="btn btn-ghost">
                 {saving ? t("merchantAccount.saving") : t("merchantAccount.save")}
               </button>
-              <button
-                type="button"
-                onClick={handleSubmitForReview}
-                disabled={submitting || saving}
-                className="btn btn-primary"
-              >
-                {submitting ? t("merchantAccount.submitting") : t("merchantAccount.submitForReview")}
-              </button>
+              {status !== "Approved" && (
+                <button
+                  type="button"
+                  onClick={handleSubmitForReview}
+                  disabled={submitting || saving}
+                  className="btn btn-primary"
+                >
+                  {submitting ? t("merchantAccount.submitting") : t("merchantAccount.submitForReview")}
+                </button>
+              )}
             </>
           )}
         </div>

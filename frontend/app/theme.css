@@ -240,6 +240,29 @@ body {
   box-shadow: 0 0 0 3px var(--blue-50), var(--shadow-sm);
 }
 
+.input {
+  background: var(--bg-card);
+  border: 1.5px solid #e2e5ea;
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  box-shadow: var(--shadow-sm);
+  outline: none;
+  width: 100%;
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.5;
+  height: auto;
+  min-height: 44px;
+}
+.input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-50), var(--shadow-sm);
+}
+select.input {
+  appearance: auto;
+}
+
 label {
   display: block;
   font-size: 13px;
@@ -286,14 +309,17 @@ label {
   z-index: 70;
   padding: 24px 16px;
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   backdrop-filter: blur(4px);
 }
 .modal-overlay::-webkit-scrollbar {
-  display: none;
+  width: 8px;
 }
-.modal-card {
+.modal-overlay::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+}
+.modal-card,
+.modal-content {
   background: var(--bg-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
@@ -302,12 +328,27 @@ label {
   max-width: 480px;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
   animation: modalIn 0.2s ease-out;
 }
-.modal-card::-webkit-scrollbar {
-  display: none;
+.modal-overlay::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+.modal-overlay::-webkit-scrollbar-track,
+.modal-card::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-overlay::-webkit-scrollbar-thumb,
+.modal-card::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(11, 25, 41, 0.25);
+  border-radius: 999px;
+}
+.modal-card::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 25, 41, 0.4);
 }
 @keyframes modalIn {
   from { opacity: 0; transform: scale(0.95) translateY(10px); }
@@ -411,6 +452,8 @@ label {
 .alert--success::before { background: #22c55e; content: "✓"; }
 .alert--warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
 .alert--warning::before { background: #f59e0b; content: "!"; }
+.alert--info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.alert--info::before { background: #3b82f6; content: "i"; }
 
 /* ============= UNIFIED TOAST (success / error / warning) ============= */
 .toast {
@@ -619,6 +662,14 @@ label {
   .auth-form-panel { padding: 32px 20px 56px; }
 }
 
+/* زرار الدخول عبر Google: منع أي تجاوز أفقي على الشاشات الصغيرة */
+#googleBtn,
+#googleBtn > div,
+#googleBtn iframe {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
 /* ============= PACKAGE CARD ============= */
 .package-card {
   position: relative;
@@ -704,65 +755,6 @@ label {
 }
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
-}
-
-/* ============= INFO TOOLTIP ============= */
-.info-tooltip-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 17px;
-  height: 17px;
-  border-radius: 9999px;
-  color: var(--sub);
-  background: var(--border);
-  cursor: help;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.info-tooltip-trigger:hover,
-.info-tooltip-trigger:focus-visible {
-  color: #fff;
-  background: var(--blue);
-  outline: none;
-}
-.info-tooltip-bubble {
-  position: fixed;
-  z-index: 9999;
-  max-width: 280px;
-  padding: 8px 11px;
-  border-radius: 8px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 12px;
-  line-height: 1.55;
-  font-weight: 500;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  pointer-events: none;
-}
-.info-tooltip-bubble--bottom::before {
-  content: "";
-  position: absolute;
-  top: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-bottom: 5px solid var(--ink);
-}
-.info-tooltip-bubble--top::after {
-  content: "";
-  position: absolute;
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 5px solid transparent;
-  border-right: 5px solid transparent;
-  border-top: 5px solid var(--ink);
 }
 
 /* ============= STOREFRONT SUBPAGES ============= */

@@ -11,6 +11,12 @@ public class Referral : BaseEntity
     public DateTime ReferredAt { get; set; } = DateTime.UtcNow;
     public bool HasConverted { get; set; } = false;
     public DateTime? ConvertedAt { get; set; }
+    public string Status { get; set; } = "Pending"; // Pending / Approved / Rejected
+    public DateTime? ReviewedAt { get; set; }
+    public long? ReviewedByUserId { get; set; }
+    public string? AdminNote { get; set; }
+
+    public User? ReviewedBy { get; set; }
 
     public User ReferrerUser { get; set; } = null!;
     public User ReferredUser { get; set; } = null!;

@@ -455,8 +455,9 @@ export default function ProductsPage() {
                 : t("product.noProducts")}
           </p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden lg:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.name")}</th>
@@ -522,6 +523,75 @@ export default function ProductsPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden space-y-3">
+            {tabProducts.map((product) => (
+              <div key={product.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.name")}</p>
+                    <p className="text-[var(--ink)] font-medium">{product.nameAr}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.skuLabel")}</p>
+                    <p className="text-[var(--sub)]" dir="ltr">{product.sku}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.basePrice")}</p>
+                    <p className="text-[var(--ink)]">{product.basePrice.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.discountPrice")}</p>
+                    <p className="text-[var(--sub)]">
+                      {product.discountPrice != null
+                        ? `${product.discountPrice.toLocaleString("ar-SA-u-nu-latn")} ${t("common.sar")}`
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.availableQuantity")}</p>
+                    <p className="text-[var(--sub)]">{product.availableQuantity}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.status")}</p>
+                    <span className={statusStyles[product.status] ?? "badge badge--gray"}>
+                      {statusLabels[product.status] ?? product.status}
+                    </span>
+                  </div>
+                </div>
+                {activeTab === "archive" ? (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <Can code="Products.Edit">
+                      <button onClick={() => handleRestore(product)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[12px]">
+                        {t("product.restore")}
+                      </button>
+                    </Can>
+                    <Can code="Products.Delete">
+                      <button onClick={() => handlePermanentDelete(product)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[12px]">
+                        {t("product.deletePermanent")}
+                      </button>
+                    </Can>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <Can code="Products.Edit">
+                      <button onClick={() => openEditModal(product)} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[12px]">
+                        {t("product.edit")}
+                      </button>
+                    </Can>
+                    <Link href={`/dashboard/products/${product.id}`} className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[12px]">
+                      {t("product.variants")}
+                    </Link>
+                    <Can code="Products.Delete">
+                      <button onClick={() => handleArchive(product)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[12px]">
+                        {t("product.archive")}
+                      </button>
+                    </Can>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          </>
         )}
         {activeTab === "products" && (
           <Pagination

@@ -206,7 +206,7 @@ export default function BlogManagementPage() {
         <LoadingState />
       ) : (
         <div className="table-wrap">
-          <table>
+          <table className="hidden md:table">
             <thead>
               <tr>
                 <th>{t("blog.id")}</th>
@@ -255,8 +255,62 @@ export default function BlogManagementPage() {
             </tbody>
           </table>
           {posts.length === 0 && (
-            <p className="text-center text-[var(--sub)] py-8">{t("blog.noPosts")}</p>
+            <p className="hidden md:block text-center text-[var(--sub)] py-8">{t("blog.noPosts")}</p>
           )}
+
+          <div className="md:hidden space-y-3">
+            {posts.length === 0 ? (
+              <p className="text-center text-[var(--sub)] py-8">{t("blog.noPosts")}</p>
+            ) : (
+              posts.map((post) => (
+                <div key={post.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("blog.id")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{post.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("blog.author")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{post.authorName || "-"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("blog.postTitle")}</p>
+                      <p className="text-[12px] font-medium">{post.titleAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("blog.status")}</p>
+                      <span className={post.isPublished ? "badge badge--green" : "badge badge--gray"}>
+                        {post.isPublished ? t("blog.published") : t("blog.draft")}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("blog.date")}</p>
+                      <p className="text-[12px] text-[var(--sub)] whitespace-nowrap">{formatDate(post.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button
+                      onClick={() => togglePublish(post)}
+                      disabled={togglingId === post.id}
+                      className={`btn btn-sm ${post.isPublished ? "btn-outline" : "btn-success"}`}
+                    >
+                      {togglingId === post.id
+                        ? t("blog.processing")
+                        : post.isPublished
+                        ? t("blog.unpublish")
+                        : t("blog.publish")}
+                    </button>
+                    <button onClick={() => openEdit(post)} className="btn btn-outline btn-sm">
+                      {t("common.edit")}
+                    </button>
+                    <button onClick={() => handleDelete(post)} className="btn btn-danger btn-sm">
+                      {t("common.delete")}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 

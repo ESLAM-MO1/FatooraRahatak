@@ -37,6 +37,8 @@ public class MerchantAccount : BaseEntity
     public string? RejectionReason { get; set; }
     public DateTime? ReviewedAt { get; set; }
     public long? ReviewedByUserId { get; set; }
+    public string? SuspensionReason { get; set; }
+    public DateTime? SuspendedAt { get; set; }
 
     public Store Store { get; set; } = null!;
     public User? ReviewedBy { get; set; }
@@ -47,5 +49,6 @@ public enum MerchantAccountStatus
     NotSubmitted = 0,
     Pending = 1,
     Approved = 2,
-    Rejected = 3
+    Rejected = 3,
+    Suspended = 4
 }

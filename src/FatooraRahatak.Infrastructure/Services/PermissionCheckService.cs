@@ -9,6 +9,11 @@ public class PermissionCheckService : IPermissionCheckService
 {
     private readonly AppDbContext _context;
 
+    private static readonly string[] PlatformModules =
+    {
+        "StoreManagement", "PackageManagement", "PlatformUserManagement", "PlatformFinancialReports", "PlatformSettings", "AuditLog"
+    };
+
     public PermissionCheckService(AppDbContext context)
     {
         _context = context;
@@ -19,8 +24,19 @@ public class PermissionCheckService : IPermissionCheckService
         var user = await _context.Users.FindAsync(userId);
         if (user == null) return false;
 
-        if (user.UserType == UserType.SuperAdmin || user.UserType == UserType.Owner)
+        if (user.UserType == UserType.SuperAdmin)
             return true;
+
+        if (user.UserType == UserType.Owner)
+        {
+            var module = await _context.Permissions
+                .Where(p => p.PermissionCode == permissionCode)
+                .Select(p => p.ModuleName)
+                .FirstOrDefaultAsync();
+            if (module != null && PlatformModules.Contains(module))
+                return false;
+            return true;
+        }
 
         if (user.UserType != UserType.Employee)
             return false;
@@ -83,8 +99,7 @@ public class PermissionCheckService : IPermissionCheckService
 
         if (user.UserType == UserType.Owner)
             return await _context.Permissions
-                .Where(p => !new[] { "StoreManagement", "PackageManagement", "PlatformUserManagement", "PlatformFinancialReports", "PlatformSettings", "AuditLog" }
-                    .Contains(p.ModuleName))
+                .Where(p => !PlatformModules.Contains(p.ModuleName))
                 .Select(p => p.PermissionCode)
                 .ToListAsync();
 

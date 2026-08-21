@@ -119,8 +119,9 @@ export default function OrdersPage() {
         {orders.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">{t("order.noResults")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("order.number")}</th>
@@ -160,6 +161,47 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
+          <div className="md:hidden space-y-3">
+            {orders.map((order) => (
+              <div key={order.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("order.number")}</p>
+                    <p className="text-[var(--ink)] font-medium" dir="ltr">{order.orderNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("order.customer")}</p>
+                    <p className="text-[var(--ink)]">{order.customerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("order.total")}</p>
+                    <p className="text-[var(--ink)]">{order.totalAmount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("order.status")}</p>
+                    <span className={statusStyles[order.status] ?? "badge badge--gray"}>
+                      {statusLabel(order.status)}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("order.date")}</p>
+                    <p className="text-[var(--sub)]">
+                      {new Date(order.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <Link
+                    href={`/dashboard/orders/${order.id}`}
+                    className="text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium text-[12px]"
+                  >
+                    {t("order.viewDetails")}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
         <Pagination
           page={page}

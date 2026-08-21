@@ -10,6 +10,10 @@ public interface IPublicStoreService
     Task<PublicProductDetailDto?> GetProductDetailAsync(string slug, long productId);
     Task<List<PublicProductDto>?> GetRelatedProductsAsync(string slug, long productId);
     Task<ReturnPolicyDto?> GetReturnPolicyAsync(string slug);
+    Task<PublicStorePageDto?> GetStorePageAsync(string slug, string pageKey);
+    Task<List<PublicStoreFaqItemDto>?> GetStoreFaqAsync(string slug);
+    Task<PublicStoreBlogPostDto?> GetStoreBlogPostAsync(string slug, string slugKey);
+    Task<List<PublicStoreBlogPostDto>?> GetStoreBlogPostsAsync(string slug);
     Task<StoreContactDto?> GetContactAsync(string slug);
     Task<PublicOrderDetailDto?> GetOrderAsync(string slug, string orderNumber, string? phone, long? customerId);
     Task<List<PublicProductReviewDto>?> GetProductReviewsAsync(string slug, long productId);

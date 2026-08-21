@@ -23,7 +23,8 @@ public class AdminController : ControllerBase
     private readonly IStoreDesignService _designService;
     private readonly IMerchantVerificationService _verificationService;
     private readonly IMerchantAccountService _merchantAccountService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService, IMerchantAccountService merchantAccountService)
+    private readonly IReportScheduleService _reportScheduleService;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService, IMerchantAccountService merchantAccountService, IReportScheduleService reportScheduleService)
     {
         _adminService = adminService;
         _siteService = siteService;
@@ -35,24 +36,106 @@ public class AdminController : ControllerBase
         _designService = designService;
         _verificationService = verificationService;
         _merchantAccountService = merchantAccountService;
+        _reportScheduleService = reportScheduleService;
     }
     private bool IsSuperAdmin()
     {
         var role = User.FindFirstValue(ClaimTypes.Role);
         return role == "SuperAdmin";
     }
-    private IActionResult CheckSuperAdmin()
+
+    private string? GetStaffRole() => User.FindFirstValue("StaffRole");
+
+    // RBAC matrix for platform staff (UserType.SupportStaff).
+    // SuperAdmin always has full access regardless of this table.
+    // A staff member's role here is the ONLY thing that grants access to a module -
+    // there is no default/fallback that grants Owner- or SuperAdmin-level access to anyone.
+    private static readonly Dictionary<string, string[]> ModuleAccess = new()
+    {
+        ["Stores"] = new[] { "Admin", "Support" },
+        ["Packages"] = new[] { "Admin", "Finance" },
+        ["Users"] = new[] { "Admin", "Support" },
+        ["Reports"] = new[] { "Admin", "Finance" },
+        ["Billing"] = new[] { "Admin", "Finance" },
+        ["Notifications"] = new[] { "Admin", "Support" },
+        ["Settings"] = new[] { "Admin", "Technical" },
+        ["SiteContent"] = new[] { "Admin", "Technical" },
+        ["SupportOps"] = new[] { "Admin", "Support" },
+        ["Finance"] = new[] { "Admin", "Finance" },
+        ["Domains"] = new[] { "Admin", "Technical" },
+    };
+
+    /// <summary>
+    /// Module-scoped access check for the admin panel.
+    /// SuperAdmin: always allowed.
+    /// SupportStaff: allowed ONLY if their assigned StaffRole (Admin/Support/Finance/Technical)
+    /// is explicitly listed for the requested module in ModuleAccess.
+    /// Everyone else (Owner, Employee, Customer): always forbidden - no fallback to Owner
+    /// or any other elevated access.
+    /// </summary>
+    private IActionResult? CheckAccess(string module)
+    {
+        if (IsSuperAdmin())
+            return null;
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        if (role != "SupportStaff")
+            return Forbid();
+
+        var staffRole = GetStaffRole();
+        if (string.IsNullOrEmpty(staffRole))
+            return Forbid();
+
+        if (!ModuleAccess.TryGetValue(module, out var allowedRoles))
+            return Forbid();
+
+        if (!allowedRoles.Contains(staffRole))
+            return Forbid();
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reserved for the most sensitive actions (creating/listing platform staff accounts).
+    /// Only the platform SuperAdmin may perform these - never delegated to any staff role,
+    /// so an "Admin" staff member can never grant itself or others elevated access.
+    /// </summary>
+    private IActionResult? CheckSuperAdminOnly()
     {
         if (!IsSuperAdmin())
             return Forbid();
-        return null!;
+        return null;
     }
+
+    /// <summary>
+    /// Reports module has a view/edit split on top of the normal module check:
+    /// Admin AND Finance staff can view reports, schedules, KPI config, and export data.
+    /// Only Admin staff (and SuperAdmin) may create/edit/delete/toggle schedules or
+    /// change the selected KPIs, since those are write operations on shared config.
+    /// </summary>
+    private IActionResult? CheckReportsAccess(bool requireEdit = false)
+    {
+        var forbidden = CheckAccess("Reports");
+        if (forbidden != null) return forbidden;
+
+        if (requireEdit && !IsSuperAdmin())
+        {
+            var staffRole = GetStaffRole();
+            if (staffRole != "Admin")
+                return Forbid();
+        }
+
+        return null;
+    }
+
     private long GetCurrentUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private string? GetClientIp() =>
+        HttpContext?.Connection?.RemoteIpAddress?.ToString();
     [HttpGet("stores")]
     public async Task<IActionResult> GetAllStores()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Stores");
         if (forbidden != null) return forbidden;
         var stores = await _adminService.GetAllStoresAsync();
         return Ok(new { success = true, data = stores });
@@ -60,7 +143,7 @@ public class AdminController : ControllerBase
     [HttpGet("stores/{id}")]
     public async Task<IActionResult> GetStoreById(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Stores");
         if (forbidden != null) return forbidden;
         var store = await _adminService.GetStoreByIdAsync(id);
         if (store == null)
@@ -70,7 +153,7 @@ public class AdminController : ControllerBase
     [HttpPut("stores/{id}/suspend")]
     public async Task<IActionResult> SuspendStore(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Stores");
         if (forbidden != null) return forbidden;
         try
         {
@@ -85,7 +168,7 @@ public class AdminController : ControllerBase
     [HttpPut("stores/{id}/activate")]
     public async Task<IActionResult> ActivateStore(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Stores");
         if (forbidden != null) return forbidden;
         try
         {
@@ -100,7 +183,7 @@ public class AdminController : ControllerBase
     [HttpPut("stores/{id}/custom-domain/activate")]
     public async Task<IActionResult> ActivateCustomDomain(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Domains");
         if (forbidden != null) return forbidden;
         try
         {
@@ -115,7 +198,7 @@ public class AdminController : ControllerBase
     [HttpGet("packages")]
     public async Task<IActionResult> GetAllPackages()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Packages");
         if (forbidden != null) return forbidden;
         var packages = await _adminService.GetAllPackagesAsync();
         return Ok(new { success = true, data = packages });
@@ -123,7 +206,7 @@ public class AdminController : ControllerBase
     [HttpGet("packages/{id}")]
     public async Task<IActionResult> GetPackageById(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Packages");
         if (forbidden != null) return forbidden;
         var package = await _adminService.GetPackageByIdAsync(id);
         if (package == null)
@@ -133,7 +216,7 @@ public class AdminController : ControllerBase
     [HttpPut("packages/{id}")]
     public async Task<IActionResult> UpdatePackage(long id, [FromBody] UpdatePackageDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Packages");
         if (forbidden != null) return forbidden;
         try
         {
@@ -151,7 +234,7 @@ public class AdminController : ControllerBase
     [HttpGet("users")]
     public async Task<IActionResult> GetAllUsers()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Users");
         if (forbidden != null) return forbidden;
         var users = await _adminService.GetAllUsersAsync();
         return Ok(new { success = true, data = users });
@@ -160,7 +243,7 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id}/deactivate")]
     public async Task<IActionResult> DeactivateUser(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Users");
         if (forbidden != null) return forbidden;
         try
         {
@@ -176,7 +259,7 @@ public class AdminController : ControllerBase
     [HttpPut("users/{id}/activate")]
     public async Task<IActionResult> ActivateUser(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Users");
         if (forbidden != null) return forbidden;
         try
         {
@@ -192,16 +275,35 @@ public class AdminController : ControllerBase
     [HttpGet("reports/overview")]
     public async Task<IActionResult> GetReportsOverview()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckReportsAccess();
         if (forbidden != null) return forbidden;
         var overview = await _adminService.GetReportsOverviewAsync();
         return Ok(new { success = true, data = overview });
     }
 
+    [HttpGet("reports/export")]
+    public async Task<IActionResult> ExportReportsOverview([FromQuery] string? scope, [FromQuery] string? kpis, [FromQuery] string? format)
+    {
+        var forbidden = CheckReportsAccess();
+        if (forbidden != null) return forbidden;
+
+        var kpiList = (kpis ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        var fmt = (format ?? "excel").ToLowerInvariant();
+        var bytes = await _reportScheduleService.ExportOverviewAsync(scope ?? "Platform", kpiList, fmt);
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd");
+
+        return fmt switch
+        {
+            "excel" => File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"reports-overview-{stamp}.xlsx"),
+            "pdf" => File(bytes, "application/pdf", $"reports-overview-{stamp}.pdf"),
+            _ => File(bytes, "text/csv", $"reports-overview-{stamp}.csv")
+        };
+    }
+
     [HttpGet("billing/revenue")]
     public async Task<IActionResult> GetRevenueDashboard()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Billing");
         if (forbidden != null) return forbidden;
         var data = await _adminService.GetRevenueDashboardAsync();
         return Ok(new { success = true, data });
@@ -210,7 +312,7 @@ public class AdminController : ControllerBase
     [HttpGet("billing/invoices")]
     public async Task<IActionResult> GetPlatformInvoices([FromQuery] bool? overdueOnly)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Billing");
         if (forbidden != null) return forbidden;
         var data = await _adminService.GetPlatformInvoicesAsync(overdueOnly);
         return Ok(new { success = true, data });
@@ -219,7 +321,7 @@ public class AdminController : ControllerBase
     [HttpGet("billing/invoices/export")]
     public async Task<IActionResult> ExportPlatformInvoices()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Billing");
         if (forbidden != null) return forbidden;
         var bytes = await _adminService.ExportPlatformInvoicesExcelAsync();
         return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "platform-invoices.xlsx");
@@ -228,7 +330,7 @@ public class AdminController : ControllerBase
     [HttpGet("users/owners")]
     public async Task<IActionResult> GetOwnerUsers()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Users");
         if (forbidden != null) return forbidden;
         var data = await _adminService.GetOwnerUsersAsync();
         return Ok(new { success = true, data });
@@ -237,7 +339,7 @@ public class AdminController : ControllerBase
     [HttpPost("users/staff")]
     public async Task<IActionResult> CreateStaffUser([FromBody] CreateStaffDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckSuperAdminOnly();
         if (forbidden != null) return forbidden;
         try
         {
@@ -253,16 +355,64 @@ public class AdminController : ControllerBase
     [HttpGet("users/staff")]
     public async Task<IActionResult> GetStaffUsers()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckSuperAdminOnly();
         if (forbidden != null) return forbidden;
         var data = await _adminService.GetStaffUsersAsync();
         return Ok(new { success = true, data });
     }
 
+    [HttpPut("users/{id}")]
+    public async Task<IActionResult> UpdateUser(long id, [FromBody] UpdateUserDto dto)
+    {
+        var forbidden = CheckAccess("Users");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.UpdateUserAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم تعديل بيانات المستخدم بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("users/staff/{id}")]
+    public async Task<IActionResult> UpdateStaffUser(long id, [FromBody] UpdateStaffDto dto)
+    {
+        var forbidden = CheckSuperAdminOnly();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.UpdateStaffUserAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم تعديل بيانات الموظف بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("users/staff/{id}")]
+    public async Task<IActionResult> DeleteStaffUser(long id)
+    {
+        var forbidden = CheckSuperAdminOnly();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.DeleteStaffUserAsync(id, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم حذف الموظف بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpPost("notifications/send")]
     public async Task<IActionResult> SendPlatformNotification([FromBody] SendNotificationDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Notifications");
         if (forbidden != null) return forbidden;
         try
         {
@@ -279,7 +429,7 @@ public class AdminController : ControllerBase
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Settings");
         if (forbidden != null) return forbidden;
         var settings = await _adminService.GetSettingsAsync();
         return Ok(new { success = true, data = settings });
@@ -288,7 +438,7 @@ public class AdminController : ControllerBase
     [HttpPut("settings")]
     public async Task<IActionResult> UpdateSettings([FromBody] UpdatePlatformSettingsDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess("Settings");
         if (forbidden != null) return forbidden;
         await _adminService.UpdateSettingsAsync(dto);
         return Ok(new { success = true, message = "تم تحديث الإعدادات بنجاح" });
@@ -298,7 +448,7 @@ public class AdminController : ControllerBase
     [HttpGet("site/pages/{pageKey}")]
     public async Task<IActionResult> GetPage(string pageKey)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var page = await _siteService.GetPageByKeyAsync(pageKey);
         return Ok(new { success = true, data = page });
     }
@@ -306,7 +456,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/pages/{pageKey}")]
     public async Task<IActionResult> UpdatePage(string pageKey, [FromBody] UpdateSitePageDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.UpdatePageAsync(GetCurrentUserId(), pageKey, dto);
         return Ok(new { success = true, message = "تم حفظ الصفحة" });
     }
@@ -314,7 +464,7 @@ public class AdminController : ControllerBase
     [HttpPost("site/upload"), DisableRequestSizeLimit]
     public async Task<IActionResult> UploadSiteFile(IFormFile file)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         if (file == null || file.Length == 0)
             return BadRequest(new { success = false, message = "الملف مطلوب" });
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
@@ -339,14 +489,14 @@ public class AdminController : ControllerBase
     [HttpGet("site/faq")]
     public async Task<IActionResult> GetAllFaq()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         return Ok(new { success = true, data = await _siteService.GetAllFaqAsync() });
     }
 
     [HttpPost("site/faq")]
     public async Task<IActionResult> CreateFaq([FromBody] CreateFaqItemDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var result = await _siteService.CreateFaqAsync(dto);
         return Ok(new { success = true, data = result, message = "تمت الإضافة" });
     }
@@ -354,7 +504,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/faq/{id}")]
     public async Task<IActionResult> UpdateFaq(long id, [FromBody] CreateFaqItemDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.UpdateFaqAsync(id, dto);
         return Ok(new { success = true, message = "تم التحديث" });
     }
@@ -362,7 +512,7 @@ public class AdminController : ControllerBase
     [HttpDelete("site/faq/{id}")]
     public async Task<IActionResult> DeleteFaq(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.DeleteFaqAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -370,7 +520,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/faq/{id}/toggle-publish")]
     public async Task<IActionResult> ToggleFaqPublish(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.ToggleFaqPublishAsync(id);
         return Ok(new { success = true, message = "تم التحديث" });
     }
@@ -379,14 +529,14 @@ public class AdminController : ControllerBase
     [HttpGet("site/contact-messages")]
     public async Task<IActionResult> GetContactMessages([FromQuery] string? status, [FromQuery] string? search)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         return Ok(new { success = true, data = await _siteService.GetContactMessagesAsync(status, search) });
     }
 
     [HttpGet("site/contact-messages/{id}")]
     public async Task<IActionResult> GetContactMessageById(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         var msg = await _siteService.GetContactMessageByIdAsync(id);
         if (msg == null) return NotFound(new { success = false, message = "غير موجود" });
         return Ok(new { success = true, data = msg });
@@ -395,7 +545,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/contact-messages/{id}/status")]
     public async Task<IActionResult> UpdateContactMessageStatus(long id, [FromBody] UpdateTicketStatusDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         await _siteService.UpdateContactMessageStatusAsync(id, dto.Status);
         return Ok(new { success = true, message = "تم التحديث" });
     }
@@ -403,7 +553,7 @@ public class AdminController : ControllerBase
     [HttpPost("site/contact-messages/{id}/replies")]
     public async Task<IActionResult> AddTicketReply(long id, [FromBody] CreateTicketReplyDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "المدير";
         try
         {
@@ -419,7 +569,7 @@ public class AdminController : ControllerBase
     [HttpDelete("site/contact-messages/{id}")]
     public async Task<IActionResult> DeleteContactMessage(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         await _siteService.DeleteContactMessageAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -428,14 +578,14 @@ public class AdminController : ControllerBase
     [HttpGet("site/blog")]
     public async Task<IActionResult> GetAllBlogPosts()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         return Ok(new { success = true, data = await _siteService.GetAllBlogPostsAsync() });
     }
 
     [HttpPost("site/blog")]
     public async Task<IActionResult> CreateBlogPost([FromBody] CreateBlogPostDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var result = await _siteService.CreateBlogPostAsync(GetCurrentUserId(), dto);
         return Ok(new { success = true, data = result, message = "تم إنشاء المقال" });
     }
@@ -443,7 +593,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/blog/{id}")]
     public async Task<IActionResult> UpdateBlogPost(long id, [FromBody] UpdateBlogPostDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.UpdateBlogPostAsync(id, dto);
         return Ok(new { success = true, message = "تم التحديث" });
     }
@@ -451,7 +601,7 @@ public class AdminController : ControllerBase
     [HttpDelete("site/blog/{id}")]
     public async Task<IActionResult> DeleteBlogPost(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.DeleteBlogPostAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -459,7 +609,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/blog/{id}/publish")]
     public async Task<IActionResult> PublishBlogPost(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.PublishBlogPostAsync(id);
         return Ok(new { success = true, message = "تم النشر" });
     }
@@ -468,7 +618,7 @@ public class AdminController : ControllerBase
     [HttpGet("site/landing-page")]
     public async Task<IActionResult> GetLandingPage()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var content = await _siteService.GetLandingPageAsync();
         return Ok(new { success = true, data = content });
     }
@@ -476,7 +626,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/landing-page")]
     public async Task<IActionResult> UpdateLandingPage([FromBody] LandingPageContentDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteService.UpdateLandingPageAsync(dto);
         return Ok(new { success = true, message = "تم حفظ محتوى الصفحة الرئيسية" });
     }
@@ -485,7 +635,7 @@ public class AdminController : ControllerBase
     [HttpGet("themes")]
     public async Task<IActionResult> GetAllThemes()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var themes = await _adminService.GetThemesAsync();
         return Ok(new { success = true, data = themes });
     }
@@ -493,7 +643,7 @@ public class AdminController : ControllerBase
     [HttpPut("themes/{id}")]
     public async Task<IActionResult> UpdateTheme(long id, [FromBody] UpdateThemeDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _adminService.SetThemeEnabledAsync(id, dto.IsEnabled);
@@ -507,29 +657,67 @@ public class AdminController : ControllerBase
 
     // === Referrals ===
     [HttpGet("referrals")]
-    public async Task<IActionResult> GetAllReferrals([FromQuery] string? status)
+    public async Task<IActionResult> GetAllReferrals([FromQuery] string? status, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? search)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
-        var data = await _referralService.GetAllReferralsAsync(status);
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetAllReferralsAsync(status, from, to, search);
         return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/{id}/review")]
+    public async Task<IActionResult> ReviewReferral(long id, [FromBody] ReviewReferralDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.ReviewReferralAsync(id, dto.Approve, dto.Note, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تمت الموافقة على الإحالة" : "تم رفض الإحالة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("referrals/settings")]
+    public async Task<IActionResult> GetReferralSettings()
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetReferralSettingsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/settings")]
+    public async Task<IActionResult> UpdateReferralSettings([FromBody] ReferralSettingsDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.UpdateReferralSettingsAsync(dto.DefaultCommissionRate);
+            return Ok(new { success = true, message = "تم تحديث نسبة العمولة الافتراضية" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
     }
 
     [HttpGet("referrals/commissions")]
     public async Task<IActionResult> GetAllCommissions([FromQuery] string? status)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
         var data = await _referralService.GetAllCommissionsAsync(status);
         return Ok(new { success = true, data });
     }
 
-    [HttpPut("referrals/commissions/{id}/paid")]
-    public async Task<IActionResult> MarkCommissionPaid(long id)
+    [HttpPut("referrals/commissions/{id}/rate")]
+    public async Task<IActionResult> UpdateCommissionRate(long id, [FromBody] UpdateCommissionRateDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
         try
         {
-            await _referralService.MarkCommissionPaidAsync(id);
-            return Ok(new { success = true, message = "تم تعليم العمولة كمصروفة" });
+            await _referralService.UpdateCommissionRateAsync(id, dto.Rate);
+            return Ok(new { success = true, message = "تم تحديث نسبة العمولة" });
         }
         catch (InvalidOperationException ex)
         {
@@ -537,34 +725,124 @@ public class AdminController : ControllerBase
         }
     }
 
-    [HttpGet("referrals/withdrawals")]
-    public async Task<IActionResult> GetAllWithdrawals([FromQuery] string? status)
+    // ملحوظة: اعتماد العمولة وإضافتها لرصيد صاحب الإحالة بقى بيتم أوتوماتيك
+    // كجزء من ReviewReferral (الموافقة على الإحالة) بدل ما يكون endpoint منفصل.
+    // نظام طلبات السحب (Withdrawals) اتشال بالكامل — الرصيد بقى يُستخدم فقط
+    // كخصم مباشر من فاتورة اشتراك اليوزر نفسه (ApplyBalanceAsync في SubscriptionService).
+
+    // === Report Scheduling & KPI Selection (إدارة التقارير) ===
+    [HttpGet("reports/schedules")]
+    public async Task<IActionResult> GetReportSchedules()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
-        var data = await _referralService.GetAllWithdrawalsAsync(status);
+        var forbidden = CheckReportsAccess(); if (forbidden != null) return forbidden;
+        var data = await _reportScheduleService.GetAllAsync();
         return Ok(new { success = true, data });
     }
 
-    [HttpPut("referrals/withdrawals/{id}/process")]
-    public async Task<IActionResult> ProcessWithdrawal(long id, [FromBody] ProcessWithdrawalDto dto)
+    [HttpPost("reports/schedules")]
+    public async Task<IActionResult> CreateReportSchedule([FromBody] CreateReportScheduleDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
         try
         {
-            await _referralService.ProcessWithdrawalAsync(id, dto.Approve, dto.Note);
-            return Ok(new { success = true, message = dto.Approve ? "تمت الموافقة على طلب السحب" : "تم رفض طلب السحب" });
+            var data = await _reportScheduleService.CreateAsync(dto);
+            return Ok(new { success = true, data, message = "تم إنشاء جدول التقرير" });
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+
+    [HttpPut("reports/schedules/{id}")]
+    public async Task<IActionResult> UpdateReportSchedule(long id, [FromBody] CreateReportScheduleDto dto)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _reportScheduleService.UpdateAsync(id, dto);
+            return Ok(new { success = true, data, message = "تم تحديث جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("reports/schedules/{id}")]
+    public async Task<IActionResult> DeleteReportSchedule(long id)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            await _reportScheduleService.DeleteAsync(id);
+            return Ok(new { success = true, message = "تم حذف جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("reports/schedules/{id}/toggle")]
+    public async Task<IActionResult> ToggleReportSchedule(long id)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            await _reportScheduleService.ToggleAsync(id);
+            return Ok(new { success = true, message = "تم تغيير حالة جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("reports/schedules/{id}/export")]
+    public async Task<IActionResult> ExportReportSchedule(long id, [FromQuery] string? format)
+    {
+        var forbidden = CheckReportsAccess(); if (forbidden != null) return forbidden;
+        var fmt = (format ?? "excel").ToLowerInvariant();
+        try
+        {
+            var bytes = await _reportScheduleService.ExportScheduleAsync(id, fmt);
+            var stamp = DateTime.UtcNow.ToString("yyyyMMdd");
+            return fmt switch
+            {
+                "excel" => File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-schedule-{id}-{stamp}.xlsx"),
+                "pdf" => File(bytes, "application/pdf", $"report-schedule-{id}-{stamp}.pdf"),
+                _ => File(bytes, "text/csv", $"report-schedule-{id}-{stamp}.csv")
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("reports/config")]
+    public async Task<IActionResult> GetReportConfig()
+    {
+        var forbidden = CheckReportsAccess(); if (forbidden != null) return forbidden;
+        var data = await _reportScheduleService.GetConfigAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("reports/config")]
+    public async Task<IActionResult> UpdateReportConfig([FromBody] ReportConfigUpdateDto dto)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        await _reportScheduleService.UpdateConfigAsync(dto.SelectedKpis ?? new());
+        return Ok(new { success = true, message = "تم تحديث مؤشرات التقارير" });
+    }
+
 
     // === Merchant Verification (حساب تاجر / مستندات) ===
     [HttpGet("merchant-verifications")]
     public async Task<IActionResult> GetAllVerifications([FromQuery] string? status)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         var data = await _verificationService.GetAllVerificationsAsync(status);
         return Ok(new { success = true, data });
     }
@@ -572,7 +850,7 @@ public class AdminController : ControllerBase
     [HttpGet("merchant-verifications/{id}")]
     public async Task<IActionResult> GetVerification(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         var data = await _verificationService.GetAdminVerificationAsync(id);
         if (data == null) return NotFound(new { success = false, message = "طلب التوثيق غير موجود" });
         return Ok(new { success = true, data });
@@ -581,7 +859,7 @@ public class AdminController : ControllerBase
     [HttpPut("merchant-verifications/{id}/review")]
     public async Task<IActionResult> ReviewVerification(long id, [FromBody] ReviewVerificationDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
         try
         {
             await _verificationService.ProcessVerificationAsync(id, dto, GetCurrentUserId());
@@ -593,11 +871,26 @@ public class AdminController : ControllerBase
         }
     }
 
+    [HttpPut("merchant-verifications/{id}/documents/{documentId}/review")]
+    public async Task<IActionResult> ReviewVerificationDocument(long id, long documentId, [FromBody] ReviewDocumentDto dto)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _verificationService.ReviewDocumentAsync(id, documentId, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تم اعتماد المستند" : "تم رفض المستند" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     // === Merchant Accounts (حساب التاجر / مراجعة KYC) ===
     [HttpGet("merchant-accounts")]
     public async Task<IActionResult> GetAllMerchantAccounts([FromQuery] string? status)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
         var data = await _merchantAccountService.GetAllAccountsAsync(status);
         return Ok(new { success = true, data });
     }
@@ -605,7 +898,7 @@ public class AdminController : ControllerBase
     [HttpGet("merchant-accounts/{id}")]
     public async Task<IActionResult> GetMerchantAccount(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
         var data = await _merchantAccountService.GetAdminAccountAsync(id);
         if (data == null) return NotFound(new { success = false, message = "حساب التاجر غير موجود" });
         return Ok(new { success = true, data });
@@ -614,7 +907,7 @@ public class AdminController : ControllerBase
     [HttpPut("merchant-accounts/{id}/review")]
     public async Task<IActionResult> ReviewMerchantAccount(long id, [FromBody] ReviewMerchantAccountDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
         try
         {
             await _merchantAccountService.ProcessAccountReviewAsync(id, dto, GetCurrentUserId());
@@ -626,11 +919,41 @@ public class AdminController : ControllerBase
         }
     }
 
+    [HttpPut("merchant-accounts/{id}/suspend")]
+    public async Task<IActionResult> SuspendMerchantAccount(long id, [FromBody] SuspendMerchantAccountDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _merchantAccountService.SuspendAccountAsync(id, dto.Reason ?? "", GetCurrentUserId(), GetClientIp());
+            return Ok(new { success = true, message = "تم إيقاف حساب التاجر" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("merchant-accounts/{id}/activate")]
+    public async Task<IActionResult> ActivateMerchantAccount(long id)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _merchantAccountService.ReactivateAccountAsync(id, GetCurrentUserId(), GetClientIp());
+            return Ok(new { success = true, message = "تم إعادة تفعيل حساب التاجر" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     // === Site Menus (header/footer + nested sub-menus) ===
     [HttpGet("site/menus")]
     public async Task<IActionResult> GetAllMenus()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _siteMenuService.GetAllMenusAsync();
         return Ok(new { success = true, data });
     }
@@ -638,7 +961,7 @@ public class AdminController : ControllerBase
     [HttpPost("site/menus")]
     public async Task<IActionResult> CreateMenu([FromBody] CreateSiteMenuDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             var menu = await _siteMenuService.CreateMenuAsync(dto);
@@ -653,7 +976,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/menus/{id}")]
     public async Task<IActionResult> UpdateMenu(long id, [FromBody] CreateSiteMenuDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _siteMenuService.UpdateMenuAsync(id, dto);
@@ -668,7 +991,7 @@ public class AdminController : ControllerBase
     [HttpDelete("site/menus/{id}")]
     public async Task<IActionResult> DeleteMenu(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteMenuService.DeleteMenuAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -676,7 +999,7 @@ public class AdminController : ControllerBase
     [HttpPut("site/menus/{id}/toggle")]
     public async Task<IActionResult> ToggleMenu(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _siteMenuService.ToggleMenuActiveAsync(id);
         return Ok(new { success = true, message = "تم التحديث" });
     }
@@ -685,7 +1008,7 @@ public class AdminController : ControllerBase
     [HttpGet("dashboard-sections")]
     public async Task<IActionResult> GetDashboardSections([FromQuery] string? role)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _dashboardSectionService.GetAllAsync(role);
         return Ok(new { success = true, data });
     }
@@ -693,7 +1016,7 @@ public class AdminController : ControllerBase
     [HttpPost("dashboard-sections")]
     public async Task<IActionResult> CreateDashboardSection([FromBody] UpsertDashboardSectionDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             var section = await _dashboardSectionService.CreateAsync(dto);
@@ -708,7 +1031,7 @@ public class AdminController : ControllerBase
     [HttpPut("dashboard-sections/{id}")]
     public async Task<IActionResult> UpdateDashboardSection(long id, [FromBody] UpsertDashboardSectionDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _dashboardSectionService.UpdateAsync(id, dto);
@@ -723,7 +1046,7 @@ public class AdminController : ControllerBase
     [HttpDelete("dashboard-sections/{id}")]
     public async Task<IActionResult> DeleteDashboardSection(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _dashboardSectionService.DeleteAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -731,7 +1054,7 @@ public class AdminController : ControllerBase
     [HttpPut("dashboard-sections/{id}/toggle")]
     public async Task<IActionResult> ToggleDashboardSection(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _dashboardSectionService.ToggleAsync(id);
         return Ok(new { success = true, message = "تم التحديث" });
     }
@@ -740,7 +1063,7 @@ public class AdminController : ControllerBase
     [HttpGet("jobs")]
     public async Task<IActionResult> GetJobs()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _careerService.GetJobsAsync();
         return Ok(new { success = true, data });
     }
@@ -748,7 +1071,7 @@ public class AdminController : ControllerBase
     [HttpPost("jobs")]
     public async Task<IActionResult> CreateJob([FromBody] UpsertJobPostingDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             var job = await _careerService.CreateJobAsync(dto);
@@ -760,7 +1083,7 @@ public class AdminController : ControllerBase
     [HttpPut("jobs/{id}")]
     public async Task<IActionResult> UpdateJob(long id, [FromBody] UpsertJobPostingDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _careerService.UpdateJobAsync(id, dto);
@@ -772,7 +1095,7 @@ public class AdminController : ControllerBase
     [HttpDelete("jobs/{id}")]
     public async Task<IActionResult> DeleteJob(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _careerService.DeleteJobAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -780,7 +1103,7 @@ public class AdminController : ControllerBase
     [HttpGet("job-applications")]
     public async Task<IActionResult> GetJobApplications([FromQuery] long? jobId)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _careerService.GetApplicationsAsync(jobId);
         return Ok(new { success = true, data });
     }
@@ -788,7 +1111,7 @@ public class AdminController : ControllerBase
     [HttpPut("job-applications/{id}/status")]
     public async Task<IActionResult> UpdateJobApplicationStatus(long id, [FromBody] UpdateJobApplicationStatusDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _careerService.UpdateApplicationStatusAsync(id, dto.Status);
@@ -800,7 +1123,7 @@ public class AdminController : ControllerBase
     [HttpDelete("job-applications/{id}")]
     public async Task<IActionResult> DeleteJobApplication(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _careerService.DeleteApplicationAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -809,7 +1132,7 @@ public class AdminController : ControllerBase
     [HttpGet("courses")]
     public async Task<IActionResult> GetCourses()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _academyService.GetCoursesAsync();
         return Ok(new { success = true, data });
     }
@@ -817,7 +1140,7 @@ public class AdminController : ControllerBase
     [HttpPost("courses")]
     public async Task<IActionResult> CreateCourse([FromBody] UpsertAcademyCourseDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             var course = await _academyService.CreateCourseAsync(dto);
@@ -829,7 +1152,7 @@ public class AdminController : ControllerBase
     [HttpPut("courses/{id}")]
     public async Task<IActionResult> UpdateCourse(long id, [FromBody] UpsertAcademyCourseDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _academyService.UpdateCourseAsync(id, dto);
@@ -841,7 +1164,7 @@ public class AdminController : ControllerBase
     [HttpDelete("courses/{id}")]
     public async Task<IActionResult> DeleteCourse(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _academyService.DeleteCourseAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -849,7 +1172,7 @@ public class AdminController : ControllerBase
     [HttpGet("courses/{courseId}/lessons")]
     public async Task<IActionResult> GetCourseLessons(long courseId)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _academyService.GetLessonsAsync(courseId);
         return Ok(new { success = true, data });
     }
@@ -857,7 +1180,7 @@ public class AdminController : ControllerBase
     [HttpPost("courses/{courseId}/lessons")]
     public async Task<IActionResult> CreateCourseLesson(long courseId, [FromBody] UpsertAcademyLessonDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             var lesson = await _academyService.CreateLessonAsync(courseId, dto);
@@ -869,7 +1192,7 @@ public class AdminController : ControllerBase
     [HttpPut("courses/lessons/{id}")]
     public async Task<IActionResult> UpdateCourseLesson(long id, [FromBody] UpsertAcademyLessonDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _academyService.UpdateLessonAsync(id, dto);
@@ -881,7 +1204,7 @@ public class AdminController : ControllerBase
     [HttpDelete("courses/lessons/{id}")]
     public async Task<IActionResult> DeleteCourseLesson(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _academyService.DeleteLessonAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -889,7 +1212,7 @@ public class AdminController : ControllerBase
     [HttpGet("course-enrollments")]
     public async Task<IActionResult> GetCourseEnrollments([FromQuery] long? courseId)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _academyService.GetEnrollmentsAsync(courseId);
         return Ok(new { success = true, data });
     }
@@ -897,7 +1220,7 @@ public class AdminController : ControllerBase
     [HttpPut("course-enrollments/{id}/status")]
     public async Task<IActionResult> UpdateCourseEnrollmentStatus(long id, [FromBody] UpdateAcademyEnrollmentStatusDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _academyService.UpdateEnrollmentStatusAsync(id, dto.Status);
@@ -909,7 +1232,7 @@ public class AdminController : ControllerBase
     [HttpDelete("course-enrollments/{id}")]
     public async Task<IActionResult> DeleteCourseEnrollment(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         await _academyService.DeleteEnrollmentAsync(id);
         return Ok(new { success = true, message = "تم الحذف" });
     }
@@ -918,7 +1241,7 @@ public class AdminController : ControllerBase
     [HttpGet("design-requests")]
     public async Task<IActionResult> GetDesignRequests()
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _designService.GetRequestsAsync();
         return Ok(new { success = true, data });
     }
@@ -926,7 +1249,7 @@ public class AdminController : ControllerBase
     [HttpGet("design-requests/{id}/messages")]
     public async Task<IActionResult> GetDesignRequestMessages(long id)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         var data = await _designService.GetMessagesAsync(id);
         return Ok(new { success = true, data });
     }
@@ -934,7 +1257,7 @@ public class AdminController : ControllerBase
     [HttpPost("design-requests/{id}/messages")]
     public async Task<IActionResult> SendDesignRequestMessage(long id, [FromBody] SendStoreDesignMessageDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             var senderName = User.FindFirstValue(ClaimTypes.Name) ?? "الإدارة";
@@ -947,7 +1270,7 @@ public class AdminController : ControllerBase
     [HttpPut("design-requests/{id}/status")]
     public async Task<IActionResult> UpdateDesignRequestStatus(long id, [FromBody] UpdateStoreDesignRequestStatusDto dto)
     {
-        var forbidden = CheckSuperAdmin(); if (forbidden != null) return forbidden;
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
         try
         {
             await _designService.UpdateStatusAsync(id, dto.Status);

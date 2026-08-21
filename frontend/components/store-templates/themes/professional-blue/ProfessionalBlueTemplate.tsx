@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, UserIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, ShieldIcon, HeadsetIcon, CreditCardIcon, RefreshIcon, PackageIcon, CheckIcon, SparklesIcon, MailIcon, PhoneIcon, MapPinIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -39,7 +41,7 @@ function ProductCard({ product, slug, currencySymbol, colors, t, quickFeatures, 
           : <div className="w-full h-full flex items-center justify-center" style={{ color: "#D1D5DB" }}><PackageIcon size={44} /></div>
         }
         {hasDiscount(product) && <span className="absolute rounded-md px-2 py-0.5 text-[11px] font-bold" style={{ background: "#DC2626", color: "#fff", top: 10, insetInlineStart: 10 }}>-{getDiscount(product)}%</span>}
-        <button type="button" onClick={() => onWishlist(product.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 30, height: 30, background: "rgba(255,255,255,0.94)", top: 10, insetInlineEnd: 10, color: "#DC2626" }}>
+        <button type="button" onClick={() => onWishlist(product.id)} aria-label={t("storefront.wishlist")} className="absolute rounded-full flex items-center justify-center transition-transform hover:scale-110" style={{ width: 36, height: 36, background: "rgba(255,255,255,0.94)", top: 10, insetInlineEnd: 10, color: "#DC2626" }}>
           {isWishlist(product.id) ? <HeartFilledIcon size={16} /> : <HeartIcon size={16} />}
         </button>
       </div>
@@ -144,12 +146,15 @@ export default function ProfessionalBlueTemplate({
             </a>
           </div>
         </div>
+        <div className="hidden md:block border-t" style={{ borderColor: "#F3F4F6" }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-8 h-12">
+            <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-8" linkClassName="text-[14px] font-semibold transition-colors hover:opacity-75" />
+          </div>
+        </div>
         {searchOpen && <div className="md:hidden px-4 pb-3"><form onSubmit={handleSearchSubmit}><div className="relative"><span className="absolute inset-y-0 inline-flex items-center ps-3" style={{ color: "#9CA3AF" }}><SearchIcon size={16} /></span><input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-full rounded-full outline-none text-[14px] ps-9 pe-3 py-2" style={{ background: "#F3F4F6", color: "#111827" }} /></div></form></div>}
-        {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "#F3F4F6", background: "#fff" }}><div className="px-4 py-2 space-y-1 text-[15px] font-semibold" style={{ color: "#374151" }}>
-          <a href={`/store/${slug}`} className="block py-2">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block py-2">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block py-2">{t("storefront.contactUs")}</a>
-        </div></div>}
+        {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "#F3F4F6", background: "#fff" }}>
+          <StoreMainMenu slug={slug} mobile containerClassName="px-4 py-2 space-y-1 text-[15px] font-semibold" linkClassName="block py-2" />
+        </div>}
       </header>
 
       {!showHero && <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>}
@@ -223,7 +228,7 @@ export default function ProfessionalBlueTemplate({
           <div className="flex items-center gap-3 mb-7"><span style={{ width: "5px", height: "34px", background: colors.accentColor, borderRadius: "3px" }} /><h2 className="font-extrabold text-2xl" style={{ color: "#111827" }}>{t("storefront.featuredProducts")}</h2></div>
           {productsLoading && <p className="text-center py-12" style={{ color: "#6B7280" }}>{t("storefront.loadingProducts")}</p>}
           {!productsLoading && displayProducts.length === 0 && <div className="flex flex-col items-center gap-3 py-16"><span style={{ color: "#D1D5DB" }}><PackageIcon size={48} /></span><p style={{ color: "#6B7280" }}>{t("storefront.noProducts")}</p></div>}
-          {!productsLoading && displayProducts.length > 0 && <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {!productsLoading && displayProducts.length > 0 && <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {displayProducts.map(p => <ProductCard key={p.id} product={p} slug={slug} currencySymbol={currencySymbol} colors={colors} t={t} quickFeatures={quickFeatures} isWishlist={isWishlist} hasDiscount={hasDiscount} getDiscount={getDiscount} onWishlist={toggleWishlist} onAddToCart={handleAddToCart} />)}
           </div>}
           {!isSearchActive && !showAllProducts && products.length > 8 && <div className="mt-8 text-center"><button type="button" onClick={() => setShowAllProducts(true)} className="px-8 py-2.5 rounded-lg font-bold text-sm" style={{ border: `1px solid ${colors.accentColor}`, color: colors.accentColor }}>{t("storefront.viewAll")}</button></div>}
@@ -247,14 +252,7 @@ export default function ProfessionalBlueTemplate({
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1"><h4 className="text-white font-extrabold" style={{ fontSize: "18px" }}>{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="text-white font-extrabold" style={{ fontSize: "15px" }}>{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-extrabold" titleStyle={{ fontSize: "15px" }} listClassName="mt-3 space-y-2 text-[13px]" linkClassName="hover:text-white" linkStyle={{ color: "rgba(255,255,255,0.6)" }} />
           </div>
           <div>
             <h4 className="text-white font-extrabold" style={{ fontSize: "15px" }}>{t("storefront.contactHeading")}</h4>

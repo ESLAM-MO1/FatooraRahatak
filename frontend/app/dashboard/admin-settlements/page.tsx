@@ -136,8 +136,8 @@ export default function AdminSettlementsPage() {
         </button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-x-auto">
+        <table className="w-full text-sm hidden lg:table">
           <thead className="bg-gray-50 dark:bg-gray-700 text-gray-500">
             <tr>
               <th className="text-right p-3">{t("settlements.batchNumber")}</th>
@@ -174,11 +174,55 @@ export default function AdminSettlementsPage() {
             )}
           </tbody>
         </table>
+        <div className="md:hidden space-y-3">
+          {batches.map((b) => (
+            <div key={b.id} className="card p-4 space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-[12px]">
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.batchNumber")}</p>
+                  <p className="text-[var(--ink)]">{b.batchNumber}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.period")}</p>
+                  <p className="text-[var(--ink)]" dir="ltr">{new Date(b.periodStart).toLocaleDateString()} — {new Date(b.periodEnd).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.gross")}</p>
+                  <p className="text-[var(--ink)]">{(b.grossAmount).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.commission")}</p>
+                  <p className="text-[var(--ink)]">{(b.commissionAmount).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.net")}</p>
+                  <p className="font-semibold">{(b.netAmount).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.orders")}</p>
+                  <p className="text-[var(--ink)]">{b.ordersCount}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-[var(--sub)]">{t("settlements.status")}</p>
+                  <p className="text-[var(--ink)]">{t(`settlements.status.${b.status}`)}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                <button onClick={() => loadDetail(b.id)} className="text-blue-600 hover:underline text-[12px]">
+                  {t("common.view")}
+                </button>
+              </div>
+            </div>
+          ))}
+          {batches.length === 0 && (
+            <p className="text-[13px] text-[var(--sub)] text-center py-4">{t("settlements.empty")}</p>
+          )}
+        </div>
       </div>
 
       {detail && (
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-          <div className="flex justify-between items-center p-6 pb-3">
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-x-auto">
+          <div className="flex justify-between items-center p-6 pb-3 flex-wrap gap-3">
             <h2 className="text-lg font-semibold">{t("settlements.batchDetail")} — {detail.batchNumber}</h2>
             {detail.status !== "Completed" && (
               <div className="flex items-center gap-2">

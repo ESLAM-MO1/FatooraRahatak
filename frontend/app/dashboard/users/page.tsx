@@ -6,11 +6,14 @@ import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { getUserType } from "@/lib/auth";
 
 interface AdminUser {
   id: number;
   fullName: string;
   email: string;
+  phone?: string;
   userType: string;
   isActive: boolean;
   createdAt: string;
@@ -20,6 +23,7 @@ interface OwnerUser {
   id: number;
   fullName: string;
   email: string;
+  phone?: string;
   userType: string;
   isActive: boolean;
   createdAt: string;
@@ -35,14 +39,15 @@ interface StaffUser {
 }
 
 const ROLE_OPTIONS = [
-  { value: "Admin", labelKey: "users.roleAdmin" },
-  { value: "Support", labelKey: "users.roleSupport" },
-  { value: "Finance", labelKey: "users.roleFinance" },
-  { value: "Technical", labelKey: "users.roleTechnical" },
+  { value: "Admin", labelKey: "users.roleAdmin", descKey: "users.roleAdminDesc" },
+  { value: "Support", labelKey: "users.roleSupport", descKey: "users.roleSupportDesc" },
+  { value: "Finance", labelKey: "users.roleFinance", descKey: "users.roleFinanceDesc" },
+  { value: "Technical", labelKey: "users.roleTechnical", descKey: "users.roleTechnicalDesc" },
 ];
 
 export default function UsersManagementPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("all");
 
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -52,6 +57,15 @@ export default function UsersManagementPage() {
   const [error, setError] = useState("");
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [filterType, setFilterType] = useState<string>("all");
+
+  const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [editingUser, setEditingUser] = useState<AdminUser | OwnerUser | null>(null);
+  const [userEditForm, setUserEditForm] = useState({ fullName: "", email: "", phone: "" });
+  const [userEditSaving, setUserEditSaving] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffUser | null>(null);
+  const [staffEditForm, setStaffEditForm] = useState({ fullName: "", email: "", roleType: "Support" });
+  const [staffEditSaving, setStaffEditSaving] = useState(false);
 
   const [staffForm, setStaffForm] = useState({ fullName: "", email: "", password: "", roleType: "Support" });
   const [staffError, setStaffError] = useState("");
@@ -156,6 +170,86 @@ export default function UsersManagementPage() {
     }
   };
 
+  const openEditUser = (user: AdminUser | OwnerUser) => {
+    setEditingUser(user);
+    setUserEditForm({ fullName: user.fullName, email: user.email, phone: user.phone || "" });
+    setActionError("");
+    setActionSuccess("");
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setUserEditSaving(true);
+    setActionError("");
+    try {
+      await api.put(`/admin/users/${editingUser.id}`, userEditForm);
+      setActionSuccess(t("users.userUpdated"));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingUser.id
+            ? { ...u, fullName: userEditForm.fullName, email: userEditForm.email, phone: userEditForm.phone }
+            : u
+        )
+      );
+      setOwners((prev) =>
+        prev.map((o) =>
+          o.id === editingUser.id
+            ? { ...o, fullName: userEditForm.fullName, email: userEditForm.email, phone: userEditForm.phone }
+            : o
+        )
+      );
+      setEditingUser(null);
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("users.userUpdateError"));
+    } finally {
+      setUserEditSaving(false);
+    }
+  };
+
+  const openEditStaff = (s: StaffUser) => {
+    setEditingStaff(s);
+    setStaffEditForm({ fullName: s.fullName, email: s.email, roleType: s.roleType || "Support" });
+    setActionError("");
+    setActionSuccess("");
+  };
+
+  const handleSaveStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    setStaffEditSaving(true);
+    setActionError("");
+    try {
+      await api.put(`/admin/users/staff/${editingStaff.id}`, staffEditForm);
+      setActionSuccess(t("users.staffUpdated"));
+      setStaff((prev) =>
+        prev.map((s) =>
+          s.id === editingStaff.id
+            ? { ...s, fullName: staffEditForm.fullName, email: staffEditForm.email, roleType: staffEditForm.roleType }
+            : s
+        )
+      );
+      setEditingStaff(null);
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("users.staffUpdateError"));
+    } finally {
+      setStaffEditSaving(false);
+    }
+  };
+
+  const handleDeleteStaff = async (s: StaffUser) => {
+    if (!(await confirm({ message: t("users.confirmDeleteStaff"), confirmLabel: t("users.deleteStaff"), danger: true }))) return;
+    setActionError("");
+    setActionSuccess("");
+    try {
+      await api.delete(`/admin/users/staff/${s.id}`);
+      setActionSuccess(t("users.staffDeleted"));
+      loadStaff();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("users.staffDeleteError"));
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("ar-SA-u-nu-latn", {
@@ -174,10 +268,14 @@ export default function UsersManagementPage() {
   const filteredUsers =
     filterType === "all" ? users : users.filter((u) => u.userType === filterType);
 
+  // Creating/managing platform staff accounts is a SuperAdmin-only capability
+  // on the backend (see AdminController) - hide the tab for anyone else so
+  // support staff never hit a confusing 403 error.
+  const isSuperAdmin = getUserType() === "SuperAdmin";
   const TABS = [
     { key: "all", label: t("users.allTypes") },
     { key: "owners", label: t("users.tabOwners") },
-    { key: "staff", label: t("users.tabStaff") },
+    ...(isSuperAdmin ? [{ key: "staff", label: t("users.tabStaff") }] : []),
     { key: "notifications", label: t("users.tabNotifications") },
   ];
 
@@ -206,6 +304,8 @@ export default function UsersManagementPage() {
       </div>
 
       {error && <div className="alert alert--danger">{error}</div>}
+      <SuccessToast message={actionSuccess} fixed className="mb-4" />
+      {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
       {activeTab === "all" && (
         <>
@@ -220,7 +320,7 @@ export default function UsersManagementPage() {
           </div>
 
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead>
                 <tr>
                   <th>{t("users.name")}</th>
@@ -246,22 +346,82 @@ export default function UsersManagementPage() {
                       </span>
                     </td>
                     <td>
-                      <button
-                        onClick={() => handleToggleActive(user)}
-                        disabled={processingId === user.id}
-                        className={user.isActive ? "btn btn-danger" : "btn btn-success"}
-                      >
-                        {processingId === user.id
-                          ? t("users.updating")
-                          : user.isActive
-                          ? t("users.deactivate")
-                          : t("users.activate")}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => openEditUser(user)}
+                          className="btn btn-outline"
+                        >
+                          {t("common.edit")}
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(user)}
+                          disabled={processingId === user.id}
+                          className={user.isActive ? "btn btn-danger" : "btn btn-success"}
+                        >
+                          {processingId === user.id
+                            ? t("users.updating")
+                            : user.isActive
+                            ? t("users.deactivate")
+                            : t("users.activate")}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            <div className="md:hidden space-y-3">
+              {filteredUsers.map((user) => (
+                <div key={user.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-[12px]">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.name")}</p>
+                      <p className="font-bold">{user.fullName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.email")}</p>
+                      <p className="text-[var(--sub)]" dir="ltr">{user.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.type")}</p>
+                      <p className="text-[var(--sub)]">
+                        {userTypeLabels[user.userType] || user.userType}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.registrationDate")}</p>
+                      <p className="text-[var(--sub)]">{formatDate(user.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.status")}</p>
+                      <span className={`badge ${user.isActive ? "badge--green" : "badge--red"}`}>
+                        {user.isActive ? t("users.active") : t("users.inactive")}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button
+                      onClick={() => openEditUser(user)}
+                      className="btn btn-outline"
+                    >
+                      {t("common.edit")}
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(user)}
+                      disabled={processingId === user.id}
+                      className={user.isActive ? "btn btn-danger" : "btn btn-success"}
+                    >
+                      {processingId === user.id
+                        ? t("users.updating")
+                        : user.isActive
+                        ? t("users.deactivate")
+                        : t("users.activate")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {filteredUsers.length === 0 && (
               <p className="text-center text-[var(--sub)] py-8">{t("users.noMatching")}</p>
@@ -272,13 +432,14 @@ export default function UsersManagementPage() {
 
       {activeTab === "owners" && (
         <div className="table-wrap">
-          <table>
+          <table className="hidden md:table">
             <thead>
               <tr>
                 <th>{t("users.name")}</th>
                 <th>{t("users.email")}</th>
                 <th>{t("users.registrationDate")}</th>
                 <th>{t("users.status")}</th>
+                <th>{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -292,10 +453,53 @@ export default function UsersManagementPage() {
                       {owner.isActive ? t("users.active") : t("users.inactive")}
                     </span>
                   </td>
+                  <td>
+                    <button
+                      onClick={() => openEditUser(owner)}
+                      className="btn btn-outline"
+                    >
+                      {t("common.edit")}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          <div className="md:hidden space-y-3">
+            {owners.map((owner) => (
+              <div key={owner.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-[12px]">
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.name")}</p>
+                    <p className="font-bold">{owner.fullName}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.email")}</p>
+                    <p className="text-[var(--sub)]" dir="ltr">{owner.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.registrationDate")}</p>
+                    <p className="text-[var(--sub)]">{formatDate(owner.createdAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.status")}</p>
+                    <span className={`badge ${owner.isActive ? "badge--green" : "badge--red"}`}>
+                      {owner.isActive ? t("users.active") : t("users.inactive")}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => openEditUser(owner)}
+                    className="btn btn-outline"
+                  >
+                    {t("common.edit")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
 
           {owners.length === 0 && (
             <p className="text-center text-[var(--sub)] py-8">{t("users.noOwners")}</p>
@@ -303,7 +507,7 @@ export default function UsersManagementPage() {
         </div>
       )}
 
-      {activeTab === "staff" && (
+      {activeTab === "staff" && isSuperAdmin && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card p-5">
             <h3 className="text-[15px] font-bold text-[var(--ink)] mb-4">{t("users.addStaff")}</h3>
@@ -355,7 +559,7 @@ export default function UsersManagementPage() {
                   >
                     {ROLE_OPTIONS.map((r) => (
                       <option key={r.value} value={r.value}>
-                        {t(r.labelKey)}
+                        {t(r.labelKey)} — {t(r.descKey)}
                       </option>
                     ))}
                   </select>
@@ -366,7 +570,7 @@ export default function UsersManagementPage() {
           </div>
 
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead>
                 <tr>
                   <th>{t("users.name")}</th>
@@ -374,6 +578,7 @@ export default function UsersManagementPage() {
                   <th>{t("users.staffRole")}</th>
                   <th>{t("users.status")}</th>
                   <th>{t("users.registrationDate")}</th>
+                  <th>{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -392,10 +597,63 @@ export default function UsersManagementPage() {
                       </span>
                     </td>
                     <td className="text-[var(--sub)]">{formatDate(s.createdAt)}</td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button onClick={() => openEditStaff(s)} className="btn btn-outline">
+                          {t("common.edit")}
+                        </button>
+                        <button onClick={() => handleDeleteStaff(s)} className="btn btn-danger">
+                          {t("users.deleteStaff")}
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            <div className="md:hidden space-y-3">
+              {staff.map((s) => (
+                <div key={s.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-[12px]">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.name")}</p>
+                      <p className="font-bold">{s.fullName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.email")}</p>
+                      <p className="text-[var(--sub)]" dir="ltr">{s.email}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.staffRole")}</p>
+                      <p className="text-[var(--sub)]">
+                        {ROLE_OPTIONS.find((r) => r.value === s.roleType)
+                          ? t(ROLE_OPTIONS.find((r) => r.value === s.roleType)!.labelKey)
+                          : s.roleType}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.status")}</p>
+                      <span className={`badge ${s.isActive ? "badge--green" : "badge--red"}`}>
+                        {s.isActive ? t("users.active") : t("users.inactive")}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("users.registrationDate")}</p>
+                      <p className="text-[var(--sub)]">{formatDate(s.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button onClick={() => openEditStaff(s)} className="btn btn-outline">
+                      {t("common.edit")}
+                    </button>
+                    <button onClick={() => handleDeleteStaff(s)} className="btn btn-danger">
+                      {t("users.deleteStaff")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
 
             {staff.length === 0 && (
               <p className="text-center text-[var(--sub)] py-8">{t("users.noStaff")}</p>
@@ -482,6 +740,115 @@ export default function UsersManagementPage() {
               <button type="submit" disabled={sending} className="btn-primary w-full">
                 {sending ? t("users.sending") : t("users.send")}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal (All / Owners tabs) */}
+      {editingUser && (
+        <div className="modal-overlay" onClick={() => setEditingUser(null)}>
+          <div className="modal-card max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("users.editUser")}</h2>
+              <button onClick={() => setEditingUser(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div>
+                <label>{t("users.name")}</label>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={userEditForm.fullName}
+                    onChange={(e) => setUserEditForm({ ...userEditForm, fullName: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label>{t("users.email")}</label>
+                <div className="field-shell">
+                  <input
+                    type="email"
+                    value={userEditForm.email}
+                    onChange={(e) => setUserEditForm({ ...userEditForm, email: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label>{t("users.phone")}</label>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={userEditForm.phone}
+                    onChange={(e) => setUserEditForm({ ...userEditForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setEditingUser(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
+                <button type="submit" disabled={userEditSaving} className="btn btn-primary btn-sm">
+                  {userEditSaving ? t("common.loading") : t("users.saveChanges")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Staff Modal */}
+      {editingStaff && (
+        <div className="modal-overlay" onClick={() => setEditingStaff(null)}>
+          <div className="modal-card max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("users.editStaff")}</h2>
+              <button onClick={() => setEditingStaff(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            <form onSubmit={handleSaveStaff} className="space-y-4">
+              <div>
+                <label>{t("users.name")}</label>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={staffEditForm.fullName}
+                    onChange={(e) => setStaffEditForm({ ...staffEditForm, fullName: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label>{t("users.email")}</label>
+                <div className="field-shell">
+                  <input
+                    type="email"
+                    value={staffEditForm.email}
+                    onChange={(e) => setStaffEditForm({ ...staffEditForm, email: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label>{t("users.staffRole")}</label>
+                <div className="field-shell">
+                  <select
+                    value={staffEditForm.roleType}
+                    onChange={(e) => setStaffEditForm({ ...staffEditForm, roleType: e.target.value })}
+                  >
+                    {ROLE_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {t(r.labelKey)} — {t(r.descKey)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setEditingStaff(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
+                <button type="submit" disabled={staffEditSaving} className="btn btn-primary btn-sm">
+                  {staffEditSaving ? t("common.loading") : t("users.saveChanges")}
+                </button>
+              </div>
             </form>
           </div>
         </div>

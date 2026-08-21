@@ -101,9 +101,7 @@ export default function ReferralsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="share" title={t("referrals.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("referrals.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="share" title={t("referrals.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
 
@@ -195,8 +193,12 @@ export default function ReferralsPage() {
                         </p>
                         <p className="text-[11px] text-[var(--sub)]">{new Date(c.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <span className={`badge ${c.status === "Paid" ? "badge--green" : "badge--yellow"}`}>
-                        {c.status === "Paid" ? t("referrals.commissionPaid") : t("referrals.commissionPending")}
+                      <span className={`badge ${c.status === "Paid" ? "badge--green" : c.status === "Rejected" ? "badge--red" : "badge--yellow"}`}>
+                        {c.status === "Paid"
+                          ? t("referrals.commissionPaid")
+                          : c.status === "Rejected"
+                          ? t("referrals.commissionRejected")
+                          : t("referrals.commissionPending")}
                       </span>
                     </div>
                   ))}

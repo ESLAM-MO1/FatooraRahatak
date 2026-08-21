@@ -26,6 +26,9 @@ public interface IAdminService
     Task<List<AdminUserListDto>> GetOwnerUsersAsync();
     Task<StaffUserDto> CreateStaffUserAsync(CreateStaffDto dto);
     Task<List<StaffUserDto>> GetStaffUsersAsync();
+    Task UpdateUserAsync(long id, UpdateUserDto dto, long adminUserId);
+    Task UpdateStaffUserAsync(long id, UpdateStaffDto dto, long adminUserId);
+    Task DeleteStaffUserAsync(long id, long adminUserId);
 
     Task LogAuditActionAsync(long adminUserId, string adminName, string action, string? targetType = null, string? targetId = null, string? details = null, string? ipAddress = null);
 

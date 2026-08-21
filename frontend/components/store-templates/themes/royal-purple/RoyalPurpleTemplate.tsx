@@ -10,6 +10,8 @@ import ProductRating from "@/components/store-templates/ProductRating";
 import { resolveSocialUrl } from "@/components/store-templates/social";
 import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, SparklesIcon } from "@/components/store-templates/icons";
+import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
+import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -18,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 
 export default function RoyalPurpleTemplate({
   children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
-  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, trustBadges = [], themeMeta, colors,
+  contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, trustBadges = [], themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,7 +29,6 @@ export default function RoyalPurpleTemplate({
     cartCount, wishlist, toggleWishlist, searchInput, setSearchInput, handleSearchSubmit, isSearchActive, searchResults,
     currencySymbol, isRtl, handleAddToCart, cartMessage, cartMessageType } = useStorefront(slug, storeId, currency, true, showHero, themeMeta);
 
-  const hasSocial = !!(facebookUrl || instagramUrl || whatsappUrl || snapchatUrl || tiktokUrl || telegramUrl || linkedinUrl);
   const fbUrl = resolveSocialUrl(facebookUrl);
   const igUrl = resolveSocialUrl(instagramUrl);
   const waUrl = resolveSocialUrl(whatsappUrl);
@@ -35,6 +36,10 @@ export default function RoyalPurpleTemplate({
   const tkUrl = resolveSocialUrl(tiktokUrl);
   const tgUrl = resolveSocialUrl(telegramUrl);
   const liUrl = resolveSocialUrl(linkedinUrl);
+  const twUrl = resolveSocialUrl(twitterUrl);
+  const ytUrl = resolveSocialUrl(youtubeUrl);
+  const pinUrl = resolveSocialUrl(pinterestUrl);
+  const hasSocial = !!(fbUrl || igUrl || waUrl || scUrl || tkUrl || tgUrl || liUrl || twUrl || ytUrl || pinUrl);
   const isWishlist = (id: number) => wishlist.includes(id);
   const hasDiscount = (p: { basePrice: number; discountPrice: number | null }) => p.discountPrice !== null && p.discountPrice < p.basePrice;
   const getDiscount = (p: { basePrice: number; discountPrice: number | null }) => hasDiscount(p) ? Math.round((1 - (p.discountPrice as number) / p.basePrice) * 100) : 0;
@@ -50,11 +55,7 @@ export default function RoyalPurpleTemplate({
     <div dir={isRtl ? "rtl" : "ltr"} className="font-serif" style={{ fontFamily: "'Palatino Linotype', Georgia, 'Tajawal', serif", background: "#1B1626" }}>
       <header className="z-40" style={{ background: colors.headerColor, borderBottom: `1px solid ${gold}33` }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
-          <div className="hidden md:flex items-center gap-10 text-[13px] font-semibold tracking-[0.22em] uppercase text-white/80">
-            <a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a>
-            <a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a>
-            <a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactUs")}</a>
-          </div>
+          <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-10 text-[13px] font-semibold tracking-[0.22em] uppercase text-white/80" linkClassName="hover:text-white" />
           <button className="md:hidden p-1.5 -ml-1.5 text-white" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           <a href={`/store/${slug}`} className="flex flex-col items-center min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-11 h-11 rounded-full object-cover" />}
@@ -70,11 +71,7 @@ export default function RoyalPurpleTemplate({
             <a href={`/store/${slug}/cart`} className="relative p-2 text-white" aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
           </div>
         </div>
-        {mobileOpen && <div className="md:hidden px-4 pb-4 space-y-2 text-[15px] font-semibold text-white">
-          <a href={`/store/${slug}`} className="block">{t("storefront.home")}</a>
-          <a href={`/store/${slug}#products`} className="block">{t("storefront.products")}</a>
-          <a href={`/store/${slug}/contact`} className="block">{t("storefront.contactUs")}</a>
-        </div>}
+        {mobileOpen && <StoreMainMenu slug={slug} mobile containerClassName="md:hidden px-4 pb-4 space-y-2 text-[15px] font-semibold text-white" linkClassName="block py-1.5" />}
       </header>
 
       {!showHero && <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
@@ -127,7 +124,7 @@ export default function RoyalPurpleTemplate({
                       : <div className="w-full h-full flex items-center justify-center" style={{ color: gold }}><PackageIcon size={56} /></div>}
                   </a>
                   {hasDiscount(p) && <span className="absolute text-[11px] font-bold tracking-[0.14em] px-3 py-1" style={{ background: "#DC2626", color: "#fff", top: 12, insetInlineStart: 12 }}>{t("storefront.discount")} {getDiscount(p)}%</span>}
-                  <button type="button" onClick={() => toggleWishlist(p.id)} aria-label={t("storefront.wishlist")} className="absolute flex items-center justify-center transition-transform hover:scale-110" style={{ width: 34, height: 34, border: `1px solid ${gold}66`, background: "rgba(0,0,0,0.35)", color: "#DC2626", top: 12, insetInlineEnd: 12 }}>
+                  <button type="button" onClick={() => toggleWishlist(p.id)} aria-label={t("storefront.wishlist")} className="absolute flex items-center justify-center transition-transform hover:scale-110" style={{ width: 36, height: 36, border: `1px solid ${gold}66`, background: "rgba(0,0,0,0.35)", color: "#DC2626", top: 12, insetInlineEnd: 12 }}>
                     {isWishlist(p.id) ? <HeartFilledIcon size={16} /> : <HeartIcon size={16} />}
                   </button>
                 </div>
@@ -167,14 +164,7 @@ export default function RoyalPurpleTemplate({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">
           <div><h4 className="font-bold text-lg tracking-[0.12em] text-white">{storeName}</h4><p className="mt-2 text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.55)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
-            <h4 className="font-bold text-[13px] tracking-[0.2em] uppercase" style={{ color: gold }}>{t("storefront.footerLinks")}</h4>
-            <ul className="mt-3 space-y-2 text-[13px]" style={{ color: "rgba(255,255,255,0.55)" }}>
-              <li><a href={`/store/${slug}`} className="hover:text-white">{t("storefront.home")}</a></li>
-              <li><a href={`/store/${slug}#products`} className="hover:text-white">{t("storefront.products")}</a></li>
-              <li><a href={`/store/${slug}/track-order`} className="hover:text-white">{t("storefront.trackOrder")}</a></li>
-              <li><a href={`/store/${slug}/contact`} className="hover:text-white">{t("storefront.contactFooter")}</a></li>
-              <li><a href={`/store/${slug}/return-policy`} className="hover:text-white">{t("storefront.returnPolicy")}</a></li>
-            </ul>
+            <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="font-bold text-[13px] tracking-[0.2em] uppercase" titleStyle={{ color: gold }} listClassName="mt-3 space-y-2 text-[13px]" listStyle={{ color: "rgba(255,255,255,0.55)" }} linkClassName="hover:text-white" />
           </div>
           <div>
             <h4 className="font-bold text-[13px] tracking-[0.2em] uppercase" style={{ color: gold }}>{t("storefront.contactHeading")}</h4>
@@ -189,7 +179,7 @@ export default function RoyalPurpleTemplate({
             <h4 className="font-bold text-[13px] tracking-[0.2em] uppercase" style={{ color: gold }}>{t("storefront.followUs")}</h4>
             <div className="mt-3 flex gap-3">
               <StoreSocialLinks
-                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl }}
+                urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center transition-opacity hover:opacity-70"
                 linkStyle={{ width: 34, height: 34, border: `1px solid ${gold}55`, color: gold }}
                 iconSize={16}

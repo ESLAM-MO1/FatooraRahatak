@@ -318,7 +318,7 @@ export default function DomainsPage() {
             </div>
           )}
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainName")}</th><th>{t("domains.store")}</th><th>{t("domains.status")}</th><th>{t("domains.dnsStatus")}</th><th>{t("domains.sslStatus")}</th><th>{t("domains.createdAt")}</th>
               </tr></thead>
@@ -335,6 +335,38 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {domains.filter(d => d.type === "Subdomain").map(d => (
+                <div key={d.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainName")}</p>
+                      <p className="font-medium" dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{d.domainName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.store")}</p>
+                      <p>{d.storeName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {statusBadge(d.status)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.dnsStatus")}</p>
+                      {statusBadge(d.dnsStatus)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.sslStatus")}</p>
+                      {statusBadge(d.sslStatus)}
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
+                      {fmtDate(d.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("subdomains") === 0 && <EmptyState tabKey="subdomains" />}
         </div>
@@ -365,17 +397,17 @@ export default function DomainsPage() {
             </div>
             {verificationResult && (
               <div className="text-sm space-y-1">
-                <p>{t("domains.domain")}: <strong dir="ltr">{verificationResult.domain}</strong></p>
-                <p>{t("domains.resolvedIp")}: <strong dir="ltr">{verificationResult.resolvedIp || "-"}</strong></p>
-                <p>{t("domains.resolvedCname")}: <strong dir="ltr">{verificationResult.resolvedCname || "-"}</strong></p>
-                <p>{t("domains.expectedIp")}: <strong dir="ltr">{verificationResult.expectedIp || "-"}</strong></p>
-                <p>{t("domains.expectedCname")}: <strong dir="ltr">{verificationResult.expectedCname || "-"}</strong></p>
+                <p>{t("domains.domain")}: <strong dir="ltr" className="break-all">{verificationResult.domain}</strong></p>
+                <p>{t("domains.resolvedIp")}: <strong dir="ltr" className="break-all">{verificationResult.resolvedIp || "-"}</strong></p>
+                <p>{t("domains.resolvedCname")}: <strong dir="ltr" className="break-all">{verificationResult.resolvedCname || "-"}</strong></p>
+                <p>{t("domains.expectedIp")}: <strong dir="ltr" className="break-all">{verificationResult.expectedIp || "-"}</strong></p>
+                <p>{t("domains.expectedCname")}: <strong dir="ltr" className="break-all">{verificationResult.expectedCname || "-"}</strong></p>
                 <p>{t("domains.matched")}: <span className={verificationResult.matched ? "badge badge--green" : "badge badge--red"}>{verificationResult.matched ? t("domains.yes") : t("domains.no")}</span></p>
               </div>
             )}
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainName")}</th><th>{t("domains.store")}</th><th>{t("domains.status")}</th><th>{t("domains.dnsStatus")}</th><th>{t("domains.isPrimary")}</th><th>{t("domains.createdAt")}</th>
               </tr></thead>
@@ -392,6 +424,38 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {domains.filter(d => d.type === "Custom").map(d => (
+                <div key={d.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainName")}</p>
+                      <p className="font-medium" dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{d.domainName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.store")}</p>
+                      <p>{d.storeName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {statusBadge(d.status)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.dnsStatus")}</p>
+                      {statusBadge(d.dnsStatus)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.isPrimary")}</p>
+                      {d.isPrimary ? <span className="badge badge--green">{t("domains.yes")}</span> : "-"}
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
+                      {fmtDate(d.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("custom-domains") === 0 && <EmptyState tabKey="custom-domains" />}
         </div>
@@ -404,7 +468,7 @@ export default function DomainsPage() {
             <button className="btn btn-primary" onClick={handleRenewSsl}>{t("domains.renewExpiring")}</button>
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainName")}</th><th>{t("domains.issuer")}</th><th>{t("domains.expiresAt")}</th><th>{t("domains.status")}</th><th>{t("domains.lastRenewed")}</th><th>{t("domains.actions")}</th>
               </tr></thead>
@@ -421,6 +485,37 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {sslCerts.map(c => (
+                <div key={c.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainName")}</p>
+                      <p className="font-medium" dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{c.domainName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.issuer")}</p>
+                      <p>{c.issuer}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.expiresAt")}</p>
+                      {fmtDate(c.expiresAt)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {statusBadge(c.status)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.lastRenewed")}</p>
+                      {c.lastRenewedAt ? fmtDate(c.lastRenewedAt) : "-"}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button className="btn btn-sm btn-primary" onClick={() => handleRequestSsl(c.managedDomainId)}>{t("domains.requestSsl")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("ssl") === 0 && <EmptyState tabKey="ssl" />}
         </div>
@@ -449,7 +544,7 @@ export default function DomainsPage() {
             </div>
           )}
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.type")}</th><th>{t("domains.name")}</th><th>{t("domains.value")}</th><th>{t("domains.ttl")}</th><th>{t("domains.priority")}</th><th>{t("domains.status")}</th><th>{t("domains.actions")}</th>
               </tr></thead>
@@ -467,6 +562,41 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {dnsRecords.map(r => (
+                <div key={r.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.type")}</p>
+                      <span className="badge badge--blue">{r.recordType}</span>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.ttl")}</p>
+                      <p>{r.ttl}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.name")}</p>
+                      <p dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{r.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.priority")}</p>
+                      <p>{r.priority ?? "-"}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.value")}</p>
+                      <p dir="ltr" style={{ textAlign: "left" }}>{r.value}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {statusBadge(r.status)}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteDns(r.id)}>{t("domains.delete")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("dns") === 0 && <EmptyState tabKey="dns" />}
         </div>
@@ -490,7 +620,7 @@ export default function DomainsPage() {
             </div>
           )}
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.sourceDomain")}</th><th>{t("domains.targetUrl")}</th><th>{t("domains.type")}</th><th>{t("domains.status")}</th><th>{t("domains.createdAt")}</th><th>{t("domains.actions")}</th>
               </tr></thead>
@@ -512,6 +642,40 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {redirects.map(r => (
+                <div key={r.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.sourceDomain")}</p>
+                      <p dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{r.sourceDomain}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.targetUrl")}</p>
+                      <p dir="ltr" style={{ textAlign: "left" }}>{r.targetUrl}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.type")}</p>
+                      <p>{r.redirectType === 301 ? "301" : "302"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {r.isActive ? <span className="badge badge--green">{t("domains.active")}</span> : <span className="badge badge--gray">{t("domains.inactive")}</span>}
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
+                      {fmtDate(r.createdAt)}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button className="btn btn-sm btn-ghost" onClick={() => handleToggleRedirect(r.id, r.isActive)}>
+                      {r.isActive ? t("domains.deactivate") : t("domains.activate")}
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRedirect(r.id)}>{t("domains.delete")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("redirects") === 0 && <EmptyState tabKey="redirects" />}
         </div>
@@ -535,7 +699,7 @@ export default function DomainsPage() {
             )}
           </div>
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainName")}</th><th>{t("domains.store")}</th><th>{t("domains.dnsStatus")}</th><th>{t("domains.sslStatus")}</th><th>{t("domains.status")}</th>
               </tr></thead>
@@ -554,6 +718,37 @@ export default function DomainsPage() {
                 )}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {domains.map(d => (
+                <div key={d.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainName")}</p>
+                      <p className="font-medium" dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{d.domainName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.store")}</p>
+                      <p>{d.storeName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.dnsStatus")}</p>
+                      {statusBadge(d.dnsStatus)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.sslStatus")}</p>
+                      {statusBadge(d.sslStatus)}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {statusBadge(d.status)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {domains.length === 0 && (
+                <p className="text-center text-[var(--sub)] py-4">{t("domains.noData")}</p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -576,7 +771,7 @@ export default function DomainsPage() {
             </div>
           )}
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainName")}</th><th>{t("domains.mailboxName")}</th><th>{t("domains.emailAddress")}</th><th>{t("domains.provider")}</th><th>{t("domains.status")}</th><th>{t("domains.createdAt")}</th><th>{t("domains.actions")}</th>
               </tr></thead>
@@ -599,6 +794,44 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {emailSetups.map(e => (
+                <div key={e.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainName")}</p>
+                      <p dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{e.domainName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.mailboxName")}</p>
+                      <p>{e.mailboxName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.provider")}</p>
+                      <p>{e.provider}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.emailAddress")}</p>
+                      <p dir="ltr" style={{ textAlign: "left" }}>{e.emailAddress}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {e.isActive ? <span className="badge badge--green">{t("domains.active")}</span> : <span className="badge badge--gray">{t("domains.inactive")}</span>}
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
+                      {fmtDate(e.createdAt)}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button className="btn btn-sm btn-ghost" onClick={() => handleToggleEmail(e.id)}>
+                      {e.isActive ? t("domains.deactivate") : t("domains.activate")}
+                    </button>
+                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteEmail(e.id)}>{t("domains.delete")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("email") === 0 && <EmptyState tabKey="email" />}
         </div>
@@ -620,7 +853,7 @@ export default function DomainsPage() {
             </div>
           )}
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainName")}</th><th>{t("domains.registrantName")}</th><th>{t("domains.registrantEmail")}</th><th>{t("domains.status")}</th><th>{t("domains.createdAt")}</th>
               </tr></thead>
@@ -636,6 +869,34 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {registrations.map(r => (
+                <div key={r.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainName")}</p>
+                      <p className="font-medium" dir="ltr" style={{ textAlign: isAr ? "right" : "left" }}>{r.domainName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.registrantName")}</p>
+                      <p>{r.registrantName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.status")}</p>
+                      {statusBadge(r.status)}
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.registrantEmail")}</p>
+                      <p dir="ltr" style={{ textAlign: "left" }}>{r.registrantEmail}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
+                      {fmtDate(r.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("registration") === 0 && <EmptyState tabKey="registration" />}
         </div>
@@ -656,7 +917,7 @@ export default function DomainsPage() {
             </div>
           )}
           <div className="table-wrap">
-            <table>
+            <table className="hidden md:table">
               <thead><tr>
                 <th>{t("domains.domainOrPattern")}</th><th>{t("domains.reason")}</th><th>{t("domains.addedBy")}</th><th>{t("domains.createdAt")}</th><th>{t("domains.actions")}</th>
               </tr></thead>
@@ -672,6 +933,33 @@ export default function DomainsPage() {
                 ))}
               </tbody>
             </table>
+            <div className="md:hidden space-y-3 p-4">
+              {blacklist.map(b => (
+                <div key={b.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.domainOrPattern")}</p>
+                      <p className="font-medium" dir="ltr" style={{ textAlign: "left" }}>{b.domainOrPattern}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.reason")}</p>
+                      <p>{b.reason}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.addedBy")}</p>
+                      <p>{b.addedByAdmin}</p>
+                    </div>
+                    <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
+                      {fmtDate(b.createdAt)}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button className="btn btn-sm btn-danger" onClick={() => handleRemoveBlacklist(b.id)}>{t("domains.remove")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           {currentCount("blacklist") === 0 && <EmptyState tabKey="blacklist" />}
         </div>

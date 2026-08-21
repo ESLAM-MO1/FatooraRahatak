@@ -98,9 +98,7 @@ export default function ThemesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="settings" title={t("themes.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("themes.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="settings" title={t("themes.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
       <SuccessToast message={success} fixed className="mb-4" />

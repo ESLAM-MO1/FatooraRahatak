@@ -24,10 +24,23 @@ public class DomainController : ControllerBase
         return role == "SuperAdmin";
     }
 
-    private IActionResult CheckSuperAdmin()
+    // Domain management is technical infrastructure - only SuperAdmin and staff
+    // with the "Technical" role may access it. See AdminController for the full
+    // platform RBAC matrix; this mirrors the same "Domains" module.
+    private IActionResult? CheckAccess()
     {
-        if (!IsSuperAdmin()) return Forbid();
-        return null!;
+        if (IsSuperAdmin())
+            return null;
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        if (role != "SupportStaff")
+            return Forbid();
+
+        var staffRole = User.FindFirstValue("StaffRole");
+        if (staffRole != "Admin" && staffRole != "Technical")
+            return Forbid();
+
+        return null;
     }
 
     private long GetCurrentUserId() =>
@@ -36,7 +49,7 @@ public class DomainController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAllDomains()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetAllDomainsAsync();
         return Ok(new { success = true, data });
@@ -45,7 +58,7 @@ public class DomainController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateDomain([FromBody] CreateManagedDomainDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -61,7 +74,7 @@ public class DomainController : ControllerBase
     [HttpPut("{id}/status")]
     public async Task<IActionResult> UpdateDomainStatus(long id, [FromBody] string status)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.UpdateDomainStatusAsync(id, status);
         return Ok(new { success = true, data });
@@ -70,7 +83,7 @@ public class DomainController : ControllerBase
     [HttpGet("verify-dns")]
     public async Task<IActionResult> VerifyDns([FromQuery] string domain, [FromQuery] string? expectedIp, [FromQuery] string? expectedCname)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.VerifyDnsAsync(domain, expectedIp, expectedCname);
         return Ok(new { success = true, data });
@@ -79,7 +92,7 @@ public class DomainController : ControllerBase
     [HttpPost("{storeId}/auto-subdomain/{slug}")]
     public async Task<IActionResult> AutoCreateSubdomain(long storeId, string slug)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         await _domainService.AutoCreateSubdomainAsync(storeId, slug);
         return Ok(new { success = true, message = "تم إنشاء الدومين الفرعي" });
@@ -88,7 +101,7 @@ public class DomainController : ControllerBase
     [HttpGet("custom")]
     public async Task<IActionResult> GetCustomDomains()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetCustomDomainsAsync();
         return Ok(new { success = true, data });
@@ -97,7 +110,7 @@ public class DomainController : ControllerBase
     [HttpPost("custom")]
     public async Task<IActionResult> BindCustomDomain([FromBody] BindCustomDomainDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -113,7 +126,7 @@ public class DomainController : ControllerBase
     [HttpPut("custom/{storeId}/dns-verified")]
     public async Task<IActionResult> SetCustomDomainDnsVerified(long storeId)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -129,7 +142,7 @@ public class DomainController : ControllerBase
     [HttpDelete("custom/{storeId}")]
     public async Task<IActionResult> RemoveCustomDomain(long storeId)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var ok = await _domainService.RemoveCustomDomainAsync(storeId);
         return ok ? Ok(new { success = true }) : NotFound(new { success = false, message = "المتجر غير موجود" });
@@ -138,7 +151,7 @@ public class DomainController : ControllerBase
     [HttpGet("ssl")]
     public async Task<IActionResult> GetAllSslCertificates()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetAllSslCertificatesAsync();
         return Ok(new { success = true, data });
@@ -147,7 +160,7 @@ public class DomainController : ControllerBase
     [HttpPost("ssl/{domainId}/request")]
     public async Task<IActionResult> RequestSsl(long domainId)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -163,7 +176,7 @@ public class DomainController : ControllerBase
     [HttpPost("ssl/renew-expiring")]
     public async Task<IActionResult> RenewExpiringSsl()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         await _domainService.RenewExpiringSslAsync();
         return Ok(new { success = true, message = "تم تجديد الشهادات المنتهية" });
@@ -172,7 +185,7 @@ public class DomainController : ControllerBase
     [HttpGet("dns-records")]
     public async Task<IActionResult> GetDnsRecords()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetDnsRecordsAsync();
         return Ok(new { success = true, data });
@@ -181,7 +194,7 @@ public class DomainController : ControllerBase
     [HttpPost("dns-records")]
     public async Task<IActionResult> CreateDnsRecord([FromBody] CreateDnsRecordDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.CreateDnsRecordAsync(dto);
         return Ok(new { success = true, data });
@@ -190,7 +203,7 @@ public class DomainController : ControllerBase
     [HttpPut("dns-records/{id}")]
     public async Task<IActionResult> UpdateDnsRecord(long id, [FromBody] CreateDnsRecordDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -206,7 +219,7 @@ public class DomainController : ControllerBase
     [HttpDelete("dns-records/{id}")]
     public async Task<IActionResult> DeleteDnsRecord(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -222,7 +235,7 @@ public class DomainController : ControllerBase
     [HttpGet("redirects")]
     public async Task<IActionResult> GetRedirectRules()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetRedirectRulesAsync();
         return Ok(new { success = true, data });
@@ -231,7 +244,7 @@ public class DomainController : ControllerBase
     [HttpPost("redirects")]
     public async Task<IActionResult> CreateRedirectRule([FromBody] CreateRedirectRuleDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.CreateRedirectRuleAsync(dto);
         return Ok(new { success = true, data });
@@ -240,7 +253,7 @@ public class DomainController : ControllerBase
     [HttpPut("redirects/{id}")]
     public async Task<IActionResult> UpdateRedirectRule(long id, [FromBody] CreateRedirectRuleDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -256,7 +269,7 @@ public class DomainController : ControllerBase
     [HttpDelete("redirects/{id}")]
     public async Task<IActionResult> DeleteRedirectRule(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -272,7 +285,7 @@ public class DomainController : ControllerBase
     [HttpGet("lookup")]
     public async Task<IActionResult> LookupDomain([FromQuery] string domain)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.LookupDomainAsync(domain);
         return Ok(new { success = true, data });
@@ -281,7 +294,7 @@ public class DomainController : ControllerBase
     [HttpGet("registrations")]
     public async Task<IActionResult> GetRegistrationRequests()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetRegistrationRequestsAsync();
         return Ok(new { success = true, data });
@@ -290,7 +303,7 @@ public class DomainController : ControllerBase
     [HttpPost("registrations")]
     public async Task<IActionResult> CreateRegistrationRequest([FromBody] CreateRegistrationRequestDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -306,7 +319,7 @@ public class DomainController : ControllerBase
     [HttpGet("email-setups")]
     public async Task<IActionResult> GetEmailSetups()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetEmailSetupsAsync();
         return Ok(new { success = true, data });
@@ -315,7 +328,7 @@ public class DomainController : ControllerBase
     [HttpPost("email-setups")]
     public async Task<IActionResult> CreateEmailSetup([FromBody] CreateEmailSetupDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -331,7 +344,7 @@ public class DomainController : ControllerBase
     [HttpPut("email-setups/{id}/toggle")]
     public async Task<IActionResult> ToggleEmailSetup(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -347,7 +360,7 @@ public class DomainController : ControllerBase
     [HttpDelete("email-setups/{id}")]
     public async Task<IActionResult> DeleteEmailSetup(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -363,7 +376,7 @@ public class DomainController : ControllerBase
     [HttpGet("blacklist")]
     public async Task<IActionResult> GetBlacklist()
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetBlacklistAsync();
         return Ok(new { success = true, data });
@@ -372,7 +385,7 @@ public class DomainController : ControllerBase
     [HttpPost("blacklist")]
     public async Task<IActionResult> AddToBlacklist([FromBody] CreateBlacklistEntryDto dto)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var adminId = GetCurrentUserId();
         var data = await _domainService.AddToBlacklistAsync(dto, adminId);
@@ -382,7 +395,7 @@ public class DomainController : ControllerBase
     [HttpDelete("blacklist/{id}")]
     public async Task<IActionResult> RemoveFromBlacklist(long id)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         try
         {
@@ -398,7 +411,7 @@ public class DomainController : ControllerBase
     [HttpGet("status-report")]
     public async Task<IActionResult> GetDomainStatusReport([FromQuery] string? filter)
     {
-        var forbidden = CheckSuperAdmin();
+        var forbidden = CheckAccess();
         if (forbidden != null) return forbidden;
         var data = await _domainService.GetDomainStatusReportAsync(filter);
         return Ok(new { success = true, data });

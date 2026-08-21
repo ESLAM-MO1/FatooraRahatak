@@ -164,17 +164,18 @@ public class PosController : ControllerBase
             var result = await _accountingService.CreatePosSaleAsync(userId, dto);
             if (storeId != null)
             {
-                var shift = await _context.Set<PosShift>().FirstOrDefaultAsync(s => s.StoreId == storeId && s.ClosedAt == null);
-                if (shift != null)
-                {
-                    shift.TotalSales += result.TotalAmount;
-                    // ⚠️ فصل الكاش عن البطاقة: النقدية الفعلية هي اللي بتدخل الدرج
-                    if (string.Equals(result.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase))
-                        shift.TotalCashSales += result.TotalAmount;
-                    else
-                        shift.TotalCardSales += result.TotalAmount;
-                    await _context.SaveChangesAsync();
-                }
+                // ⚠️ إصلاح: كانت القراءة/التعديل/الحفظ (read-modify-write) على الوردية عرضة لفقد التحديثات
+                // (lost update) لو حصلت أكتر من عملية بيع في نفس اللحظة تقريبًا (كاشيرين على نفس الوردية،
+                // أو ضغط سريع/إعادة محاولة من الشبكة) — التحديث بقى بأمر SQL واحد ذري (atomic) بدون تتبّع EF،
+                // يضمن إن كل عملية بيع تُضاف فعليًا مهما كان التوقيت.
+                var isCash = string.Equals(result.PaymentMethod, "Cash", StringComparison.OrdinalIgnoreCase);
+                var amount = result.TotalAmount;
+                await _context.Set<PosShift>()
+                    .Where(s => s.StoreId == storeId && s.ClosedAt == null)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(s => s.TotalSales, s => s.TotalSales + amount)
+                        .SetProperty(s => s.TotalCashSales, s => isCash ? s.TotalCashSales + amount : s.TotalCashSales)
+                        .SetProperty(s => s.TotalCardSales, s => !isCash ? s.TotalCardSales + amount : s.TotalCardSales));
             }
             return Ok(new { success = true, data = result, message = "تمت عملية البيع بنجاح" });
         }

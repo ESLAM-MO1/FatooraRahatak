@@ -623,7 +623,7 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("AffiliateCommissions");
                 });
 
-            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Affiliates.AffiliateWithdrawalRequest", b =>
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Affiliates.Referral", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -633,44 +633,6 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
                     b.Property<string>("AdminNote")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(14, 2)
-                        .HasColumnType("decimal(14,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AffiliateWithdrawalRequests");
-                });
-
-            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Affiliates.Referral", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime?>("ConvertedAt")
                         .HasColumnType("datetime2");
@@ -693,6 +655,19 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<long>("ReferrerUserId")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("ReviewedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ReviewedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -703,6 +678,8 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.HasIndex("ReferredUserId");
 
                     b.HasIndex("ReferrerUserId");
+
+                    b.HasIndex("ReviewedById");
 
                     b.ToTable("Referrals");
                 });
@@ -1525,6 +1502,12 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("GuestPhone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MarketingCampaignName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("MarketingSource")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Notes")
@@ -2691,6 +2674,93 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("JobPostings");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.MarketingCampaign", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CouponCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("MarketingCampaigns");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.MarketingIntegration", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AccessToken")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AdditionalCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Code")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("EnableServerSideTracking")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("MarketingIntegrations");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.PlatformSetting", b =>
                 {
                     b.Property<long>("Id")
@@ -2716,6 +2786,52 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("PlatformSettings");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.ReportSchedule", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("KpisJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastRunAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("NextRunAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RecipientsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ReportScope")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReportSchedules");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.SiteFaqItem", b =>
@@ -3686,6 +3802,21 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("ReviewedById")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ReviewedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -3693,6 +3824,8 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ReviewedById");
 
                     b.HasIndex("VerificationId");
 
@@ -4115,6 +4248,12 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<DateTime?>("SubmittedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("SuspendedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SuspensionReason")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -4149,7 +4288,13 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<string>("BioLink")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("BranchName")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ColorsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CommercialRegistrationNumber")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ContactAddress")
@@ -4223,6 +4368,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<int?>("LowStockThreshold")
                         .HasColumnType("int");
 
+                    b.Property<string>("MenuConfigJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("MoyasarRecipientId")
                         .HasColumnType("nvarchar(max)");
 
@@ -4247,6 +4395,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<string>("PayoutRejectionReason")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PinterestUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("ReturnPolicyDays")
                         .HasColumnType("int");
 
@@ -4269,6 +4420,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("StorePagesJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("StoreSlug")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -4286,6 +4440,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<string>("TrustBadgesJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("TwitterUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -4293,6 +4450,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("WhatsappUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("YoutubeUrl")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -4306,6 +4466,75 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Stores");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StoreBlogPost", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContentAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ContentEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FeaturedImage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SeoDescription")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SeoTitle")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SlugAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SlugEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TitleAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TitleEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId", "SlugAr")
+                        .IsUnique();
+
+                    b.ToTable("StoreBlogPosts");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StoreDesignMessage", b =>
@@ -4379,6 +4608,52 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.HasIndex("StoreId");
 
                     b.ToTable("StoreDesignRequests");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StoreFaqItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AnswerAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AnswerEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("QuestionAr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("QuestionEn")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId", "DisplayOrder");
+
+                    b.ToTable("StoreFaqItems");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StorePaymentMethod", b =>
@@ -4832,17 +5107,6 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("Referral");
                 });
 
-            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Affiliates.AffiliateWithdrawalRequest", b =>
-                {
-                    b.HasOne("FatooraRahatak.Domain.Entities.Users.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Affiliates.Referral", b =>
                 {
                     b.HasOne("FatooraRahatak.Domain.Entities.Affiliates.ReferralCode", "ReferralCode")
@@ -4862,11 +5126,17 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("FatooraRahatak.Domain.Entities.Users.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedById");
+
                     b.Navigation("ReferralCode");
 
                     b.Navigation("ReferredUser");
 
                     b.Navigation("ReferrerUser");
+
+                    b.Navigation("ReviewedBy");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Affiliates.ReferralCode", b =>
@@ -5463,6 +5733,28 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("JobPosting");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.MarketingCampaign", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Stores.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.MarketingIntegration", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Stores.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Platform.SiteMenu", b =>
                 {
                     b.HasOne("FatooraRahatak.Domain.Entities.Platform.SiteMenu", "Parent")
@@ -5704,11 +5996,17 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Settlement.MerchantDocument", b =>
                 {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Users.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedById");
+
                     b.HasOne("FatooraRahatak.Domain.Entities.Settlement.MerchantVerification", "Verification")
                         .WithMany("Documents")
                         .HasForeignKey("VerificationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ReviewedBy");
 
                     b.Navigation("Verification");
                 });
@@ -5816,6 +6114,17 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("Package");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StoreBlogPost", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Stores.Store", "Store")
+                        .WithMany("BlogPosts")
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StoreDesignMessage", b =>
                 {
                     b.HasOne("FatooraRahatak.Domain.Entities.Stores.StoreDesignRequest", "Request")
@@ -5833,6 +6142,17 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.StoreFaqItem", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Stores.Store", "Store")
+                        .WithMany("FaqItems")
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Store");
@@ -6048,6 +6368,8 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Stores.Store", b =>
                 {
+                    b.Navigation("BlogPosts");
+
                     b.Navigation("Carts");
 
                     b.Navigation("Categories");
@@ -6055,6 +6377,8 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("Coupons");
 
                     b.Navigation("Employees");
+
+                    b.Navigation("FaqItems");
 
                     b.Navigation("Products");
 

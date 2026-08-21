@@ -157,7 +157,7 @@ public class AuthController : ControllerBase
         if (user == null) return NotFound();
         var permissions = await _permCheck.GetUserPermissionCodesAsync(userId);
         var storeId = await _permCheck.GetUserStoreIdAsync(userId);
-        return Ok(new { success = true, data = new { user.Id, user.FullName, user.Email, user.Phone, user.ProfileImage, permissions, storeId } });
+        return Ok(new { success = true, data = new { user.Id, user.FullName, user.Email, user.Phone, user.ProfileImage, permissions, storeId, staffRole = user.StaffRole } });
     }
 
     [Authorize]

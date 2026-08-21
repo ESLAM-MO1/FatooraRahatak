@@ -235,8 +235,9 @@ export default function AttendancePage() {
         ) : records.length === 0 ? (
           <p className="text-[var(--sub)] text-sm">{t("attendance.noRecords")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("attendance.employee")}</th>
@@ -254,11 +255,37 @@ export default function AttendancePage() {
                     <td className="p-4 text-[var(--sub)]" dir="ltr">{formatTime(record.checkOutTime)}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden space-y-3">
+              {records.map((record) => (
+                <div key={record.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("attendance.employee")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium">{record.employeeName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("attendance.date")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{record.date}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("attendance.timeIn")}</p>
+                      <p className="text-[12px] text-[var(--sub)]" dir="ltr">{formatTime(record.checkInTime)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("attendance.timeOut")}</p>
+                      <p className="text-[12px] text-[var(--sub)]" dir="ltr">{formatTime(record.checkOutTime)}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
   );
 }

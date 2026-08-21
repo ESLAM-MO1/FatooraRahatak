@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Link from "next/link";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import { openProtectedFile } from "@/lib/protectedFile";
 
 interface MerchantDocument {
   id: number;
@@ -38,6 +40,7 @@ export default function MerchantVerificationPage() {
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [viewingId, setViewingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,18 +121,34 @@ export default function MerchantVerificationPage() {
     }
   };
 
+  const handleViewDocument = async (doc: MerchantDocument) => {
+    setError("");
+    setSuccess("");
+    setViewingId(doc.id);
+    const res = await openProtectedFile(doc.url, doc.fileName);
+    if (!res.ok && res.message) setError(res.message || t("verification.downloadError"));
+    setViewingId(null);
+  };
+
   if (loading) return <LoadingState />;
 
   const canEdit = data && (data.status === "NotSubmitted" || data.status === "Rejected");
 
   return (
     <div className="space-y-6">
-      <PageHeader icon="clipboard" title={t("verification.title")}>
-        <p className="text-[12px] text-[var(--sub)]">{t("verification.subtitle")}</p>
-      </PageHeader>
+      <PageHeader icon="clipboard" title={t("verification.title")} />
 
       {error && <div className="alert alert--danger">{error}</div>}
       {success && <div className="alert alert--success">{success}</div>}
+
+      {data && data.status !== "Approved" && (
+        <div className="alert alert--info flex items-center justify-between flex-wrap gap-2">
+          <span>{t("verification.needAccountBanner")}</span>
+          <Link href="/dashboard/merchant-account" className="btn btn-outline btn-sm shrink-0">
+            {t("merchantAccount.title")}
+          </Link>
+        </div>
+      )}
 
       {data && (
         <>
@@ -193,15 +212,15 @@ export default function MerchantVerificationPage() {
                   <div key={doc.id} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                     <div className="min-w-0">
                       <p className="text-[13px] font-bold text-[var(--ink)]">{docTypeLabel(doc.documentType)}</p>
-                      <a
-                        href={doc.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[11.5px] text-[var(--blue)] hover:underline truncate block max-w-[260px]"
+                      <button
+                        type="button"
+                        onClick={() => handleViewDocument(doc)}
+                        disabled={viewingId === doc.id}
+                        className="text-[11.5px] text-[var(--blue)] hover:underline truncate block max-w-[260px] text-left"
                         dir="ltr"
                       >
-                        {doc.fileName}
-                      </a>
+                        {viewingId === doc.id ? t("common.loading") : doc.fileName}
+                      </button>
                       <p className="text-[11px] text-[var(--sub)]">{new Date(doc.createdAt).toLocaleDateString()}</p>
                     </div>
                     {canEdit && (

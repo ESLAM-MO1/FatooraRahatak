@@ -103,8 +103,9 @@ export default function ReturnsPage() {
         {requests.length === 0 ? (
           <p className="p-6 text-[var(--sub)] text-sm">{t("returns.noResults")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("returns.orderNumber")}</th>
@@ -172,6 +173,72 @@ export default function ReturnsPage() {
               </tbody>
             </table>
           </div>
+
+          <div className="md:hidden space-y-3">
+            {requests.map((r) => (
+              <div key={r.id} className="card p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("returns.orderNumber")}</p>
+                    <Link href={`/dashboard/orders/${r.orderId}`} className="text-[var(--blue)] hover:underline font-medium" dir="ltr">
+                      {r.orderNumber}
+                    </Link>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("returns.customer")}</p>
+                    <p className="text-[var(--ink)]">{r.customerName || r.guestPhone || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("returns.total")}</p>
+                    <p className="text-[var(--ink)]">
+                      {r.orderTotal.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("returns.date")}</p>
+                    <p className="text-[var(--sub)]">
+                      {new Date(r.createdAt).toLocaleString("ar-SA-u-nu-latn")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("returns.reason")}</p>
+                    <p className="text-[var(--sub)]">{r.reason}</p>
+                  </div>
+                  <div>
+                    <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("returns.status")}</p>
+                    <span className={statusStyles[r.status] ?? "badge badge--gray"}>
+                      {statusLabel(r.status)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  {r.status === "Pending" ? (
+                    <Can code="Orders.Edit">
+                      <button
+                        onClick={() => handleDecision(r.id, true)}
+                        disabled={processingId === r.id}
+                        className="btn btn-sm btn-primary disabled:opacity-60"
+                      >
+                        {processingId === r.id ? t("common.saving") : t("returns.approve")}
+                      </button>
+                      <button
+                        onClick={() => handleDecision(r.id, false)}
+                        disabled={processingId === r.id}
+                        className="btn btn-sm btn-outline disabled:opacity-60"
+                      >
+                        {t("returns.reject")}
+                      </button>
+                    </Can>
+                  ) : (
+                    <span className="text-[var(--sub)] text-[12.5px]">
+                      {r.decisionNote || "—"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 

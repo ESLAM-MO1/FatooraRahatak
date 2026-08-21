@@ -241,13 +241,17 @@ public class StoreService : IStoreService
         store.ContactPhone = dto.ContactPhone;
         store.ContactEmail = dto.ContactEmail;
         store.ContactAddress = dto.ContactAddress;
+        store.BranchName = dto.BranchName;
+        store.CommercialRegistrationNumber = dto.CommercialRegistrationNumber;
         await _context.SaveChangesAsync();
 
         return new StoreContactResponseDto
         {
             ContactPhone = store.ContactPhone,
             ContactEmail = store.ContactEmail,
-            ContactAddress = store.ContactAddress
+            ContactAddress = store.ContactAddress,
+            BranchName = store.BranchName,
+            CommercialRegistrationNumber = store.CommercialRegistrationNumber
         };
     }
 
@@ -345,6 +349,8 @@ public class StoreService : IStoreService
             ContactPhone = store.ContactPhone,
             ContactEmail = store.ContactEmail,
             ContactAddress = store.ContactAddress,
+            BranchName = store.BranchName,
+            CommercialRegistrationNumber = store.CommercialRegistrationNumber,
             BioLink = store.BioLink,
             FacebookUrl = store.FacebookUrl,
             InstagramUrl = store.InstagramUrl,
@@ -353,6 +359,9 @@ public class StoreService : IStoreService
             TiktokUrl = store.TiktokUrl,
             TelegramUrl = store.TelegramUrl,
             LinkedinUrl = store.LinkedinUrl,
+            TwitterUrl = store.TwitterUrl,
+            YoutubeUrl = store.YoutubeUrl,
+            PinterestUrl = store.PinterestUrl,
             Currency = store.Currency,
             IsVatRegistered = store.IsVatRegistered,
             VatNumber = store.VatNumber,
@@ -375,6 +384,8 @@ public class StoreService : IStoreService
             ReturnPolicyDays = store.ReturnPolicyDays,
             FreeShippingThreshold = store.FreeShippingThreshold,
             ShippingDiscountPercent = store.ShippingDiscountPercent,
+            MenuConfigJson = store.MenuConfigJson,
+            StorePagesJson = store.StorePagesJson,
             ShippingMethods = shippingMethods,
             PaymentMethods = paymentMethods
         };
@@ -477,6 +488,9 @@ public class StoreService : IStoreService
         store.TiktokUrl = dto.TiktokUrl;
         store.TelegramUrl = dto.TelegramUrl;
         store.LinkedinUrl = dto.LinkedinUrl;
+        store.TwitterUrl = dto.TwitterUrl;
+        store.YoutubeUrl = dto.YoutubeUrl;
+        store.PinterestUrl = dto.PinterestUrl;
         await _context.SaveChangesAsync();
 
         return new StoreSocialResponseDto
@@ -488,7 +502,9 @@ public class StoreService : IStoreService
             SnapchatUrl = store.SnapchatUrl,
             TiktokUrl = store.TiktokUrl,
             TelegramUrl = store.TelegramUrl,
-            LinkedinUrl = store.LinkedinUrl
+                        TwitterUrl = store.TwitterUrl,
+            YoutubeUrl = store.YoutubeUrl,
+            PinterestUrl = store.PinterestUrl
         };
     }
 
@@ -665,5 +681,37 @@ public class StoreService : IStoreService
         await _context.SaveChangesAsync();
 
         return await GetStoreInfoAsync(ownerUserId);
+    }
+
+    public async Task<StoreInfoDto> UpdateMenuPagesAsync(long ownerUserId, UpdateMenuPagesDto dto)
+    {
+        var store = await ResolveStoreAsync(ownerUserId);
+        if (store == null)
+            throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك بعد");
+
+        if (!string.IsNullOrWhiteSpace(dto.MenuConfigJson) && !IsValidJsonArray(dto.MenuConfigJson))
+            throw new InvalidOperationException("صيغة إعدادات القائمة غير صحيحة");
+
+        if (!string.IsNullOrWhiteSpace(dto.StorePagesJson) && !IsValidJsonArray(dto.StorePagesJson))
+            throw new InvalidOperationException("صيغة صفحات المتجر غير صحيحة");
+
+        store.MenuConfigJson = string.IsNullOrWhiteSpace(dto.MenuConfigJson) ? null : dto.MenuConfigJson;
+        store.StorePagesJson = string.IsNullOrWhiteSpace(dto.StorePagesJson) ? null : dto.StorePagesJson;
+        await _context.SaveChangesAsync();
+
+        return await GetStoreInfoAsync(ownerUserId);
+    }
+
+    private static bool IsValidJsonArray(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Array;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

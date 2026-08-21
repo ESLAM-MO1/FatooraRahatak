@@ -28,6 +28,8 @@ public class InvoiceDto
     public string? ContactPhone { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactAddress { get; set; }
+    public string? BranchName { get; set; }
+    public string? CommercialRegistrationNumber { get; set; }
     public string? VatNumber { get; set; }
     public bool IsVatRegistered { get; set; }
     public decimal VatRate { get; set; }

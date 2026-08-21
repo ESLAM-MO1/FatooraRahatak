@@ -405,13 +405,13 @@ export default function OrderDetailPage() {
             {order.bankTransfer.iban && (
               <p>
                 <span className="text-[var(--sub)]">{t("orderDetail.bankIban")}: </span>
-                <span className="text-[var(--ink)] font-medium" dir="ltr">{order.bankTransfer.iban}</span>
+                <span className="text-[var(--ink)] font-medium break-all" dir="ltr">{order.bankTransfer.iban}</span>
               </p>
             )}
             {order.bankTransfer.transferReference && (
               <p>
                 <span className="text-[var(--sub)]">{t("orderDetail.transferReference")}: </span>
-                <span className="text-[var(--ink)] font-medium" dir="ltr">{order.bankTransfer.transferReference}</span>
+                <span className="text-[var(--ink)] font-medium break-all" dir="ltr">{order.bankTransfer.transferReference}</span>
               </p>
             )}
           </div>
@@ -446,7 +446,7 @@ export default function OrderDetailPage() {
       <div className="card overflow-hidden mb-6">
         <h2 className="text-[14px] font-bold text-[var(--blue-deep)] p-5 pb-0">{t("orderDetail.orderItems")}</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm mt-3">
+          <table className="w-full text-sm mt-3 hidden md:table">
             <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
               <tr>
                 <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("orderDetail.productCol")}</th>
@@ -466,6 +466,30 @@ export default function OrderDetailPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="md:hidden space-y-3">
+          {order.items.map((item, idx) => (
+            <div key={idx} className="card p-4 space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="col-span-2">
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("orderDetail.productCol")}</p>
+                  <p className="text-[var(--ink)] font-medium">{item.productNameSnapshot}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("orderDetail.qtyCol")}</p>
+                  <p className="text-[var(--sub)]">{item.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("orderDetail.unitPriceCol")}</p>
+                  <p className="text-[var(--sub)]">{item.unitPriceSnapshot.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("orderDetail.totalCol")}</p>
+                  <p className="text-[var(--ink)] font-medium">{item.lineTotal.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
         <div className="p-5 space-y-1.5 border-t border-[var(--border)] max-w-xs mr-auto text-sm">
           <div className="flex items-center justify-between">

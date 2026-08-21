@@ -94,7 +94,7 @@ export default function NewFixedAssetPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("fixedAsset.purchaseCost")}</label>
             <div className="field-shell">

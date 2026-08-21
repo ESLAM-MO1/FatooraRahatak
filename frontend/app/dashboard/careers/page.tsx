@@ -183,7 +183,7 @@ export default function CareersAdminPage() {
       <p className="mb-5 text-[13px]" style={{ color: "var(--sub)" }}>{t("careers.pageIntro")}</p>
       {message && <Toast message={message.text} type={message.type} fixed />}
 
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
         <button className={`btn ${tab === "jobs" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("jobs")}>{t("careers.jobs")}</button>
         <button className={`btn ${tab === "applications" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("applications")}>{t("careers.applications")} ({applications.length})</button>
         {tab === "jobs" && (
@@ -198,7 +198,7 @@ export default function CareersAdminPage() {
           <div className="space-y-3">
             {sortedJobs.map(j => (
               <div key={j.id} className="card p-4">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <p className="text-[13.5px] font-bold truncate" style={{ color: "var(--ink)" }}>{i18nText(j.titleAr, j.titleEn)}</p>
                     <p className="text-[11.5px] text-[var(--sub)] truncate">{j.location} · {j.type} · {t("careers.order")} {j.sortOrder}</p>
@@ -243,7 +243,7 @@ export default function CareersAdminPage() {
               {editingId ? t("careers.editJob") : t("careers.addJob")}
             </h3>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careers.titleAr")}</label>
                   <div className="field-shell"><input type="text" value={form.titleAr} onChange={e => setForm({ ...form, titleAr: e.target.value })} /></div>
@@ -261,7 +261,7 @@ export default function CareersAdminPage() {
                 <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careers.descriptionEn")}</label>
                 <div className="field-shell"><textarea rows={3} dir="ltr" value={form.descriptionEn} onChange={e => setForm({ ...form, descriptionEn: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careers.location")}</label>
                   <div className="field-shell"><input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
@@ -274,7 +274,7 @@ export default function CareersAdminPage() {
                 </div>
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careers.sortOrder")}</label>
-                  <div className="field-shell"><input type="number" min={1} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: Number(e.target.value) || 1 })} /></div>
+                  <div className="field-shell"><input type="number" min={0} value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: e.target.value === "" ? 0 : Number(e.target.value) })} /></div>
                 </div>
               </div>
               <label className="flex items-center gap-2 text-[13px] font-bold cursor-pointer">
@@ -303,8 +303,8 @@ export default function CareersAdminPage() {
 
             <div className="space-y-2 text-[13px]">
               <p style={{ color: "var(--ink)" }}><span className="font-bold">{t("careers.applicant")}: </span>{selectedApp.applicantName}</p>
-              <p dir="ltr" style={{ color: "var(--ink)" }}><span className="font-bold">{t("careersPublic.email")}: </span>{selectedApp.email}</p>
-              <p dir="ltr" style={{ color: "var(--ink)" }}><span className="font-bold">{t("careersPublic.phone")}: </span>{selectedApp.phone}</p>
+              <p dir="ltr" className="break-all" style={{ color: "var(--ink)" }}><span className="font-bold">{t("careersPublic.email")}: </span>{selectedApp.email}</p>
+              <p dir="ltr" className="break-all" style={{ color: "var(--ink)" }}><span className="font-bold">{t("careersPublic.phone")}: </span>{selectedApp.phone}</p>
             </div>
 
             {selectedApp.message && (

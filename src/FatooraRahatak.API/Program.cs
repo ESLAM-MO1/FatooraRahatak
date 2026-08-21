@@ -87,6 +87,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ICustomerSessionService, CustomerSessionService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStoreService, FatooraRahatak.Infrastructure.Services.StoreService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICategoryService, FatooraRahatak.Infrastructure.Services.CategoryService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStoreFaqService, FatooraRahatak.Infrastructure.Services.StoreFaqService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStoreBlogService, FatooraRahatak.Infrastructure.Services.StoreBlogService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductService, FatooraRahatak.Infrastructure.Services.ProductService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IInventoryService, FatooraRahatak.Infrastructure.Services.InventoryService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IEmployeeService, FatooraRahatak.Infrastructure.Services.EmployeeService>();
@@ -136,8 +138,12 @@ builder.Services.AddScoped<IShippingService, ShippingService>();
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
-builder.Services.AddScoped<ISettlementService, SettlementService>();
-builder.Services.AddHostedService<SettlementBackgroundService>();
+builder.Services.AddScoped<ISettlementService, SettlementService>();                                        
+        builder.Services.AddHostedService<SettlementBackgroundService>();                                           
+        builder.Services.AddScoped<IReportScheduleService, ReportScheduleService>();
+        builder.Services.AddScoped<IMarketingService, MarketingService>();                                  
+        builder.Services.AddHttpClient<IConversionTrackingService, ConversionTrackingService>();
+        builder.Services.AddHostedService<ReportSchedulerBackgroundService>();
 builder.Services.Configure<FatooraRahatak.Infrastructure.Services.Zatca.ZatcaSettings>(
     builder.Configuration.GetSection("Zatca"));
 builder.Services.AddHttpClient<FatooraRahatak.Infrastructure.Services.Zatca.ZatcaClient>();
@@ -149,6 +155,19 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
     ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
                        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
                        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost
+});
+
+// مستندات التوثيق (KYC) لا تُقدَّم كملفات ثابتة عامة أبدًا — الوصول محصور في endpoint محمي.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? "";
+    if (path.StartsWith("/uploads/verifications", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    await next();
 });
 app.UseStaticFiles();
 

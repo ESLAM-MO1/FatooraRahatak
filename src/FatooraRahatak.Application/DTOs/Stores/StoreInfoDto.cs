@@ -10,6 +10,8 @@ public class StoreInfoDto
     public string? ContactPhone { get; set; }
     public string? ContactEmail { get; set; }
     public string? ContactAddress { get; set; }
+    public string? BranchName { get; set; }
+    public string? CommercialRegistrationNumber { get; set; }
     public string? BioLink { get; set; }
     public string? FacebookUrl { get; set; }
     public string? InstagramUrl { get; set; }
@@ -18,6 +20,9 @@ public class StoreInfoDto
     public string? TiktokUrl { get; set; }
     public string? TelegramUrl { get; set; }
     public string? LinkedinUrl { get; set; }
+    public string? TwitterUrl { get; set; }
+    public string? YoutubeUrl { get; set; }
+    public string? PinterestUrl { get; set; }
     public string Currency { get; set; } = string.Empty;
     public bool IsVatRegistered { get; set; }
     public string? VatNumber { get; set; }
@@ -40,6 +45,8 @@ public class StoreInfoDto
     public int? ReturnPolicyDays { get; set; }
     public decimal? FreeShippingThreshold { get; set; }
     public decimal? ShippingDiscountPercent { get; set; }
+    public string? MenuConfigJson { get; set; }
+    public string? StorePagesJson { get; set; }
     public List<ShippingMethodDto> ShippingMethods { get; set; } = new();
     public List<PaymentMethodDto> PaymentMethods { get; set; } = new();
 }

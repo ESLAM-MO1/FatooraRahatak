@@ -235,8 +235,9 @@ export default function LeaveRequestsPage() {
         ) : requests.length === 0 ? (
           <p className="text-[var(--sub)] text-sm">{t("leaveRequest.empty")}</p>
         ) : (
+          <>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("leaveRequest.employee")}</th>
@@ -285,9 +286,65 @@ export default function LeaveRequestsPage() {
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden space-y-3">
+              {requests.map((request) => (
+                <div key={request.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("leaveRequest.employee")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium">{request.employeeName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("leaveRequest.leaveType")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{t(leaveTypeLabel(request.leaveType))}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("leaveRequest.from")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{request.startDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("leaveRequest.to")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{request.endDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("leaveRequest.reason")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{request.reason || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("leaveRequest.status")}</p>
+                      <span className={statusClass(request.status)}>
+                        {t(statusLabel(request.status))}
+                      </span>
+                    </div>
+                  </div>
+                  {request.status === "Pending" && (
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                      <Can code="LeaveRequests.Approve">
+                        <button
+                          onClick={() => handleApprove(request)}
+                          disabled={processingId === request.id}
+                          className="text-[var(--green)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
+                        >
+                          {processingId === request.id ? t("leaveRequest.processing") : t("leaveRequest.approve")}
+                        </button>
+                        <button
+                          onClick={() => handleReject(request)}
+                          disabled={processingId === request.id}
+                          className="text-[var(--danger)] hover:opacity-80 font-medium text-[13px] disabled:opacity-50"
+                        >
+                          {t("leaveRequest.reject")}
+                        </button>
+                      </Can>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

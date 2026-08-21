@@ -98,7 +98,7 @@ export default function VouchersPage() {
           <p className="p-6 text-[var(--sub)] text-sm">{t("voucher.noVouchers")}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="hidden lg:table w-full text-sm">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.number")}</th>
@@ -145,6 +145,57 @@ export default function VouchersPage() {
                 ))}
               </tbody>
             </table>
+            <div className="lg:hidden space-y-3">
+              {vouchers.map((v) => (
+                <div key={v.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.number")}</p>
+                      <Link href={`/dashboard/accounting/vouchers/${v.id}`} className="text-[12px] text-[var(--blue)] hover:underline font-medium" dir="ltr">
+                        {v.voucherNumber}
+                      </Link>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.type")}</p>
+                      <span className={`badge ${v.voucherType === "Receipt" ? "badge--green" : "badge--red"}`}>
+                        {v.voucherType === "Receipt" ? t("voucher.receipt") : t("voucher.payment")}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.date")}</p>
+                      <p className="text-[12px] text-[var(--ink)]" dir="ltr">{v.voucherDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.counterpartAccount")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{v.counterpartAccountNameAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.party")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{v.partyName || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.amount")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium" dir="ltr">
+                        {v.amount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.relatedEntry")}</p>
+                      {v.journalEntryId ? (
+                        <Link
+                          href={`/dashboard/accounting/journal-entries/${v.journalEntryId}`}
+                          className="text-[12px] text-[var(--blue)] hover:underline"
+                        >
+                          {v.journalEntryNumber}
+                        </Link>
+                      ) : (
+                        <p className="text-[12px] text-[var(--sub)]">—</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

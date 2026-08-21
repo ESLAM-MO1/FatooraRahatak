@@ -138,7 +138,7 @@ export default function NewJournalEntryPage() {
 
       <form onSubmit={handleSubmit}>
         <div className="card p-5 mb-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("journalEntry.date")}</label>
               <div className="field-shell">
@@ -161,7 +161,7 @@ export default function NewJournalEntryPage() {
 
         <div className="card overflow-hidden mb-4">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm hidden md:table">
               <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
                 <tr>
                   <th className="text-right p-3 font-bold text-[var(--gold-deep)] text-[12.5px] w-2/5">{t("journalEntry.account")}</th>
@@ -260,6 +260,93 @@ export default function NewJournalEntryPage() {
                 </tr>
               </tfoot>
             </table>
+          </div>
+          <div className="md:hidden p-4 space-y-3">
+            {lines.map((line, i) => (
+              <div key={i} className="card p-4 space-y-2">
+                <div>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("journalEntry.account")}</label>
+                  <div className="field-shell">
+                    <select
+                      value={line.accountId}
+                      onChange={(e) => updateLine(i, "accountId", e.target.value)}
+                      disabled={loadingAccounts}
+                    >
+                      <option value="">{t("journalEntry.selectAccount")}</option>
+                      {accounts.map(({ account, depth }) => (
+                        <option key={account.id} value={account.id}>
+                          {"— ".repeat(depth)}
+                          {account.code} - {account.nameAr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("journalEntry.debit")}</label>
+                    <div className="field-shell">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={line.debit}
+                        onChange={(e) => updateLine(i, "debit", e.target.value)}
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("journalEntry.credit")}</label>
+                    <div className="field-shell">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={line.credit}
+                        onChange={(e) => updateLine(i, "credit", e.target.value)}
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("journalEntry.lineDescription")}</label>
+                  <div className="field-shell">
+                    <input
+                      type="text"
+                      value={line.lineDescription}
+                      onChange={(e) => updateLine(i, "lineDescription", e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => removeLine(i)}
+                    disabled={lines.length <= 2}
+                    className="text-[var(--danger)] hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    <Icon name="trash" /> {t("common.delete")}
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="card p-4 space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--ink)] font-bold">{t("journalEntry.total")}</span>
+                <span className="text-[var(--ink)]" dir="ltr">{totals.totalDebit.toLocaleString("ar-SA-u-nu-latn")} / {totals.totalCredit.toLocaleString("ar-SA-u-nu-latn")}</span>
+              </div>
+              {totals.totalDebit > 0 || totals.totalCredit > 0 ? (
+                isBalanced ? (
+                  <span className="text-[var(--green)] text-[12px] font-bold">✓ {t("journalEntry.balanced")}</span>
+                ) : (
+                  <span className="text-[var(--danger)] text-[12px] font-bold">
+                    {t("journalEntry.unbalancedWithDiff", { diff: Math.abs(totals.diff).toLocaleString("ar-SA-u-nu-latn") })}
+                  </span>
+                )
+              ) : null}
+            </div>
           </div>
           <div className="p-3 border-t border-[var(--border)]">
             <button type="button" onClick={addLine} className="text-[13px] text-[var(--blue)] font-bold flex items-center gap-1.5 hover:underline">

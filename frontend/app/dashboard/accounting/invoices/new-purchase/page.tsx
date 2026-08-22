@@ -66,6 +66,25 @@ export default function NewPurchaseInvoicePage() {
     .catch(() => {});
   }, [gate.ready, gate.allowed]);
 
+  // ⚠️ hooks يجب استدعاؤها قبل أي return شرطي (قواعد React Hooks)
+  const productMap = useMemo(() => {
+    const map = new Map<string, Product>();
+    products.forEach((p) => map.set(String(p.id), p));
+    return map;
+  }, [products]);
+
+  const totals = useMemo(() => {
+    const subTotal = lines.reduce((sum, l) => {
+      const qty = parseFloat(l.quantity) || 0;
+      const price = parseFloat(l.unitPrice) || 0;
+      return sum + qty * price;
+    }, 0);
+    const totalDiscount = lines.reduce((sum, l) => sum + (parseFloat(l.discount) || 0), 0);
+    const net = subTotal - totalDiscount;
+    const estimatedTax = isVatRegistered ? Math.round(net * VAT_RATE * 100) / 100 : 0;
+    return { subTotal, totalDiscount, net, estimatedTax, estimatedTotal: net + estimatedTax };
+  }, [lines, isVatRegistered]);
+
   if (!gate.ready) {
     return <LoadingState />;
   }
@@ -73,12 +92,6 @@ export default function NewPurchaseInvoicePage() {
   if (!gate.allowed) {
     return <RestrictedFeatureState />;
   }
-
-  const productMap = useMemo(() => {
-    const map = new Map<string, Product>();
-    products.forEach((p) => map.set(String(p.id), p));
-    return map;
-  }, [products]);
 
   const updateLine = (index: number, field: keyof Line, value: string) => {
     setLines((prev) => {
@@ -96,18 +109,6 @@ export default function NewPurchaseInvoicePage() {
   const addLine = () => setLines((prev) => [...prev, { ...emptyLine }]);
   const removeLine = (index: number) =>
     setLines((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
-
-  const totals = useMemo(() => {
-  const subTotal = lines.reduce((sum, l) => {
-    const qty = parseFloat(l.quantity) || 0;
-    const price = parseFloat(l.unitPrice) || 0;
-    return sum + qty * price;
-  }, 0);
-  const totalDiscount = lines.reduce((sum, l) => sum + (parseFloat(l.discount) || 0), 0);
-  const net = subTotal - totalDiscount;
-  const estimatedTax = isVatRegistered ? Math.round(net * VAT_RATE * 100) / 100 : 0;
-  return { subTotal, totalDiscount, net, estimatedTax, estimatedTotal: net + estimatedTax };
-}, [lines, isVatRegistered]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

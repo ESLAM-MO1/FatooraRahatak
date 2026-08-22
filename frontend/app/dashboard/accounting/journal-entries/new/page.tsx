@@ -60,6 +60,13 @@ export default function NewJournalEntryPage() {
       .finally(() => setLoadingAccounts(false));
   }, [t, gate.ready, gate.allowed]);
 
+  // ⚠️ hooks يجب استدعاؤها قبل أي return شرطي (قواعد React Hooks)
+  const totals = useMemo(() => {
+    const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
+    const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
+    return { totalDebit, totalCredit, diff: Math.round((totalDebit - totalCredit) * 100) / 100 };
+  }, [lines]);
+
   if (!gate.ready) {
     return <LoadingState />;
   }
@@ -67,12 +74,6 @@ export default function NewJournalEntryPage() {
   if (!gate.allowed) {
     return <RestrictedFeatureState />;
   }
-
-  const totals = useMemo(() => {
-    const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
-    const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
-    return { totalDebit, totalCredit, diff: Math.round((totalDebit - totalCredit) * 100) / 100 };
-  }, [lines]);
 
   const isBalanced = totals.diff === 0 && totals.totalDebit > 0;
 

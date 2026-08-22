@@ -65,7 +65,11 @@ export default function NewSalesInvoicePage() {
     if (!gate.ready || !gate.allowed) return;
     api
       .get("/products")
-      .then((res) => setProducts(res.data.data))
+      .then((res) => {
+        // الـ API بيرجع صفحة (PagedResult: { items, totalCount, ... }) مش مصفوفة مباشرة
+        const data = res.data.data;
+        setProducts(Array.isArray(data) ? data : (data?.items || []));
+      })
       .catch(() => setProductsError(true))
       .finally(() => setLoadingProducts(false));
   }, [gate.ready, gate.allowed]);

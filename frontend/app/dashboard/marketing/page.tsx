@@ -39,7 +39,7 @@ interface ChannelPerformance {
   sharePct: number;
 }
 
-const CHANNELS = ["FacebookPixel", "GoogleAnalytics", "TikTokPixel", "SnapchatPixel", "WhatsAppBusiness"] as const;
+const CHANNELS = ["FacebookPixel", "GoogleAnalytics", "GoogleAds", "InstagramBusiness", "TikTokPixel", "SnapchatPixel", "WhatsAppBusiness", "LandingPages", "SearchPages"] as const;
 
 const emptyCampaign = { name: "", channel: "FacebookPixel", couponCode: "", startDate: "", endDate: "", isActive: true };
 
@@ -333,7 +333,7 @@ export default function MarketingPage() {
                               )}
                             </div>
                             {testResult && (
-                              <div className={`text-[11.5px] rounded-lg p-2 ${testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                              <div className={`alert ${testResult.success ? "alert--success" : "alert--danger"}`} style={{ padding: "8px 14px", fontSize: 11.5 }}>
                                 {testResult.message}
                               </div>
                             )}
@@ -470,12 +470,18 @@ export default function MarketingPage() {
       </div>
 
       {showCampaign && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-[16px] font-bold text-[var(--ink)] mb-4">
-              {editingCampaign ? t("marketing.editCampaign") : t("marketing.newCampaign")}
-            </h3>
-            <form onSubmit={handleSaveCampaign} className="space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowCampaign(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-[var(--border)] shrink-0">
+              <h3 className="text-[16px] font-bold text-[var(--ink)]">
+                {editingCampaign ? t("marketing.editCampaign") : t("marketing.newCampaign")}
+              </h3>
+              <button type="button" onClick={() => setShowCampaign(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            <form id="campaign-form" onSubmit={handleSaveCampaign} className="space-y-4 overflow-y-auto p-6">
               <div>
                 <label>{t("marketing.campaignName")}</label>
                 <div className="field-shell">
@@ -516,11 +522,12 @@ export default function MarketingPage() {
                 <input type="checkbox" id="campaign-active" checked={campaignForm.isActive} onChange={(e) => setCampaignForm({ ...campaignForm, isActive: e.target.checked })} className="accent-[var(--blue)]" />
                 <label htmlFor="campaign-active" className="!mb-0">{t("marketing.active")}</label>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setShowCampaign(false)} className="btn btn-outline">{t("common.cancel")}</button>
-                <button type="submit" disabled={savingCampaign} className="btn-primary">{savingCampaign ? t("common.loading") : t("common.save")}</button>
-              </div>
             </form>
+
+            <div className="flex justify-end gap-2 p-6 pt-4 border-t border-[var(--border)] shrink-0">
+              <button type="button" onClick={() => setShowCampaign(false)} className="btn btn-outline">{t("common.cancel")}</button>
+              <button type="submit" form="campaign-form" disabled={savingCampaign} className="btn-primary">{savingCampaign ? t("common.loading") : t("common.save")}</button>
+            </div>
           </div>
         </div>
       )}

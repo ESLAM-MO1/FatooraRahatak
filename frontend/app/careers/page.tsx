@@ -39,6 +39,19 @@ export default function CareersPage() {
 
   const loc = (ar: string, en: string) => (i18n.language === "ar" ? (ar || en) : (en || ar));
 
+  const jobTypeLabel = (type: string) => {
+    const map: Record<string, { ar: string; en: string }> = {
+      "Full-time": { ar: "دوام كامل", en: "Full-time" },
+      "Part-time": { ar: "دوام جزئي", en: "Part-time" },
+      Remote: { ar: "عن بُعد", en: "Remote" },
+      Freelance: { ar: "عمل حر", en: "Freelance" },
+      Internship: { ar: "تدريب", en: "Internship" },
+    };
+    const v = map[type];
+    if (!v) return loc(type, type);
+    return i18n.language === "ar" ? v.ar : v.en;
+  };
+
   const openApply = (id: number) => {
     setAppliedJob(id);
     setDone(false);
@@ -113,7 +126,7 @@ export default function CareersPage() {
               <div key={j.id} className="rounded-2xl border p-6 flex flex-col" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)" }}>
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <h2 className="text-[17px] font-bold" style={{ color: "var(--ink)" }}>{loc(j.titleAr, j.titleEn)}</h2>
-                  <span className="px-3 py-1 rounded-full text-[11.5px] font-bold shrink-0" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>{loc(j.type, j.type)}</span>
+                  <span className="px-3 py-1 rounded-full text-[11.5px] font-bold shrink-0" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>{jobTypeLabel(j.type)}</span>
                 </div>
                 {j.location && (
                   <p className="text-[12.5px] mb-2" style={{ color: "var(--sub)" }}>

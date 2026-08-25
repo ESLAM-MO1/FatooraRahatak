@@ -26,7 +26,7 @@ export default function CustomersPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ fullName: "", phone: "", email: "", notes: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", email: "", notes: "", vatNumber: "", country: "", region: "", city: "", street: "", postalCode: "", buildingNumber: "", nationalAddress: "" });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
 
@@ -58,7 +58,7 @@ export default function CustomersPage() {
     try {
       await api.post("/owner/customers", form);
       setAddOpen(false);
-      setForm({ fullName: "", phone: "", email: "", notes: "" });
+      setForm({ fullName: "", phone: "", email: "", notes: "", vatNumber: "", country: "", region: "", city: "", street: "", postalCode: "", buildingNumber: "", nationalAddress: "" });
       setSuccess(t("customer.addSuccess"));
       await fetchCustomers();
     } catch (err: any) {
@@ -210,11 +210,27 @@ export default function CustomersPage() {
           className="fixed inset-0 bg-[var(--blue-deep)]/50 flex items-center justify-center z-[100] p-4"
           onClick={() => !saving && setAddOpen(false)}
         >
-          <div className="card p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()} dir="rtl">
-            <h3 className="text-[16px] font-bold text-[var(--blue-deep)] mb-2">{t("customer.addTitle")}</h3>
-            <p className="text-[12px] text-[var(--sub)] leading-relaxed mb-4">{t("customer.adminAddHint")}</p>
+          <div
+            className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            dir="rtl"
+          >
+            <div className="flex items-start justify-between gap-4 p-6 pb-4 border-b border-[var(--border)] shrink-0">
+              <div>
+                <h3 className="text-[16px] font-bold text-[var(--blue-deep)] mb-1">{t("customer.addTitle")}</h3>
+                <p className="text-[12px] text-[var(--sub)] leading-relaxed">{t("customer.adminAddHint")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !saving && setAddOpen(false)}
+                className="text-[#9AA4AC] hover:text-[var(--ink)] shrink-0"
+                aria-label={t("common.close")}
+              >
+                <Icon name="close" size={18} />
+              </button>
+            </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto p-6">
               <div>
                 <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.fullName")} *</p>
                 <div className="field-shell">
@@ -258,9 +274,69 @@ export default function CustomersPage() {
                   rows={2}
                 />
               </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.vatNumber")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.vatNumber}
+                    onChange={(e) => setForm({ ...form, vatNumber: e.target.value })}
+                    dir="ltr"
+                    className="text-left"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.country")}</p>
+                  <div className="field-shell">
+                    <input type="text" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.region")}</p>
+                  <div className="field-shell">
+                    <input type="text" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.city")}</p>
+                  <div className="field-shell">
+                    <input type="text" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.street")}</p>
+                  <div className="field-shell">
+                    <input type="text" value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.buildingNumber")}</p>
+                  <div className="field-shell">
+                    <input type="text" value={form.buildingNumber} onChange={(e) => setForm({ ...form, buildingNumber: e.target.value })} />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.postalCode")}</p>
+                  <div className="field-shell">
+                    <input type="text" value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.nationalAddress")}</p>
+                <div className="field-shell">
+                  <input type="text" value={form.nationalAddress} onChange={(e) => setForm({ ...form, nationalAddress: e.target.value })} />
+                </div>
+              </div>
             </div>
 
-            <div className="flex gap-3 mt-5">
+            <div className="flex gap-3 p-6 pt-4 border-t border-[var(--border)] shrink-0">
               <button type="button" onClick={() => setAddOpen(false)} disabled={saving} className="btn flex-1" style={{ background: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" }}>
                 {t("common.cancel")}
               </button>

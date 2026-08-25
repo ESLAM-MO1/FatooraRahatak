@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -12,13 +13,15 @@ public class MoyasarPaymentProvider
     private readonly string _secretKey;
     private readonly string _baseUrl;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<MoyasarPaymentProvider> _logger;
 
-    public MoyasarPaymentProvider(IConfiguration configuration, HttpClient httpClient)
+    public MoyasarPaymentProvider(IConfiguration configuration, HttpClient httpClient, ILogger<MoyasarPaymentProvider> logger)
     {
         _publicKey = configuration["Moyasar:PublicKey"] ?? "";
         _secretKey = configuration["Moyasar:SecretKey"] ?? "";
         _baseUrl = configuration["Moyasar:BaseUrl"] ?? "https://api.moyasar.com/v1";
         _httpClient = httpClient;
+        _logger = logger;
 
         if (!string.IsNullOrWhiteSpace(_secretKey))
         {
@@ -84,6 +87,7 @@ public class MoyasarPaymentProvider
 
             if (!response.IsSuccessStatusCode)
             {
+                _logger.LogError("Moyasar CreatePaymentAsync فشل. Status={(int)}Status Code={(int)}statusCode PayloadAmount={amount} Currency={currency} Response={json}", (int)response.StatusCode, (int)response.StatusCode, (int)(amount * 100), currency, json);
                 return new MoyasarPaymentResult
                 {
                     Success = false,
@@ -135,13 +139,30 @@ public class MoyasarPaymentProvider
             var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
             var message = root.TryGetProperty("message", out var m) ? m.GetString() : null;
 
+            // ⚠️ مويصر يضع تفاصيل الرفض الحقيقية داخل مصفوفة "errors" (مثل: amount خاطئ، وصف فارغ،
+            // عملة غير مدعومة...) — الرسالة العامة "Data validation failed" لوحدها غامضة.
+            var details = new List<string>();
+            if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var e in errors.EnumerateArray())
+                {
+                    if (e.ValueKind == JsonValueKind.String)
+                        details.Add(e.GetString() ?? "");
+                    else if (e.ValueKind == JsonValueKind.Object)
+                    {
+                        // مثال: { "field": "amount", "message": "..." }
+                        if (e.TryGetProperty("field", out var f)) details.Add($"{f.GetString()}:");
+                        if (e.TryGetProperty("message", out var em)) details.Add(em.GetString() ?? "");
+                    }
+                }
+            }
+            var detailText = details.Count > 0 ? string.Join(" ", details).Trim() : "";
+
             return type switch
             {
                 "unsupported_schemes" => "نوع البطاقة غير مدعوم للدفع. يرجى استخدام بطاقة Mada أو Visa أو Mastercard.",
-                // ⚠️ إصلاح: أخطاء التحقق من ميسرا ليست دائمًا عن البطاقة (مثل وصف فارغ عند إنشاء
-                // الفاتورة) — نعرض الرسالة الفعلية من البوابة بدلًا من تعميمها على "بيانات البطاقة".
                 "validation_error" or "invalid_request_error" =>
-                    $"تعذر إتمام العملية. {(!string.IsNullOrWhiteSpace(message) ? message : "يرجى مراجعة البيانات وإعادة المحاولة.")}",
+                    $"تعذر إتمام العملية. {(!string.IsNullOrWhiteSpace(detailText) ? detailText : (!string.IsNullOrWhiteSpace(message) ? message : "يرجى مراجعة البيانات وإعادة المحاولة."))}",
                 "authentication_error" => "تعذر الاتصال ببوابة الدفع. يرجى المحاولة مرة أخرى.",
                 "account_inactive_error" => "حساب الدفع غير مفعّل حاليًا. يرجى التواصل مع المتجر.",
                 _ => $"تعذر إتمام الدفع. {(string.IsNullOrWhiteSpace(message) ? "يرجى المحاولة مرة أخرى." : message)}"
@@ -189,6 +210,10 @@ public class MoyasarPaymentProvider
 
             if (!response.IsSuccessStatusCode)
             {
+                Console.Error.WriteLine($"[MOYASAR ERROR] CreateInvoiceAsync فشل. Status: {(int)response.StatusCode}");
+                Console.Error.WriteLine($"[MOYASAR ERROR] Payload: amount={(int)(amount * 100)} currency={currency} desc={description}");
+                Console.Error.WriteLine($"[MOYASAR ERROR] Response: {json}");
+                _logger.LogError("Moyasar CreateInvoiceAsync فشل. Status={status} Amount={a} Currency={c} Response={r}", (int)response.StatusCode, (int)(amount * 100), currency, json);
                 return new MoyasarPaymentResult
                 {
                     Success = false,

@@ -8,4 +8,7 @@ public class AttendanceResponseDto
     public DateOnly Date { get; set; }
     public TimeOnly? CheckInTime { get; set; }
     public TimeOnly? CheckOutTime { get; set; }
+    public string Method { get; set; } = "Manual";
+    public string? CreatedByName { get; set; }
+    public string? DeviceName { get; set; }
 }

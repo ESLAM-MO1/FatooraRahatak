@@ -59,9 +59,13 @@ public class EmployeeService : IEmployeeService
             UserId = user.Id,
             StoreId = storeId,
             RoleId = role.Id,
-            HireDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            HireDate = dto.HireDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
             Salary = dto.Salary,
-            Status = "Active"
+            Status = "Active",
+            NationalId = dto.NationalId?.Trim(),
+            NationalAddress = dto.NationalAddress?.Trim(),
+            BirthDate = dto.BirthDate,
+            DeviceUserId = dto.DeviceUserId?.Trim()
         };
         _context.Employees.Add(employee);
         await _context.SaveChangesAsync();
@@ -75,7 +79,10 @@ public class EmployeeService : IEmployeeService
             Salary = employee.Salary,
             Status = employee.Status,
             HireDate = employee.HireDate,
-            Phone = user.Phone
+            Phone = user.Phone,
+            NationalId = employee.NationalId,
+            NationalAddress = employee.NationalAddress,
+            BirthDate = employee.BirthDate
         };
     }
 
@@ -104,7 +111,11 @@ public class EmployeeService : IEmployeeService
                 Salary = e.Salary,
                 Status = e.Status,
                 HireDate = e.HireDate,
-                Phone = e.User.Phone
+                Phone = e.User.Phone,
+                NationalId = e.NationalId,
+                NationalAddress = e.NationalAddress,
+                BirthDate = e.BirthDate,
+                DeviceUserId = e.DeviceUserId
             })
             .ToListAsync();
 
@@ -133,7 +144,11 @@ public class EmployeeService : IEmployeeService
                 Salary = e.Salary,
                 Status = e.Status,
                 HireDate = e.HireDate,
-                Phone = e.User.Phone
+                Phone = e.User.Phone,
+                NationalId = e.NationalId,
+                NationalAddress = e.NationalAddress,
+                BirthDate = e.BirthDate,
+                DeviceUserId = e.DeviceUserId
             })
             .FirstOrDefaultAsync();
     }
@@ -160,6 +175,11 @@ public class EmployeeService : IEmployeeService
         employee.Role = role;
         employee.Salary = dto.Salary;
         employee.Status = dto.Status;
+        employee.NationalId = dto.NationalId?.Trim();
+        employee.NationalAddress = dto.NationalAddress?.Trim();
+        if (dto.BirthDate.HasValue) employee.BirthDate = dto.BirthDate;
+        if (dto.HireDate.HasValue) employee.HireDate = dto.HireDate.Value;
+        employee.DeviceUserId = dto.DeviceUserId?.Trim();
 
         await _context.SaveChangesAsync();
 
@@ -172,7 +192,11 @@ public class EmployeeService : IEmployeeService
             Salary = employee.Salary,
             Status = employee.Status,
             HireDate = employee.HireDate,
-            Phone = employee.User.Phone
+            Phone = employee.User.Phone,
+            NationalId = employee.NationalId,
+            NationalAddress = employee.NationalAddress,
+            BirthDate = employee.BirthDate,
+            DeviceUserId = employee.DeviceUserId
         };
     }
 

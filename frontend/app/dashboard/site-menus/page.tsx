@@ -8,6 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import Toast from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import "@/lib/i18n/config";
 
 interface SiteMenu {
@@ -38,6 +39,7 @@ const EMPTY_FORM: FormState = { location: "features", titleAr: "", titleEn: "", 
 
 export default function SiteMenusPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [ready, setReady] = useState(false);
@@ -145,7 +147,7 @@ export default function SiteMenusPage() {
   };
 
   const remove = async (m: SiteMenu) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/site/menus/${m.id}`);
       await load();
@@ -227,9 +229,12 @@ export default function SiteMenusPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-[17px] font-bold mb-4" style={{ color: "var(--blue-deep)" }}>
-              {editingId ? t("siteMenus.edit") : t("siteMenus.add")}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>
+                {editingId ? t("siteMenus.edit") : t("siteMenus.add")}
+              </h3>
+              <button type="button" onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
             <div className="space-y-3">
               <div>
                 <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("siteMenus.titleAr")}</label>

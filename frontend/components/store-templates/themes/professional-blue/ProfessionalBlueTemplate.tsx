@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, UserIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, ShieldIcon, HeadsetIcon, CreditCardIcon, RefreshIcon, PackageIcon, CheckIcon, SparklesIcon, MailIcon, PhoneIcon, MapPinIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -157,6 +158,8 @@ export default function ProfessionalBlueTemplate({
         </div>}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>}
 
       {showHero && <section className="w-full relative overflow-hidden" style={{ background: `linear-gradient(115deg, ${colors.heroFrom} 0%, ${colors.heroTo} 70%)`, color: "#fff" }}>
@@ -223,6 +226,7 @@ export default function ProfessionalBlueTemplate({
         </div>
       </section>}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="products" style={{ background: "#F9FAFB", padding: "48px 0" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 mb-7"><span style={{ width: "5px", height: "34px", background: colors.accentColor, borderRadius: "3px" }} /><h2 className="font-extrabold text-2xl" style={{ color: "#111827" }}>{t("storefront.featuredProducts")}</h2></div>
@@ -247,6 +251,8 @@ export default function ProfessionalBlueTemplate({
           ))}
         </div>
       </section>}
+
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, paddingTop: "48px", paddingBottom: "48px" }}>
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">

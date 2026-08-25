@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, SparklesIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -74,6 +75,8 @@ export default function RoyalPurpleTemplate({
         {mobileOpen && <StoreMainMenu slug={slug} mobile containerClassName="md:hidden px-4 pb-4 space-y-2 text-[15px] font-semibold text-white" linkClassName="block py-1.5" />}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
 
       {showHero && <section className="w-full" style={{ background: `linear-gradient(150deg, ${colors.heroFrom}, ${colors.heroTo})`, color: "#fff" }}>
@@ -107,6 +110,7 @@ export default function RoyalPurpleTemplate({
         </div>
       </section>}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="products" style={{ padding: "40px 0 64px" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
@@ -159,6 +163,8 @@ export default function RoyalPurpleTemplate({
           </form>
         </div>
       </section>}
+
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, padding: "56px 0 36px" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-10">

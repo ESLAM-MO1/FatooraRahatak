@@ -48,14 +48,33 @@ export default function MarketingScripts({ slug }: { slug: string }) {
       w.fbq("track", "PageView");
     }
 
+    const instagram = integrations.find((i) => i.channel === "InstagramBusiness");
+    if (instagram?.code) {
+      loadScript("https://connect.facebook.net/en_US/fbevents.js", "ig-pixel-sdk");
+      const w = window as any;
+      w.fbq = w.fbq || function (...args: unknown[]) { (w.fbq.q = w.fbq.q || []).push(args); };
+      w.fbq("init", instagram.code);
+      w.fbq("track", "PageView");
+    }
+
     const ga = integrations.find((i) => i.channel === "GoogleAnalytics");
-    if (ga?.code) {
-      loadScript(`https://www.googletagmanager.com/gtag/js?id=${ga.code}`, "ga-script");
+    const googleAds = integrations.find((i) => i.channel === "GoogleAds");
+    const landingPages = integrations.find((i) => i.channel === "LandingPages");
+    const searchPages = integrations.find((i) => i.channel === "SearchPages");
+    const googleCodes = [ga?.code, googleAds?.code, landingPages?.code, searchPages?.code].filter(Boolean) as string[];
+    if (googleCodes.length > 0) {
+      loadScript(`https://www.googletagmanager.com/gtag/js?id=${googleCodes[0]}`, "ga-script");
       const w = window as any;
       w.dataLayer = w.dataLayer || [];
       w.gtag = function (...args: unknown[]) { w.dataLayer.push(args); };
       w.gtag("js", new Date());
-      w.gtag("config", ga.code);
+      googleCodes.forEach((id) => {
+        w.gtag("config", id);
+        if (id.startsWith("AW-")) {
+          w.gtag("config", id, { send_page_view: true });
+        }
+      });
+      w.gtag("set", "linker", { domains: ["googlesyndication.com"] });
     }
 
     const tiktok = integrations.find((i) => i.channel === "TikTokPixel");

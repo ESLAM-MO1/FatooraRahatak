@@ -9,6 +9,12 @@ public class CustomerAddressDto
     public string? Landmark { get; set; }
     public string? Notes { get; set; }
     public bool IsDefault { get; set; }
+    public string? Region { get; set; }
+    public string? District { get; set; }
+    public string? Street { get; set; }
+    public string? BuildingNumber { get; set; }
+    public string? PostalCode { get; set; }
+    public string? NationalAddress { get; set; }
 }
 
 public class SaveCustomerAddressDto
@@ -19,6 +25,12 @@ public class SaveCustomerAddressDto
     public string? Landmark { get; set; }
     public string? Notes { get; set; }
     public bool IsDefault { get; set; } = false;
+    public string? Region { get; set; }
+    public string? District { get; set; }
+    public string? Street { get; set; }
+    public string? BuildingNumber { get; set; }
+    public string? PostalCode { get; set; }
+    public string? NationalAddress { get; set; }
 }
 
 public class CustomerOrderListItemDto

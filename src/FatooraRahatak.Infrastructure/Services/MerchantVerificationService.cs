@@ -345,7 +345,10 @@ public class MerchantVerificationService : IMerchantVerificationService
                 DocumentType = d.DocumentType,
                 FileName = d.FileName,
                 FilePath = d.FilePath,
-                Url = $"/api/v1/owner/verification/documents/{d.Id}/file",
+                // ⚠️ إصلاح: كان الرابط يحتوي على "/api/v1" بينما الـ frontend يضيف هذا
+                // البادئة تلقائيًا عبر baseURL (تمامًا كباقي نداءات الـ API) → كان يتكوّن
+                // مسار مكرر "/api/v1/api/v1/..." يفشل بخطأ 404 ويمنع عرض المستند.
+                Url = $"/owner/verification/documents/{d.Id}/file",
                 Status = d.Status.ToString(),
                 RejectReason = d.RejectReason,
                 ReviewedByUserId = d.ReviewedByUserId,
@@ -377,7 +380,8 @@ public class MerchantVerificationService : IMerchantVerificationService
                 DocumentType = d.DocumentType,
                 FileName = d.FileName,
                 FilePath = d.FilePath,
-                Url = $"/api/v1/owner/verification/documents/{d.Id}/file",
+                // ⚠️ نفس الإصلاح: إزالة بادئة "/api/v1" المكررة (راجع المابر أعلاه).
+                Url = $"/owner/verification/documents/{d.Id}/file",
                 Status = d.Status.ToString(),
                 RejectReason = d.RejectReason,
                 ReviewedByUserId = d.ReviewedByUserId,

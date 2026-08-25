@@ -7,6 +7,7 @@ public interface IShippingService
 {
     Task<List<ShippingCompanyDto>> GetCompaniesAsync(long storeId);
     Task<ShippingCompanyDto> CreateCompanyAsync(long storeId, CreateShippingCompanyDto dto);
+    Task<FetchShippingCompaniesResultDto> FetchCompaniesAsync(long storeId);
     Task<ShippingCompanyDto> UpdateCompanyAsync(long storeId, long companyId, UpdateShippingCompanyDto dto);
     Task DeleteCompanyAsync(long storeId, long companyId);
     Task<ShippingQuoteDto> GetQuoteAsync(long storeId, ShippingQuoteRequestDto dto);

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Entities.Stores;
+using FatooraRahatak.Domain.Entities.Banners;
 using FatooraRahatak.Domain.Entities.Packages;
 using FatooraRahatak.Domain.Entities.Affiliates;
 using FatooraRahatak.Domain.Entities.Roles;
@@ -38,6 +39,7 @@ public class AppDbContext : DbContext
     public DbSet<StorePaymentMethod> StorePaymentMethods => Set<StorePaymentMethod>();
     public DbSet<StoreFaqItem> StoreFaqItems => Set<StoreFaqItem>();
     public DbSet<StoreBlogPost> StoreBlogPosts => Set<StoreBlogPost>();
+    public DbSet<Banner> Banners => Set<Banner>();
 
     public DbSet<Package> Packages => Set<Package>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
@@ -71,6 +73,7 @@ public class AppDbContext : DbContext
     public DbSet<StockCount> StockCounts => Set<StockCount>();
     public DbSet<StockCountItem> StockCountItems => Set<StockCountItem>();
     public DbSet<Attendance> Attendances => Set<Attendance>();
+    public DbSet<AttendanceDevice> AttendanceDevices => Set<AttendanceDevice>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Payroll> Payrolls => Set<Payroll>();
     public DbSet<Cart> Carts => Set<Cart>();
@@ -133,6 +136,7 @@ public class AppDbContext : DbContext
     public DbSet<SettlementBatch> SettlementBatches => Set<SettlementBatch>();
     public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();
     public DbSet<ZatcaCredential> ZatcaCredentials => Set<ZatcaCredential>();
+    public DbSet<PlatformIntegration> PlatformIntegrations => Set<PlatformIntegration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -524,6 +528,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Attendance>()
             .HasIndex(a => new { a.EmployeeId, a.Date })
             .IsUnique();
+
+        modelBuilder.Entity<AttendanceDevice>()
+            .HasOne(d => d.Store)
+            .WithMany()
+            .HasForeignKey(d => d.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<LeaveRequest>()
             .HasOne(l => l.Employee)
@@ -981,6 +991,25 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<StoreBlogPost>()
             .HasIndex(b => new { b.StoreId, b.SlugAr })
+            .IsUnique();
+
+        modelBuilder.Entity<Banner>()
+            .HasOne(b => b.Store)
+            .WithMany()
+            .HasForeignKey(b => b.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Banner>()
+            .HasIndex(b => new { b.StoreId, b.Position, b.SortOrder });
+
+        modelBuilder.Entity<PlatformIntegration>()
+            .HasOne(p => p.Store)
+            .WithMany()
+            .HasForeignKey(p => p.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PlatformIntegration>()
+            .HasIndex(p => new { p.StoreId, p.PlatformCode })
             .IsUnique();
 
         modelBuilder.Entity<PosShift>()

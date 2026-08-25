@@ -121,6 +121,7 @@ public class AcademyService : IAcademyService
             {
                 Id = c.Id, TitleAr = c.TitleAr, TitleEn = c.TitleEn,
                 DescriptionAr = c.DescriptionAr, DescriptionEn = c.DescriptionEn,
+                ImageUrl = c.ImageUrl,
                 Category = c.Category, Duration = c.Duration, Level = c.Level,
                 IsActive = c.IsActive, SortOrder = c.SortOrder,
                 LessonsCount = c.Lessons != null ? c.Lessons.Count(l => l.IsActive) : 0
@@ -152,6 +153,7 @@ public class AcademyService : IAcademyService
         {
             Id = course.Id, TitleAr = course.TitleAr, TitleEn = course.TitleEn,
             DescriptionAr = course.DescriptionAr, DescriptionEn = course.DescriptionEn,
+            ImageUrl = course.ImageUrl,
             Category = course.Category, Duration = course.Duration, Level = course.Level,
             IsActive = course.IsActive, SortOrder = course.SortOrder,
             Lessons = lessons
@@ -164,12 +166,13 @@ public class AcademyService : IAcademyService
         {
             TitleAr = dto.TitleAr, TitleEn = dto.TitleEn,
             DescriptionAr = dto.DescriptionAr, DescriptionEn = dto.DescriptionEn,
+            ImageUrl = dto.ImageUrl,
             Category = dto.Category, Duration = dto.Duration, Level = dto.Level,
             IsActive = dto.IsActive, SortOrder = dto.SortOrder
         };
         _context.Set<AcademyCourse>().Add(course);
         await _context.SaveChangesAsync();
-        return new AcademyCourseDto { Id = course.Id, TitleAr = course.TitleAr, TitleEn = course.TitleEn, DescriptionAr = course.DescriptionAr, DescriptionEn = course.DescriptionEn, Category = course.Category, Duration = course.Duration, Level = course.Level, IsActive = course.IsActive, SortOrder = course.SortOrder };
+        return new AcademyCourseDto { Id = course.Id, TitleAr = course.TitleAr, TitleEn = course.TitleEn, DescriptionAr = course.DescriptionAr, DescriptionEn = course.DescriptionEn, ImageUrl = course.ImageUrl, Category = course.Category, Duration = course.Duration, Level = course.Level, IsActive = course.IsActive, SortOrder = course.SortOrder };
     }
 
     public async Task UpdateCourseAsync(long id, UpsertAcademyCourseDto dto)
@@ -177,6 +180,7 @@ public class AcademyService : IAcademyService
         var course = await _context.Set<AcademyCourse>().FindAsync(id) ?? throw new InvalidOperationException("غير موجود");
         course.TitleAr = dto.TitleAr; course.TitleEn = dto.TitleEn;
         course.DescriptionAr = dto.DescriptionAr; course.DescriptionEn = dto.DescriptionEn;
+        course.ImageUrl = dto.ImageUrl;
         course.Category = dto.Category; course.Duration = dto.Duration; course.Level = dto.Level;
         course.IsActive = dto.IsActive; course.SortOrder = dto.SortOrder;
         await _context.SaveChangesAsync();
@@ -297,5 +301,49 @@ public class AcademyService : IAcademyService
             _context.Set<AcademyEnrollment>().Remove(enrollment);
             await _context.SaveChangesAsync();
         }
+    }
+
+    // === إعدادات صفحة الأكاديمية (شرح + صورة) ===
+    private const string IntroKey = "academy_page_intro";
+
+    public async Task<AcademyPageIntroDto> GetPageIntroAsync()
+    {
+        var setting = await _context.PlatformSettings.FirstOrDefaultAsync(s => s.SettingKey == IntroKey);
+        if (setting == null || string.IsNullOrWhiteSpace(setting.SettingValue))
+            return new AcademyPageIntroDto();
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<AcademyPageIntroDto>(setting.SettingValue)
+                ?? new AcademyPageIntroDto();
+        }
+        catch
+        {
+            return new AcademyPageIntroDto();
+        }
+    }
+
+    public async Task UpdatePageIntroAsync(AcademyPageIntroDto dto)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            dto.TitleAr, dto.TitleEn, dto.DescriptionAr, dto.DescriptionEn, dto.ImageUrl
+        });
+        var setting = await _context.PlatformSettings.FirstOrDefaultAsync(s => s.SettingKey == IntroKey);
+        if (setting == null)
+        {
+            _context.PlatformSettings.Add(new PlatformSetting
+            {
+                SettingKey = IntroKey,
+                SettingValue = json,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            setting.SettingValue = json;
+            setting.UpdatedAt = DateTime.UtcNow;
+        }
+        await _context.SaveChangesAsync();
     }
 }

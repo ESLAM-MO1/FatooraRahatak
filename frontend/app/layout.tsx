@@ -15,16 +15,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// ⚠️ فرض تخطيط الـ Desktop Site على كل الأجهزة (بما فيها الموبايل):
-// - عرض نافذة العرض = 1024px بدل 1280 حتى لا يتقلص المحتوى كثيرًا على الموبايل
-//   (كل الـ media queries للموبايل أصغر من 1024: 480/640/900 فلا تُفعَّل،
-//    وجميع breakpoints الـ desktop md/lg نشطة — الشريط الجانبي والجداول تظهر كاملة).
-// - initial-scale = 0.7: الصفحة تفتح أقرب (ملء الشاشة بشكل مقروء) بدل ما تفتح
-//   مصغّرة جدًا — ويمكن للمستخدم الزوم للداخل (حتى 300%) أو للخارج لعرض كامل الصفحة.
+// تخطيط متجاوب: يتكيف تلقائيًا مع عرض الشاشة (موبايل / تابلت / سطح مكتب).
 export const viewport: Viewport = {
-  width: 1024,
-  initialScale: 0.7,
-  maximumScale: 3,
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -56,12 +51,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        <link rel="icon" type="image/png" href="/favicon.png" sizes="64x64" />
+        <link rel="apple-touch-icon" type="image/png" href="/favicon.png" />
         <script src="https://accounts.google.com/gsi/client" async defer></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: "(function(){try{var m=document.querySelector('meta[name=\"viewport\"]');if(m){m.setAttribute('content','width=1024, initial-scale=0.7, maximum-scale=3');}else{var n=document.createElement('meta');n.name='viewport';n.content='width=1024, initial-scale=0.7, maximum-scale=3';document.head.appendChild(n);}}catch(e){console.warn('viewport guard',e);}})();",
-          }}
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className="min-h-full flex flex-col">
         <I18nProviderWrapper>

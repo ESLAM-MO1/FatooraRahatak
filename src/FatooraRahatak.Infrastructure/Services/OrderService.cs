@@ -260,7 +260,10 @@ public class OrderService : IOrderService
         // معلقًا بدون أي خصم مخزون. الدفع عند الاستلام (COD) فقط يخصم فورًا (دفع عند التوصيل).
         var isDeferredStockPayment = paymentMethod is PaymentMethodType.CreditCard
             or PaymentMethodType.PayPal
-            or PaymentMethodType.BankTransfer;
+            or PaymentMethodType.BankTransfer
+            or PaymentMethodType.Mada
+            or PaymentMethodType.Tabby
+            or PaymentMethodType.Tamara;
 
         var orderInitialStatus = isDeferredStockPayment ? OrderStatus.PendingPayment : OrderStatus.New;
 
@@ -350,11 +353,13 @@ public class OrderService : IOrderService
             var paymentCallbackUrl = (_config["App:BaseUrl"] ?? "https://your-domain.com")
                 .TrimEnd('/') + "/api/v1/payments/webhook";
 
-            // 💳 طرق الدفع الإلكترونية (بطاقة عبر ميسرة / PayPal) تُنشئ رابط دفع ليكمله العميل
-            if (paymentMethod == PaymentMethodType.CreditCard || paymentMethod == PaymentMethodType.PayPal)
+            // 💳 طرق الدفع الإلكترونية (بطاقة عبر ميسرة / PayPal / شبكة مدى / تابي / تمارا) تُنشئ رابط دفع ليكمله العميل
+            if (paymentMethod is PaymentMethodType.CreditCard or PaymentMethodType.PayPal or PaymentMethodType.Mada or PaymentMethodType.Tabby or PaymentMethodType.Tamara)
             {
                 var storeFrontBase = (_config["App:StoreFrontBaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
                 var successUrl = $"{storeFrontBase}/store/{slug}/thank-you/{order.OrderNumber}";
+
+                Console.Error.WriteLine($"[CHECKOUT] إنشاء رابط دفع. Order={order.OrderNumber} Method={paymentMethod} Amount={order.TotalAmount} Currency={store.Currency} Callback={paymentCallbackUrl} Success={successUrl}");
 
                 var link = await _paymentService.CreatePaymentLinkAsync(new CreatePaymentDto
                 {

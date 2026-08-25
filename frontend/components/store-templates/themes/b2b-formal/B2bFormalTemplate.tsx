@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, PackageIcon, CheckIcon, BuildingIcon, HeadsetIcon, ScaleIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -88,6 +89,8 @@ export default function B2bFormalTemplate({
         </div>}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>}
 
       {showHero && <section className="w-full" style={{ background: colors.headerColor, color: "#fff" }}>
@@ -116,6 +119,7 @@ export default function B2bFormalTemplate({
         </div>
       </section>}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="catalog" style={{ padding: "32px 0 56px" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="font-extrabold text-xl" style={{ color: colors.headerColor }}>{t("storefront.featuredProducts")}</h2>
@@ -159,6 +163,8 @@ export default function B2bFormalTemplate({
           {badgeRow.map((b, i) => <span key={i} className="inline-flex items-center gap-1.5 text-[13px] font-bold" style={{ color: "#374151" }}><span style={{ color: colors.accentColor }}><CheckIcon size={14} /></span>{b}</span>)}
         </div>
       </section>}
+
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, padding: "48px 0 32px" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10">

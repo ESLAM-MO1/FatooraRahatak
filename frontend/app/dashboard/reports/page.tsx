@@ -611,9 +611,12 @@ function SchedulesTab({ canEdit }: { canEdit: boolean }) {
       {modalOpen && (
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-bold text-[var(--blue-deep)] mb-4">
-              {editingId ? t("reportManage.editSchedule") : t("reportManage.addSchedule")}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-[var(--blue-deep)]">
+                {editingId ? t("reportManage.editSchedule") : t("reportManage.addSchedule")}
+              </h2>
+              <button type="button" onClick={() => setModalOpen(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
 
             <div className="space-y-4">
               <div>

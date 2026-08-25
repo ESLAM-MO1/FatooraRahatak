@@ -16,23 +16,27 @@ public class PdfService : IPdfService
         var partyLabel = isSales ? "العميل" : "المورد";
         var partyName = invoice.PartyName ?? "غير معروف";
 
+        // ⚠️ إصلاح: QuestPDF الوحدة الافتراضية فيها هي المليمتر، فكانت الأرقام الثابتة
+        // (مثل ConstantItem(200) و ConstantColumn(85)) أكبر من عرض صفحة A4 وتُنتج
+        // DocumentLayoutException. استخدمنا تخطيطًا نسبيًا (RelativeColumn / RelativeItem)
+        // بالكامل حتى يتكيف مع أي عرض صفحة.
         return Document.Create(container =>
         {
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(36);
+                page.Margin(16);
                 page.DefaultTextStyle(t => t
                     .FontFamily("Arial")
                     .FontSize(10)
-                    .LineHeight(1.6f)
+                    .LineHeight(1.4f)
                     .FontColor("#1f2937"));
 
                 page.Header().Column(col =>
                 {
                     col.Item().Row(row =>
                     {
-                        row.RelativeItem().Column(left =>
+                        row.RelativeItem(6).Column(left =>
                         {
                             left.Item().Text(t => t
                                 .Span(invoice.StoreName ?? "فاتورة")
@@ -53,7 +57,7 @@ public class PdfService : IPdfService
                                 left.Item().Text($"رقم السجل التجاري: {invoice.CommercialRegistrationNumber}").FontSize(9).FontColor("#6b7280");
                         });
 
-                        row.ConstantItem(200).Column(right =>
+                        row.RelativeItem(4).Column(right =>
                         {
                             right.Item().AlignRight().Text(t => t
                                 .Span(isSales ? "فاتورة بيع" : "فاتورة شراء")
@@ -66,24 +70,24 @@ public class PdfService : IPdfService
                         });
                     });
 
-                    col.Item().PaddingVertical(12).LineHorizontal(1).LineColor("#e5e7eb");
+                    col.Item().PaddingVertical(10).LineHorizontal(1).LineColor("#e5e7eb");
                 });
 
                 page.Content().Column(col =>
                 {
                     col.Item().PaddingBottom(8).Row(row =>
                     {
-                        row.ConstantItem(80).Text(t => t.Span($"{partyLabel}:").Bold());
-                        row.RelativeItem().Text(partyName);
+                        row.RelativeItem(2).Text(t => t.Span($"{partyLabel}:").Bold());
+                        row.RelativeItem(8).Text(partyName);
                         if (!string.IsNullOrWhiteSpace(invoice.PartyPhone))
                         {
-                            row.ConstantItem(80).Text(t => t.Span("الجوال:").Bold());
-                            row.RelativeItem().Text(invoice.PartyPhone);
+                            row.RelativeItem(2).Text(t => t.Span("الجوال:").Bold());
+                            row.RelativeItem(4).Text(invoice.PartyPhone);
                         }
                         if (!string.IsNullOrWhiteSpace(invoice.PartyCity))
                         {
-                            row.ConstantItem(80).Text(t => t.Span("المدينة:").Bold());
-                            row.RelativeItem().Text(invoice.PartyCity);
+                            row.RelativeItem(2).Text(t => t.Span("المدينة:").Bold());
+                            row.RelativeItem(4).Text(invoice.PartyCity);
                         }
                     });
 
@@ -91,11 +95,11 @@ public class PdfService : IPdfService
                     {
                         table.ColumnsDefinition(cols =>
                         {
-                            cols.ConstantColumn(24);
-                            cols.RelativeColumn(3);
-                            cols.ConstantColumn(55);
-                            cols.ConstantColumn(75);
-                            cols.ConstantColumn(85);
+                            cols.RelativeColumn(1);
+                            cols.RelativeColumn(5);
+                            cols.RelativeColumn(1);
+                            cols.RelativeColumn(2);
+                            cols.RelativeColumn(2);
                         });
 
                         table.Header(header =>
@@ -161,8 +165,8 @@ public class PdfService : IPdfService
 
                 page.Footer().Column(footer =>
                 {
-                    footer.Item().PaddingTop(16).LineHorizontal(1).LineColor("#e5e7eb");
-                    footer.Item().PaddingTop(8).Row(row =>
+                    footer.Item().PaddingTop(12).LineHorizontal(1).LineColor("#e5e7eb");
+                    footer.Item().PaddingTop(6).Row(row =>
                     {
                         row.RelativeItem().AlignRight().Text(t =>
                         {
@@ -175,7 +179,7 @@ public class PdfService : IPdfService
                             try
                             {
                                 var qrBytes = Convert.FromBase64String(invoice.QrBase64);
-                                row.ConstantItem(70).AlignRight().Image(qrBytes).FitWidth().FitHeight();
+                                row.RelativeItem(1).AlignRight().Image(qrBytes).FitWidth();
                             }
                             catch
                             {

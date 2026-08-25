@@ -8,6 +8,7 @@ import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import Toast from "@/components/Toast";
 import Icon, { ICONS } from "@/components/Icon";
+import { useConfirm } from "@/components/ConfirmDialog";
 import "@/lib/i18n/config";
 
 interface DashboardLink {
@@ -358,6 +359,7 @@ function PermissionPicker({ value, onChange }: { value: string | null; onChange:
 
 export default function DashboardSectionsPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [ready, setReady] = useState(false);
@@ -471,7 +473,7 @@ export default function DashboardSectionsPage() {
   };
 
   const remove = async (s: DashboardSection) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/dashboard-sections/${s.id}`);
       await load();

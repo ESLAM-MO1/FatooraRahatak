@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import Can from "@/components/Can";
+import PaymentMethodLogo from "@/components/PaymentMethodLogo";
 import { InvoiceDetail, printInvoice } from "@/lib/invoicePrint";
 
 interface Product {
@@ -26,7 +27,10 @@ const VAT_RATE = 0.15;
 
 const PAYMENT_METHODS = [
   { value: "Cash", label: "pos.cash" },
-  { value: "Credit", label: "pos.card" },
+  { value: "Mada", label: "pos.mada" },
+  { value: "BankTransfer", label: "pos.bankTransfer" },
+  { value: "Tabby", label: "pos.tabby" },
+  { value: "Tamara", label: "pos.tamara" },
 ];
 
 function fmt(n: number): string {
@@ -263,12 +267,6 @@ export default function CashierPage() {
             <input type="text" value={guestName} onChange={e => setGuestName(e.target.value)} placeholder={t("pos.cashCustomer")} disabled={!shift} />
           </div>
 
-          <div className="field-shell mb-3">
-            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} disabled={!shift}>
-              {PAYMENT_METHODS.map(pm => <option key={pm.value} value={pm.value}>{t(pm.label)}</option>)}
-            </select>
-          </div>
-
           <div className="max-h-[40vh] overflow-y-auto space-y-2 mb-4">
             {cart.length === 0 ? (
               <p className="text-[12px] text-[var(--sub)] text-center py-4">{t("pos.emptyInvoice")}</p>
@@ -324,6 +322,36 @@ export default function CashierPage() {
                 )}
               </>
             )}
+          </div>
+
+          <div className="mb-4">
+            <span className="text-[var(--sub)] text-[12px] block mb-1.5">{t("pos.paymentMethod")}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {PAYMENT_METHODS.map(pm => {
+                const isSelected = paymentMethod === pm.value;
+                return (
+                  <button
+                    key={pm.value}
+                    type="button"
+                    onClick={() => setPaymentMethod(pm.value)}
+                    disabled={!shift}
+                    aria-pressed={isSelected}
+                    title={t(pm.label)}
+                    className={`relative flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-[12px] font-bold transition-all ${isSelected ? "border-[var(--blue)] bg-[var(--blue-50)] text-[var(--blue-deep)] shadow-sm" : "border-gray-200 bg-white text-[var(--sub)] hover:border-gray-300 hover:bg-gray-50"} ${!shift ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                  >
+                    {isSelected && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[var(--blue)] flex items-center justify-center ring-2 ring-white">
+                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </span>
+                    )}
+                    <PaymentMethodLogo method={pm.value} size={22} />
+                    <span className="truncate">{t(pm.label)}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <Can code="POS.Add">

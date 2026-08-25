@@ -1,10 +1,12 @@
 using FatooraRahatak.Application.DTOs.Public;
+using FatooraRahatak.Application.DTOs.Banners;
 
 namespace FatooraRahatak.Application.Interfaces;
 
 public interface IPublicStoreService
 {
     Task<PublicStoreDto?> GetStoreBySlugAsync(string slug);
+    Task<List<PublicBannerDto>?> GetBannersAsync(string slug);
     Task<List<PublicCategoryDto>?> GetCategoriesAsync(string slug);
     Task<List<PublicProductDto>?> GetProductsAsync(string slug, long? categoryId);
     Task<PublicProductDetailDto?> GetProductDetailAsync(string slug, long productId);

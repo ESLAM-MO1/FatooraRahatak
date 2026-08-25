@@ -14,6 +14,14 @@ public class Employee : BaseEntity
     public decimal Salary { get; set; }
     public string Status { get; set; } = "Active";
 
+    // بيانات الموظف الشخصية (HR)
+    public string? NationalId { get; set; }
+    public string? NationalAddress { get; set; }
+    public DateOnly? BirthDate { get; set; }
+
+    // رقم المستخدم على جهاز الحضور (DeviceUserId) لربط سجلات البصمة بالموظف
+    public string? DeviceUserId { get; set; }
+
     public User User { get; set; } = null!;
     public Store Store { get; set; } = null!;
     public Role Role { get; set; } = null!;

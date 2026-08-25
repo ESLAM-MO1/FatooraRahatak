@@ -283,15 +283,18 @@ export default function CouponsPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="card w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+          <div
+            className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-[var(--border)] shrink-0">
               <h2 className="text-[16px] font-bold text-[var(--blue-deep)]">{t("coupons.addTitle")}</h2>
               <button onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)]">
                 <Icon name="close" size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form id="coupon-form" onSubmit={handleSubmit} className="space-y-4 overflow-y-auto p-6">
               {actionError && <div className="alert alert--danger">{actionError}</div>}
 
               <div>
@@ -395,15 +398,16 @@ export default function CouponsPage() {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <button type="submit" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">
-                  {submitting ? t("common.saving") : t("coupons.create")}
-                </button>
-                <button type="button" onClick={closeModal} className="btn btn-outline">
-                  {t("common.cancel")}
-                </button>
-              </div>
             </form>
+
+            <div className="flex gap-2 p-6 pt-4 border-t border-[var(--border)] shrink-0">
+              <button type="submit" form="coupon-form" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">
+                {submitting ? t("common.saving") : t("coupons.create")}
+              </button>
+              <button type="button" onClick={closeModal} className="btn btn-outline">
+                {t("common.cancel")}
+              </button>
+            </div>
           </div>
         </div>
       )}

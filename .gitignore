@@ -63,3 +63,14 @@ dir
 # Local backup/copy folders (deployment staging)
 _temp_zip/
 update/
+
+# Server config - never deploy this over production
+src/FatooraRahatak.API/appsettings.json
+
+# Runtime logs and cache
+api_log.txt
+api_err.txt
+docs_gen/__pycache__/
+
+front_log.txt
+frontend/.next/

@@ -33,7 +33,7 @@ public class PayrollService : IPayrollService
             .ToListAsync();
 
         if (!employees.Any())
-            throw new InvalidOperationException("لا يوجد موظفين نشطين لإنشاء رواتب لهم");
+            throw new InvalidOperationException("لا يوجد موظفون نشطون لإنشاء رواتب لهم");
 
         var payrolls = new List<Payroll>();
         foreach (var emp in employees)

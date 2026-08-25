@@ -97,4 +97,22 @@ public class ZatcaController : ControllerBase
         if (result == null) return NotFound(new { success = false, message = "الفاتورة غير موجودة" });
         return Ok(new { success = true, data = result });
     }
+
+    [HttpPost("invoices/{invoiceId}/verify")]
+    [RequirePackageFeature("HasZatcaInvoice")]
+    public async Task<IActionResult> VerifyInvoice(long invoiceId)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _zatcaService.VerifyInvoiceAsync(storeId.Value, invoiceId);
+            return Ok(new { success = true, data = result, message = result.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 }

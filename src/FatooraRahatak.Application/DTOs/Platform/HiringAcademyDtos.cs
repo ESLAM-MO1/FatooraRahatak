@@ -62,6 +62,7 @@ public class AcademyCourseDto
     public string TitleEn { get; set; } = string.Empty;
     public string DescriptionAr { get; set; } = string.Empty;
     public string DescriptionEn { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
     public string Level { get; set; } = string.Empty;
@@ -77,6 +78,7 @@ public class AcademyCourseDetailDto
     public string TitleEn { get; set; } = string.Empty;
     public string DescriptionAr { get; set; } = string.Empty;
     public string DescriptionEn { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
     public string Level { get; set; } = string.Empty;
@@ -142,9 +144,18 @@ public class UpsertAcademyCourseDto
     public string TitleEn { get; set; } = string.Empty;
     public string DescriptionAr { get; set; } = string.Empty;
     public string DescriptionEn { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
     public string Level { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; }
+}
+public class AcademyPageIntroDto
+{
+    public string TitleAr { get; set; } = string.Empty;
+    public string TitleEn { get; set; } = string.Empty;
+    public string DescriptionAr { get; set; } = string.Empty;
+    public string DescriptionEn { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 }

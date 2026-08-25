@@ -89,6 +89,14 @@ public class OwnerCustomerService : IOwnerCustomerService
             Phone = dto.Phone.Trim(),
             Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim(),
             Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(),
+            VatNumber = string.IsNullOrWhiteSpace(dto.VatNumber) ? null : dto.VatNumber.Trim(),
+            Country = string.IsNullOrWhiteSpace(dto.Country) ? null : dto.Country.Trim(),
+            Region = string.IsNullOrWhiteSpace(dto.Region) ? null : dto.Region.Trim(),
+            City = string.IsNullOrWhiteSpace(dto.City) ? null : dto.City.Trim(),
+            Street = string.IsNullOrWhiteSpace(dto.Street) ? null : dto.Street.Trim(),
+            PostalCode = string.IsNullOrWhiteSpace(dto.PostalCode) ? null : dto.PostalCode.Trim(),
+            BuildingNumber = string.IsNullOrWhiteSpace(dto.BuildingNumber) ? null : dto.BuildingNumber.Trim(),
+            NationalAddress = string.IsNullOrWhiteSpace(dto.NationalAddress) ? null : dto.NationalAddress.Trim(),
         };
 
         _context.StoreCustomers.Add(customer);
@@ -101,6 +109,14 @@ public class OwnerCustomerService : IOwnerCustomerService
             Phone = customer.Phone,
             Email = customer.Email,
             Notes = customer.Notes,
+            VatNumber = customer.VatNumber,
+            Country = customer.Country,
+            Region = customer.Region,
+            City = customer.City,
+            Street = customer.Street,
+            PostalCode = customer.PostalCode,
+            BuildingNumber = customer.BuildingNumber,
+            NationalAddress = customer.NationalAddress,
             CreatedAt = customer.CreatedAt,
         };
     }

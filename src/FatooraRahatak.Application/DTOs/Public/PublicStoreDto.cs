@@ -6,6 +6,7 @@ public class PublicStoreDto
     public string StoreName { get; set; } = string.Empty;
     public string StoreSlug { get; set; } = string.Empty;
     public string? Logo { get; set; }
+    public string? Favicon { get; set; }
     public string DefaultLanguage { get; set; } = "ar";
     public bool IsOnline { get; set; }
     public string ThemeName { get; set; } = "professional-blue";

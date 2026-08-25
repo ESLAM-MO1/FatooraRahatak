@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, LeafIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -129,6 +130,8 @@ export default function NaturalGreenTemplate({
         </div>}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
 
       {showHero && (
@@ -167,6 +170,7 @@ export default function NaturalGreenTemplate({
         </div>
       </section>}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="products" style={{ background: "#FAFBF7", padding: "20px 0 56px" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-8">
@@ -196,6 +200,8 @@ export default function NaturalGreenTemplate({
       </section></>}
 
       <OrganicDivider fill={colors.footerColor} />
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
+
       <footer style={{ background: colors.footerColor, padding: "40px 0 40px" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div><h4 className="text-white font-extrabold text-lg">{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.65)" }}>{t("storefront.footerTagline")}</p></div>

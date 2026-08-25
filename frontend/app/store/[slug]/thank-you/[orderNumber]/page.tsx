@@ -143,12 +143,12 @@ export default function ThankYouPage() {
     <div className="max-w-xl mx-auto px-4 py-10">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
         {paymentState === "paid" && (
-          <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-[13px] font-bold text-green-700">
+          <div className="alert alert--success mb-4">
             {t("storefront.paymentCompleted")}
           </div>
         )}
         {paymentState === "failed" && (
-          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-[13px] font-bold text-red-700">
+          <div className="alert alert--danger mb-4">
             {t("storefront.paymentFailed")}
           </div>
         )}

@@ -18,17 +18,21 @@ public class PaymentService : IPaymentService
     private readonly AppDbContext _context;
     private readonly MoyasarPaymentProvider _provider;
     private readonly PayPalPaymentProvider _payPalProvider;
+    private readonly TabbyPaymentProvider _tabbyProvider;
+    private readonly TamaraPaymentProvider _tamaraProvider;
     private readonly ISubscriptionService _subscriptionService;
     private readonly IAccountingService _accountingService;
     private readonly IOrderStockService _orderStockService;
     private readonly INotificationService _notificationService;
     private readonly IConfiguration _config;
 
-    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config)
+    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config)
     {
         _context = context;
         _provider = provider;
         _payPalProvider = payPalProvider;
+        _tabbyProvider = tabbyProvider;
+        _tamaraProvider = tamaraProvider;
         _subscriptionService = subscriptionService;
         _accountingService = accountingService;
         _orderStockService = orderStockService;
@@ -106,13 +110,17 @@ public class PaymentService : IPaymentService
         }
 
         // ✅ يحدد مزوّد الدفع حسب طريقة الدفع الخاصة بالطلب نفسه:
-        //   - CreditCard → ميسرة (بوابة دفع محلية)
+        //   - CreditCard / Mada → ميسرة (بوابة دفع محلية تدعم البطاقات والشبكة)
         //   - PayPal → PayPal REST API
         //   - BankTransfer → حوالة بنكية يدوية (بيانات حساب + تأكيد التاجر)
+        //   - Tabby → بوابة تابي (قسّطها / اشترِ الآن وادفع لاحقًا)
+        //   - Tamara → بوابة تمارا (قسّطها)
         // إذا لم يكن طلبًا (اشتراك/فاتورة) يبقى المزوّد ميسرة كسلوك افتراضي.
         PaymentProviderType providerType = PaymentProviderType.Moyasar;
         PayPalPaymentResult? payPalResult = null;
         MoyasarPaymentResult? moyasarResult = null;
+        TabbyPaymentResult? tabbyResult = null;
+        TamaraPaymentResult? tamaraResult = null;
         BankTransferInfoDto? bankTransferInfo = null;
 
         // ⚠️ إصلاح: ميسرا يرفض إنشاء الفاتورة بوصف فارغ (validation_error). نولّد وصفًا افتراضيًا
@@ -129,6 +137,8 @@ public class PaymentService : IPaymentService
         var paymentCallbackUrl = (_config["App:BaseUrl"] ?? "https://your-domain.com")
             .TrimEnd('/') + "/api/v1/payments/webhook";
 
+        Console.Error.WriteLine($"[PAYMENT] CreatePaymentLinkAsync. Order={dto.OrderId} Inv={dto.InvoiceId} Sub={dto.SubscriptionId} Amount={dto.Amount} Currency={dto.Currency} Desc='{description}' Callback={paymentCallbackUrl}");
+
         if (dto.OrderId.HasValue)
         {
             var orderForMethod = await _context.Orders
@@ -138,9 +148,13 @@ public class PaymentService : IPaymentService
             {
                 providerType = PaymentProviderType.PayPal;
             }
-            else if (orderForMethod?.PaymentMethodType == PaymentMethodType.BankTransfer)
+            else if (orderForMethod?.PaymentMethodType == PaymentMethodType.Tabby)
             {
-                providerType = PaymentProviderType.BankTransfer;
+                providerType = PaymentProviderType.Tabby;
+            }
+            else if (orderForMethod?.PaymentMethodType == PaymentMethodType.Tamara)
+            {
+                providerType = PaymentProviderType.Tamara;
             }
         }
 
@@ -159,6 +173,48 @@ public class PaymentService : IPaymentService
                 {
                     Success = false,
                     Message = payPalResult.ErrorMessage ?? "فشل إنشاء رابط الدفع عبر PayPal"
+                };
+            }
+        }
+        else if (providerType == PaymentProviderType.Tabby)
+        {
+            tabbyResult = await _tabbyProvider.CreateCheckoutSessionAsync(
+                dto.Amount,
+                dto.Currency,
+                description,
+                dto.SuccessUrl,
+                dto.CallbackUrl,
+                dto.CustomerEmail,
+                dto.CustomerName,
+                dto.CustomerPhone);
+
+            if (!tabbyResult.Success)
+            {
+                return new CreatePaymentResult
+                {
+                    Success = false,
+                    Message = tabbyResult.ErrorMessage ?? "فشل إنشاء رابط الدفع عبر تابي"
+                };
+            }
+        }
+        else if (providerType == PaymentProviderType.Tamara)
+        {
+            tamaraResult = await _tamaraProvider.CreateCheckoutSessionAsync(
+                dto.Amount,
+                dto.Currency,
+                description,
+                dto.SuccessUrl,
+                dto.CallbackUrl,
+                dto.CustomerEmail,
+                dto.CustomerName,
+                dto.CustomerPhone);
+
+            if (!tamaraResult.Success)
+            {
+                return new CreatePaymentResult
+                {
+                    Success = false,
+                    Message = tamaraResult.ErrorMessage ?? "فشل إنشاء رابط الدفع عبر تمارا"
                 };
             }
         }
@@ -211,13 +267,31 @@ public class PaymentService : IPaymentService
             {
                 // 🧾 الدفع المحمي (Hosted Checkout): تُنشأ فاتورة لدى موياسر تضم صفحة دفع
                 // يكمل العميل فيها بيانات بطاقته على موقع ميسرا — بدون بيانات كارت في نظامنا.
+                // ⚠️ إصلاح: مويصر يرفض (validation_error) أي success_url/back_url نسبي (مثل
+                // "/store/amr/thank-you/...") — يجب أن تكون URLs كاملة بالدومين. نضمن الدومين
+                // من App:StoreFrontBaseUrl (أو App:BaseUrl) لو القيمة المرسلة مسار نسبي.
+                var storeFrontBase = _config["App:StoreFrontBaseUrl"];
+                if (string.IsNullOrWhiteSpace(storeFrontBase)) storeFrontBase = _config["App:BaseUrl"];
+                if (string.IsNullOrWhiteSpace(storeFrontBase)) storeFrontBase = "http://localhost:3000";
+                storeFrontBase = storeFrontBase.TrimEnd('/');
+                string fullSuccessUrl = dto.SuccessUrl ?? "";
+                if (!string.IsNullOrWhiteSpace(fullSuccessUrl))
+                {
+                    if (fullSuccessUrl.StartsWith('/'))
+                        fullSuccessUrl = storeFrontBase + fullSuccessUrl;
+                    else if (!fullSuccessUrl.Contains("://"))
+                        fullSuccessUrl = storeFrontBase + "/" + fullSuccessUrl;
+                }
+
+                Console.Error.WriteLine($"[PAYMENT] fullSuccessUrl='{fullSuccessUrl}' (storeFrontBase='{storeFrontBase}')");
+
                 moyasarResult = await _provider.CreateInvoiceAsync(
                     dto.Amount,
                     dto.Currency,
                     description,
                     paymentCallbackUrl,
-                    dto.SuccessUrl,
-                    dto.SuccessUrl,
+                    fullSuccessUrl,
+                    fullSuccessUrl,
                     dto.CustomerEmail);
             }
 
@@ -233,12 +307,18 @@ public class PaymentService : IPaymentService
 
         var providerPaymentId = providerType == PaymentProviderType.PayPal ? payPalResult!.ProviderPaymentId
             : providerType == PaymentProviderType.Moyasar ? moyasarResult!.ProviderPaymentId
+            : providerType == PaymentProviderType.Tabby ? tabbyResult!.ProviderPaymentId
+            : providerType == PaymentProviderType.Tamara ? tamaraResult!.ProviderPaymentId
             : null;
         var gatewayResponse = providerType == PaymentProviderType.PayPal ? payPalResult!.RawResponse
             : providerType == PaymentProviderType.Moyasar ? moyasarResult!.RawResponse
+            : providerType == PaymentProviderType.Tabby ? tabbyResult!.RawResponse
+            : providerType == PaymentProviderType.Tamara ? tamaraResult!.RawResponse
             : null;
         var paymentLinkUrl = providerType == PaymentProviderType.PayPal ? payPalResult!.PaymentUrl
             : providerType == PaymentProviderType.Moyasar ? moyasarResult!.PaymentUrl
+            : providerType == PaymentProviderType.Tabby ? tabbyResult!.PaymentUrl
+            : providerType == PaymentProviderType.Tamara ? tamaraResult!.PaymentUrl
             : null;
 
         // ⚠️ إصلاح ثغرة "الدفع المكرر": لا يُنشأ إلا سجل دفع واحد لكل مرجع (اشتراك/طلب/فاتورة) —

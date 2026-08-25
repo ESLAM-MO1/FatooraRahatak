@@ -264,6 +264,73 @@ public class ZatcaService : IZatcaService
         };
     }
 
+    public async Task<ZatcaSubmitResultDto> VerifyInvoiceAsync(long storeId, long invoiceId)
+    {
+        var invoice = await _context.Invoices
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.StoreId == storeId)
+            ?? throw new InvalidOperationException("الفاتورة غير موجودة");
+
+        if (string.IsNullOrWhiteSpace(invoice.ZatcaUuid))
+            throw new InvalidOperationException("هذه الفاتورة لم تُرسل إلى زاتكا بعد — لا يمكن التحقق منها");
+
+        var credential = await _context.ZatcaCredentials.FirstOrDefaultAsync(z => z.StoreId == storeId);
+        if (credential == null || string.IsNullOrWhiteSpace(credential.ProductionCsid)
+            || string.IsNullOrWhiteSpace(credential.CsidSecret))
+            throw new InvalidOperationException("المتجر غير مسجّل لدى زاتكا بعد — نفّذ تسجيل الجهاز (Onboarding) أولًا");
+
+        ZatcaSubmissionResponse response;
+        try
+        {
+            response = await _client.VerifyInvoiceAsync(
+                invoice.ZatcaUuid,
+                credential.ProductionCsid,
+                credential.CsidSecret);
+        }
+        catch (Exception ex)
+        {
+            return new ZatcaSubmitResultDto
+            {
+                InvoiceId = invoice.Id,
+                InvoiceNumber = invoice.InvoiceNumber,
+                Success = false,
+                Message = ex.Message,
+                Status = invoice.ZatcaStatus.ToString(),
+                Uuid = invoice.ZatcaUuid
+            };
+        }
+
+        var reportingStatus = !string.IsNullOrWhiteSpace(response.ReportingStatus)
+            ? response.ReportingStatus
+            : !string.IsNullOrWhiteSpace(response.ClearingStatus)
+                ? response.ClearingStatus
+                : response.Status ?? string.Empty;
+
+        var success = reportingStatus.Contains("CLEARED", StringComparison.OrdinalIgnoreCase)
+            || reportingStatus.Contains("REPORTED", StringComparison.OrdinalIgnoreCase);
+
+        invoice.ZatcaReportingStatus = reportingStatus;
+        invoice.ZatcaValidationResults = BuildValidationText(response);
+        invoice.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return new ZatcaSubmitResultDto
+        {
+            InvoiceId = invoice.Id,
+            InvoiceNumber = invoice.InvoiceNumber,
+            Success = success,
+            Message = success
+                ? $"تم التحقق من الفاتورة لدى زاتكا بنجاح ({reportingStatus})"
+                : $"زاتكا تُظهر الفاتورة بحالة: {reportingStatus}",
+            Status = invoice.ZatcaStatus.ToString(),
+            Uuid = invoice.ZatcaUuid,
+            ReportingStatus = reportingStatus,
+            ValidationResults = invoice.ZatcaValidationResults,
+            Hash = invoice.ZatcaHash,
+            QrBase64 = invoice.ZatcaQrBase64,
+            SubmissionDateTime = invoice.ZatcaSubmissionDateTime
+        };
+    }
+
     private static ZatcaCredentialDto MapCredential(ZatcaCredential credential) => new()
     {
         StoreId = credential.StoreId,

@@ -75,7 +75,7 @@ export default function OrdersTab({ slug, token, orders, loading, error, onRefre
   }
 
   if (error) {
-    return <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>;
+    return <div className="alert alert--danger">{error}</div>;
   }
 
   if (orders.length === 0) {

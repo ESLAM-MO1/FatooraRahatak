@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { SearchIcon, BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, TruckIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, CheckIcon, SparklesIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -123,6 +124,8 @@ export default function WarmModernTemplate({
         {mobileOpen && <div className="md:hidden px-4 pb-3 border-t" style={{ borderColor: "#F5F0E8", background: "rgba(255,255,255,0.98)" }}><form onSubmit={handleSearchSubmit} className="mt-3"><div className="relative"><span className="absolute inset-y-0 inline-flex items-center ps-3" style={{ color: "#A8A29E" }}><SearchIcon size={16} /></span><input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-full rounded-full outline-none text-[14px] ps-9 pe-3 py-2" style={{ background: "#F5F0E8", color: "#1C1917" }} /></div></form><StoreMainMenu slug={slug} mobile containerClassName="mt-3 space-y-2 text-[15px] font-semibold" containerStyle={{ color: "#1C1917" }} linkClassName="block py-1.5" /></div>}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>}
 
       {showHero && <section className="w-full relative overflow-hidden" style={{ minHeight: "560px", background: heroBg, color: "#fff" }}>
@@ -174,6 +177,7 @@ export default function WarmModernTemplate({
         </div>
       </section>}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="products" style={{ padding: "44px 0" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 mb-7"><span className="inline-block rounded" style={{ width: 6, height: 36, background: colors.accentColor, borderRadius: 3 }} /><h2 className="font-extrabold text-2xl" style={{ color: "#1C1917" }}>{t("storefront.featuredProducts")}</h2></div>
@@ -204,6 +208,8 @@ export default function WarmModernTemplate({
           </form>
         </div>
       </section></>}
+
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, padding: "52px 0 32px" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">

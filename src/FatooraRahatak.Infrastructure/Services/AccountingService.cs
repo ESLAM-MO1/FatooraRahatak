@@ -806,7 +806,9 @@ public class AccountingService : IAccountingService
 
             var debitAccount = paymentMethod == InvoicePaymentMethod.Cash
                 ? await GetAccountByCodeAsync(storeId, "1101", "الصندوق (النقدية)")
-                : await GetAccountByCodeAsync(storeId, "1103", "العملاء (ذمم مدينة)");
+                : paymentMethod is InvoicePaymentMethod.Mada or InvoicePaymentMethod.Tabby or InvoicePaymentMethod.Tamara
+                    ? await GetAccountByCodeAsync(storeId, "1102", "البنك (حساب جاري)")
+                    : await GetAccountByCodeAsync(storeId, "1103", "العملاء (ذمم مدينة)");
 
             var revenueAccount = await GetAccountByTypeAndKeywordAsync(storeId, AccountType.Revenue, "مبيعات", "إيرادات المبيعات");
             var inventoryAccount = await GetAccountByCodeAsync(storeId, "1104", "المخزون");
@@ -855,7 +857,7 @@ public class AccountingService : IAccountingService
                 PartyName = dto.GuestName,
                 PaymentMethod = paymentMethod,
                 // ⚠️ إصلاح: الدفع النقدي يُعتبر مدفوعًا فورًا (كان بيتسجل Pending للأبد)
-                PaymentStatus = paymentMethod == InvoicePaymentMethod.Cash ? PaymentStatus.Paid : PaymentStatus.Pending,
+                PaymentStatus = paymentMethod is InvoicePaymentMethod.Cash or InvoicePaymentMethod.Mada or InvoicePaymentMethod.Tabby or InvoicePaymentMethod.Tamara ? PaymentStatus.Paid : PaymentStatus.Pending,
                 SubTotal = subTotal,
                 DiscountAmount = totalDiscount,
                 TaxAmount = taxAmount,

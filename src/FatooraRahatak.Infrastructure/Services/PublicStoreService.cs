@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using FatooraRahatak.Application.DTOs.Public;
+using FatooraRahatak.Application.DTOs.Banners;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Products;
 using FatooraRahatak.Domain.Enums;
@@ -65,6 +66,7 @@ public class PublicStoreService : IPublicStoreService
             StoreName = store.StoreName,
             StoreSlug = store.StoreSlug,
             Logo = store.Logo,
+            Favicon = store.Favicon,
             DefaultLanguage = store.DefaultLanguage,
             IsOnline = store.IsOnline,
             ThemeName = store.ThemeName,
@@ -102,6 +104,29 @@ public class PublicStoreService : IPublicStoreService
             PaymentMethods = paymentMethods,
             ShippingCompanies = shippingCompanies
         };
+    }
+
+    public async Task<List<PublicBannerDto>?> GetBannersAsync(string slug)
+    {
+        var store = await GetActiveStoreBySlugAsync(slug);
+        if (store == null) return null;
+
+        var now = DateTime.UtcNow;
+        return await _context.Banners
+            .Where(b => b.StoreId == store.Id && b.IsActive &&
+                (b.StartDate == null || b.StartDate <= now) &&
+                (b.EndDate == null || b.EndDate >= now))
+            .OrderBy(b => b.Position)
+            .ThenBy(b => b.SortOrder)
+            .Select(b => new PublicBannerDto
+            {
+                Id = b.Id,
+                Title = b.Title,
+                ImageUrl = b.ImageUrl,
+                LinkUrl = b.LinkUrl,
+                Position = b.Position.ToString()
+            })
+            .ToListAsync();
     }
 
     private static List<PublicTrustBadgeDto> ParseTrustBadges(string? json)
@@ -675,15 +700,12 @@ public class PublicStoreService : IPublicStoreService
         return false;
     }
 
-    private static string NormalizePhone(string phone)
-    {
-        var digits = new string(phone.Where(char.IsDigit).ToArray());
-        if (digits.StartsWith("00"))
-            digits = digits.Substring(2);
-        if (digits.StartsWith("0"))
-            digits = digits.Substring(1);
-        return digits;
-    }
+    // ⚠️ كانت هنا نسخة محلية مختلفة بتشيل الأصفار البادئة بس (من غير كود الدولة)،
+    // فرقم بصيغة "+20..." كان بيدي نتيجة مختلفة عن نفس الرقم بصيغة "01..." أو المخزّن
+    // من التوكن — فده اللي كان بيخلي عداد الطلبات في كارت الدخول السريع (اللي بيستخدم
+    // PhoneNumberNormalizer الموحّد عبر QuickLoginService) يفرق عن نتيجة "طلباتي"/"العناوين
+    // المحفوظة" هنا. اتوحّدت الدالة عشان تستخدم نفس نقطة التطبيع في كل مكان.
+    private static string NormalizePhone(string phone) => PhoneNumberNormalizer.Normalize(phone);
 
     private async Task<Domain.Entities.Customers.CustomerAddress?> FindAddressAsync(long storeId, string phone, long addressId)
     {
@@ -737,7 +759,13 @@ public class PublicStoreService : IPublicStoreService
             AddressLine = dto.AddressLine.Trim(),
             Landmark = dto.Landmark?.Trim(),
             Notes = dto.Notes?.Trim(),
-            IsDefault = dto.IsDefault
+            IsDefault = dto.IsDefault,
+            Region = dto.Region?.Trim(),
+            District = dto.District?.Trim(),
+            Street = dto.Street?.Trim(),
+            BuildingNumber = dto.BuildingNumber?.Trim(),
+            PostalCode = dto.PostalCode?.Trim(),
+            NationalAddress = dto.NationalAddress?.Trim()
         };
 
         _context.CustomerAddresses.Add(address);
@@ -773,6 +801,12 @@ public class PublicStoreService : IPublicStoreService
         address.Landmark = dto.Landmark?.Trim();
         address.Notes = dto.Notes?.Trim();
         address.IsDefault = dto.IsDefault;
+        address.Region = dto.Region?.Trim();
+        address.District = dto.District?.Trim();
+        address.Street = dto.Street?.Trim();
+        address.BuildingNumber = dto.BuildingNumber?.Trim();
+        address.PostalCode = dto.PostalCode?.Trim();
+        address.NationalAddress = dto.NationalAddress?.Trim();
         address.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -905,6 +939,12 @@ public class PublicStoreService : IPublicStoreService
         AddressLine = a.AddressLine,
         Landmark = a.Landmark,
         Notes = a.Notes,
-        IsDefault = a.IsDefault
+        IsDefault = a.IsDefault,
+        Region = a.Region,
+        District = a.District,
+        Street = a.Street,
+        BuildingNumber = a.BuildingNumber,
+        PostalCode = a.PostalCode,
+        NationalAddress = a.NationalAddress
     };
 }

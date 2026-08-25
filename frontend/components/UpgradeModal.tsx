@@ -23,6 +23,9 @@ export default function UpgradeModal() {
   return (
     <div className="modal-overlay" onClick={() => setIsOpen(false)}>
       <div className="modal-card max-w-md text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-end mb-1">
+          <button type="button" onClick={() => setIsOpen(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+        </div>
         <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-gradient-to-br from-[#F5C34A]/15 to-[#E9A912]/10 flex items-center justify-center">
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#E9A912" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M2 18h20v2H2z" />

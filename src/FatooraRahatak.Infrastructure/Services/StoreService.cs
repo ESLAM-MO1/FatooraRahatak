@@ -139,7 +139,10 @@ public class StoreService : IStoreService
             new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.CashOnDelivery, IsEnabled = true },
             new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.CreditCard, IsEnabled = false },
             new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.PayPal, IsEnabled = false },
-            new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.BankTransfer, IsEnabled = false }
+            new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.BankTransfer, IsEnabled = false },
+            new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.Mada, IsEnabled = false },
+            new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.Tabby, IsEnabled = false },
+            new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.Tamara, IsEnabled = false }
         );
         await _context.SaveChangesAsync();
         // =================================================================================
@@ -322,7 +325,10 @@ public class StoreService : IStoreService
                 new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.CashOnDelivery, IsEnabled = true },
                 new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.CreditCard, IsEnabled = false },
                 new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.PayPal, IsEnabled = false },
-                new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.BankTransfer, IsEnabled = false }
+                new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.BankTransfer, IsEnabled = false },
+                new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.Mada, IsEnabled = false },
+                new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.Tabby, IsEnabled = false },
+                new StorePaymentMethod { StoreId = store.Id, Type = PaymentMethodType.Tamara, IsEnabled = false }
             );
         }
 
@@ -371,6 +377,7 @@ public class StoreService : IStoreService
             ThemeName = store.ThemeName,
             ColorsJson = store.ColorsJson,
             Logo = store.Logo,
+            Favicon = store.Favicon,
             CoverImage = store.CoverImage,
             CustomCss = store.CustomCss,
             MaxThemes = package?.MaxThemes ?? 1,
@@ -655,6 +662,59 @@ public class StoreService : IStoreService
             throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك بعد");
 
         store.Logo = null;
+        await _context.SaveChangesAsync();
+
+        return await GetStoreInfoAsync(ownerUserId);
+    }
+
+    public async Task<StoreInfoDto> UpdateFaviconAsync(long ownerUserId, UpdateStoreFaviconDto dto)
+    {
+        var store = await ResolveStoreAsync(ownerUserId);
+        if (store == null)
+            throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك بعد");
+
+        var package = await _context.Packages.FindAsync(store.PackageId);
+        if (package == null || !package.HasLogo)
+            throw new InvalidOperationException("ميزة رفع شعار المتجر غير متاحة في باقتك الحالية. قم بترقية باقتك لتفعيلها.");
+
+        if (string.IsNullOrWhiteSpace(dto.FaviconBase64))
+            throw new InvalidOperationException("يجب إرسال الأيقونة بصيغة Base64");
+
+        var favicon = dto.FaviconBase64.Trim();
+        if (!favicon.Contains("base64,", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("أيقونة غير صالحة: يجب أن تكون بيانات صورة بصيغة Base64");
+
+        var prefix = favicon[..(favicon.IndexOf("base64,", StringComparison.OrdinalIgnoreCase) + 7)];
+        var data = favicon[(favicon.IndexOf("base64,", StringComparison.OrdinalIgnoreCase) + 7)..];
+
+        if (!prefix.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("أيقونة غير صالحة: الصيغة يجب أن تكون صورة (PNG / ICO / JPG / WebP / GIF)");
+
+        if (data.Length > 1024 * 1024)
+            throw new InvalidOperationException("حجم الأيقونة كبير جدًا (الحد الأقصى 1 ميجابايت)");
+
+        try
+        {
+            Convert.FromBase64String(data);
+        }
+        catch (FormatException)
+        {
+            throw new InvalidOperationException("أيقونة غير صالحة: بيانات Base64 غير صحيحة");
+        }
+
+        store.Favicon = favicon;
+        await _context.SaveChangesAsync();
+
+        return await GetStoreInfoAsync(ownerUserId);
+    }
+
+    public async Task<StoreInfoDto> DeleteFaviconAsync(long ownerUserId)
+    {
+        var store = await ResolveStoreAsync(ownerUserId);
+        if (store == null)
+            throw new InvalidOperationException("لا يوجد متجر مرتبط بحسابك بعد");
+
+        store.Favicon = null;
         await _context.SaveChangesAsync();
 
         return await GetStoreInfoAsync(ownerUserId);

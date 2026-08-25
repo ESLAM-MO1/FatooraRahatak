@@ -301,7 +301,7 @@ export default function OrderDetailPage() {
       </div>
 
       {returnMsg && (
-        <div className="bg-green-50 text-green-700 border border-green-200 rounded-lg px-4 py-3 text-sm font-medium mb-6">
+        <div className="alert alert--success mb-6">
           {returnMsg}
         </div>
       )}
@@ -508,7 +508,7 @@ export default function OrderDetailPage() {
 
       {showReturn && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-gray-800 mb-4">{t("order.returnTitle")}</h2>
             <form onSubmit={submitReturn} className="space-y-4">
               <div>

@@ -27,3 +27,10 @@ public class UpdateShippingCompanyDto
     public bool? IsDefault { get; set; }
     public string? RateConfigJson { get; set; }
 }
+
+public class FetchShippingCompaniesResultDto
+{
+    public int Added { get; set; }
+    public List<string> AddedCompanies { get; set; } = new();
+    public int Skipped { get; set; }
+}

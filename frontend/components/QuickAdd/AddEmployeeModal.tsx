@@ -24,6 +24,8 @@ export default function AddEmployeeModal({ onClose, onSuccess }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState("");
 
+  const roleLabel = (name: string) => t(`role.${name}`, name);
+
   useEffect(() => {
     api.get("/roles").then(r => setRoles(r.data.data)).catch(() => {});
   }, []);
@@ -49,7 +51,10 @@ export default function AddEmployeeModal({ onClose, onSuccess }: Props) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
-        <h2 className="text-[18px] font-bold text-[var(--blue-deep)] mb-4">{t("employee.add")}</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.add")}</h2>
+          <button type="button" onClick={onClose} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+        </div>
         {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div><label>{t("employee.name")}</label><div className="field-shell"><input type="text" value={form.fullName} onChange={set("fullName")} required /></div></div>
@@ -59,7 +64,7 @@ export default function AddEmployeeModal({ onClose, onSuccess }: Props) {
           <div><label>{t("employee.jobRole")}</label><div className="field-shell">
             <select value={form.roleName} onChange={set("roleName")} required>
               <option value="">{t("common.select")}</option>
-              {roles.filter(r => r.roleName !== "SuperAdmin" && r.roleName !== "SupportStaff" && r.roleName !== "Owner").map(r => <option key={r.id} value={r.roleName}>{r.roleName}</option>)}
+              {roles.filter(r => r.roleName !== "SuperAdmin" && r.roleName !== "SupportStaff" && r.roleName !== "Owner").map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
             </select>
           </div></div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={form.salary} onChange={set("salary")} /></div></div>

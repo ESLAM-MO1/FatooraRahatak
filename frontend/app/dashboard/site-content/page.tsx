@@ -7,6 +7,7 @@ import { isAuthenticated, getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import "@/lib/i18n/config";
 
 import type { TFunction } from "i18next";
@@ -403,6 +404,7 @@ function AboutManager() {
 /* ── FAQ Manager ── */
 function FaqManager() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -442,7 +444,7 @@ function FaqManager() {
   };
 
   const remove = async (id: number) => {
-    if (!confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try { await api.delete(`/admin/site/faq/${id}`); load(); }
     catch { setError(t("error.serverError")); }
   };
@@ -484,7 +486,10 @@ function FaqManager() {
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditing(null)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-[16px] font-bold">{editing.id ? t("common.edit") : t("admin.addFaq")}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-[16px] font-bold">{editing.id ? t("common.edit") : t("admin.addFaq")}</h3>
+              <button type="button" onClick={() => setEditing(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
             <div>
               <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.questionAr")}</label>
               <input dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={editing.questionAr} onChange={e => setEditing({...editing, questionAr: e.target.value})} />

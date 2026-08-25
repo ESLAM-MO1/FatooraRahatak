@@ -12,9 +12,19 @@ public class LandingPageContentDto
     public DistinctiveSectionContent DistinctiveSection { get; set; } = new();
     public FooterContent Footer { get; set; } = new();
 
-    public string ToJson() => JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = false });
+    public string ToJson() => JsonSerializer.Serialize(this, new JsonSerializerOptions
+    {
+        WriteIndented = false,
+        PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    });
+
     public static LandingPageContentDto FromJson(string json) =>
-        JsonSerializer.Deserialize<LandingPageContentDto>(json) ?? new LandingPageContentDto();
+        JsonSerializer.Deserialize<LandingPageContentDto>(json, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        }) ?? new LandingPageContentDto();
 }
 
 public class HeroContent
@@ -78,17 +88,17 @@ public class DistinctiveCard
 public class FooterContent
 {
     public string Description { get; set; } = "منصة متكاملة لإدارة متجرك الإلكتروني، الفواتير، روابط الدفع، الكاشير، والمزيد.";
-    public string Copyright { get; set; } = "جميع الحقوق محفوظة.";
+    public string Copyright { get; set; } = "جميع الحقوق محفوظة لفاتورة راحتك";
     public SocialContent Social { get; set; } = new();
 }
 
 public class SocialContent
 {
-    public string Facebook { get; set; } = "#";
-    public string Instagram { get; set; } = "#";
-    public string Whatsapp { get; set; } = "#";
-    public string Snapchat { get; set; } = "#";
-    public string Tiktok { get; set; } = "#";
-    public string Telegram { get; set; } = "#";
-    public string Linkedin { get; set; } = "#";
+    public string Facebook { get; set; } = "https://facebook.com/faturatrahatik";
+    public string Instagram { get; set; } = "https://instagram.com/faturatrahatik";
+    public string Whatsapp { get; set; } = "https://wa.me/966531118224";
+    public string Snapchat { get; set; } = "https://snapchat.com/faturatrahatik";
+    public string Tiktok { get; set; } = "https://tiktok.com/@faturatrahatik";
+    public string Telegram { get; set; } = "https://t.me/faturatrahatik";
+    public string Linkedin { get; set; } = "https://linkedin.com/in/faturatrahatik";
 }

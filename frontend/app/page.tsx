@@ -228,13 +228,6 @@ export default function HomePage() {
             <p className="text-[14px] sm:text-[15px] leading-relaxed mt-8 max-w-xl mx-auto" style={{ color: "var(--sub)" }}>
             {t("site.target")}
           </p>
-          {distinctiveSection.ctaText && (
-            <div className="mt-10">
-              <Link href={distinctiveSection.ctaHref} className="btn btn-primary !px-8 !py-3 !text-[14px]">
-                {distinctiveSection.ctaText}
-              </Link>
-            </div>
-          )}
         </div>
       </section>
 

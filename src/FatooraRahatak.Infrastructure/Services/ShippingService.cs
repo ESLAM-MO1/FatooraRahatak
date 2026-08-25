@@ -88,6 +88,66 @@ public class ShippingService : IShippingService
         return MapCompany(company);
     }
 
+    public async Task<FetchShippingCompaniesResultDto> FetchCompaniesAsync(long storeId)
+    {
+        // قائمة الشركات المتاحة من سجل المنصة (يمكن لاحقًا استبدالها بجلب فعلي من API خارجي).
+        // الزر "جلب شركات الشحن تلقائيًا" يضيف شركات المنصة غير المضافة حاليًا للمتجر.
+        var available = new[]
+        {
+            ("Smsa", "سمسا إكسبرس"),
+            ("Aramex", "أرامكس"),
+            ("Zajil", "زاجل"),
+            ("Naqel", "ناقل"),
+            ("Manual", "شحن يدوي")
+        };
+
+        var existingCodes = await _context.ShippingCompanies
+            .Where(c => c.StoreId == storeId)
+            .Select(c => c.Code)
+            .ToListAsync();
+
+        var package = await _context.Stores
+            .Include(s => s.Package)
+            .Where(s => s.Id == storeId)
+            .Select(s => s.Package)
+            .FirstOrDefaultAsync();
+
+        if (package == null)
+            throw new InvalidOperationException("المتجر غير موجود");
+
+        if (!package.HasShippingIntegration)
+            throw new InvalidOperationException("تكامل شركات الشحن غير متاح في باقتك الحالية. قم بترقية باقتك لتفعيله.");
+
+        var result = new FetchShippingCompaniesResultDto();
+        foreach (var (code, name) in available)
+        {
+            if (existingCodes.Contains(Enum.Parse<ShippingCompanyCode>(code)))
+            {
+                result.Skipped++;
+                continue;
+            }
+
+            var existingCount = await _context.ShippingCompanies.CountAsync(c => c.StoreId == storeId);
+            if (package.MaxShippingCompanies != -1 && existingCount >= package.MaxShippingCompanies)
+                break;
+
+            _context.ShippingCompanies.Add(new ShippingCompany
+            {
+                StoreId = storeId,
+                Name = name,
+                Code = Enum.Parse<ShippingCompanyCode>(code),
+                Enabled = false,
+                IsDefault = false,
+                RateConfigJson = "{\"baseRate\":0,\"perKg\":0,\"codFeePercent\":0,\"estimatedDeliveryDays\":0,\"cityRates\":{}}"
+            });
+            result.Added++;
+            result.AddedCompanies.Add(name);
+        }
+
+        await _context.SaveChangesAsync();
+        return result;
+    }
+
     public async Task<ShippingCompanyDto> UpdateCompanyAsync(long storeId, long companyId, UpdateShippingCompanyDto dto)
     {
         var company = await _context.ShippingCompanies

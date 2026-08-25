@@ -24,6 +24,7 @@ export interface InvoiceDetail {
   notes?: string | null;
   paymentMethod: string;
   paymentStatus: string;
+  shippingCost?: number | null;
   subTotal: number;
   discountAmount: number;
   taxAmount: number;
@@ -58,6 +59,10 @@ export const invoiceTypeStyles: Record<string, string> = {
 export const invoicePaymentLabels: Record<string, string> = {
   Cash: "invoice.paymentCash",
   Credit: "invoice.paymentCredit",
+  Mada: "invoice.paymentMada",
+  BankTransfer: "invoice.paymentBankTransfer",
+  Tabby: "invoice.paymentTabby",
+  Tamara: "invoice.paymentTamara",
 };
 
 export const invoiceStatusLabels: Record<string, string> = {
@@ -228,6 +233,9 @@ export function buildInvoiceHtml(invoice: InvoiceDetail, t: (k: string) => strin
         <div class="info-line"><span class="k">${t("invoice.dateLabel")}</span><span class="v">${invoice.invoiceDate}</span></div>
         <div class="info-line"><span class="k">${t("invoice.vatNumber")}</span><span class="v" dir="ltr">${vatNumberBlock}</span></div>
         <div class="info-line"><span class="k">${t("invoice.invoiceValue")}</span><span class="v">${invFmt(invoice.totalAmount)} ${t("common.sar")}</span></div>
+        <div class="info-line"><span class="k">${t("invoice.paymentMethod")}</span><span class="v">${t(invoicePaymentLabels[invoice.paymentMethod] ?? "common.noData")}</span></div>
+        <div class="info-line"><span class="k">${t("invoice.paymentStatus")}</span><span class="v">${t(statusKey)}</span></div>
+        ${invoice.shippingCost != null ? `<div class="info-line"><span class="k">${t("invoice.shippingCost")}</span><span class="v">${invFmt(invoice.shippingCost)} ${t("common.sar")}</span></div>` : ""}
       </div>
     </div>
   </div>

@@ -192,6 +192,10 @@ export default function ShippingPage() {
   const [providersState, setProvidersState] = useState<Record<string, ProviderDraft>>({});
 
   const [shipmentOpen, setShipmentOpen] = useState(false);
+  const [addCompanyOpen, setAddCompanyOpen] = useState(false);
+  const [addCompanyForm, setAddCompanyForm] = useState({ name: "", code: "Manual" });
+  const [addCompanySaving, setAddCompanySaving] = useState(false);
+  const [fetchingCompanies, setFetchingCompanies] = useState(false);
   const [shipmentForm, setShipmentForm] = useState({
     orderId: "",
     shippingCompanyId: "",
@@ -327,6 +331,48 @@ export default function ShippingPage() {
     }
   };
 
+  const handleFetchCompanies = async () => {
+    setFetchingCompanies(true);
+    setActionError("");
+    setActionSuccess("");
+    try {
+      const res = await api.post("/shipping/companies/fetch");
+      setActionSuccess(res.data.message || t("shipping.fetchCompaniesDone"));
+      await loadAll();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("shipping.fetchCompaniesError"));
+    } finally {
+      setFetchingCompanies(false);
+    }
+  };
+
+  const handleAddCompany = async () => {
+    if (!addCompanyForm.name.trim()) {
+      setActionError(t("shipping.companyNameRequired"));
+      return;
+    }    setAddCompanySaving(true);
+    setActionError("");
+    try {
+      await api.post("/shipping/companies", {
+        name: addCompanyForm.name.trim(),
+        code: addCompanyForm.code || "Manual",
+        enabled: true,
+        isDefault: false,
+        rateConfigJson: JSON.stringify({
+          baseRate: 0, perKg: 0, codFeePercent: 0, estimatedDeliveryDays: 0, cityRates: {},
+        }),
+      });
+      setActionSuccess(t("shipping.companyCreated"));
+      setAddCompanyOpen(false);
+      setAddCompanyForm({ name: "", code: "Manual" });
+      await loadAll();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("shipping.saveError"));
+    } finally {
+      setAddCompanySaving(false);
+    }
+  };
+
   const handleQuote = async () => {
     setQuoteLoading(true);
     setQuote(null);
@@ -457,7 +503,19 @@ export default function ShippingPage() {
 
       {tab === "companies" && (
         <div className="card p-5">
-          <h3 className="text-lg font-medium text-[var(--ink)] mb-4">{t("shipping.companiesTitle")}</h3>
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <h3 className="text-lg font-medium text-[var(--ink)]">{t("shipping.companiesTitle")}</h3>
+            <Can code="ShippingCompanies.Add">
+              <div className="flex items-center gap-2">
+                <button onClick={handleFetchCompanies} disabled={fetchingCompanies} className="btn btn-outline btn-sm">
+                  {fetchingCompanies ? t("common.loading") : t("shipping.fetchCompanies")}
+                </button>
+                <button onClick={() => { setAddCompanyOpen(true); setActionError(""); }} className="btn btn-primary btn-sm">
+                  + {t("shipping.addCompany")}
+                </button>
+              </div>
+            </Can>
+          </div>
 
           <div className="space-y-3">
             {PROVIDERS.map((p) => {
@@ -872,6 +930,39 @@ export default function ShippingPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {addCompanyOpen && (
+        <div className="modal-overlay" onClick={() => setAddCompanyOpen(false)}>
+          <div className="modal-card max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[17px] font-bold text-[var(--blue-deep)]">{t("shipping.addCompanyTitle")}</h2>
+              <button onClick={() => setAddCompanyOpen(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
+            <div className="space-y-4">
+              <div>
+                <label>{t("shipping.companyName")}</label>
+                <div className="field-shell mt-1">
+                  <input value={addCompanyForm.name} onChange={(e) => setAddCompanyForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("shipping.companyNamePlaceholder")} />
+                </div>
+              </div>
+              <div>
+                <label>{t("shipping.companyCode")}</label>
+                <div className="field-shell mt-1">
+                  <input value={addCompanyForm.code} onChange={(e) => setAddCompanyForm((f) => ({ ...f, code: e.target.value }))} placeholder="Manual" />
+                </div>
+                <p className="text-[11px] text-[var(--sub)] mt-1">{t("shipping.companyCodeHint")}</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setAddCompanyOpen(false)} className="btn btn-outline flex-1">{t("common.cancel")}</button>
+                <button onClick={handleAddCompany} disabled={addCompanySaving} className="btn btn-primary flex-1">
+                  {addCompanySaving ? t("common.saving") : t("common.save")}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

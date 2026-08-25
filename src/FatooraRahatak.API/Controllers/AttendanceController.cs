@@ -38,7 +38,7 @@ public class AttendanceController : ControllerBase
 
         try
         {
-            var result = await _attendanceService.CheckInAsync(storeId.Value, dto);
+            var result = await _attendanceService.CheckInAsync(storeId.Value, GetUserId(), dto);
             return Ok(new { success = true, data = result, message = "تم تسجيل الحضور" });
         }
         catch (InvalidOperationException ex)
@@ -56,8 +56,93 @@ public class AttendanceController : ControllerBase
 
         try
         {
-            var result = await _attendanceService.CheckOutAsync(storeId.Value, dto);
+            var result = await _attendanceService.CheckOutAsync(storeId.Value, GetUserId(), dto);
             return Ok(new { success = true, data = result, message = "تم تسجيل الانصراف" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // ─── أجهزة الحضور (البصمة) ───
+
+    [RequirePermission("Attendance.View")]
+    [HttpGet("attendance/devices")]
+    public async Task<IActionResult> GetDevices()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var result = await _attendanceService.GetDevicesAsync(storeId.Value);
+        return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("Attendance.Add")]
+    [HttpPost("attendance/devices")]
+    public async Task<IActionResult> UpsertDevice([FromBody] UpsertAttendanceDeviceDto dto, [FromQuery] long? deviceId = null)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _attendanceService.UpsertDeviceAsync(storeId.Value, deviceId, dto);
+            return Ok(new { success = true, data = result, message = "تم حفظ الجهاز بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Attendance.Add")]
+    [HttpDelete("attendance/devices/{deviceId}")]
+    public async Task<IActionResult> DeleteDevice(long deviceId)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            await _attendanceService.DeleteDeviceAsync(storeId.Value, deviceId);
+            return Ok(new { success = true, message = "تم حذف الجهاز" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Attendance.Add")]
+    [HttpPost("attendance/devices/{deviceId}/sync")]
+    public async Task<IActionResult> SyncFromDevice(long deviceId)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _attendanceService.SyncFromDeviceAsync(storeId.Value, GetUserId(), deviceId);
+            return Ok(new { success = true, data = result, message = result.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Attendance.Add")]
+    [HttpPost("attendance/import")]
+    public async Task<IActionResult> ImportRecords([FromBody] ImportAttendanceRecordsDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _attendanceService.ImportAttendanceRecordsAsync(storeId.Value, GetUserId(), dto);
+            return Ok(new { success = true, data = result, message = result.Message });
         }
         catch (InvalidOperationException ex)
         {

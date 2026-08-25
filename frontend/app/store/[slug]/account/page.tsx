@@ -101,7 +101,7 @@ export default function AccountPage() {
         </button>
       </div>
 
-      {msg && <div className="bg-green-50 text-green-700 p-3 rounded mb-4 text-sm">{msg}</div>}
+      {msg && <div className="alert alert--success mb-4">{msg}</div>}
 
       <div className="flex flex-wrap gap-2 mb-5 border-b border-gray-200 pb-3">
         {(["orders", "addresses", "profile"] as Tab[]).map((key) => (

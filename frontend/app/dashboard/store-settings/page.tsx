@@ -17,6 +17,7 @@ import PhoneInputField from "@/components/PhoneInputField";
 import { PAGE_DEFS, parseStorePages } from "@/lib/storePages";
 import StoreFaqManager from "@/components/store-managers/StoreFaqManager";
 import StoreBlogManager from "@/components/store-managers/StoreBlogManager";
+import StoreBannersManager from "@/components/store-managers/StoreBannersManager";
 
 type DomainStatus = "None" | "Pending" | "Active";
 
@@ -36,6 +37,7 @@ interface StoreData {
   storeName: string;
   storeSlug: string;
   logo: string | null;
+  favicon: string | null;
   customDomain: string | null;
   customDomainStatus: DomainStatus;
   isVatRegistered: boolean;
@@ -105,6 +107,9 @@ const paymentLabels: Record<string, string> = {
   CreditCard: "storeSettings.paymentCreditCard",
   PayPal: "storeSettings.paymentPayPal",
   BankTransfer: "storeSettings.paymentBankTransfer",
+  Mada: "storeSettings.paymentMada",
+  Tabby: "storeSettings.paymentTabby",
+  Tamara: "storeSettings.paymentTamara",
 };
 
 const STORE_BASE_URL = process.env.NEXT_PUBLIC_STORE_BASE_URL || "http://localhost:3000";
@@ -125,7 +130,7 @@ const COLOR_FIELDS: { key: keyof StoreColors; labelKey: string }[] = [
 // named sections — reachable from one tab strip — keeps every field exactly
 // where it was, just organized around the questions a merchant actually asks
 // ("what does my store look like?" vs "how do people pay?").
-type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "pages" | "advanced" | "designChat" | "faq" | "blog";
+type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "pages" | "advanced" | "designChat" | "faq" | "blog" | "banners";
 
 const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "overview", labelKey: "storeSettings.tabOverview", icon: "hash" },
@@ -137,6 +142,7 @@ const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "pages", labelKey: "storeSettings.tabPages", icon: "book" },
   { id: "faq", labelKey: "storeFaq.title", icon: "book" },
   { id: "blog", labelKey: "storeBlog.title", icon: "edit" },
+  { id: "banners", labelKey: "banners.title", icon: "layout" },
   { id: "advanced", labelKey: "storeSettings.tabAdvanced", icon: "card" },
 ];
 
@@ -146,7 +152,7 @@ const TAB_GROUPS: { key: string; labelKey: string; items: TabId[] }[] = [
   { key: "appearance", labelKey: "storeSettings.groupAppearance", items: ["design", "designChat"] },
   { key: "presence", labelKey: "storeSettings.groupPresence", items: ["domain", "contact"] },
   { key: "commerce", labelKey: "storeSettings.groupCommerce", items: ["commerce"] },
-  { key: "content", labelKey: "storeSettings.groupContent", items: ["pages", "faq", "blog"] },
+  { key: "content", labelKey: "storeSettings.groupContent", items: ["pages", "faq", "blog", "banners"] },
   { key: "advanced", labelKey: "storeSettings.groupAdvanced", items: ["advanced"] },
 ];
 
@@ -160,6 +166,7 @@ const TAB_FALLBACK: Record<TabId, string> = {
   pages: "صفحات المتجر",
   faq: "الأسئلة الشائعة",
   blog: "المدونة",
+  banners: "البنرات الإعلانية",
   advanced: "إعدادات متقدمة",
 };
 
@@ -491,6 +498,10 @@ export default function StoreSettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoRemoving, setLogoRemoving] = useState(false);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const [faviconSuccess, setFaviconSuccess] = useState("");
+  const [faviconUploading, setFaviconUploading] = useState(false);
+  const [faviconRemoving, setFaviconRemoving] = useState(false);
+  const faviconInputRef = useRef<HTMLInputElement | null>(null);
   const [themeAutoSaving, setThemeAutoSaving] = useState(false);
   const themeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedTheme = useRef<{ themeName: string; colors: StoreColors; coverImage: string; customCss: string } | null>(null);
@@ -959,6 +970,45 @@ export default function StoreSettingsPage() {
     }
   };
 
+  const handleUploadFavicon = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFaviconUploading(true);
+    setError("");
+    setFaviconSuccess("");
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error("read-failed"));
+        reader.readAsDataURL(file);
+      });
+      const res = await api.put("/stores/favicon", { faviconBase64: base64 });
+      setStore((prev) => (prev ? { ...prev, favicon: res.data.data.favicon } : prev));
+      setFaviconSuccess(res.data.message || t("storeSettings.faviconSaved"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("storeSettings.faviconUploadError"));
+    } finally {
+      setFaviconUploading(false);
+      if (faviconInputRef.current) faviconInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteFavicon = async () => {
+    setFaviconRemoving(true);
+    setError("");
+    setFaviconSuccess("");
+    try {
+      const res = await api.delete("/stores/favicon");
+      setStore((prev) => (prev ? { ...prev, favicon: res.data.data.favicon } : prev));
+      setFaviconSuccess(res.data.message || t("storeSettings.faviconRemoved"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("storeSettings.faviconRemoveError"));
+    } finally {
+      setFaviconRemoving(false);
+    }
+  };
+
   const handleUploadCover = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1170,6 +1220,46 @@ export default function StoreSettingsPage() {
                           className="btn btn-outline btn-sm"
                         >
                           {logoRemoving ? t("storeSettings.saving") : t("storeSettings.removeLogo")}
+                        </button>
+                      )}
+                    </div>
+                  </Can>
+                </div>
+              </div>
+            </SettingCard>
+
+            <SettingCard icon="globe" title={t("storeSettings.favicon")} desc={t("storeSettings.faviconDesc")} accent="gold">
+              <SuccessToast message={faviconSuccess} fixed className="mb-4" />
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {store?.favicon ? (
+                    <img src={store.favicon} alt={t("storeSettings.faviconAlt")} className="w-full h-full object-contain" />
+                  ) : (
+                    <Icon name="globe" size={20} className="text-[var(--sub)]" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  {!store?.favicon && <p className="text-[12px] text-[var(--sub)] mb-2">{t("storeSettings.noFavicon")}</p>}
+                  <p className="text-[11px] text-[var(--sub)] mb-3">{t("storeSettings.faviconHint")}</p>
+                  <input ref={faviconInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadFavicon} />
+                  <Can code="StoreSettings.Edit">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => faviconInputRef.current?.click()}
+                        disabled={faviconUploading}
+                        className="btn btn-primary btn-sm"
+                      >
+                        {faviconUploading ? t("storeSettings.saving") : store?.favicon ? t("storeSettings.changeFavicon") : t("storeSettings.uploadFavicon")}
+                      </button>
+                      {store?.favicon && (
+                        <button
+                          type="button"
+                          onClick={handleDeleteFavicon}
+                          disabled={faviconRemoving}
+                          className="btn btn-outline btn-sm"
+                        >
+                          {faviconRemoving ? t("storeSettings.saving") : t("storeSettings.removeFavicon")}
                         </button>
                       )}
                     </div>
@@ -1571,6 +1661,12 @@ export default function StoreSettingsPage() {
         {activeTab === "blog" && (
           <SettingCard icon="edit" title={t("storeBlog.title")} accent="blue">
             <StoreBlogManager />
+          </SettingCard>
+        )}
+
+        {activeTab === "banners" && (
+          <SettingCard icon="layout" title={t("banners.title")} accent="gold">
+            <StoreBannersManager />
           </SettingCard>
         )}
 

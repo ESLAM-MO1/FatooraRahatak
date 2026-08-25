@@ -20,6 +20,8 @@ public interface IStoreService
     Task<StoreThemeResponseDto> GetThemeAsync(long ownerUserId);
     Task<StoreInfoDto> UpdateLogoAsync(long ownerUserId, UpdateStoreLogoDto dto);
     Task<StoreInfoDto> DeleteLogoAsync(long ownerUserId);
+    Task<StoreInfoDto> UpdateFaviconAsync(long ownerUserId, UpdateStoreFaviconDto dto);
+    Task<StoreInfoDto> DeleteFaviconAsync(long ownerUserId);
     Task<StoreInfoDto> UpdateShippingDiscountsAsync(long ownerUserId, UpdateShippingDiscountsDto dto);
     Task<StoreInfoDto> UpdateMenuPagesAsync(long ownerUserId, UpdateMenuPagesDto dto);
 }

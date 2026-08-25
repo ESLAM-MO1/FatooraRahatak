@@ -10,6 +10,7 @@ import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import Can from "@/components/Can";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 interface OrderItem {
   productId: number;
@@ -100,6 +101,7 @@ const statusOptions = [
 
 export default function OrderDetailPage() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const params = useParams();
   const id = params.id as string;
 
@@ -173,7 +175,7 @@ export default function OrderDetailPage() {
   };
 
   const handleCancel = async () => {
-    if (!order || !confirm(t("orderDetail.cancelConfirm"))) return;
+    if (!order || !(await confirm(t("orderDetail.cancelConfirm")))) return;
     setSaving(true);
     setError("");
     setSuccessMessage("");
@@ -189,7 +191,7 @@ export default function OrderDetailPage() {
   };
 
   const handleConfirmBankTransfer = async () => {
-    if (!order || !confirm(t("orderDetail.confirmBankTransferConfirm"))) return;
+    if (!order || !(await confirm(t("orderDetail.confirmBankTransferConfirm")))) return;
     setSaving(true);
     setError("");
     setSuccessMessage("");

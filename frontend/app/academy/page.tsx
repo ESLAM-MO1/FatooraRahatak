@@ -13,6 +13,7 @@ interface Course {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  imageUrl?: string | null;
   category: string;
   duration: string;
   level: string;
@@ -49,6 +50,7 @@ const LEVEL_COLORS: Record<string, { fg: string; bg: string }> = {
 export default function AcademyPage() {
   const { t, i18n } = useTranslation();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [intro, setIntro] = useState<{ titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; imageUrl?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeCat, setActiveCat] = useState("all");
   const [selected, setSelected] = useState<CourseDetail | null>(null);
@@ -59,6 +61,7 @@ export default function AcademyPage() {
 
   useEffect(() => {
     api.get("/site/courses").then((res) => setCourses(res.data?.data || [])).catch(() => setCourses([])).finally(() => setLoading(false));
+    api.get("/site/academy-intro").then((res) => { const d = res.data?.data; if (d) setIntro(d); }).catch(() => {});
   }, []);
 
   const loc = (ar: string, en: string) => (i18n.language === "ar" ? (ar || en) : (en || ar));
@@ -113,6 +116,26 @@ export default function AcademyPage() {
     <SiteLayout>
       <Hero title={t("page.academy")} subtitle={t("academyPublic.intro")} />
 
+      {intro && (loc(intro.titleAr, intro.titleEn) || loc(intro.descriptionAr, intro.descriptionEn) || intro.imageUrl) && (
+        <div className="max-w-5xl mx-auto px-4 pt-12">
+          <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)" }}>
+            {intro.imageUrl && (
+              <div className="w-full h-48 sm:h-64 bg-gray-100">
+                <img src={intro.imageUrl} alt={loc(intro.titleAr, intro.titleEn)} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div className="p-6 sm:p-8 text-center">
+              {loc(intro.titleAr, intro.titleEn) && (
+                <h2 className="text-[22px] sm:text-[26px] font-extrabold mb-3" style={{ color: "var(--blue-deep)" }}>{loc(intro.titleAr, intro.titleEn)}</h2>
+              )}
+              {loc(intro.descriptionAr, intro.descriptionEn) && (
+                <p className="text-[14px] sm:text-[15px] leading-relaxed max-w-2xl mx-auto" style={{ color: "var(--sub)" }}>{loc(intro.descriptionAr, intro.descriptionEn)}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto px-4 py-12">
         {loading ? (
           <LoadingState />
@@ -134,6 +157,11 @@ export default function AcademyPage() {
                 const lvStyle = levelStyle(c.level);
                 return (
                   <div key={c.id} className="rounded-2xl border p-6 flex flex-col" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)" }}>
+                    {(c as any).imageUrl && (
+                      <div className="w-full h-36 rounded-xl overflow-hidden mb-4 bg-gray-100">
+                        <img src={(c as any).imageUrl} alt={loc(c.titleAr, c.titleEn)} className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mb-3">
                       <span className="px-3 py-1 rounded-full text-[11.5px] font-bold" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>{catLabel(c.category)}</span>
                       {c.level && (

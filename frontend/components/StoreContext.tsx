@@ -21,6 +21,7 @@ export interface StoreData {
   coverImage: string | null;
   customCss: string | null;
   logo: string | null;
+  favicon: string | null;
   currency: string;
   defaultLanguage: string;
   contactPhone: string | null;

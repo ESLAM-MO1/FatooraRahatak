@@ -7,6 +7,7 @@ import { isAuthenticated, getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import Toast from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import "@/lib/i18n/config";
 
 interface Job {
@@ -39,9 +40,17 @@ interface JobApplication {
 type FormState = { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; location: string; type: string; sortOrder: number; isActive: boolean };
 const EMPTY_FORM: FormState = { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", location: "", type: "Full-time", sortOrder: 1, isActive: true };
 const JOB_TYPES = ["Full-time", "Part-time", "Remote", "Freelance", "Internship"];
+const JOB_TYPE_LABELS: Record<string, string> = {
+  "Full-time": "دوام كامل",
+  "Part-time": "دوام جزئي",
+  Remote: "عن بُعد",
+  Freelance: "عمل حر",
+  Internship: "تدريب",
+};
 
 export default function CareersAdminPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [ready, setReady] = useState(false);
@@ -141,7 +150,7 @@ export default function CareersAdminPage() {
   };
 
   const remove = async (j: Job) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/jobs/${j.id}`);
       await loadJobs();
@@ -153,7 +162,7 @@ export default function CareersAdminPage() {
   };
 
   const removeApp = async (a: JobApplication) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/job-applications/${a.id}`);
       await loadApplications();
@@ -239,9 +248,12 @@ export default function CareersAdminPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-[17px] font-bold mb-4" style={{ color: "var(--blue-deep)" }}>
-              {editingId ? t("careers.editJob") : t("careers.addJob")}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>
+                {editingId ? t("careers.editJob") : t("careers.addJob")}
+              </h3>
+              <button type="button" onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -269,7 +281,7 @@ export default function CareersAdminPage() {
                 <div>
                   <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("careers.type")}</label>
                   <select className="w-full border rounded-lg px-3 py-2 text-[13px]" value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-                    {JOB_TYPES.map(ty => <option key={ty} value={ty}>{ty}</option>)}
+                    {JOB_TYPES.map(ty => <option key={ty} value={ty}>{JOB_TYPE_LABELS[ty] || ty}</option>)}
                   </select>
                 </div>
                 <div>
@@ -297,7 +309,10 @@ export default function CareersAdminPage() {
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-3 mb-1">
               <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>{t("careers.applicationDetails")}</h3>
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0" style={{ ...statusStyle(selectedApp.status) }}>{statusLabel(selectedApp.status)}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold shrink-0" style={{ ...statusStyle(selectedApp.status) }}>{statusLabel(selectedApp.status)}</span>
+                <button type="button" onClick={() => setSelectedApp(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+              </div>
             </div>
             <p className="text-[12.5px] mb-4 text-[var(--sub)]">{i18nText(selectedApp.jobTitleAr, selectedApp.jobTitleEn)} · {new Date(selectedApp.createdAt).toLocaleString()}</p>
 

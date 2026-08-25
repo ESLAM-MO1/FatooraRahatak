@@ -168,7 +168,7 @@ public class RoleService : IRoleService
 
         var hasEmployees = await _context.Employees.AnyAsync(e => e.RoleId == roleId);
         if (hasEmployees)
-            throw new InvalidOperationException("لا يمكن حذف مسمى وظيفي له موظفين");
+            throw new InvalidOperationException("لا يمكن حذف مسمى وظيفي له موظفون");
 
         var rolePerms = await _context.RolePermissions.Where(rp => rp.RoleId == roleId).ToListAsync();
         _context.RolePermissions.RemoveRange(rolePerms);

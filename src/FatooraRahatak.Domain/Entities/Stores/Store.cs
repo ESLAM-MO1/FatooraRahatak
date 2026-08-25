@@ -15,6 +15,7 @@ public class Store : BaseEntity
     public string? CustomDomain { get; set; }
     public CustomDomainStatus CustomDomainStatus { get; set; } = CustomDomainStatus.None;
     public string? Logo { get; set; }
+    public string? Favicon { get; set; }
     public StoreStatus Status { get; set; } = StoreStatus.PendingApproval;
     public long PackageId { get; set; }
     public long? ActiveSubscriptionId { get; set; }

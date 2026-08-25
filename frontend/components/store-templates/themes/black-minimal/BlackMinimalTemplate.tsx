@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, PackageIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -68,6 +69,8 @@ export default function BlackMinimalTemplate({
         </div>}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
 
       {showHero && <section className="w-full" style={{ background: "#000000", color: "#fff" }}>
@@ -90,6 +93,7 @@ export default function BlackMinimalTemplate({
         </div>
       </section>}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="products" style={{ padding: "48px 0" }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <h2 className="text-[12px] font-bold tracking-[0.24em] uppercase" style={{ color: "#000" }}>{t("storefront.featuredProducts")}</h2>
@@ -138,6 +142,8 @@ export default function BlackMinimalTemplate({
           </form>
         </div>
       </section>}
+
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, padding: "52px 0 40px" }}>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">

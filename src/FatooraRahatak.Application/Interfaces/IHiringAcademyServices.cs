@@ -31,4 +31,7 @@ public interface IAcademyService
     Task EnrollAsync(long courseId, EnrollCourseDto dto);
     Task UpdateEnrollmentStatusAsync(long id, string status);
     Task DeleteEnrollmentAsync(long id);
+
+    Task<AcademyPageIntroDto> GetPageIntroAsync();
+    Task UpdatePageIntroAsync(AcademyPageIntroDto dto);
 }

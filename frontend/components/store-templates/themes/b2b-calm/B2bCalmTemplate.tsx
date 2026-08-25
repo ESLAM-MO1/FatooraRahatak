@@ -12,6 +12,7 @@ import StoreSocialLinks from "@/components/store-templates/StoreSocialLinks";
 import { BagIcon, HeartIcon, HeartFilledIcon, MenuIcon, CloseIcon, MailIcon, PhoneIcon, MapPinIcon, PackageIcon, CheckIcon, LeafIcon } from "@/components/store-templates/icons";
 import StoreMainMenu from "@/components/store-templates/StoreMainMenu";
 import StorePolicyLinks from "@/components/store-templates/StorePolicyLinks";
+import StoreBanners from "@/components/store-templates/StoreBanners";
 
 interface TemplateProps extends StoreTemplateProps {
   themeMeta: StoreThemeMeta;
@@ -63,6 +64,8 @@ export default function B2bCalmTemplate({
         {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "#E3EDEA", background: "#fff" }}><StoreMainMenu slug={slug} mobile containerClassName="px-4 py-3 space-y-2 text-[15px] font-semibold" containerStyle={{ color: colors.headerColor }} linkClassName="block py-1.5" /></div>}
       </header>
 
+      {showHero && <StoreBanners slug={slug} position="HomeTop" />}
+
       {!showHero && <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
 
       {showHero && (
@@ -92,6 +95,7 @@ export default function B2bCalmTemplate({
         </section>
       )}
 
+      {showHero && <StoreBanners slug={slug} position="HomeMiddle" />}
       {showHero && <section id="products" style={{ padding: "32px 0 48px" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <h2 className="font-bold text-xl" style={{ color: colors.headerColor }}>{t("storefront.featuredProducts")}</h2>
@@ -142,6 +146,8 @@ export default function B2bCalmTemplate({
           </form>
         </div>
       </section>}
+
+      {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, padding: "48px 0 32px" }}>
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">

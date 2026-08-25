@@ -37,7 +37,10 @@ export default function AddWarehouseModal({ onClose, onSuccess }: Props) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <h2 className="text-[17px] font-bold text-[var(--blue-deep)] mb-5">{t("warehouse.add")}</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-[17px] font-bold text-[var(--blue-deep)]">{t("warehouse.add")}</h2>
+          <button type="button" onClick={onClose} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+        </div>
         {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

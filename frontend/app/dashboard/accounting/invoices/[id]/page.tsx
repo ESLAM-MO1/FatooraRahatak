@@ -43,8 +43,23 @@ async function downloadPdf(id: string, t: (k: string) => string) {
     a.remove();
     URL.revokeObjectURL(url);
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { message?: string } } };
-    alert(e.response?.data?.message || t("invoice.loadError"));
+    const e = err as { response?: { data?: Blob; message?: string }; message?: string };
+    let serverMsg = "";
+    try {
+      // الـ responseType blob يحوّل رسالة الخطأ JSON إلى Blob — نقرأها يدويًا لنعرضها للمستخدم
+      if (e.response?.data instanceof Blob) {
+        const text = await e.response.data.text();
+        try {
+          const parsed = JSON.parse(text);
+          serverMsg = parsed?.message || "";
+        } catch {
+          serverMsg = text;
+        }
+      }
+    } catch {
+      // تجاهل فشل قراءة الاستجابة
+    }
+    throw new Error(serverMsg || e.message || t("invoice.pdfError"));
   }
 }
 
@@ -57,6 +72,73 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<{ success: boolean; text: string } | null>(null);
+  const [payLinkOpen, setPayLinkOpen] = useState(false);
+  const [payLinkGenerating, setPayLinkGenerating] = useState(false);
+  const [payLink, setPayLink] = useState<string | null>(null);
+  const [payLinkMsg, setPayLinkMsg] = useState<{ success: boolean; text: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleVerifyZatca = async () => {
+    setVerifying(true);
+    setVerifyMsg(null);
+    try {
+      const res = await api.post(`/owner/zatca/invoices/${id}/verify`);
+      setVerifyMsg({ success: res.data.success, text: res.data.message });
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setVerifyMsg({ success: false, text: e.response?.data?.message || t("invoice.verifyError") });
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleCreatePayLink = async () => {
+    if (!invoice) return;
+    setPayLinkGenerating(true);
+    setPayLinkMsg(null);
+    try {
+      const res = await api.post("/payments/create-link", {
+        invoiceId: invoice.id,
+        amount: invoice.totalAmount,
+        currency: "SAR",
+        successUrl: window.location.href,
+        callbackUrl: window.location.href,
+      });
+      if (res.data?.success && res.data?.data?.paymentLinkUrl) {
+        setPayLink(res.data.data.paymentLinkUrl);
+      } else {
+        setPayLinkMsg({ success: false, text: res.data?.message || t("invoice.payLinkError") });
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setPayLinkMsg({ success: false, text: e.response?.data?.message || t("invoice.payLinkError") });
+    } finally {
+      setPayLinkGenerating(false);
+    }
+  };
+
+  const copyPayLink = async () => {
+    if (!payLink) return;
+    try {
+      await navigator.clipboard.writeText(payLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // تجاهل
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setError("");
+    try {
+      await downloadPdf(id, t);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t("invoice.pdfError");
+      setError(message);
+    }
+  };
 
   useEffect(() => {
     if (!gate.ready || !gate.allowed) return;
@@ -121,13 +203,36 @@ export default function InvoiceDetailPage() {
             <Icon name="printer" /> {t("invoice.print")}
           </button>
           <button
-            onClick={() => downloadPdf(id, t)}
+            onClick={handleDownloadPdf}
             className="btn btn-outline btn-sm"
           >
             <Icon name="download" /> {t("invoice.downloadPdf")}
           </button>
+          {invoice.paymentStatus !== "Paid" && (
+            <button
+              onClick={() => { setPayLinkOpen(true); setPayLink(null); setPayLinkMsg(null); }}
+              className="btn btn-outline btn-sm"
+            >
+              <Icon name="link" /> {t("invoice.createPayLink")}
+            </button>
+          )}
+          {isSales && (
+            <button
+              onClick={handleVerifyZatca}
+              disabled={verifying}
+              className="btn btn-primary btn-sm"
+            >
+              <Icon name="check" /> {verifying ? t("common.loading") : t("invoice.verifyZatca")}
+            </button>
+          )}
         </div>
       </div>
+
+      {verifyMsg && (
+        <div className={`alert mb-4 ${verifyMsg.success ? "alert--success" : "alert--danger"}`}>
+          {verifyMsg.text}
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -355,6 +460,64 @@ export default function InvoiceDetailPage() {
           <div>
             <p className="text-[13px] font-bold text-[var(--ink)]">{t("invoice.taxInvoice")}</p>
             <p className="text-[12px] text-[var(--sub)] mt-1">{t("invoice.vatNumber")}: {invoice.vatNumber}</p>
+          </div>
+        </div>
+      )}
+
+      {payLinkOpen && (
+        <div className="modal-overlay" onClick={() => setPayLinkOpen(false)}>
+          <div className="modal-card max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[17px] font-bold text-[var(--blue-deep)]">{t("invoice.payLinkTitle")}</h2>
+              <button onClick={() => setPayLinkOpen(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            {payLinkMsg && (
+              <div className={`alert mb-4 ${payLinkMsg.success ? "alert--success" : "alert--danger"}`}>
+                {payLinkMsg.text}
+              </div>
+            )}
+            <div className="space-y-4">
+              {!payLink ? (
+                <>
+                  <p className="text-[13px] text-[var(--sub)] leading-relaxed">
+                    {t("invoice.payLinkDesc")}
+                  </p>
+                  <div className="bg-gray-50 rounded-xl p-4 text-[13px] space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--sub)]">{t("invoice.invoiceValue")}</span>
+                      <span className="font-bold" dir="ltr">{invoice.totalAmount.toFixed(2)} {t("common.sar")}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--sub)]">{t("invoice.invoiceNumber")}</span>
+                      <span className="font-bold" dir="ltr">{invoice.invoiceNumber}</span>
+                    </div>
+                  </div>
+                  <button onClick={handleCreatePayLink} disabled={payLinkGenerating} className="btn btn-primary w-full py-2.5">
+                    {payLinkGenerating ? t("common.loading") : t("invoice.generatePayLink")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[13px] text-[var(--sub)]">{t("invoice.payLinkReady")}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="field-shell flex-1">
+                      <input type="text" readOnly value={payLink} dir="ltr" className="text-[12px]" />
+                    </div>
+                    <button onClick={copyPayLink} className="btn btn-outline btn-sm shrink-0">
+                      <Icon name="copy" size={14} /> {copied ? t("invoice.copied") : t("invoice.copy")}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => { window.open(payLink, "_blank"); }} className="btn btn-primary flex-1 py-2.5">
+                      <Icon name="link" size={14} /> {t("invoice.openPayLink")}
+                    </button>
+                    <button onClick={() => setPayLinkOpen(false)} className="btn btn-outline flex-1 py-2.5">
+                      {t("common.done")}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

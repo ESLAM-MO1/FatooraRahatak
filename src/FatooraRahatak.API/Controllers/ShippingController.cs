@@ -60,6 +60,31 @@ public class ShippingController : ControllerBase
         }
     }
 
+    [RequirePermission("ShippingCompanies.Add")]
+    [HttpPost("companies/fetch")]
+    public async Task<IActionResult> FetchCompanies()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _shippingService.FetchCompaniesAsync(storeId.Value);
+            return Ok(new
+            {
+                success = true,
+                data = result,
+                message = result.Added > 0
+                    ? $"تمت إضافة {result.Added} شركة شحن جديدة ({string.Join("، ", result.AddedCompanies)})"
+                    : "جميع شركات الشحن المتاحة مضافة بالفعل"
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [RequirePermission("ShippingCompanies.Edit")]
     [HttpPut("companies/{id}")]
     public async Task<IActionResult> UpdateCompany(long id, [FromBody] UpdateShippingCompanyDto dto)

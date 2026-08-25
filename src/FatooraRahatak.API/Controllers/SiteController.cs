@@ -166,6 +166,13 @@ public class SiteController : ControllerBase
         return Ok(new { success = true, data });
     }
 
+    [HttpGet("academy-intro")]
+    public async Task<IActionResult> GetAcademyIntro()
+    {
+        var data = await _academyService.GetPageIntroAsync();
+        return Ok(new { success = true, data });
+    }
+
     [HttpGet("courses/{id}")]
     public async Task<IActionResult> GetCourse(long id)
     {

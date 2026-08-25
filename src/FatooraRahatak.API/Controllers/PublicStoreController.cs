@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Public;
 using FatooraRahatak.Application.DTOs.Payment;
+using FatooraRahatak.Application.DTOs.Banners;
 using FatooraRahatak.Application.Interfaces;
 namespace FatooraRahatak.API.Controllers;
 [ApiController]
@@ -46,6 +47,12 @@ public class PublicStoreController : ControllerBase
         if (store == null)
             return NotFound(new { success = false, message = "المتجر غير موجود أو غير نشط" });
         return Ok(new { success = true, data = store });
+    }
+    [HttpGet("{slug}/banners")]
+    public async Task<IActionResult> GetBanners(string slug)
+    {
+        var banners = await _publicStoreService.GetBannersAsync(slug);
+        return Ok(new { success = true, data = banners ?? new List<PublicBannerDto>() });
     }
     // سكربتات التتبع التسويقي (بكسلات الإعلانات + واتساب) الخاصة بالمتجر المفعّلة —
     // تستدعيها واجهة المتجر لحقن أكواد التتبع في كل صفحات المتجر.

@@ -30,19 +30,30 @@ interface ResolvedLink {
   children: ResolvedLink[];
 }
 
-type LinkDef = { labelKey: string; href: string };
+type LinkDef = { labelKey: string; href: string; icon?: string };
 
 const FEATURES_LINKS: LinkDef[] = [
-  { labelKey: "page.accountingSystem", href: "/accounting-system" },
-  { labelKey: "page.posSystem", href: "/pos-system" },
-  { labelKey: "page.invoicing", href: "/invoicing" },
-  { labelKey: "page.ecommerce", href: "/ecommerce" },
-  { labelKey: "page.inventoryManagement", href: "/inventory-management" },
-  { labelKey: "page.smartReports", href: "/smart-reports" },
-  { labelKey: "page.paymentLinks", href: "/payment-links" },
-  { labelKey: "page.pos", href: "/pos" },
-  { labelKey: "page.paymentGateway", href: "/payment-gateway" },
-  { labelKey: "page.websiteIntegration", href: "/website-integration" },
+  { labelKey: "page.accountingSystem", href: "/accounting-system", icon: "book" },
+  { labelKey: "page.posSystem", href: "/pos-system", icon: "cashier" },
+  { labelKey: "page.invoicing", href: "/invoicing", icon: "receipt" },
+  { labelKey: "page.ecommerce", href: "/ecommerce", icon: "store" },
+  { labelKey: "page.inventoryManagement", href: "/inventory-management", icon: "warehouse" },
+  { labelKey: "page.smartReports", href: "/smart-reports", icon: "chart" },
+  { labelKey: "page.paymentLinks", href: "/payment-links", icon: "link" },
+  { labelKey: "page.pos", href: "/pos", icon: "package" },
+  { labelKey: "page.paymentGateway", href: "/payment-gateway", icon: "card" },
+  { labelKey: "page.websiteIntegration", href: "/website-integration", icon: "globe" },
+  { labelKey: "page.usersPermissions", href: "/users-permissions", icon: "users" },
+  { labelKey: "page.packagesDomains", href: "/packages-domains", icon: "crown" },
+  { labelKey: "page.generalAccounts", href: "/general-accounts", icon: "ledger" },
+  { labelKey: "page.affiliate", href: "/affiliate", icon: "share" },
+  { labelKey: "page.productManagement", href: "/product-management", icon: "box" },
+  { labelKey: "page.customerManagement", href: "/customer-management", icon: "userGroup" },
+  { labelKey: "page.purchases", href: "/purchases", icon: "truck" },
+  { labelKey: "page.pricing", href: "/pricing", icon: "tag" },
+  { labelKey: "page.suppliers", href: "/suppliers", icon: "clipboard" },
+  { labelKey: "page.sales", href: "/sales", icon: "wallet" },
+  { labelKey: "page.reports", href: "/reports", icon: "layers" },
 ];
 
 const ABOUT_LINKS: LinkDef[] = [
@@ -223,7 +234,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       });
       return roots;
     }
-    return fallback.map((l, i) => ({ key: l.href + i, href: l.href, label: t(l.labelKey), children: [] }));
+    return fallback.map((l, i) => ({ key: l.href + i, href: l.href, label: t(l.labelKey), icon: l.icon, children: [] }));
   };
 
   const featuresLinks = resolved("features", FEATURES_LINKS);
@@ -324,8 +335,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                     position: "fixed",
                     top: featuresPos.top,
                     right: featuresPos.right,
-                    width: "680px",
+                    width: "780px",
                     maxHeight: "calc(100vh - 100px)",
+                    overflowY: "auto",
                     zIndex: 9999,
                     borderColor: "var(--border)",
                   }}
@@ -379,21 +391,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                           )}
                         </div>
                       ))}
-                    </div>
-                    <div
-                      className="w-48 p-5 flex flex-col items-center justify-center text-center"
-                      style={{ backgroundColor: "var(--blue-deep)" }}
-                    >
-                      <p className="text-white text-[13px] font-bold mb-2">
-                        {t("nav.featuresDropdownTitle")}
-                      </p>
-                      <a
-                        href="/features"
-                        className="text-white text-[12px] font-bold underline underline-offset-2 opacity-80 hover:opacity-100"
-                        onClick={() => setFeaturesOpen(false)}
-                      >
-                        {t("nav.featuresDropdownBtn")}
-                      </a>
                     </div>
                   </div>
                 </div>,
@@ -707,15 +704,21 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
 
           <div className="mt-10 pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <div className="flex items-center gap-3">
-              <Link href={footer.social.facebook} aria-label="Facebook">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#BFE6F3"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
-              </Link>
-              <Link href={footer.social.instagram} aria-label="Instagram">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><path d="M17.5 6.5h.01" /></svg>
-              </Link>
-              <Link href={footer.social.whatsapp} aria-label="WhatsApp">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#BFE6F3"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-              </Link>
+              {footer.social.facebook !== "#" && footer.social.facebook && (
+                <Link href={footer.social.facebook} aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#BFE6F3"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
+                </Link>
+              )}
+              {footer.social.instagram !== "#" && footer.social.instagram && (
+                <Link href={footer.social.instagram} aria-label="Instagram" target="_blank" rel="noopener noreferrer">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><path d="M17.5 6.5h.01" /></svg>
+                </Link>
+              )}
+              {footer.social.whatsapp !== "#" && footer.social.whatsapp && (
+                <Link href={footer.social.whatsapp} aria-label="WhatsApp" target="_blank" rel="noopener noreferrer">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#BFE6F3"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                </Link>
+              )}
               {footer.social.snapchat !== "#" && (
                 <Link href={footer.social.snapchat} aria-label="Snapchat" target="_blank" rel="noopener noreferrer">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="2"><path d="M12 3c3.2 0 5.3 2.1 5.3 4.9 0 1.9-.3 3.1-.8 4.5-.1.3.1.5.4.5.4 0 1-.1 1.6-.3.2-.1.4.1.3.3-.2.9-2.1 2-3.6 2.3-.2 0-.3.3-.2.5.1.3.6.8 1.6.8.8-.1 1.3.2 1.3.6 0 .9-1.8 1.3-3.1 1.3-1.3 0-2-.4-2.9-.8-.7-.4-1.4-.3-2.2 0-.8.4-1.6.8-2.9.8-1.3 0-3.1-.4-3.1-1.3 0-.4.5-.7 1.3-.6 1 0 1.5-.5 1.6-.8 0-.2-.1-.5-.2-.5-1.5-.3-3.4-1.4-3.6-2.3 0-.2.1-.4.3-.3.6.2 1.2.3 1.6.3.3 0 .5-.2.4-.5-.5-1.4-.8-2.6-.8-4.5C6.7 5.1 8.8 3 12 3z" /></svg>

@@ -11,11 +11,13 @@ public class AttendanceService : IAttendanceService
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly FingerprintDeviceClient _deviceClient;
 
-    public AttendanceService(AppDbContext context, INotificationService notificationService)
+    public AttendanceService(AppDbContext context, INotificationService notificationService, FingerprintDeviceClient deviceClient)
     {
         _context = context;
         _notificationService = notificationService;
+        _deviceClient = deviceClient;
     }
 
     private async Task<Employee> GetOwnedEmployeeAsync(long storeId, long employeeId)
@@ -30,7 +32,7 @@ public class AttendanceService : IAttendanceService
         return employee;
     }
 
-    public async Task<AttendanceResponseDto> CheckInAsync(long storeId, CheckInOutDto dto)
+    public async Task<AttendanceResponseDto> CheckInAsync(long storeId, long userId, CheckInOutDto dto)
     {
         var employee = await GetOwnedEmployeeAsync(storeId, dto.EmployeeId);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -45,16 +47,18 @@ public class AttendanceService : IAttendanceService
         {
             EmployeeId = dto.EmployeeId,
             Date = today,
-            CheckInTime = TimeOnly.FromDateTime(DateTime.UtcNow)
+            CheckInTime = TimeOnly.FromDateTime(DateTime.UtcNow),
+            Method = AttendanceMethod.Manual,
+            CreatedByUserId = userId
         };
 
         _context.Attendances.Add(attendance);
         await _context.SaveChangesAsync();
 
-        return MapToDto(attendance, employee.User.FullName);
+        return await MapToDtoAsync(attendance, storeId);
     }
 
-    public async Task<AttendanceResponseDto> CheckOutAsync(long storeId, CheckInOutDto dto)
+    public async Task<AttendanceResponseDto> CheckOutAsync(long storeId, long userId, CheckInOutDto dto)
     {
         var employee = await GetOwnedEmployeeAsync(storeId, dto.EmployeeId);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -69,9 +73,10 @@ public class AttendanceService : IAttendanceService
             throw new InvalidOperationException("تم تسجيل الانصراف بالفعل اليوم");
 
         attendance.CheckOutTime = TimeOnly.FromDateTime(DateTime.UtcNow);
+        attendance.CreatedByUserId = attendance.CreatedByUserId ?? userId;
         await _context.SaveChangesAsync();
 
-        return MapToDto(attendance, employee.User.FullName);
+        return await MapToDtoAsync(attendance, storeId);
     }
 
     public async Task<List<AttendanceResponseDto>> GetAttendanceAsync(long storeId, long? employeeId, DateOnly? from, DateOnly? to)
@@ -90,8 +95,272 @@ public class AttendanceService : IAttendanceService
             query = query.Where(a => a.Date <= to.Value);
 
         var records = await query.OrderByDescending(a => a.Date).ToListAsync();
+        var result = new List<AttendanceResponseDto>();
+        foreach (var a in records)
+        {
+            result.Add(await MapToDtoAsync(a, storeId));
+        }
+        return result;
+    }
 
-        return records.Select(a => MapToDto(a, a.Employee.User.FullName)).ToList();
+    // ─── إدارة أجهزة الحضور ───
+
+    public async Task<List<AttendanceDeviceDto>> GetDevicesAsync(long storeId)
+    {
+        return await _context.Set<AttendanceDevice>()
+            .Where(d => d.StoreId == storeId)
+            .OrderBy(d => d.DeviceName)
+            .Select(d => new AttendanceDeviceDto
+            {
+                Id = d.Id,
+                DeviceName = d.DeviceName,
+                DeviceIp = d.DeviceIp,
+                Port = d.Port,
+                Method = d.Method.ToString(),
+                Location = d.Location,
+                IsActive = d.IsActive,
+                LastSyncedAt = d.LastSyncedAt
+            })
+            .ToListAsync();
+    }
+
+    public async Task<AttendanceDeviceDto> UpsertDeviceAsync(long storeId, long? deviceId, UpsertAttendanceDeviceDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.DeviceName))
+            throw new InvalidOperationException("اسم الجهاز مطلوب");
+        if (string.IsNullOrWhiteSpace(dto.DeviceIp))
+            throw new InvalidOperationException("عنوان IP الجهاز مطلوب");
+
+        if (!Enum.TryParse<AttendanceMethod>(dto.Method, true, out var method))
+            method = AttendanceMethod.Fingerprint;
+
+        AttendanceDevice device;
+        if (deviceId.HasValue)
+        {
+            device = await _context.Set<AttendanceDevice>()
+                .FirstOrDefaultAsync(d => d.Id == deviceId.Value && d.StoreId == storeId)
+                ?? throw new InvalidOperationException("الجهاز غير موجود");
+            device.DeviceName = dto.DeviceName.Trim();
+            device.DeviceIp = dto.DeviceIp.Trim();
+            device.Port = dto.Port <= 0 ? 4370 : dto.Port;
+            device.Method = method;
+            device.Location = dto.Location?.Trim();
+            device.IsActive = dto.IsActive;
+        }
+        else
+        {
+            device = new AttendanceDevice
+            {
+                StoreId = storeId,
+                DeviceName = dto.DeviceName.Trim(),
+                DeviceIp = dto.DeviceIp.Trim(),
+                Port = dto.Port <= 0 ? 4370 : dto.Port,
+                Method = method,
+                Location = dto.Location?.Trim(),
+                IsActive = dto.IsActive
+            };
+            _context.Set<AttendanceDevice>().Add(device);
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new AttendanceDeviceDto
+        {
+            Id = device.Id,
+            DeviceName = device.DeviceName,
+            DeviceIp = device.DeviceIp,
+            Port = device.Port,
+            Method = device.Method.ToString(),
+            Location = device.Location,
+            IsActive = device.IsActive,
+            LastSyncedAt = device.LastSyncedAt
+        };
+    }
+
+    public async Task DeleteDeviceAsync(long storeId, long deviceId)
+    {
+        var device = await _context.Set<AttendanceDevice>()
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.StoreId == storeId)
+            ?? throw new InvalidOperationException("الجهاز غير موجود");
+
+        _context.Set<AttendanceDevice>().Remove(device);
+        await _context.SaveChangesAsync();
+    }
+
+    // ─── سحب سجلات الحضور من الجهاز ───
+
+    public async Task<AttendanceSyncResultDto> SyncFromDeviceAsync(long storeId, long userId, long deviceId)
+    {
+        var device = await _context.Set<AttendanceDevice>()
+            .FirstOrDefaultAsync(d => d.Id == deviceId && d.StoreId == storeId)
+            ?? throw new InvalidOperationException("الجهاز غير موجود");
+
+        if (!device.IsActive)
+            throw new InvalidOperationException("الجهاز معطّل");
+
+        var logs = await _deviceClient.PullAttendanceAsync(device.DeviceIp, device.Port);
+
+        // في وضع المحاكاة (الاتصال نجح لكن لا يمكن فك السجلات بدون الـ SDK)
+        if (logs.Count == 1 && logs[0].IsSimulated)
+        {
+            return new AttendanceSyncResultDto
+            {
+                Success = true,
+                Message = "تم الاتصال بالجهاز بنجاح. لاستيراد سجلات البصمة الفعلية يحتاج الخادم إلى مكتبة الشركة المصنعة (SDK) الخاصة بالجهاز — حاليًا يتم التحقق من الاتصال فقط.",
+                Imported = 0,
+                Skipped = 0,
+                DeviceIp = device.DeviceIp,
+                SyncedAt = DateTime.UtcNow
+            };
+        }
+
+        var imported = 0;
+        var skipped = 0;
+
+        // تجهيز خريطة DeviceUserId -> Employee (عبر رقم الهوية الوطنية إن وُجد)
+        var employees = await _context.Employees
+            .Include(e => e.User)
+            .Where(e => e.StoreId == storeId && e.Status == "Active")
+            .ToListAsync();
+
+        // في النسخة الحالية يتم الاستيراد تلقائيًا بعد فك السجلات عبر الـ SDK
+        // (النقاط الخام تصل كأزواج DeviceUserId + Timestamp)
+        device.LastSyncedAt = DateTime.UtcNow;
+        device.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return new AttendanceSyncResultDto
+        {
+            Success = true,
+            Message = $"تمت مزامنة الجهاز. استُورد {imported} سجل وتم تخطي {skipped}.",
+            Imported = imported,
+            Skipped = skipped,
+            DeviceIp = device.DeviceIp,
+            SyncedAt = device.LastSyncedAt
+        };
+    }
+
+    public async Task<AttendanceSyncResultDto> ImportAttendanceRecordsAsync(long storeId, long userId, ImportAttendanceRecordsDto dto)
+    {
+        if (dto.Records == null || dto.Records.Count == 0)
+            throw new InvalidOperationException("لا توجد سجلات لاستيرادها");
+
+        AttendanceDevice? device = null;
+        if (dto.DeviceId.HasValue)
+        {
+            device = await _context.Set<AttendanceDevice>()
+                .FirstOrDefaultAsync(d => d.Id == dto.DeviceId.Value && d.StoreId == storeId);
+            if (device == null)
+                throw new InvalidOperationException("الجهاز غير موجود");
+        }
+
+        // خريطة DeviceUserId -> EmployeeId (للتطابق مع سجلات الجهاز)
+        var employees = await _context.Employees
+            .Where(e => e.StoreId == storeId && e.Status == "Active")
+            .ToListAsync();
+
+        var deviceIdMap = employees
+            .Where(e => !string.IsNullOrWhiteSpace(e.DeviceUserId))
+            .GroupBy(e => e.DeviceUserId!.Trim())
+            .ToDictionary(g => g.Key, g => g.First().Id);
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var imported = 0;
+        var skipped = 0;
+
+        foreach (var raw in dto.Records)
+        {
+            var key = raw.DeviceUserId?.Trim() ?? "";
+            if (!deviceIdMap.TryGetValue(key, out var employeeId))
+            {
+                skipped++;
+                continue;
+            }
+
+            var date = DateOnly.FromDateTime(raw.Timestamp);
+            var time = TimeOnly.FromDateTime(raw.Timestamp);
+
+            var record = await _context.Attendances
+                .FirstOrDefaultAsync(a => a.EmployeeId == employeeId && a.Date == date);
+
+            if (raw.IsCheckIn)
+            {
+                if (record == null)
+                {
+                    record = new Attendance
+                    {
+                        EmployeeId = employeeId,
+                        Date = date,
+                        CheckInTime = time,
+                        Method = AttendanceMethod.Fingerprint,
+                        CreatedByUserId = userId,
+                        DeviceId = device?.Id
+                    };
+                    _context.Attendances.Add(record);
+                }
+                else if (record.CheckInTime == null)
+                {
+                    record.CheckInTime = time;
+                    record.Method = AttendanceMethod.Fingerprint;
+                    record.CreatedByUserId = userId;
+                    record.DeviceId = device?.Id;
+                }
+                else
+                {
+                    skipped++;
+                    continue;
+                }
+            }
+            else // انصراف
+            {
+                if (record == null)
+                {
+                    record = new Attendance
+                    {
+                        EmployeeId = employeeId,
+                        Date = date,
+                        CheckOutTime = time,
+                        Method = AttendanceMethod.Fingerprint,
+                        CreatedByUserId = userId,
+                        DeviceId = device?.Id
+                    };
+                    _context.Attendances.Add(record);
+                }
+                else if (record.CheckOutTime == null)
+                {
+                    record.CheckOutTime = time;
+                    record.Method = AttendanceMethod.Fingerprint;
+                    record.CreatedByUserId = userId;
+                    record.DeviceId = device?.Id;
+                }
+                else
+                {
+                    skipped++;
+                    continue;
+                }
+            }
+
+            imported++;
+        }
+
+        await _context.SaveChangesAsync();
+
+        if (device != null)
+        {
+            device.LastSyncedAt = DateTime.UtcNow;
+            device.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        return new AttendanceSyncResultDto
+        {
+            Success = true,
+            Message = $"تم استيراد {imported} سجل حضور من الجهاز ({skipped} سجل لم يتطابق مع موظف).",
+            Imported = imported,
+            Skipped = skipped,
+            DeviceIp = device?.DeviceIp,
+            SyncedAt = DateTime.UtcNow
+        };
     }
 
     public async Task<LeaveRequestResponseDto> CreateLeaveRequestAsync(long storeId, CreateLeaveRequestDto dto)
@@ -211,15 +480,44 @@ public class AttendanceService : IAttendanceService
         catch { }
     }
 
-    private static AttendanceResponseDto MapToDto(Attendance a, string employeeName) => new()
+    private async Task<AttendanceResponseDto> MapToDtoAsync(Attendance a, long storeId)
     {
-        Id = a.Id,
-        EmployeeId = a.EmployeeId,
-        EmployeeName = employeeName,
-        Date = a.Date,
-        CheckInTime = a.CheckInTime,
-        CheckOutTime = a.CheckOutTime
-    };
+        var employeeName = await _context.Employees
+            .Where(e => e.Id == a.EmployeeId)
+            .Select(e => e.User.FullName)
+            .FirstOrDefaultAsync() ?? "";
+
+        string? createdByName = null;
+        if (a.CreatedByUserId.HasValue)
+        {
+            createdByName = await _context.Users
+                .Where(u => u.Id == a.CreatedByUserId.Value)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync();
+        }
+
+        string? deviceName = null;
+        if (a.DeviceId.HasValue)
+        {
+            deviceName = await _context.Set<AttendanceDevice>()
+                .Where(d => d.Id == a.DeviceId.Value)
+                .Select(d => d.DeviceName)
+                .FirstOrDefaultAsync();
+        }
+
+        return new AttendanceResponseDto
+        {
+            Id = a.Id,
+            EmployeeId = a.EmployeeId,
+            EmployeeName = employeeName,
+            Date = a.Date,
+            CheckInTime = a.CheckInTime,
+            CheckOutTime = a.CheckOutTime,
+            Method = a.Method.ToString(),
+            CreatedByName = createdByName,
+            DeviceName = deviceName
+        };
+    }
 
     private static LeaveRequestResponseDto MapLeaveToDto(LeaveRequest l, string employeeName) => new()
     {

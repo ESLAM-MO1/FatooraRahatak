@@ -112,6 +112,34 @@ public class ZatcaClient
         return result;
     }
 
+    public async Task<ZatcaSubmissionResponse> VerifyInvoiceAsync(
+        string uuid,
+        string csid,
+        string csidSecret,
+        CancellationToken ct = default)
+    {
+        var url = BaseUrl + $"/invoices/{uuid}";
+
+        var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.TryAddWithoutValidation("Accept-Version", "V2");
+        request.Headers.TryAddWithoutValidation("Accept-Language", "en");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Basic",
+            Convert.ToBase64String(Encoding.UTF8.GetBytes($"{csid}:{csidSecret}")));
+
+        using var response = await _httpClient.SendAsync(request, ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"فشل التحقق من الفاتورة لدى زاتكا ({(int)response.StatusCode}): {Truncate(body, 500)}");
+
+        var result = JsonSerializer.Deserialize<ZatcaSubmissionResponse>(body, JsonOpts)
+            ?? new ZatcaSubmissionResponse();
+        result.RawResponse = body;
+        return result;
+    }
+
     private static string Truncate(string value, int max) =>
         value.Length <= max ? value : value[..max];
 

@@ -30,6 +30,7 @@ const ownerNavKeys: NavGroupKey[] = [
       { href: "/dashboard/categories", labelKey: "nav.categories", icon: "tag", perm: "Categories.View" },
       { href: "/dashboard/coupons", labelKey: "nav.coupons", icon: "tag", perm: "Coupons.View" },
       { href: "/dashboard/store-settings", labelKey: "nav.storeSettings", icon: "settings", perm: "StoreSettings.View" },
+      { href: "/dashboard/integrations", labelKey: "nav.integrations", icon: "link", perm: "StoreSettings.View" },
       { href: "/dashboard/marketing", labelKey: "nav.marketing", icon: "share", perm: "StoreSettings.View" },
     ],
   },
@@ -813,12 +814,14 @@ const handler = () => {
 
       <div className="flex-1 flex flex-col overflow-y-auto">
           {actionSuccess && (
-            <div className="shrink-0 flex items-center gap-2 px-4 py-2.5 text-[13px] font-bold text-green-800 bg-green-100 border-b border-green-200">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
+            <div className="toast toast--success shrink-0 m-3 mb-0">
+              <span className="toast-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              </span>
               <span className="flex-1">{actionSuccess}</span>
-              <button onClick={() => setActionSuccess("")} className="text-green-600 hover:text-green-900">✕</button>
+              <button onClick={() => setActionSuccess("")} className="opacity-70 hover:opacity-100">✕</button>
             </div>
           )}
         <div

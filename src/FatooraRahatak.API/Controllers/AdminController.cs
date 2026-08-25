@@ -1169,6 +1169,26 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, message = "تم الحذف" });
     }
 
+    [HttpGet("academy-intro")]
+    public async Task<IActionResult> GetAcademyIntro()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetPageIntroAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("academy-intro")]
+    public async Task<IActionResult> UpdateAcademyIntro([FromBody] AcademyPageIntroDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdatePageIntroAsync(dto);
+            return Ok(new { success = true, message = "تم حفظ إعدادات الصفحة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
     [HttpGet("courses/{courseId}/lessons")]
     public async Task<IActionResult> GetCourseLessons(long courseId)
     {

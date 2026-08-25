@@ -8,6 +8,7 @@ public class AcademyCourse : BaseEntity
     public string TitleEn { get; set; } = string.Empty;
     public string DescriptionAr { get; set; } = string.Empty;
     public string DescriptionEn { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public string Category { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
     public string Level { get; set; } = string.Empty;

@@ -99,6 +99,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           coverImage: d.coverImage || null,
           customCss: d.customCss || null,
           logo: d.logo || null,
+          favicon: d.favicon || null,
           currency: d.currency || "SAR",
           defaultLanguage: lang,
           contactPhone: d.contactPhone || null,
@@ -132,6 +133,18 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
     };
     load();
   }, [slug]);
+
+  useEffect(() => {
+    if (!store?.favicon) return;
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      link.type = "image/png";
+      document.head.appendChild(link);
+    }
+    link.href = store.favicon;
+  }, [store?.favicon]);
 
   if (checking) return <LoadingFallback />;
 

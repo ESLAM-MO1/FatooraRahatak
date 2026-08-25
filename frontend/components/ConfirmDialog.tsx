@@ -57,9 +57,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           onClick={() => handleClose(false)}
         >
           <div
-            className="card p-6 w-full max-w-sm text-center"
+            className="card p-6 w-full max-w-sm text-center max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="flex justify-end mb-1">
+              <button type="button" onClick={() => handleClose(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
             <div
               className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
                 state.danger

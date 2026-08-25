@@ -27,8 +27,8 @@ interface Permission {
   id: number; moduleName: string; actionType: string; permissionCode: string;
 }
 
-const emptyForm = { fullName: "", email: "", phone: "", password: "", roleName: "", salary: "" };
-const emptyEditForm = { fullName: "", phone: "", roleName: "", salary: "" };
+const emptyForm = { fullName: "", email: "", phone: "", password: "", roleName: "", salary: "", nationalId: "", nationalAddress: "", birthDate: "", hireDate: "", deviceUserId: "" };
+const emptyEditForm = { fullName: "", phone: "", roleName: "", salary: "", nationalId: "", nationalAddress: "", birthDate: "", hireDate: "", deviceUserId: "" };
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
@@ -124,7 +124,15 @@ export default function EmployeesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setActionError(""); setSubmitting(true);
     try {
-      await api.post("/employees", { ...form, salary: parseFloat(form.salary) || 0 });
+      await api.post("/employees", {
+        ...form,
+        salary: parseFloat(form.salary) || 0,
+        nationalId: form.nationalId.trim() || null,
+        nationalAddress: form.nationalAddress.trim() || null,
+        birthDate: form.birthDate || null,
+        hireDate: form.hireDate || null,
+        deviceUserId: form.deviceUserId.trim() || null,
+      });
       closeAddModal(); setActionSuccess(t("employee.addSuccess")); await fetchEmployees();
     } catch (err: any) { setActionError(err.response?.data?.message || t("common.error")); }
     finally { setSubmitting(false); }
@@ -145,6 +153,11 @@ export default function EmployeesPage() {
       phone: employee.phone || "",
       roleName: employee.roleName,
       salary: employee.salary === 0 ? "" : String(employee.salary),
+      nationalId: (employee as any).nationalId || "",
+      nationalAddress: (employee as any).nationalAddress || "",
+      birthDate: (employee as any).birthDate || "",
+      hireDate: (employee as any).hireDate || "",
+      deviceUserId: (employee as any).deviceUserId || "",
     });
   };
 
@@ -159,6 +172,11 @@ export default function EmployeesPage() {
         phone: editForm.phone.trim() || null,
         salary: parseFloat(editForm.salary) || 0,
         status: "Active",
+        nationalId: editForm.nationalId.trim() || null,
+        nationalAddress: editForm.nationalAddress.trim() || null,
+        birthDate: editForm.birthDate || null,
+        hireDate: editForm.hireDate || null,
+        deviceUserId: editForm.deviceUserId.trim() || null,
       });
       setEditingEmployee(null);
       setEditForm(emptyEditForm);
@@ -318,6 +336,13 @@ export default function EmployeesPage() {
           </select></div>
           {form.roleName && roleHint(form.roleName) && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(form.roleName)}</p>}</div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
+          <div><label>{t("employee.nationalId")}</label><div className="field-shell"><input type="text" value={form.nationalId} onChange={e => setForm(f => ({ ...f, nationalId: e.target.value }))} placeholder={t("employee.nationalIdPlaceholder")} /></div></div>
+          <div><label>{t("employee.nationalAddress")}</label><div className="field-shell"><input type="text" value={form.nationalAddress} onChange={e => setForm(f => ({ ...f, nationalAddress: e.target.value }))} /></div></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label>{t("employee.birthDate")}</label><div className="field-shell"><input type="date" value={form.birthDate} onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))} /></div></div>
+            <div><label>{t("employee.hireDate")}</label><div className="field-shell"><input type="date" value={form.hireDate} onChange={e => setForm(f => ({ ...f, hireDate: e.target.value }))} /></div></div>
+          </div>
+          <div><label>{t("employee.deviceUserId")}</label><div className="field-shell"><input type="text" value={form.deviceUserId} onChange={e => setForm(f => ({ ...f, deviceUserId: e.target.value }))} placeholder={t("employee.deviceUserIdPlaceholder")} /></div></div>
           <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? t("common.loading") : t("employee.submitAdd")}</button>
         </form>
       </div></div>}
@@ -371,6 +396,13 @@ export default function EmployeesPage() {
           </select></div>
           {editForm.roleName && roleHint(editForm.roleName) && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(editForm.roleName)}</p>}</div>
           <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={editForm.salary} onChange={e => setEditForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
+          <div><label>{t("employee.nationalId")}</label><div className="field-shell"><input type="text" value={editForm.nationalId} onChange={e => setEditForm(f => ({ ...f, nationalId: e.target.value }))} placeholder={t("employee.nationalIdPlaceholder")} /></div></div>
+          <div><label>{t("employee.nationalAddress")}</label><div className="field-shell"><input type="text" value={editForm.nationalAddress} onChange={e => setEditForm(f => ({ ...f, nationalAddress: e.target.value }))} /></div></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label>{t("employee.birthDate")}</label><div className="field-shell"><input type="date" value={editForm.birthDate} onChange={e => setEditForm(f => ({ ...f, birthDate: e.target.value }))} /></div></div>
+            <div><label>{t("employee.hireDate")}</label><div className="field-shell"><input type="date" value={editForm.hireDate} onChange={e => setEditForm(f => ({ ...f, hireDate: e.target.value }))} /></div></div>
+          </div>
+          <div><label>{t("employee.deviceUserId")}</label><div className="field-shell"><input type="text" value={editForm.deviceUserId} onChange={e => setEditForm(f => ({ ...f, deviceUserId: e.target.value }))} placeholder={t("employee.deviceUserIdPlaceholder")} /></div></div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setEditingEmployee(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
             <button type="submit" disabled={editSubmitting} className="btn btn-primary btn-sm">{editSubmitting ? t("common.loading") : t("employee.saveChanges")}</button>

@@ -5,5 +5,8 @@ public enum PaymentMethodType
     CashOnDelivery,
     CreditCard,
     PayPal,
-    BankTransfer
+    BankTransfer,
+    Mada,
+    Tabby,
+    Tamara
 }

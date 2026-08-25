@@ -10,4 +10,8 @@ public class EmployeeResponseDto
     public decimal Salary { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateOnly HireDate { get; set; }
+    public string? NationalId { get; set; }
+    public string? NationalAddress { get; set; }
+    public DateOnly? BirthDate { get; set; }
+    public string? DeviceUserId { get; set; }
 }

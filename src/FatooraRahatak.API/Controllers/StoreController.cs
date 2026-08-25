@@ -313,6 +313,37 @@ public class StoreController : ControllerBase
     }
 
     [RequirePermission("StoreSettings.Edit")]
+    [RequirePackageFeature("HasLogo")]
+    [HttpPut("favicon")]
+    public async Task<IActionResult> UpdateFavicon([FromBody] UpdateStoreFaviconDto dto)
+    {
+        try
+        {
+            var result = await _storeService.UpdateFaviconAsync(GetUserId(), dto);
+            return Ok(new { success = true, data = result, message = "تم حفظ أيقونة المتجر (Favicon) بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("StoreSettings.Edit")]
+    [HttpDelete("favicon")]
+    public async Task<IActionResult> DeleteFavicon()
+    {
+        try
+        {
+            var result = await _storeService.DeleteFaviconAsync(GetUserId());
+            return Ok(new { success = true, data = result, message = "تم إزالة أيقونة المتجر (Favicon)" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("StoreSettings.Edit")]
     [RequirePackageFeature("HasShippingDiscounts")]
     [HttpPut("shipping-discounts")]
     public async Task<IActionResult> UpdateShippingDiscounts([FromBody] UpdateShippingDiscountsDto dto)

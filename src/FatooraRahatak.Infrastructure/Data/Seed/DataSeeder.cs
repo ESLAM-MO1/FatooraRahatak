@@ -113,6 +113,15 @@ public static class DataSeeder
             new() { RoleName = "InventoryManager", RoleScope = RoleScope.Store, IsSystemRole = true },
             new() { RoleName = "OrdersManager", RoleScope = RoleScope.Store, IsSystemRole = true },
             new() { RoleName = "Marketing", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "FinanceManager", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "SalesManager", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "SalesRepresentative", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "ProcurementManager", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "HRManager", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "CustomerService", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "StoreSupervisor", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "WarehouseWorker", RoleScope = RoleScope.Store, IsSystemRole = true },
+            new() { RoleName = "EcommerceManager", RoleScope = RoleScope.Store, IsSystemRole = true },
         };
         foreach (var role in roleDefs)
         {
@@ -208,6 +217,114 @@ public static class DataSeeder
                 "Coupons.View", "Coupons.Add", "Coupons.Edit",
                 "Customers.View", "Statistics.View",
                 "Referrals.View"
+            },
+
+            ["FinanceManager"] = new[]
+            {
+                "Dashboard.View", "StoreSettings.View", "SubscriptionPackage.View",
+                "Products.View", "Categories.View", "Warehouses.View",
+                "Orders.View", "Customers.View", "Payments.View",
+                "ChartOfAccounts.View", "ChartOfAccounts.Add", "ChartOfAccounts.Edit",
+                "JournalEntries.View", "JournalEntries.Add", "JournalEntries.Edit", "JournalEntries.Approve",
+                "Ledger.View",
+                "Invoices.View", "Invoices.Add", "Invoices.Edit",
+                "Vouchers.View", "Vouchers.Add", "Vouchers.Edit", "Vouchers.Approve",
+                "FixedAssets.View", "FixedAssets.Add", "FixedAssets.Edit",
+                "Payroll.View", "Payroll.Add", "Payroll.Edit", "Payroll.Approve",
+                "FinancialReports.View", "FinancialReports.Manage",
+                "PaymentGateways.View", "PaymentLinks.Add", "ShippingCompanies.View",
+                "EmployeeManagement.View"
+            },
+
+            ["SalesManager"] = new[]
+            {
+                "Dashboard.View",
+                "Products.View", "Products.Edit",
+                "Orders.View", "Orders.Add", "Orders.Edit",
+                "Customers.View", "Customers.Add", "Customers.Edit",
+                "Coupons.View", "Coupons.Add", "Coupons.Edit",
+                "Statistics.View", "Payments.View",
+                "POS.View", "ShippingCompanies.View",
+                "Invoices.View", "Invoices.Add"
+            },
+
+            ["SalesRepresentative"] = new[]
+            {
+                "Dashboard.View",
+                "Products.View",
+                "Orders.View", "Orders.Add",
+                "Customers.View", "Customers.Add",
+                "POS.View", "POS.Add",
+                "Payments.View"
+            },
+
+            ["ProcurementManager"] = new[]
+            {
+                "Dashboard.View",
+                "Products.View", "Products.Add", "Products.Edit",
+                "Categories.View", "Categories.Add", "Categories.Edit",
+                "Warehouses.View",
+                "Inventory.View", "Inventory.Add", "Inventory.Edit",
+                "StockCounts.View",
+                "StockTransfer.View", "StockTransfer.Add",
+                "Orders.View", "Invoices.View", "Invoices.Add",
+                "Payments.View", "Customers.View"
+            },
+
+            ["HRManager"] = new[]
+            {
+                "Dashboard.View", "StoreSettings.View",
+                "EmployeeManagement.View", "EmployeeManagement.Add", "EmployeeManagement.Edit",
+                "Attendance.View", "Attendance.Add", "Attendance.Edit",
+                "LeaveRequests.View", "LeaveRequests.Add", "LeaveRequests.Edit", "LeaveRequests.Approve",
+                "Payroll.View"
+            },
+
+            ["CustomerService"] = new[]
+            {
+                "Dashboard.View",
+                "Products.View",
+                "Orders.View", "Orders.Edit",
+                "Customers.View", "Customers.Edit",
+                "Payments.View", "ShippingCompanies.View",
+                "Statistics.View"
+            },
+
+            ["StoreSupervisor"] = new[]
+            {
+                "Dashboard.View",
+                "Products.View", "Products.Add", "Products.Edit",
+                "Categories.View",
+                "Orders.View", "Orders.Add", "Orders.Edit",
+                "Customers.View", "Customers.Add", "Customers.Edit",
+                "POS.View", "POS.Add",
+                "Payments.View", "Statistics.View",
+                "Warehouses.View", "Inventory.View",
+                "ShippingCompanies.View"
+            },
+
+            ["WarehouseWorker"] = new[]
+            {
+                "Dashboard.View",
+                "Products.View",
+                "Warehouses.View",
+                "Inventory.View", "Inventory.Add", "Inventory.Edit",
+                "StockCounts.View", "StockCounts.Add",
+                "StockTransfer.View", "StockTransfer.Add",
+                "DamagedStock.View", "DamagedStock.Add",
+                "Orders.View"
+            },
+
+            ["EcommerceManager"] = new[]
+            {
+                "Dashboard.View", "StoreSettings.View", "StoreSettings.Edit",
+                "Products.View", "Products.Add", "Products.Edit",
+                "Categories.View", "Categories.Add", "Categories.Edit",
+                "Coupons.View", "Coupons.Add", "Coupons.Edit",
+                "Orders.View", "Orders.Edit",
+                "Customers.View", "Customers.Edit",
+                "Statistics.View", "Payments.View",
+                "ShippingCompanies.View"
             },
         };
 
@@ -499,8 +616,17 @@ public static class DataSeeder
             footer = new
             {
                 description = "منصة متكاملة لإدارة متجرك الإلكتروني، الفواتير، روابط الدفع، الكاشير، والمزيد.",
-                copyright = "جميع الحقوق محفوظة.",
-                social = new { facebook = "#", instagram = "#", whatsapp = "#", snapchat = "#", tiktok = "#", telegram = "#", linkedin = "#" }
+                copyright = "جميع الحقوق محفوظة لفاتورة راحتك",
+                social = new
+                {
+                    facebook = "https://facebook.com/faturatrahatik",
+                    instagram = "https://instagram.com/faturatrahatik",
+                    whatsapp = "https://wa.me/966531118224",
+                    snapchat = "https://snapchat.com/faturatrahatik",
+                    tiktok = "https://tiktok.com/@faturatrahatik",
+                    telegram = "https://t.me/faturatrahatik",
+                    linkedin = "https://linkedin.com/in/faturatrahatik"
+                }
             }
         };
 
@@ -547,7 +673,7 @@ public static class DataSeeder
             new SitePage { PageKey = "contact", TitleAr = "تواصل معنا", TitleEn = "Contact Us", ContentAr = "<h2>تواصل معنا</h2><p>نحن هنا لمساعدتك! أرسل لنا رسالة وسنرد عليك في أقرب وقت ممكن.</p>", ContentEn = "<h2>Contact Us</h2><p>We are here to help! Send us a message and we'll get back to you as soon as possible.</p>" },
             new SitePage { PageKey = "terms-of-use", TitleAr = "شروط الاستخدام", TitleEn = "Terms of Use", ContentAr = "<h2>شروط الاستخدام</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر شروط الاستخدام قريبًا.</p>", ContentEn = "<h2>Terms of Use</h2><p>This page is under construction. Terms of use will be published soon.</p>" },
             new SitePage { PageKey = "privacy-policy", TitleAr = "سياسة الخصوصية", TitleEn = "Privacy Policy", ContentAr = "<h2>سياسة الخصوصية</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر سياسة الخصوصية قريبًا.</p>", ContentEn = "<h2>Privacy Policy</h2><p>This page is under construction. Privacy policy will be published soon.</p>" },
-            new SitePage { PageKey = "affiliate-marketing", TitleAr = "التسويق بالعمولة", TitleEn = "Affiliate Marketing", ContentAr = "<h2>التسويق بالعمولة</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر تفاصيل برنامج التسويق بالعمولة قريبًا.</p>", ContentEn = "<h2>Affiliate Marketing</h2><p>This page is under construction. Affiliate program details will be published soon.</p>" },
+            new SitePage { PageKey = "affiliate-marketing", TitleAr = "التسويق بالعمولة", TitleEn = "Affiliate Marketing", ContentAr = "<h2>التسويق بالعمولة</h2><p>انضم إلى برنامج التسويق بالعمولة في فاتورة راحتك واربح عمولة مالية عن كل تاجر جديد يشترك في المنصة من خلال رابطك الخاص.</p><h3>كيف يعمل البرنامج؟</h3><p>احصل على رابط إحالة فريد من لوحة التحكم، شاركه مع أصدقائك ومعارفك، واربح عمولة تلقائية عن كل اشتراك مدفوع يتم عبر الرابط الخاص بك.</p><h3>مميزات البرنامج</h3><ul><li>رابط إحالة مخصص لتتبع إحالاتك بدقة</li><li>عمولات تُحتسب تلقائيًا على الاشتراكات المدفوعة</li><li>لوحة متابعة لعرض الإحالات والعمولات والمستحقات</li><li>سحب الأرباح عبر البيانات البنكية المسجلة</li></ul><p>ابدأ الآن: فعّل البرنامج من لوحة التحكم، انسخ رابطك، وشاركه لكسب عمولاتك.</p>", ContentEn = "<h2>Affiliate Marketing</h2><p>Join the Faturat Rahatik affiliate program and earn a commission on every new merchant who subscribes to the platform through your personal link.</p><h3>How it works?</h3><p>Get a unique referral link from the dashboard, share it with your network, and earn an automatic commission on every paid subscription made through your link.</p><h3>Program benefits</h3><ul><li>A dedicated referral link to accurately track your referrals</li><li>Commissions calculated automatically on paid subscriptions</li><li>A tracking dashboard to view referrals, commissions, and earnings</li><li>Withdraw earnings via your registered bank details</li></ul><p>Start now: activate the program from the dashboard, copy your link, and share it to earn your commissions.</p>" },
             new SitePage { PageKey = "careers", TitleAr = "التوظيف", TitleEn = "Careers", ContentAr = "<h2>التوظيف</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر الفرص الوظيفية قريبًا.</p>", ContentEn = "<h2>Careers</h2><p>This page is under construction. Job opportunities will be published soon.</p>" },
             new SitePage { PageKey = "free-tools", TitleAr = "أدوات مجانية", TitleEn = "Free Tools", ContentAr = "<h2>أدوات مجانية</h2><p>هذه الصفحة قيد الإعداد. سيتم إطلاق الأدوات المجانية قريبًا.</p>", ContentEn = "<h2>Free Tools</h2><p>This page is under construction. Free tools will be launched soon.</p>" },
             new SitePage { PageKey = "security-standards", TitleAr = "معايير الأمان", TitleEn = "Security Standards", ContentAr = "<h2>معايير الأمان</h2><p>هذه الصفحة قيد الإعداد. سيتم نشر معايير الأمان قريبًا.</p>", ContentEn = "<h2>Security Standards</h2><p>This page is under construction. Security standards will be published soon.</p>" },

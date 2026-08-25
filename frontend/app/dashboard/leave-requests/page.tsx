@@ -144,7 +144,7 @@ export default function LeaveRequestsPage() {
   };
 
   const handleApprove = async (request: LeaveRequest) => {
-    if (!confirm(t("leaveRequest.confirmApprove", { name: request.employeeName }))) return;
+    if (!(await confirm(t("leaveRequest.confirmApprove", { name: request.employeeName })))) return;
 
     setActionError("");
     setProcessingId(request.id);
@@ -161,7 +161,7 @@ export default function LeaveRequestsPage() {
   };
 
   const handleReject = async (request: LeaveRequest) => {
-    if (!confirm(t("leaveRequest.confirmReject", { name: request.employeeName }))) return;
+    if (!(await confirm(t("leaveRequest.confirmReject", { name: request.employeeName })))) return;
 
     setActionError("");
     setProcessingId(request.id);

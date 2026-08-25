@@ -68,6 +68,9 @@ const PAYMENT_LABEL_KEYS: Record<string, string> = {
   CreditCard: "checkout.paymentCreditCard",
   PayPal: "checkout.paymentPayPal",
   BankTransfer: "checkout.paymentBankTransfer",
+  Mada: "checkout.paymentMada",
+  Tabby: "checkout.paymentTabby",
+  Tamara: "checkout.paymentTamara",
 };
 
 function paymentIcon(type: string) {
@@ -104,6 +107,31 @@ function paymentIcon(type: string) {
           <path d="M3 12V8l9-5 9 5v4" />
           <path d="M5 8h14" />
           <path d="M8 8v-1M16 8v-1" />
+        </svg>
+      );
+    case "Mada":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="5" width="20" height="14" rx="3" fill="#2E3192" />
+          <rect x="2" y="9" width="20" height="3" fill="#F9A825" />
+          <circle cx="9" cy="14.5" r="2" fill="#F9A825" />
+        </svg>
+      );
+    case "Tabby":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="4" width="20" height="16" rx="4" fill="#FFE1C9" />
+          <path d="M7 9.5h2.5l2 2-2 2H7v-4zM14.5 9.5H17l-1.2 1.2-1.3-1.2z" fill="#F04E37" />
+          <path d="M17 13.5h-2.5l-2-2 2-2H17v4zM9.5 13.5H7l1.2-1.2 1.3 1.2z" fill="#2E2E38" />
+        </svg>
+      );
+    case "Tamara":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" fill="#FF6B9D" />
+          <path d="M7.5 9.2c.9 0 1.5-.4 1.5-1.2S8.4 6.8 7.5 6.8 6 7.2 6 8s.6 1.2 1.5 1.2z" fill="#fff" />
+          <path d="M16.5 9.2c.9 0 1.5-.4 1.5-1.2s-.6-1.2-1.5-1.2-1.5.4-1.5 1.2.6 1.2 1.5 1.2z" fill="#fff" />
+          <path d="M12 17.2c2.2 0 3.8-1.4 3.8-3.2H8.2c0 1.8 1.6 3.2 3.8 3.2z" fill="#fff" />
         </svg>
       );
     default:
@@ -153,6 +181,13 @@ export default function CheckoutPage() {
   const [guestEmail, setGuestEmail] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [notes, setNotes] = useState("");
+
+  const [addrRegion, setAddrRegion] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [addrDistrict, setAddrDistrict] = useState("");
+  const [addrStreet, setAddrStreet] = useState("");
+  const [addrBuilding, setAddrBuilding] = useState("");
+  const [addrPostal, setAddrPostal] = useState("");
 
   const [shippingMethods, setShippingMethods] = useState<MethodOption[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<MethodOption[]>([]);
@@ -287,7 +322,10 @@ export default function CheckoutPage() {
     e.preventDefault();
     if (!cart) return;
 
-    if (!shippingAddress.trim()) {
+    const composedAddress = [addrRegion, addrCity, addrDistrict, addrStreet, addrBuilding ? `مبنى ${addrBuilding}` : null, addrPostal ? `الرمز البريدي ${addrPostal}` : null]
+      .filter(Boolean)
+      .join("، ");
+    if (!addrCity.trim()) {
       setError(t("checkout.shippingAddressRequired"));
       return;
     }
@@ -330,7 +368,7 @@ export default function CheckoutPage() {
         guestName: guestName.trim() || undefined,
         guestPhone: guestPhone.trim() || undefined,
         guestEmail: guestEmail.trim() || undefined,
-        shippingAddress: shippingAddress.trim(),
+        shippingAddress: composedAddress,
         notes: notes.trim() || undefined,
         shippingMethod: selectedShipping,
         paymentMethod: selectedPayment,
@@ -539,9 +577,9 @@ export default function CheckoutPage() {
         className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
       >
         {loggedIn && (
-          <p className="text-sm text-green-700 bg-green-50 px-5 py-3 border-b border-green-100">
+          <div className="alert alert--success mx-5 mt-5">
             {t("checkout.loggedInNotice")}
-          </p>
+          </div>
         )}
 
         {savedAddresses.length > 0 && (
@@ -665,13 +703,32 @@ export default function CheckoutPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {t("checkout.shippingAddressLabel")}{" *"}
               </label>
-              <textarea
-                value={shippingAddress}
-                onChange={(e) => setShippingAddress(e.target.value)}
-                rows={3}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
-                required
-              />
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <input type="text" value={addrRegion} onChange={e => setAddrRegion(e.target.value)} placeholder={t("checkout.addressRegion")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" />
+                  </div>
+                  <div>
+                    <input type="text" value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder={t("checkout.addressCity")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" required />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <input type="text" value={addrDistrict} onChange={e => setAddrDistrict(e.target.value)} placeholder={t("checkout.addressDistrict")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" />
+                  </div>
+                  <div>
+                    <input type="text" value={addrStreet} onChange={e => setAddrStreet(e.target.value)} placeholder={t("checkout.addressStreet")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <input type="text" value={addrBuilding} onChange={e => setAddrBuilding(e.target.value)} placeholder={t("checkout.addressBuilding")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" />
+                  </div>
+                  <div>
+                    <input type="text" value={addrPostal} onChange={e => setAddrPostal(e.target.value)} placeholder={t("checkout.addressPostal")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -760,12 +817,18 @@ export default function CheckoutPage() {
               >
                 {submitting ? t("checkout.confirming") : t("checkout.confirmOrder")}
               </button>
-              {(selectedPayment === "CreditCard" || selectedPayment === "PayPal" || selectedPayment === "BankTransfer") && (
+              {(selectedPayment === "CreditCard" || selectedPayment === "PayPal" || selectedPayment === "BankTransfer" || selectedPayment === "Mada" || selectedPayment === "Tabby" || selectedPayment === "Tamara") && (
                 <p className="mt-2.5 text-[11px] text-gray-400 text-center leading-relaxed">
                   {selectedPayment === "CreditCard"
                     ? t("checkout.securePaymentRedirect")
                     : selectedPayment === "PayPal"
                     ? t("checkout.paypalRedirect")
+                    : selectedPayment === "Mada"
+                    ? t("checkout.securePaymentRedirect")
+                    : selectedPayment === "Tabby"
+                    ? t("checkout.tabbyRedirect")
+                    : selectedPayment === "Tamara"
+                    ? t("checkout.tamaraRedirect")
                     : t("checkout.bankTransferInstructions")}
                 </p>
               )}

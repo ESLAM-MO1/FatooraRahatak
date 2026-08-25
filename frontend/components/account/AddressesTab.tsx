@@ -12,6 +12,12 @@ export interface CustomerAddress {
   landmark?: string | null;
   notes?: string | null;
   isDefault: boolean;
+  region?: string | null;
+  district?: string | null;
+  street?: string | null;
+  buildingNumber?: string | null;
+  postalCode?: string | null;
+  nationalAddress?: string | null;
 }
 
 interface Props {
@@ -38,7 +44,7 @@ export default function AddressesTab({
   const { t } = useTranslation();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerAddress | null>(null);
-  const [form, setForm] = useState({ fullName: "", city: "", addressLine: "", landmark: "", notes: "", isDefault: false });
+  const [form, setForm] = useState({ fullName: "", city: "", addressLine: "", landmark: "", notes: "", isDefault: false, region: "", district: "", street: "", buildingNumber: "", postalCode: "", nationalAddress: "" });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<CustomerAddress | null>(null);
@@ -53,6 +59,12 @@ export default function AddressesTab({
       landmark: addr?.landmark || "",
       notes: addr?.notes || "",
       isDefault: addr?.isDefault || false,
+      region: addr?.region || "",
+      district: addr?.district || "",
+      street: addr?.street || "",
+      buildingNumber: addr?.buildingNumber || "",
+      postalCode: addr?.postalCode || "",
+      nationalAddress: addr?.nationalAddress || "",
     });
     setFormError("");
     setFormOpen(true);
@@ -78,6 +90,12 @@ export default function AddressesTab({
         landmark: form.landmark.trim() || null,
         notes: form.notes.trim() || null,
         isDefault: form.isDefault,
+        region: form.region.trim() || null,
+        district: form.district.trim() || null,
+        street: form.street.trim() || null,
+        buildingNumber: form.buildingNumber.trim() || null,
+        postalCode: form.postalCode.trim() || null,
+        nationalAddress: form.nationalAddress.trim() || null,
       };
       if (editing) {
         await customerApi(`/public/stores/${slug}/customer/addresses/${editing.id}`, token, {
@@ -124,7 +142,7 @@ export default function AddressesTab({
   }
 
   if (error) {
-    return <div className="bg-red-50 text-red-600 p-3 rounded text-sm">{error}</div>;
+    return <div className="alert alert--danger">{error}</div>;
   }
 
   const inputCls =
@@ -163,6 +181,11 @@ export default function AddressesTab({
                     )}
                   </div>
                   <p className="text-[13px] text-gray-600">{addr.city} — {addr.addressLine}</p>
+                  {(addr.region || addr.district || addr.street || addr.buildingNumber || addr.postalCode) && (
+                    <p className="text-[12px] text-gray-500 mt-1">
+                      {[addr.region, addr.district, addr.street, addr.buildingNumber ? `مبنى ${addr.buildingNumber}` : null, addr.postalCode ? `الرمز البريدي ${addr.postalCode}` : null].filter(Boolean).join("، ")}
+                    </p>
+                  )}
                   {addr.landmark && <p className="text-[12px] text-gray-400 mt-1">{addr.landmark}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -209,6 +232,34 @@ export default function AddressesTab({
               <div>
                 <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.city")}</label>
                 <input className={inputCls} value={form.city} onChange={(e) => setField("city", e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.region")}</label>
+                  <input className={inputCls} value={form.region} onChange={(e) => setField("region", e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.district")}</label>
+                  <input className={inputCls} value={form.district} onChange={(e) => setField("district", e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.street")}</label>
+                <input className={inputCls} value={form.street} onChange={(e) => setField("street", e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.buildingNumber")}</label>
+                  <input className={inputCls} value={form.buildingNumber} onChange={(e) => setField("buildingNumber", e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.postalCode")}</label>
+                  <input className={inputCls} value={form.postalCode} onChange={(e) => setField("postalCode", e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.nationalAddress")}</label>
+                <input className={inputCls} value={form.nationalAddress} onChange={(e) => setField("nationalAddress", e.target.value)} placeholder={t("addresses.nationalAddressPlaceholder")} />
               </div>
               <div>
                 <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("addresses.addressLine")}</label>

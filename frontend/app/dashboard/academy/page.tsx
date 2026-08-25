@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
@@ -7,6 +7,7 @@ import { isAuthenticated, getUserType } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import Toast from "@/components/Toast";
+import { useConfirm } from "@/components/ConfirmDialog";
 import "@/lib/i18n/config";
 
 interface Course {
@@ -15,6 +16,7 @@ interface Course {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  imageUrl?: string | null;
   category: string;
   duration: string;
   level: string;
@@ -48,8 +50,8 @@ interface Enrollment {
   createdAt: string;
 }
 
-type FormState = { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; category: string; duration: string; level: string; sortOrder: number; isActive: boolean };
-const EMPTY_FORM: FormState = { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", category: "", duration: "", level: "Beginner", sortOrder: 1, isActive: true };
+type FormState = { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; imageUrl: string; category: string; duration: string; level: string; sortOrder: number; isActive: boolean };
+const EMPTY_FORM: FormState = { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", imageUrl: "", category: "", duration: "", level: "Beginner", sortOrder: 1, isActive: true };
 const LEVELS = ["Beginner", "Intermediate", "Advanced"];
 const CATEGORIES = ["management", "accounting", "inventory", "sales", "software", "other"];
 
@@ -58,10 +60,11 @@ const EMPTY_LESSON: LessonForm = { titleAr: "", titleEn: "", descriptionAr: "", 
 
 export default function AcademyAdminPage() {
   const { t, i18n } = useTranslation();
+  const confirm = useConfirm();
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [ready, setReady] = useState(false);
-  const [tab, setTab] = useState<"courses" | "lessons" | "enrollments">("courses");
+  const [tab, setTab] = useState<"courses" | "lessons" | "enrollments" | "page">("courses");
 
   const [courses, setCourses] = useState<Course[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -78,6 +81,13 @@ export default function AcademyAdminPage() {
   const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
   const [lessonForm, setLessonForm] = useState<LessonForm>(EMPTY_LESSON);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [pageIntro, setPageIntro] = useState({ titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", imageUrl: "" });
+  const [introLoading, setIntroLoading] = useState(false);
+  const [introSaving, setIntroSaving] = useState(false);
+  const [introUploading, setIntroUploading] = useState(false);
+  const introFileRef = useRef<HTMLInputElement>(null);
+  const [courseUploading, setCourseUploading] = useState(false);
+  const courseFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isAuthenticated() || getUserType() !== "SuperAdmin") {
@@ -103,12 +113,85 @@ export default function AcademyAdminPage() {
     setEnrollments(res.data.data || []);
   }, []);
 
+  const loadPageIntro = useCallback(async () => {
+    setIntroLoading(true);
+    try {
+      const res = await api.get("/admin/academy-intro");
+      const d = res.data?.data;
+      if (d) setPageIntro({ titleAr: d.titleAr || "", titleEn: d.titleEn || "", descriptionAr: d.descriptionAr || "", descriptionEn: d.descriptionEn || "", imageUrl: d.imageUrl || "" });
+    } catch { /* تجاهل */ }
+    finally { setIntroLoading(false); }
+  }, []);
+
+  const savePageIntro = async () => {
+    setIntroSaving(true);
+    setMessage(null);
+    try {
+      await api.put("/admin/academy-intro", {
+        titleAr: pageIntro.titleAr.trim(),
+        titleEn: pageIntro.titleEn.trim(),
+        descriptionAr: pageIntro.descriptionAr.trim(),
+        descriptionEn: pageIntro.descriptionEn.trim(),
+        imageUrl: pageIntro.imageUrl.trim() || null,
+      });
+      setMessage({ type: "success", text: t("academy.introSaved") });
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setMessage({ type: "error", text: e?.response?.data?.message || t("error.serverError") });
+    } finally {
+      setIntroSaving(false);
+    }
+  };
+
+  const uploadIntroImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIntroUploading(true);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post("/admin/site/upload", fd);
+      const url = res.data?.data?.url || res.data?.url;
+      if (url) setPageIntro(prev => ({ ...prev, imageUrl: url }));
+      else setMessage({ type: "error", text: t("academy.uploadError") });
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setMessage({ type: "error", text: e?.response?.data?.message || t("academy.uploadError") });
+    } finally {
+      setIntroUploading(false);
+      if (introFileRef.current) introFileRef.current.value = "";
+    }
+  };
+
+  const uploadCourseImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCourseUploading(true);
+    setMessage(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post("/admin/site/upload", fd);
+      const url = res.data?.data?.url || res.data?.url;
+      if (url) setForm(prev => ({ ...prev, imageUrl: url }));
+      else setMessage({ type: "error", text: t("academy.uploadError") });
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setMessage({ type: "error", text: e?.response?.data?.message || t("academy.uploadError") });
+    } finally {
+      setCourseUploading(false);
+      if (courseFileRef.current) courseFileRef.current.value = "";
+    }
+  };
+
   useEffect(() => {
     if (!ready) return;
     load().catch(() => setMessage({ type: "error", text: t("error.serverError") })).finally(() => setLoading(false));
     loadEnrollments().catch(() => {});
+    loadPageIntro().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, load, loadEnrollments]);
+  }, [ready, load, loadEnrollments, loadPageIntro]);
 
   useEffect(() => {
     if (tab === "lessons" && selectedCourseId != null) {
@@ -123,7 +206,7 @@ export default function AcademyAdminPage() {
 
   const openEdit = (c: Course) => {
     setEditingId(c.id);
-    setForm({ titleAr: c.titleAr, titleEn: c.titleEn, descriptionAr: c.descriptionAr, descriptionEn: c.descriptionEn, category: c.category, duration: c.duration, level: c.level, sortOrder: c.sortOrder, isActive: c.isActive });
+    setForm({ titleAr: c.titleAr, titleEn: c.titleEn, descriptionAr: c.descriptionAr, descriptionEn: c.descriptionEn, imageUrl: (c as any).imageUrl || "", category: c.category, duration: c.duration, level: c.level, sortOrder: c.sortOrder, isActive: c.isActive });
     setModalOpen(true);
   };
 
@@ -139,6 +222,7 @@ export default function AcademyAdminPage() {
     const payload = {
       titleAr: form.titleAr.trim(), titleEn: form.titleEn.trim(),
       descriptionAr: form.descriptionAr.trim(), descriptionEn: form.descriptionEn.trim(),
+      imageUrl: form.imageUrl.trim() || null,
       category: form.category.trim(), duration: form.duration.trim(), level: form.level.trim(),
       sortOrder: form.sortOrder, isActive: form.isActive,
     };
@@ -167,7 +251,7 @@ export default function AcademyAdminPage() {
   };
 
   const remove = async (c: Course) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/courses/${c.id}`);
       await load();
@@ -220,7 +304,7 @@ export default function AcademyAdminPage() {
   };
 
   const removeLesson = async (l: Lesson) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/courses/lessons/${l.id}`);
       if (selectedCourseId != null) await loadLessons(selectedCourseId);
@@ -239,7 +323,7 @@ export default function AcademyAdminPage() {
   };
 
   const removeEnrollment = async (e: Enrollment) => {
-    if (!window.confirm(t("common.confirmDelete"))) return;
+    if (!(await confirm(t("common.confirmDelete")))) return;
     try {
       await api.delete(`/admin/course-enrollments/${e.id}`);
       await loadEnrollments();
@@ -279,6 +363,7 @@ export default function AcademyAdminPage() {
         <button className={`btn ${tab === "courses" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("courses")}>{t("academy.courses")} ({courses.length})</button>
         <button className={`btn ${tab === "lessons" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("lessons")}>{t("academy.lessons")}</button>
         <button className={`btn ${tab === "enrollments" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("enrollments")}>{t("academy.enrollments")} ({enrollments.length})</button>
+        <button className={`btn ${tab === "page" ? "btn-primary" : "btn-outline"}`} onClick={() => setTab("page")}>{t("academy.pageSettings")}</button>
         {tab === "courses" && (
           <button className="btn btn-primary ms-auto" onClick={openCreate}>+ {t("academy.addCourse")}</button>
         )}
@@ -340,8 +425,53 @@ export default function AcademyAdminPage() {
             </div>
           )}
         </div>
-      ) : enrollments.length === 0 ? (
+      ) : tab === "enrollments" && enrollments.length === 0 ? (
         <div className="card p-10 text-center"><p className="text-[13.5px]" style={{ color: "var(--sub)" }}>{t("common.noData")}</p></div>
+      ) : tab === "page" ? (
+        <div className="card p-6">
+          <h3 className="text-[15px] font-bold mb-4" style={{ color: "var(--blue-deep)" }}>{t("academy.pageSettingsTitle")}</h3>
+          <p className="text-[12.5px] mb-5" style={{ color: "var(--sub)" }}>{t("academy.pageSettingsDesc")}</p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.titleAr")}</label>
+                <div className="field-shell"><input type="text" value={pageIntro.titleAr} onChange={e => setPageIntro({ ...pageIntro, titleAr: e.target.value })} /></div>
+              </div>
+              <div>
+                <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.titleEn")}</label>
+                <div className="field-shell"><input type="text" dir="ltr" value={pageIntro.titleEn} onChange={e => setPageIntro({ ...pageIntro, titleEn: e.target.value })} /></div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.descriptionAr")}</label>
+              <div className="field-shell"><textarea rows={3} value={pageIntro.descriptionAr} onChange={e => setPageIntro({ ...pageIntro, descriptionAr: e.target.value })} /></div>
+            </div>
+            <div>
+              <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.descriptionEn")}</label>
+              <div className="field-shell"><textarea rows={3} dir="ltr" value={pageIntro.descriptionEn} onChange={e => setPageIntro({ ...pageIntro, descriptionEn: e.target.value })} /></div>
+            </div>
+            <div>
+              <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.pageImage")}</label>
+              <div className="flex items-center gap-3">
+                <div className="w-36 h-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                  {pageIntro.imageUrl ? <img src={pageIntro.imageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-[10.5px] text-[var(--sub)]">{t("academy.noImage")}</span>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <input ref={introFileRef} type="file" accept="image/*" className="hidden" onChange={uploadIntroImage} />
+                  <button type="button" onClick={() => introFileRef.current?.click()} disabled={introUploading} className="btn btn-outline btn-sm">
+                    {introUploading ? t("common.loading") : pageIntro.imageUrl ? t("academy.changeImage") : t("academy.uploadImage")}
+                  </button>
+                  <p className="text-[11px] text-[var(--sub)] mt-1">{t("academy.imageUploadHint")}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button className="btn btn-primary" onClick={savePageIntro} disabled={introSaving}>
+                {introSaving ? t("common.loading") : t("common.save")}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
           {enrollments.map(e => (
@@ -371,9 +501,12 @@ export default function AcademyAdminPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-[17px] font-bold mb-4" style={{ color: "var(--blue-deep)" }}>
-              {editingId ? t("academy.editCourse") : t("academy.addCourse")}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>
+                {editingId ? t("academy.editCourse") : t("academy.addCourse")}
+              </h3>
+              <button type="button" onClick={closeModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -392,6 +525,21 @@ export default function AcademyAdminPage() {
               <div>
                 <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.descriptionEn")}</label>
                 <div className="field-shell"><textarea rows={3} dir="ltr" value={form.descriptionEn} onChange={e => setForm({ ...form, descriptionEn: e.target.value })} /></div>
+              </div>
+              <div>
+                <label className="block text-[12.5px] font-bold mb-1 text-[var(--ink)]">{t("academy.imageUrl")}</label>
+                <div className="flex items-center gap-3">
+                  <div className="w-24 h-16 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0">
+                    {form.imageUrl ? <img src={form.imageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-[10.5px] text-[var(--sub)]">{t("academy.noImage")}</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <input ref={courseFileRef} type="file" accept="image/*" className="hidden" onChange={uploadCourseImage} />
+                    <button type="button" onClick={() => courseFileRef.current?.click()} disabled={courseUploading} className="btn btn-outline btn-sm">
+                      {courseUploading ? t("common.loading") : form.imageUrl ? t("academy.changeImage") : t("academy.uploadImage")}
+                    </button>
+                    <p className="text-[11px] text-[var(--sub)] mt-1">{t("academy.imageUploadHint")}</p>
+                  </div>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -435,9 +583,12 @@ export default function AcademyAdminPage() {
       {lessonModalOpen && (
         <div className="fixed inset-0 z-[110] bg-black/40 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <h3 className="text-[17px] font-bold mb-4" style={{ color: "var(--blue-deep)" }}>
-              {editingLessonId ? t("academy.editLesson") : t("academy.addLesson")}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[17px] font-bold" style={{ color: "var(--blue-deep)" }}>
+                {editingLessonId ? t("academy.editLesson") : t("academy.addLesson")}
+              </h3>
+              <button type="button" onClick={closeLessonModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

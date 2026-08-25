@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Accounting;
+using FatooraRahatak.Application.DTOs.Payment;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Accounting;
 using FatooraRahatak.Domain.Entities.Packages;
@@ -19,12 +20,14 @@ public class PosController : ControllerBase
 {
     private readonly IAccountingService _accountingService;
     private readonly IPermissionCheckService _permCheck;
+    private readonly IPaymentService _paymentService;
     private readonly AppDbContext _context;
 
-    public PosController(IAccountingService accountingService, IPermissionCheckService permCheck, AppDbContext context)
+    public PosController(IAccountingService accountingService, IPermissionCheckService permCheck, IPaymentService paymentService, AppDbContext context)
     {
         _accountingService = accountingService;
         _permCheck = permCheck;
+        _paymentService = paymentService;
         _context = context;
     }
 
@@ -161,6 +164,46 @@ public class PosController : ControllerBase
 
         try
         {
+            // ⚠️ طرق الدفع الإلكترونية في نقطة البيع: لا يتم البيع فورًا.
+            // ننشئ رابط دفع (مويصر/تابي/تمارا) ويفتحه الكاشير/العميل للدفع،
+            // وبعد اكتمال الدفع يتأكد البيع. هذا يضمن أن البوابة المختارة تُفتح فعلاً.
+            var method = string.IsNullOrWhiteSpace(dto.PaymentMethod) ? "Cash" : dto.PaymentMethod.Trim();
+            var isElectronic = method is "Mada" or "CreditCard" or "Tabby" or "Tamara";
+
+            if (isElectronic && storeId != null)
+            {
+                // نحسب الإجمالي قبل إنشاء الرابط (بدون إنشاء فاتورة نهائية)
+                var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId.Value);
+                var currency = string.IsNullOrWhiteSpace(store?.Currency) ? "SAR" : store.Currency;
+
+                // نجمع مبلغ البنود (لن نطبق الخصومات/الضريبة هنا — تُحسب عند تأكيد الدفع)
+                var itemsTotal = dto.Items.Sum(i => (i.UnitPrice - i.DiscountAmount) * i.Quantity);
+                if (itemsTotal <= 0)
+                    return BadRequest(new { success = false, message = "مبلغ العملية غير صالح" });
+
+                var callbackUrl = "https://fatora.trillion-invest.tech/api/v1/payments/webhook";
+                var successUrl = "https://fatora.trillion-invest.tech/dashboard/pos";
+
+                var link = await _paymentService.CreatePaymentLinkAsync(new CreatePaymentDto
+                {
+                    Amount = itemsTotal,
+                    Currency = currency,
+                    Description = $"دفع نقطة البيع - {store?.StoreName}",
+                    CallbackUrl = callbackUrl,
+                    SuccessUrl = successUrl
+                });
+
+                if (!link.Success)
+                    return BadRequest(new { success = false, message = link.Message ?? "فشل إنشاء رابط الدفع" });
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new { paymentLinkUrl = link.PaymentLinkUrl, paymentMethod = method, pending = true },
+                    message = "تم إنشاء رابط الدفع — أكمل الدفع من البوابة ليتم تأكيد العملية"
+                });
+            }
+
             var result = await _accountingService.CreatePosSaleAsync(userId, dto);
             if (storeId != null)
             {

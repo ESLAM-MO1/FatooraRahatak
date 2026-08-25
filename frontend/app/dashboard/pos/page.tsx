@@ -56,6 +56,8 @@ export default function CashierPage() {
   const [lastInvoice, setLastInvoice] = useState<InvoiceDetail | null>(null);
   const [changeDue, setChangeDue] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [showPaymentLink, setShowPaymentLink] = useState(false);
 
   const [shift, setShift] = useState<PosShift | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
@@ -156,6 +158,15 @@ export default function CashierPage() {
         paymentMethod,
         items: cart.map(c => ({ productId: c.productId, quantity: c.quantity })),
       });
+
+      // ✅ طريقة إلكترونية (شبكة/بطاقة/تابي/تمارا): البيع معلق — نفتح بوابة الدفع
+      if (res.data?.data?.pending && res.data?.data?.paymentLinkUrl) {
+        setPaymentLink(res.data.data.paymentLinkUrl);
+        setShowPaymentLink(true);
+        setSuccessMessage(res.data.message || t("pos.paymentLinkCreated"));
+        return;
+      }
+
       setLastInvoice(res.data.data);
       setChangeDue(change);
       setShowReceipt(true);
@@ -411,6 +422,28 @@ export default function CashierPage() {
             <div className="flex gap-3">
               <button onClick={() => { setShowReceipt(false); }} className="btn btn-outline flex-1">{t("pos.done")}</button>
               <button onClick={() => printInvoice(lastInvoice, t)} className="btn btn-primary flex-1"><Icon name="printer" size={14} /> {t("pos.printReceipt")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaymentLink && paymentLink && (
+        <div className="modal-overlay" onClick={() => setShowPaymentLink(false)}>
+          <div className="modal-card max-w-sm text-center" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-[18px] font-bold">{t("pos.paymentGatewayTitle")}</h2>
+              <button onClick={() => setShowPaymentLink(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            <p className="text-[13px] text-[var(--sub)] mb-4">{t("pos.paymentGatewayDesc")}</p>
+            <div className="bg-gray-50 rounded-lg p-3 text-sm mb-4 flex items-center justify-center gap-2">
+              <PaymentMethodLogo method={paymentMethod} size={36} />
+              <span className="font-bold text-[var(--ink)]">{t(`pos.${paymentMethod.toLowerCase()}`)}</span>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowPaymentLink(false)} className="btn btn-outline flex-1">{t("pos.later")}</button>
+              <button onClick={() => { window.open(paymentLink, "_blank"); }} className="btn btn-primary flex-1">
+                <Icon name="link" size={14} /> {t("pos.openGateway")}
+              </button>
             </div>
           </div>
         </div>

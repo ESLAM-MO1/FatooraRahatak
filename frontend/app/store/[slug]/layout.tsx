@@ -89,6 +89,8 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         }
         document.documentElement.lang = lang;
         document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+        // التبويب يعرض اسم المتجر بدل اسم المنصة
+        if (d.storeName) document.title = d.storeName;
         setStore({
           id: d.id ?? 0,
           storeName: d.storeName || "",

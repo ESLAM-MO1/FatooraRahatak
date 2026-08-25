@@ -172,14 +172,61 @@ public class PosController : ControllerBase
 
             if (isElectronic && storeId != null)
             {
-                // نحسب الإجمالي قبل إنشاء الرابط (بدون إنشاء فاتورة نهائية)
+                // ⚠️ إصلاح "مبلغ العملية غير صالح": الـ POS يرسل { productId, quantity } فقط
+                // دون UnitPrice/DiscountAmount، فكان الحساب من dto.Items يعطي صفرًا دائمًا.
+                // الآن نحسب المبلغ من قاعدة البيانات بنفس منطق CreateSalesInvoiceAsync
+                // (سعر الخصم إن وُجد وإلا السعر الأساسي) مع الضريبة — يطابق ما سيُسجَّل.
+                // البيع لا يتأكد إلا بعد نجاح الدفع: نخزّن بيانات البيع المعلقة في Payment
+                // وعند تأكيد البوابة (webhook) تُنشأ الفاتورة فعليًا.
+                if (dto.Items == null || dto.Items.Count == 0)
+                    return BadRequest(new { success = false, message = "مبلغ العملية غير صالح" });
+
                 var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId.Value);
                 var currency = string.IsNullOrWhiteSpace(store?.Currency) ? "SAR" : store.Currency;
 
-                // نجمع مبلغ البنود (لن نطبق الخصومات/الضريبة هنا — تُحسب عند تأكيد الدفع)
-                var itemsTotal = dto.Items.Sum(i => (i.UnitPrice - i.DiscountAmount) * i.Quantity);
-                if (itemsTotal <= 0)
+                var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
+                var products = await _context.Products
+                    .Where(p => productIds.Contains(p.Id) && p.StoreId == storeId.Value)
+                    .ToListAsync();
+                if (products.Count != productIds.Count)
+                    return BadRequest(new { success = false, message = "أحد المنتجات غير موجود في متجرك" });
+
+                decimal netTotal = 0m;
+                foreach (var item in dto.Items)
+                {
+                    if (item.Quantity <= 0)
+                        return BadRequest(new { success = false, message = "الكمية يجب أن تكون أكبر من صفر" });
+                    var product = products.First(p => p.Id == item.ProductId);
+                    var unitPrice = item.UnitPrice > 0
+                        ? item.UnitPrice
+                        : (product.DiscountPrice is > 0 ? product.DiscountPrice.Value : product.BasePrice);
+                    var lineTotal = unitPrice * item.Quantity;
+                    if (item.DiscountAmount < 0 || item.DiscountAmount > lineTotal)
+                        return BadRequest(new { success = false, message = "خصم البند غير صالح" });
+                    netTotal += lineTotal - item.DiscountAmount;
+                }
+                if (netTotal <= 0)
                     return BadRequest(new { success = false, message = "مبلغ العملية غير صالح" });
+
+                var taxAmount = store?.IsVatRegistered == true ? Math.Round(netTotal * 0.15m, 2) : 0m;
+                var itemsTotal = netTotal + taxAmount;
+
+                // نبني بيانات البيع المعلقة (JSON) — تُخزّن في سجل الدفع،
+                // وعند تأكيد البوابة تُستعمل لإنشاء الفاتورة عبر CreatePosSaleAsync.
+                var pendingPayload = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    userId,
+                    guestName = dto.GuestName,
+                    paymentMethod = method,
+                    items = dto.Items.Select(i => new
+                    {
+                        i.ProductId,
+                        i.VariantId,
+                        i.Quantity,
+                        UnitPrice = 0m, // يُترك 0 ليأخذ السعر من DB عند التأكيد
+                        i.DiscountAmount
+                    }).ToList()
+                });
 
                 var callbackUrl = "https://fatora.trillion-invest.tech/api/v1/payments/webhook";
                 var successUrl = "https://fatora.trillion-invest.tech/dashboard/pos";
@@ -190,7 +237,9 @@ public class PosController : ControllerBase
                     Currency = currency,
                     Description = $"دفع نقطة البيع - {store?.StoreName}",
                     CallbackUrl = callbackUrl,
-                    SuccessUrl = successUrl
+                    SuccessUrl = successUrl,
+                    PendingPosPayloadJson = pendingPayload,
+                    PosShiftStoreId = storeId
                 });
 
                 if (!link.Success)

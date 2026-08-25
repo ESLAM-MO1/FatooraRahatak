@@ -1,6 +1,9 @@
+using System.Text.Json;
 using FatooraRahatak.Application.DTOs;
+using FatooraRahatak.Application.DTOs.Accounting;
 using FatooraRahatak.Application.DTOs.Payment;
 using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Domain.Entities.Accounting;
 using FatooraRahatak.Domain.Entities.Affiliates;
 using FatooraRahatak.Domain.Entities.Orders;
 using FatooraRahatak.Domain.Entities.Payments;
@@ -10,6 +13,7 @@ using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -25,8 +29,9 @@ public class PaymentService : IPaymentService
     private readonly IOrderStockService _orderStockService;
     private readonly INotificationService _notificationService;
     private readonly IConfiguration _config;
+    private readonly ILogger<PaymentService> _logger;
 
-    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config)
+    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config, ILogger<PaymentService> logger)
     {
         _context = context;
         _provider = provider;
@@ -38,6 +43,7 @@ public class PaymentService : IPaymentService
         _orderStockService = orderStockService;
         _notificationService = notificationService;
         _config = config;
+        _logger = logger;
     }
 
     public async Task<CreatePaymentResult> CreatePaymentLinkAsync(CreatePaymentDto dto, long? storeId = null)
@@ -45,7 +51,10 @@ public class PaymentService : IPaymentService
         if (dto.Amount <= 0)
             return new CreatePaymentResult { Success = false, Message = "مبلغ الدفع غير صالح" };
 
-        if (!dto.SubscriptionId.HasValue && !dto.OrderId.HasValue && !dto.InvoiceId.HasValue)
+        // نقطة البيع (POS): الدفع الإلكتروني يُنشأ بدون مرجع (طلب/فاتورة/اشتراك) —
+        // بيانات البيع المعلقة مخزنة في PendingPosPayloadJson وتُنفَّذ عند تأكيد الدفع.
+        if (!dto.SubscriptionId.HasValue && !dto.OrderId.HasValue && !dto.InvoiceId.HasValue
+            && string.IsNullOrWhiteSpace(dto.PendingPosPayloadJson))
             return new CreatePaymentResult { Success = false, Message = "يجب تحديد مرجع الدفع (طلب أو فاتورة أو اشتراك)" };
 
         // التحقق من أن الاشتراك المرفق حقيقي وله مبلغ مستحق فعليًا
@@ -346,6 +355,8 @@ public class PaymentService : IPaymentService
             existingPayment.Amount = dto.Amount;
             existingPayment.Currency = dto.Currency;
             existingPayment.Status = PaymentStatus.Pending;
+            existingPayment.PendingPosPayloadJson = dto.PendingPosPayloadJson;
+            existingPayment.PosShiftStoreId = dto.PosShiftStoreId;
             existingPayment.UpdatedAt = DateTime.UtcNow;
             payment = existingPayment;
         }
@@ -370,6 +381,8 @@ public class PaymentService : IPaymentService
                 ProviderPaymentId = providerPaymentId,
                 CallbackUrl = dto.CallbackUrl,
                 GatewayResponse = gatewayResponse,
+                PendingPosPayloadJson = dto.PendingPosPayloadJson,
+                PosShiftStoreId = dto.PosShiftStoreId,
                 CreatedAt = DateTime.UtcNow
             };
             _context.Payments.Add(payment);
@@ -655,6 +668,73 @@ public class PaymentService : IPaymentService
     // فلا يُخصم المخزون ولا يُرحَّل محاسبيًا مرة أخرى.
     private async Task ApplyPaymentSideEffectsAsync(Payment payment)
     {
+        // نقطة البيع (POS): الدفع الإلكتروني أُنشئ بدون فاتورة — بيانات البيع معلقة في
+        // PendingPosPayloadJson. عند تأكيد الدفع نُنشئ الفاتورة فعليًا (خصم مخزون + قيود
+        // محاسبية) تمامًا كما يفعل مسار البيع النقدي المباشر.
+        if (!string.IsNullOrWhiteSpace(payment.PendingPosPayloadJson)
+            && payment.Status == PaymentStatus.Paid)
+        {
+            try
+            {
+                using var payloadDoc = JsonDocument.Parse(payment.PendingPosPayloadJson);
+                var root = payloadDoc.RootElement;
+
+                var posUserId = root.TryGetProperty("userId", out var uid) ? uid.GetInt64() : 0L;
+                var guestName = root.TryGetProperty("guestName", out var g) ? g.GetString() : null;
+                var posMethod = root.TryGetProperty("paymentMethod", out var pm) ? pm.GetString() : "Mada";
+                var items = new List<CreatePosSaleDtoItem>();
+
+                if (root.TryGetProperty("items", out var itemsEl) && itemsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var it in itemsEl.EnumerateArray())
+                    {
+                        items.Add(new CreatePosSaleDtoItem
+                        {
+                            ProductId = it.TryGetProperty("ProductId", out var p1) ? p1.GetInt64()
+                                : it.TryGetProperty("productId", out var p2) ? p2.GetInt64() : 0L,
+                            VariantId = it.TryGetProperty("VariantId", out var v1) && v1.ValueKind != JsonValueKind.Null ? v1.GetInt64()
+                                : it.TryGetProperty("variantId", out var v2) && v2.ValueKind != JsonValueKind.Null ? v2.GetInt64() : null,
+                            Quantity = it.TryGetProperty("Quantity", out var q1) ? q1.GetInt32()
+                                : it.TryGetProperty("quantity", out var q2) ? q2.GetInt32() : 0,
+                            DiscountAmount = it.TryGetProperty("DiscountAmount", out var d1) && d1.ValueKind == JsonValueKind.Number ? d1.GetDecimal()
+                                : it.TryGetProperty("discountAmount", out var d2) && d2.ValueKind == JsonValueKind.Number ? d2.GetDecimal() : 0m
+                        });
+                    }
+                }
+
+                if (items.Count > 0 && posUserId > 0)
+                {
+                    var posSale = await _accountingService.CreatePosSaleAsync(posUserId, new CreatePosSaleDto
+                    {
+                        GuestName = guestName,
+                        PaymentMethod = posMethod,
+                        Items = items.Select(i => new CreateInvoiceItemDto
+                        {
+                            ProductId = i.ProductId,
+                            VariantId = i.VariantId,
+                            Quantity = i.Quantity,
+                            UnitPrice = 0m, // يُؤخذ السعر من قاعدة البيانات عند التأكيد
+                            DiscountAmount = i.DiscountAmount
+                        }).ToList()
+                    });
+
+                    // تحديث إجماليات الوردية المفتوحة (نفس منطق الـ Controller في المسار النقدي)
+                    await _context.Set<PosShift>()
+                        .Where(s => s.StoreId == payment.PosShiftStoreId && s.ClosedAt == null)
+                        .ExecuteUpdateAsync(setters => setters
+                            .SetProperty(s => s.TotalSales, s => s.TotalSales + posSale.TotalAmount)
+                            .SetProperty(s => s.TotalCardSales, s => s.TotalCardSales + posSale.TotalAmount));
+
+                    // ✅ أنشأنا الفاتورة — نمسح الـ payload حتى لا تُعاد العملية عند تكرار الـ webhook
+                    payment.PendingPosPayloadJson = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "فشل إنشاء فاتورة POS عند تأكيد الدفع {ref}", payment.PaymentReference);
+            }
+        }
+
         if (!payment.InvoiceId.HasValue && !payment.OrderId.HasValue && !payment.SubscriptionId.HasValue)
             return;
 

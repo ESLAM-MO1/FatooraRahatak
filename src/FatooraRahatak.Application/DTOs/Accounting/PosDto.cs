@@ -7,6 +7,15 @@ public class CreatePosSaleDto
     public List<CreateInvoiceItemDto> Items { get; set; } = new();
 }
 
+// عنصر بيع POS عند إعادة إنشاء الفاتورة من الـ payload بعد تأكيد الدفع
+public class CreatePosSaleDtoItem
+{
+    public long ProductId { get; set; }
+    public long? VariantId { get; set; }
+    public int Quantity { get; set; }
+    public decimal DiscountAmount { get; set; }
+}
+
 public class PosShiftDto
 {
     public long Id { get; set; }

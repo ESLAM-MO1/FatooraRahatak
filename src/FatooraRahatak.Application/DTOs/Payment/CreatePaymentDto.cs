@@ -20,4 +20,11 @@ public class CreatePaymentDto
     public string? CardExpiryMonth { get; set; }
     public string? CardExpiryYear { get; set; }
     public string? CardCvc { get; set; }
+
+    // نقطة البيع (POS): بيانات البيع المعلقة (JSON) — تُخزَّن على سجل الدفع وعند
+    // تأكيد الدفع تُنشأ الفاتورة. تُستخدم للدفعات الإلكترونية بدون مرجع (طلب/فاتورة/اشتراك).
+    public string? PendingPosPayloadJson { get; set; }
+
+    // نقطة البيع (POS): معرف المتجر لتحديث إجماليات الوردية عند تأكيد الدفع.
+    public long? PosShiftStoreId { get; set; }
 }

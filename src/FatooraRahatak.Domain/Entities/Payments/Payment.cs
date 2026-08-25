@@ -29,6 +29,13 @@ public class Payment : BaseEntity
     public string? BankReceiptUrl { get; set; }
     public string? BankTransferReference { get; set; }
 
+    // نقطة البيع (POS): بيانات البيع المعلقة (JSON) — تُخزَّن عند إنشاء رابط الدفع
+    // للبيع الإلكتروني، وعند تأكيد الدفع (webhook) تُنشأ الفاتورة فعليًا منها.
+    public string? PendingPosPayloadJson { get; set; }
+
+    // نقطة البيع (POS): معرف المتجر لتحديث إجماليات الوردية عند تأكيد الدفع.
+    public long? PosShiftStoreId { get; set; }
+
     public Invoice? Invoice { get; set; }
     public Order? Order { get; set; }
     public Subscription? Subscription { get; set; }

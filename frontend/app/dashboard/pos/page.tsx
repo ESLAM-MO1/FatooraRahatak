@@ -325,8 +325,8 @@ export default function CashierPage() {
           </div>
 
           <div className="mb-4">
-            <span className="text-[var(--sub)] text-[12px] block mb-1.5">{t("pos.paymentMethod")}</span>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <span className="text-[var(--sub)] text-[12px] block mb-2">{t("pos.paymentMethod")}</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {PAYMENT_METHODS.map(pm => {
                 const isSelected = paymentMethod === pm.value;
                 return (
@@ -337,7 +337,7 @@ export default function CashierPage() {
                     disabled={!shift}
                     aria-pressed={isSelected}
                     title={t(pm.label)}
-                    className={`relative flex items-center gap-2 rounded-xl border-2 px-3 py-2.5 text-[12px] font-bold transition-all ${isSelected ? "border-[var(--blue)] bg-[var(--blue-50)] text-[var(--blue-deep)] shadow-sm" : "border-gray-200 bg-white text-[var(--sub)] hover:border-gray-300 hover:bg-gray-50"} ${!shift ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                    className={`relative flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-[11.5px] font-bold transition-all ${isSelected ? "border-[var(--blue)] bg-[var(--blue-50)] text-[var(--blue-deep)] shadow-sm" : "border-gray-200 bg-white text-[var(--sub)] hover:border-gray-300 hover:bg-gray-50"} ${!shift ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     {isSelected && (
                       <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[var(--blue)] flex items-center justify-center ring-2 ring-white">
@@ -346,8 +346,8 @@ export default function CashierPage() {
                         </svg>
                       </span>
                     )}
-                    <PaymentMethodLogo method={pm.value} size={22} />
-                    <span className="truncate">{t(pm.label)}</span>
+                    <PaymentMethodLogo method={pm.value} size={34} />
+                    <span className="leading-tight text-center w-full">{t(pm.label)}</span>
                   </button>
                 );
               })}

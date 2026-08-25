@@ -138,14 +138,18 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (!store?.favicon) return;
-    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-    if (!link) {
-      link = document.createElement("link");
+    // ⚠️ بنغير كل روابط الأيقونة في الهيد (favicon.ico + favicon.png) عشان المتجر ياخد
+    // أيقونته الخاصة بدل أيقونة المنصة. حتى لو كان فيه auto-generated favicon.ico من Next.js.
+    const links = document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel*="icon"]');
+    if (links.length > 0) {
+      links.forEach((link) => { link.href = store.favicon as string; });
+    } else {
+      const link = document.createElement("link");
       link.rel = "icon";
       link.type = "image/png";
       document.head.appendChild(link);
+      link.href = store.favicon as string;
     }
-    link.href = store.favicon;
   }, [store?.favicon]);
 
   if (checking) return <LoadingFallback />;

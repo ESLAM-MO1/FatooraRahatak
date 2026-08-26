@@ -354,22 +354,22 @@ export default function ProductsPage() {
         </Can>
       </PageHeader>
 
-      <div className="mb-5 inline-flex rounded-xl bg-gray-100 p-1 gap-1">
+      <div className="mb-5 inline-flex rounded-xl bg-gray-100 p-1 gap-1 max-w-full overflow-x-auto">
         <button
           onClick={() => setActiveTab("products")}
-          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-colors ${activeTab === "products" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
+          className={`px-4 sm:px-5 py-2 rounded-lg text-[12.5px] sm:text-[13px] font-bold transition-colors whitespace-nowrap ${activeTab === "products" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
         >
           {t("product.title")}
         </button>
         <button
           onClick={() => setActiveTab("archive")}
-          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-colors ${activeTab === "archive" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
+          className={`px-4 sm:px-5 py-2 rounded-lg text-[12.5px] sm:text-[13px] font-bold transition-colors whitespace-nowrap ${activeTab === "archive" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
         >
           {t("product.tabArchive")}
         </button>
         <button
           onClick={() => setActiveTab("reviews")}
-          className={`px-5 py-2 rounded-lg text-[13px] font-bold transition-colors ${activeTab === "reviews" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
+          className={`px-4 sm:px-5 py-2 rounded-lg text-[12.5px] sm:text-[13px] font-bold transition-colors whitespace-nowrap ${activeTab === "reviews" ? "bg-white shadow text-[var(--ink)]" : "text-[var(--sub)] hover:text-[var(--ink)]"}`}
         >
           ★ {t("reviews.title")}
         </button>
@@ -525,19 +525,24 @@ export default function ProductsPage() {
           </div>
           <div className="md:hidden space-y-3">
             {tabProducts.map((product) => (
-              <div key={product.id} className="card p-4 space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-[12px]">
-                  <div>
-                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.name")}</p>
-                    <p className="text-[var(--ink)] font-medium">{product.nameAr}</p>
+              <div key={product.id} className="card p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-bold text-[var(--sub)]">{t("product.name")}</p>
+                    <p className="text-[var(--ink)] font-semibold truncate">{product.nameAr}</p>
                   </div>
+                  <span className={statusStyles[product.status] ?? "badge badge--gray shrink-0"}>
+                    {statusLabels[product.status] ?? product.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[12px]">
                   <div>
                     <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.skuLabel")}</p>
-                    <p className="text-[var(--sub)]" dir="ltr">{product.sku}</p>
+                    <p className="text-[var(--sub)] truncate" dir="ltr">{product.sku}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.basePrice")}</p>
-                    <p className="text-[var(--ink)]">{product.basePrice.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
+                    <p className="text-[var(--ink)] font-medium">{product.basePrice.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}</p>
                   </div>
                   <div>
                     <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.discountPrice")}</p>
@@ -550,12 +555,6 @@ export default function ProductsPage() {
                   <div>
                     <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.availableQuantity")}</p>
                     <p className="text-[var(--sub)]">{product.availableQuantity}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-[var(--sub)]">{t("product.status")}</p>
-                    <span className={statusStyles[product.status] ?? "badge badge--gray"}>
-                      {statusLabels[product.status] ?? product.status}
-                    </span>
                   </div>
                 </div>
                 {activeTab === "archive" ? (

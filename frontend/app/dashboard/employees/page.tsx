@@ -8,6 +8,7 @@ import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Can from "@/components/Can";
+import EmployeeFormFields, { EmployeeFormValues, emptyEmployeeForm } from "@/components/EmployeeFormFields";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 
@@ -28,7 +29,9 @@ interface Permission {
 }
 
 const emptyForm = { fullName: "", email: "", phone: "", password: "", roleName: "", salary: "", nationalId: "", nationalAddress: "", birthDate: "", hireDate: "", deviceUserId: "" };
-const emptyEditForm = { fullName: "", phone: "", roleName: "", salary: "", nationalId: "", nationalAddress: "", birthDate: "", hireDate: "", deviceUserId: "" };
+const emptyEditForm = { fullName: "", email: "", password: "", phone: "", roleName: "", salary: "", nationalId: "", nationalAddress: "", birthDate: "", hireDate: "", deviceUserId: "" };
+
+interface EmployeeFormLocal extends EmployeeFormValues {}
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
@@ -40,11 +43,11 @@ export default function EmployeesPage() {
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<EmployeeFormValues>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [deactivatingId, setDeactivatingId] = useState<number | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [editForm, setEditForm] = useState<EmployeeFormValues>(emptyEditForm);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -150,6 +153,8 @@ export default function EmployeesPage() {
     setEditingEmployee(employee);
     setEditForm({
       fullName: employee.fullName,
+      email: "",
+      password: "",
       phone: employee.phone || "",
       roleName: employee.roleName,
       salary: employee.salary === 0 ? "" : String(employee.salary),
@@ -325,26 +330,19 @@ export default function EmployeesPage() {
       {/* Add Employee Modal */}
       {showModal && <div className="modal-overlay" onClick={closeAddModal}><div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.add")}</h2><button onClick={closeAddModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div><label>{t("employee.name")}</label><div className="field-shell"><input type="text" value={form.fullName} onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))} required /></div></div>
-          <div><label>{t("employee.email")}</label><div className="field-shell"><input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required /></div></div>
-          <div><label>{t("employee.phone")}</label><div className="field-shell"><input type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} required /></div></div>
-          <div><label>{t("employee.password")}</label><div className="field-shell"><input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required /></div></div>
-          <div><label>{t("employee.jobRole")}</label><div className="field-shell"><select value={form.roleName} onChange={e => setForm(f => ({ ...f, roleName: e.target.value }))} required>
-            <option value="">{t("common.select")}</option>
-            {roles.map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
-          </select></div>
-          {form.roleName && roleHint(form.roleName) && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(form.roleName)}</p>}</div>
-          <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
-          <div><label>{t("employee.nationalId")}</label><div className="field-shell"><input type="text" value={form.nationalId} onChange={e => setForm(f => ({ ...f, nationalId: e.target.value }))} placeholder={t("employee.nationalIdPlaceholder")} /></div></div>
-          <div><label>{t("employee.nationalAddress")}</label><div className="field-shell"><input type="text" value={form.nationalAddress} onChange={e => setForm(f => ({ ...f, nationalAddress: e.target.value }))} /></div></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label>{t("employee.birthDate")}</label><div className="field-shell"><input type="date" value={form.birthDate} onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))} /></div></div>
-            <div><label>{t("employee.hireDate")}</label><div className="field-shell"><input type="date" value={form.hireDate} onChange={e => setForm(f => ({ ...f, hireDate: e.target.value }))} /></div></div>
-          </div>
-          <div><label>{t("employee.deviceUserId")}</label><div className="field-shell"><input type="text" value={form.deviceUserId} onChange={e => setForm(f => ({ ...f, deviceUserId: e.target.value }))} placeholder={t("employee.deviceUserIdPlaceholder")} /></div></div>
-          <button type="submit" disabled={submitting} className="btn btn-primary">{submitting ? t("common.loading") : t("employee.submitAdd")}</button>
-        </form>
+        <EmployeeFormFields
+          form={form}
+          setForm={setForm}
+          roles={roles}
+          roleLabel={roleLabel}
+          roleHint={roleHint}
+          showCredentials
+          submitting={submitting}
+          submitLabel={t("employee.submitAdd")}
+          cancelLabel={t("common.cancel")}
+          onCancel={closeAddModal}
+          onSubmit={handleSubmit}
+        />
       </div></div>}
 
       {/* Invite Employee Modal */}
@@ -387,27 +385,18 @@ export default function EmployeesPage() {
       {/* Edit Employee Modal */}
       {editingEmployee && <div className="modal-overlay" onClick={() => setEditingEmployee(null)}><div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4"><h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("employee.editTitle")}</h2><button onClick={() => setEditingEmployee(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button></div>
-        <form onSubmit={handleEditSubmit} className="space-y-4">
-          <div><label>{t("employee.name")}</label><div className="field-shell"><input type="text" value={editForm.fullName} onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))} required /></div></div>
-          <div><label>{t("employee.phone")}</label><div className="field-shell"><input type="text" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} /></div></div>
-          <div><label>{t("employee.jobRole")}</label><div className="field-shell"><select value={editForm.roleName} onChange={e => setEditForm(f => ({ ...f, roleName: e.target.value }))} required>
-            <option value="">{t("common.select")}</option>
-            {roles.map(r => <option key={r.id} value={r.roleName}>{roleLabel(r.roleName)}</option>)}
-          </select></div>
-          {editForm.roleName && roleHint(editForm.roleName) && <p className="text-[11px] text-[var(--sub)] mt-1">{roleHint(editForm.roleName)}</p>}</div>
-          <div><label>{t("employee.salary")}</label><div className="field-shell"><input type="number" value={editForm.salary} onChange={e => setEditForm(f => ({ ...f, salary: e.target.value }))} /></div></div>
-          <div><label>{t("employee.nationalId")}</label><div className="field-shell"><input type="text" value={editForm.nationalId} onChange={e => setEditForm(f => ({ ...f, nationalId: e.target.value }))} placeholder={t("employee.nationalIdPlaceholder")} /></div></div>
-          <div><label>{t("employee.nationalAddress")}</label><div className="field-shell"><input type="text" value={editForm.nationalAddress} onChange={e => setEditForm(f => ({ ...f, nationalAddress: e.target.value }))} /></div></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label>{t("employee.birthDate")}</label><div className="field-shell"><input type="date" value={editForm.birthDate} onChange={e => setEditForm(f => ({ ...f, birthDate: e.target.value }))} /></div></div>
-            <div><label>{t("employee.hireDate")}</label><div className="field-shell"><input type="date" value={editForm.hireDate} onChange={e => setEditForm(f => ({ ...f, hireDate: e.target.value }))} /></div></div>
-          </div>
-          <div><label>{t("employee.deviceUserId")}</label><div className="field-shell"><input type="text" value={editForm.deviceUserId} onChange={e => setEditForm(f => ({ ...f, deviceUserId: e.target.value }))} placeholder={t("employee.deviceUserIdPlaceholder")} /></div></div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setEditingEmployee(null)} className="btn btn-outline btn-sm">{t("common.cancel")}</button>
-            <button type="submit" disabled={editSubmitting} className="btn btn-primary btn-sm">{editSubmitting ? t("common.loading") : t("employee.saveChanges")}</button>
-          </div>
-        </form>
+        <EmployeeFormFields
+          form={editForm}
+          setForm={setEditForm}
+          roles={roles}
+          roleLabel={roleLabel}
+          roleHint={roleHint}
+          submitting={editSubmitting}
+          submitLabel={t("employee.saveChanges")}
+          cancelLabel={t("common.cancel")}
+          onCancel={() => setEditingEmployee(null)}
+          onSubmit={handleEditSubmit}
+        />
       </div></div>}
     </div>
   );

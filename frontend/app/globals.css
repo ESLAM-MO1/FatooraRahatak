@@ -83,7 +83,27 @@
   .btn-sm { min-height: 34px; }
   input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 44px; }
 
-  /* Pagination/filters toolbars wrap instead of overflowing */
-  .flex { flex-wrap: wrap; }
+  /* Tables: keep full width inside scrollable container */
   .table-wrap table { min-width: 100%; }
+
+  /* Page headers: let the action buttons wrap below on narrow screens */
+  .page-header { flex-wrap: wrap; }
+  .page-header__actions { margin-right: 0; width: 100%; justify-content: flex-start; }
+
+  /* Ensure fluid elements never overflow the viewport */
+  main, #__next > * { min-width: 0; }
+  .flex, .inline-flex { min-width: 0; }
+}
+
+/* Extra small screens (below 380px) */
+@media (max-width: 379px) {
+  .modal-card { padding: 16px 12px; }
+  .field-shell { padding: 9px 10px; }
+  .btn, button { font-size: 12px; }
+  .btn-sm { min-height: 30px; }
+}
+
+/* xs breakpoint (481px+) for utility classes */
+@media (min-width: 481px) {
+  .xs\:inline { display: inline !important; }
 }

@@ -844,16 +844,17 @@ const handler = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 min-w-0">
             <LangSwitch />
             {!isSuperAdmin && !isSupportStaff && (
               <Link
                 href="/dashboard/subscription"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-bold text-white"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 rounded-lg text-[12px] sm:text-[12.5px] font-bold text-white shrink-0"
                 style={{ backgroundColor: "var(--gold)" }}
+                aria-label={t("dashboard.upgradeBtn")}
               >
                 <Icon name="crown" size={14} />
-                {t("dashboard.upgradeBtn")}
+                <span className="hidden sm:inline">{t("dashboard.upgradeBtn")}</span>
               </Link>
             )}
 
@@ -872,7 +873,7 @@ const handler = () => {
               </button>
 
               {notifOpen && (
-                <div className="absolute left-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-100 z-50 overflow-hidden">
+                <div className="absolute left-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-100 z-50 overflow-hidden max-w-[calc(100vw-32px)]">
                   <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
                     <p className="text-[13px] font-bold text-[var(--ink)]">{t("dashboard.notifications")}</p>
                     {unreadCount > 0 && (
@@ -935,13 +936,13 @@ const handler = () => {
                     </div>
                   )}
                 </div>
-                <span className="text-[13px] text-[var(--ink)] font-medium max-w-[100px] truncate">
+                <span className="text-[13px] text-[var(--ink)] font-medium max-w-[100px] truncate hidden xs:inline">
                   {fullName || t("common.profile")}
                 </span>
               </button>
 
               {userMenuOpen && (
-                <div className="absolute left-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+                <div className="absolute left-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden max-w-[calc(100vw-32px)]">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-[13px] font-bold text-[var(--ink)] truncate">{fullName}</p>
                     <p className="text-[11.5px] text-[var(--sub)] truncate mt-0.5">{email || ""}</p>

@@ -10,6 +10,7 @@ import SuccessToast from "@/components/SuccessToast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import PackageCard from "@/components/PackageCard";
 import Can from "@/components/Can";
+import Icon from "@/components/Icon";
 import { formatMoney } from "@/lib/formatNumber";
 
 interface SubscriptionStatus {
@@ -99,6 +100,13 @@ export default function SubscriptionPage() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [processing, setProcessing] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("Monthly");
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payAmount, setPayAmount] = useState(0);
+  const [paySubscriptionId, setPaySubscriptionId] = useState<number | null>(null);
+  const [bankAccount, setBankAccount] = useState<{ bankName?: string; accountHolder?: string; iban?: string } | null>(null);
+  const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
+  const [transferRef, setTransferRef] = useState("");
+  const [bankSubmitting, setBankSubmitting] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -157,8 +165,8 @@ export default function SubscriptionPage() {
 
         if (dueAmount > 0) {
           if (subscriptionId) {
-            // الدفع عبر صفحة موياسر المحمية مباشرة (لا يُدخل العميل بيانات البطاقة هنا)
-            await startHostedPayment(subscriptionId, dueAmount);
+            // فتح مودال الدفع داخل الصفحة (إلكتروني أو تحويل بنكي)
+            await openPaymentModal(subscriptionId, dueAmount);
           } else {
             setActionError(t("subscription.paymentError"));
           }
@@ -200,7 +208,8 @@ export default function SubscriptionPage() {
         await fetchData();
       } else if (dueAmount > 0) {
         if (subscriptionId) {
-          await startHostedPayment(subscriptionId, dueAmount);
+          // فتح مودال الدفع داخل الصفحة (إلكتروني أو تحويل بنكي)
+          await openPaymentModal(subscriptionId, dueAmount);
         } else {
           setActionError(t("subscription.paymentError"));
         }
@@ -239,6 +248,62 @@ export default function SubscriptionPage() {
       const e = err as { response?: { data?: { message?: string } } };
       setActionError(e.response?.data?.message || t("subscription.paymentError"));
     }
+  };
+
+  // فتح مودال الدفع داخل صفحة الاشتراك: يجلب طرق الدفع المتاحة (إلكتروني + تحويل بنكي بحساب المنصة)
+  const openPaymentModal = async (subscriptionId: number, amount: number) => {
+    setPaySubscriptionId(subscriptionId);
+    setPayAmount(amount);
+    setTransferRef("");
+    setActionError("");
+    setActionSuccess("");
+    setShowPayModal(true);
+    try {
+      const res = await api.get("/subscriptions/payment-methods");
+      const d = res.data?.data;
+      setBankTransferEnabled(Boolean(d?.bankTransfer));
+      setBankAccount(d?.bankAccount ?? null);
+    } catch {
+      setBankTransferEnabled(false);
+      setBankAccount(null);
+    }
+  };
+
+  // تأكيد التحويل البنكي: إنشاء سجل دفع من نوع BankTransfer وإرفاق مرجع التحويل
+  const submitBankTransfer = async () => {
+    if (!paySubscriptionId) return;
+    setBankSubmitting(true);
+    setActionError("");
+    try {
+      const payRes = await api.post("/payments/create-link", {
+        subscriptionId: paySubscriptionId,
+        amount: payAmount,
+        currency: "SAR",
+        paymentMethod: "BankTransfer",
+        successUrl: window.location.href,
+        callbackUrl: window.location.href,
+      });
+      if (payRes.data.success) {
+        const ref = payRes.data?.data?.paymentReference;
+        if (ref) sessionStorage.setItem("sub_payment_ref", ref);
+        setShowPayModal(false);
+        setActionSuccess(t("subscription.bankSuccess"));
+        fetchData();
+      } else {
+        setActionError(payRes.data?.message || t("subscription.paymentError"));
+      }
+    } catch (err) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setActionError(e.response?.data?.message || t("subscription.paymentError"));
+    } finally {
+      setBankSubmitting(false);
+    }
+  };
+
+  // الدفع الإلكتروني من داخل المودال (لا يغادر الصفحة نهائيًا — يفتح البوابة في نافذة جديدة)
+  const payOnlineFromModal = async () => {
+    if (!paySubscriptionId) return;
+    await startHostedPayment(paySubscriptionId, payAmount);
   };
 
   // بعد الرجوع من صفحة موياسر المحمية، نتحقق من نتيجة الدفع
@@ -575,6 +640,100 @@ export default function SubscriptionPage() {
           })}
         </div>
       </div>
+
+      {/* ── مودال إتمام الدفع داخل صفحة الاشتراك ── */}
+      {showPayModal && (
+        <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
+          <div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("subscription.paymentTitle")}</h2>
+              <button onClick={() => setShowPayModal(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+
+            <div className="bg-[var(--blue-50)] rounded-xl px-4 py-3 mb-5 flex items-center justify-between">
+              <span className="text-[13px] font-bold text-[var(--ink)]">{t("subscription.paymentAmount")}</span>
+              <span className="text-[18px] font-extrabold text-[var(--blue-deep)]">{formatMoney(payAmount)} {t("common.sar")}</span>
+            </div>
+
+            {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
+
+            <div className="space-y-3">
+              {/* خيار الدفع الإلكتروني */}
+              <button
+                type="button"
+                onClick={payOnlineFromModal}
+                className="w-full flex items-center gap-3 border-2 border-[var(--blue)] rounded-xl p-4 text-start transition-colors hover:bg-[var(--blue-50)]/50"
+              >
+                <span className="w-10 h-10 rounded-full bg-[var(--blue-50)] flex items-center justify-center shrink-0">
+                  <Icon name="card" size={18} className="text-[var(--blue)]" />
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14px] font-bold text-[var(--ink)]">{t("subscription.onlinePayment")}</span>
+                  <span className="block text-[12px] text-[var(--sub)] mt-0.5">{t("subscription.onlinePaymentDesc")}</span>
+                </span>
+                <Icon name="arrowLeft" size={16} className="text-[var(--sub)] shrink-0" />
+              </button>
+
+              {/* خيار التحويل البنكي */}
+              {bankTransferEnabled && (
+                <div className="border-2 border-gray-200 rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                      <Icon name="card" size={18} className="text-[var(--sub)]" />
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-[14px] font-bold text-[var(--ink)]">{t("subscription.bankTransfer")}</span>
+                      <span className="block text-[12px] text-[var(--sub)] mt-0.5">{t("subscription.bankTransferDesc")}</span>
+                    </div>
+                  </div>
+
+                  {bankAccount && (
+                    <div className="bg-gray-50 rounded-lg p-3 text-[13px] space-y-1.5 mb-3">
+                      <p className="text-[12px] font-bold text-[var(--sub)] mb-1">{t("subscription.bankTransferDetails")}</p>
+                      {bankAccount.bankName && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-[var(--sub)]">{t("subscription.bankName")}</span>
+                          <b className="text-[var(--ink)]">{bankAccount.bankName}</b>
+                        </div>
+                      )}
+                      {bankAccount.accountHolder && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-[var(--sub)]">{t("subscription.accountHolder")}</span>
+                          <b className="text-[var(--ink)]">{bankAccount.accountHolder}</b>
+                        </div>
+                      )}
+                      {bankAccount.iban && (
+                        <div className="flex justify-between gap-2">
+                          <span className="text-[var(--sub)]">{t("subscription.iban")}</span>
+                          <b className="text-[var(--ink)] break-all" dir="ltr">{bankAccount.iban}</b>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="field-shell mb-3">
+                    <input
+                      type="text"
+                      value={transferRef}
+                      onChange={e => setTransferRef(e.target.value)}
+                      placeholder={t("subscription.transferReferencePlaceholder")}
+                    />
+                  </div>
+                  <button type="button" onClick={submitBankTransfer} disabled={bankSubmitting} className="btn btn-primary w-full">
+                    {bankSubmitting ? t("common.loading") : t("subscription.payByBank")}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-[var(--border)] text-center">
+              <button onClick={() => setShowPayModal(false)} className="text-[12.5px] text-[var(--sub)] hover:text-[var(--ink)] transition-colors">
+                {t("subscription.cancelPayment")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

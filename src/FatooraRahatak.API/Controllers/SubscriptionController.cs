@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using System.Text.Json;
+using FatooraRahatak.Application.DTOs.Payment;
 using FatooraRahatak.Application.DTOs.Subscriptions;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
 using FatooraRahatak.API.Filters;
+using Microsoft.EntityFrameworkCore;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -38,6 +41,48 @@ public class SubscriptionController : ControllerBase
 
         var result = await _subscriptionService.GetStatusAsync(storeId.Value);
         return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("SubscriptionPackage.View")]
+    [HttpGet("payment-methods")]
+    public async Task<IActionResult> GetPaymentMethods()
+    {
+        // حساب المنصة البنكي للتحويل البنكي (من PlatformSettings أو appsettings)
+        BankTransferInfoDto? bankAccount = null;
+        var setting = await _context.PlatformSettings
+            .FirstOrDefaultAsync(s => s.SettingKey == "platform_bank_account");
+        if (setting != null && !string.IsNullOrWhiteSpace(setting.SettingValue))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(setting.SettingValue);
+                var root = doc.RootElement;
+                var iban = root.TryGetProperty("iban", out var ib) ? ib.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(iban))
+                {
+                    bankAccount = new BankTransferInfoDto
+                    {
+                        BankName = root.TryGetProperty("bankName", out var bn) ? bn.GetString() : null,
+                        AccountHolder = root.TryGetProperty("accountHolder", out var ah) ? ah.GetString() : null,
+                        Iban = iban
+                    };
+                }
+            }
+            catch { }
+        }
+
+        return Ok(new
+        {
+            success = true,
+            data = new
+            {
+                // خيارات الدفع الإلكتروني (دائماً متاحة)
+                onlinePayment = true,
+                // التحويل البنكي (متاح في حال وجود حساب بنكي للمنصة)
+                bankTransfer = bankAccount != null,
+                bankAccount
+            }
+        });
     }
 
     [RequirePermission("SubscriptionPackage.Edit")]

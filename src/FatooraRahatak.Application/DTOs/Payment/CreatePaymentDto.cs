@@ -27,4 +27,7 @@ public class CreatePaymentDto
 
     // نقطة البيع (POS): معرف المتجر لتحديث إجماليات الوردية عند تأكيد الدفع.
     public long? PosShiftStoreId { get; set; }
+
+    // طريقة الدفع المطلوبة (Moyasar/CreditCard = افتراضي، BankTransfer/PayPal/Tabby/Tamara = حسب الاختيار)
+    public string? PaymentMethod { get; set; }
 }

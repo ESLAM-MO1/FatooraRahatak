@@ -166,6 +166,19 @@ public class PaymentService : IPaymentService
                 providerType = PaymentProviderType.Tamara;
             }
         }
+        else if (!string.IsNullOrWhiteSpace(dto.PaymentMethod))
+        {
+            // الاشتراكات/الفواتير: يحدد العميل طريقة الدفع صراحةً
+            // (Moyasar افتراضي للبطاقة/مدى، BankTransfer للتحويل البنكي...)
+            providerType = dto.PaymentMethod.Trim().ToLowerInvariant() switch
+            {
+                "banktransfer" or "bank_transfer" => PaymentProviderType.BankTransfer,
+                "paypal" => PaymentProviderType.PayPal,
+                "tabby" => PaymentProviderType.Tabby,
+                "tamara" => PaymentProviderType.Tamara,
+                _ => PaymentProviderType.Moyasar
+            };
+        }
 
         if (providerType == PaymentProviderType.PayPal)
         {
@@ -229,24 +242,41 @@ public class PaymentService : IPaymentService
         }
         else if (providerType == PaymentProviderType.BankTransfer)
         {
-            var orderForBank = await _context.Orders
-                .Include(o => o.Store)
-                .FirstOrDefaultAsync(o => o.Id == dto.OrderId.Value);
-            var storeForBank = orderForBank?.Store;
-            bankTransferInfo = new BankTransferInfoDto
+            if (dto.SubscriptionId.HasValue)
             {
-                BankName = storeForBank?.PayoutBankName,
-                AccountHolder = storeForBank?.PayoutAccountHolder,
-                Iban = storeForBank?.PayoutIban
-            };
-
-            if (string.IsNullOrWhiteSpace(storeForBank?.PayoutIban))
-            {
-                return new CreatePaymentResult
+                // 💳 التحويل البنكي لاشتراك المنصة: نعرض حساب المنصة البنكي (PlatformSettings)
+                var platformBank = await GetPlatformBankAccountAsync();
+                if (platformBank == null || string.IsNullOrWhiteSpace(platformBank.Iban))
                 {
-                    Success = false,
-                    Message = "لم يُضبط حساب بنكي للاستقبال في إعدادات المتجر بعد — يرجى التواصل مع المتجر"
+                    return new CreatePaymentResult
+                    {
+                        Success = false,
+                        Message = "لم يُضبط حساب المنصة البنكي للاستقبال بعد — يرجى التواصل مع الدعم"
+                    };
+                }
+                bankTransferInfo = platformBank;
+            }
+            else
+            {
+                var orderForBank = await _context.Orders
+                    .Include(o => o.Store)
+                    .FirstOrDefaultAsync(o => o.Id == dto.OrderId.Value);
+                var storeForBank = orderForBank?.Store;
+                bankTransferInfo = new BankTransferInfoDto
+                {
+                    BankName = storeForBank?.PayoutBankName,
+                    AccountHolder = storeForBank?.PayoutAccountHolder,
+                    Iban = storeForBank?.PayoutIban
                 };
+
+                if (string.IsNullOrWhiteSpace(storeForBank?.PayoutIban))
+                {
+                    return new CreatePaymentResult
+                    {
+                        Success = false,
+                        Message = "لم يُضبط حساب بنكي للاستقبال في إعدادات المتجر بعد — يرجى التواصل مع المتجر"
+                    };
+                }
             }
         }
         else
@@ -1367,5 +1397,54 @@ public class PaymentService : IPaymentService
             "refunded" or "partially_refunded" => PaymentStatus.Refunded,
             _ => PaymentStatus.Pending
         };
+    }
+
+    /// <summary>
+    /// حساب المنصة البنكي للتحويل البنكي لاشتراكات المنصة — يُقرأ من PlatformSettings
+    /// (key: platform_bank_account) أو من الإعدادات. يضم بنك + اسم المستفيد + IBAN.
+    /// </summary>
+    private async Task<BankTransferInfoDto?> GetPlatformBankAccountAsync()
+    {
+        // 1) من PlatformSettings إن وُجد
+        var setting = await _context.PlatformSettings
+            .FirstOrDefaultAsync(s => s.SettingKey == "platform_bank_account");
+        if (setting != null && !string.IsNullOrWhiteSpace(setting.SettingValue))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(setting.SettingValue);
+                var root = doc.RootElement;
+                var iban = root.TryGetProperty("iban", out var ib) ? ib.GetString() : null;
+                if (!string.IsNullOrWhiteSpace(iban))
+                {
+                    return new BankTransferInfoDto
+                    {
+                        BankName = root.TryGetProperty("bankName", out var bn) ? bn.GetString() : null,
+                        AccountHolder = root.TryGetProperty("accountHolder", out var ah) ? ah.GetString() : null,
+                        Iban = iban
+                    };
+                }
+            }
+            catch
+            {
+                // تجاهل القيمة التالفة والعودة للإعدادات
+            }
+        }
+
+        // 2) Fallback من الإعدادات (App:PlatformBank:*)
+        var cfgBank = _config["App:PlatformBank:BankName"];
+        var cfgHolder = _config["App:PlatformBank:AccountHolder"];
+        var cfgIban = _config["App:PlatformBank:Iban"];
+        if (!string.IsNullOrWhiteSpace(cfgIban))
+        {
+            return new BankTransferInfoDto
+            {
+                BankName = cfgBank,
+                AccountHolder = cfgHolder,
+                Iban = cfgIban
+            };
+        }
+
+        return null;
     }
 }

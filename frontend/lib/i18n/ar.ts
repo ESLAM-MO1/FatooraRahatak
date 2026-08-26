@@ -2073,6 +2073,14 @@ const ar = {
   "settings.loadError": "حدث خطأ أثناء تحميل الإعدادات",
   "settings.saveSuccess": "تم حفظ الإعدادات بنجاح",
   "settings.saveError": "حدث خطأ أثناء حفظ الإعدادات",
+  "settings.bankAccountTitle": "حساب المنصة البنكي",
+  "settings.bankAccountDesc": "بيانات الحساب البنكي للمنصة — تظهر للعميل عند اختيار التحويل البنكي في دفع الاشتراكات",
+  "settings.bankName": "اسم البنك",
+  "settings.accountHolder": "اسم المستفيد",
+  "settings.iban": "رقم الآيبان (IBAN)",
+  "settings.saveBank": "حفظ بيانات الحساب البنكي",
+  "settings.bankSaved": "تم حفظ بيانات الحساب البنكي بنجاح",
+  "settings.bankRequired": "يرجى إدخال اسم البنك ورقم الآيبان على الأقل",
 
   // ── POS (Extended) ──
   "pos.error": "خطأ",

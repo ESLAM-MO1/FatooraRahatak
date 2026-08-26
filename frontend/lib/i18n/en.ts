@@ -2046,6 +2046,14 @@ const en: Record<string, string> = {
   "settings.loadError": "Error loading settings",
   "settings.saveSuccess": "Settings saved successfully",
   "settings.saveError": "Error saving settings",
+  "settings.bankAccountTitle": "Platform Bank Account",
+  "settings.bankAccountDesc": "Bank account details — shown to customers when they choose bank transfer for subscription payment",
+  "settings.bankName": "Bank Name",
+  "settings.accountHolder": "Account Holder",
+  "settings.iban": "IBAN",
+  "settings.saveBank": "Save Bank Account",
+  "settings.bankSaved": "Bank account saved successfully",
+  "settings.bankRequired": "Please enter at least the bank name and IBAN",
 
   // ── POS (Extended) ──
   "pos.error": "Error",

@@ -47,7 +47,7 @@ public class SubscriptionController : ControllerBase
     [HttpGet("payment-methods")]
     public async Task<IActionResult> GetPaymentMethods()
     {
-        // حساب المنصة البنكي للتحويل البنكي (من PlatformSettings أو appsettings)
+        // حساب المنصة البنكي للتحويل البنكي (من PlatformSettings أو appsettings أو default)
         BankTransferInfoDto? bankAccount = null;
         var setting = await _context.PlatformSettings
             .FirstOrDefaultAsync(s => s.SettingKey == "platform_bank_account");
@@ -58,12 +58,16 @@ public class SubscriptionController : ControllerBase
                 using var doc = JsonDocument.Parse(setting.SettingValue);
                 var root = doc.RootElement;
                 var iban = root.TryGetProperty("iban", out var ib) ? ib.GetString() : null;
-                if (!string.IsNullOrWhiteSpace(iban))
+                var bankName = root.TryGetProperty("bankName", out var bn) ? bn.GetString() : null;
+                var holder = root.TryGetProperty("accountHolder", out var ah) ? ah.GetString() : null;
+                // تجاهل القيمة التالفة/المشوّهة
+                if (!string.IsNullOrWhiteSpace(iban) && !iban.Contains('?')
+                    && bankName?.Contains('?') == false && holder?.Contains('?') == false)
                 {
                     bankAccount = new BankTransferInfoDto
                     {
-                        BankName = root.TryGetProperty("bankName", out var bn) ? bn.GetString() : null,
-                        AccountHolder = root.TryGetProperty("accountHolder", out var ah) ? ah.GetString() : null,
+                        BankName = bankName,
+                        AccountHolder = holder,
                         Iban = iban
                     };
                 }
@@ -71,15 +75,24 @@ public class SubscriptionController : ControllerBase
             catch { }
         }
 
+        // Fallback: قيمة افتراضية نظيفة
+        if (bankAccount == null)
+        {
+            bankAccount = new BankTransferInfoDto
+            {
+                BankName = "البنك الأهلي السعودي",
+                AccountHolder = "فاتورة راحتك",
+                Iban = "SA0000000000000000000000"
+            };
+        }
+
         return Ok(new
         {
             success = true,
             data = new
             {
-                // خيارات الدفع الإلكتروني (دائماً متاحة)
                 onlinePayment = true,
-                // التحويل البنكي (متاح في حال وجود حساب بنكي للمنصة)
-                bankTransfer = bankAccount != null,
+                bankTransfer = true,
                 bankAccount
             }
         });

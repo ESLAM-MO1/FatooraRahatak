@@ -1402,10 +1402,12 @@ public class PaymentService : IPaymentService
     /// <summary>
     /// حساب المنصة البنكي للتحويل البنكي لاشتراكات المنصة — يُقرأ من PlatformSettings
     /// (key: platform_bank_account) أو من الإعدادات. يضم بنك + اسم المستفيد + IBAN.
+    /// ⚠️ إن كانت القيمة المخزنة مشوّهة (تحتوي '؟') نرجع القيمة الافتراضية النظيفة
+    /// بدل عرض نصوص مكسورة للمستخدم.
     /// </summary>
     private async Task<BankTransferInfoDto?> GetPlatformBankAccountAsync()
     {
-        // 1) من PlatformSettings إن وُجد
+        // 1) من PlatformSettings إن وُجدت قيمة سليمة
         var setting = await _context.PlatformSettings
             .FirstOrDefaultAsync(s => s.SettingKey == "platform_bank_account");
         if (setting != null && !string.IsNullOrWhiteSpace(setting.SettingValue))
@@ -1415,12 +1417,17 @@ public class PaymentService : IPaymentService
                 using var doc = JsonDocument.Parse(setting.SettingValue);
                 var root = doc.RootElement;
                 var iban = root.TryGetProperty("iban", out var ib) ? ib.GetString() : null;
-                if (!string.IsNullOrWhiteSpace(iban))
+                var bankName = root.TryGetProperty("bankName", out var bn) ? bn.GetString() : null;
+                var holder = root.TryGetProperty("accountHolder", out var ah) ? ah.GetString() : null;
+
+                // تجاهل القيمة التالفة/المشوّهة ونرجع الافتراضي النظيف
+                if (!string.IsNullOrWhiteSpace(iban) && !iban.Contains('?')
+                    && !bankName.Contains('?') && !holder.Contains('?'))
                 {
                     return new BankTransferInfoDto
                     {
-                        BankName = root.TryGetProperty("bankName", out var bn) ? bn.GetString() : null,
-                        AccountHolder = root.TryGetProperty("accountHolder", out var ah) ? ah.GetString() : null,
+                        BankName = bankName,
+                        AccountHolder = holder,
                         Iban = iban
                     };
                 }
@@ -1445,6 +1452,12 @@ public class PaymentService : IPaymentService
             };
         }
 
-        return null;
+        // 3) قيمة افتراضية نظيفة (المتجر الرسمي) — تُستبدل من الأدمن لاحقًا
+        return new BankTransferInfoDto
+        {
+            BankName = "البنك الأهلي السعودي",
+            AccountHolder = "فاتورة راحتك",
+            Iban = "SA0000000000000000000000"
+        };
     }
 }

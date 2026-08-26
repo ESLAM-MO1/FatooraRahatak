@@ -173,6 +173,7 @@ const ar = {
   "nav.categories": "التصنيفات",
   "nav.coupons": "القسائم الترويجية",
   "nav.customers": "العملاء",
+  "nav.suppliers": "الموردون",
   "nav.orders": "الطلبات",
   "nav.returns": "طلبات الإرجاع",
   "nav.transfers": "تحويلات المخزون",
@@ -2301,6 +2302,7 @@ const ar = {
   "checkout.paymentMada": "شبكة (مدى)",
   "checkout.paymentTabby": "تابي",
   "checkout.paymentTamara": "تمارا",
+  "checkout.paymentMoyasar": "بطاقة / مدى (مواسر)",
   "checkout.shippingCompanyLabel": "شركة الشحن",
   "checkout.shippingCostLabel": "تكلفة الشحن",
   "checkout.calculatingShipping": "جاري حساب تكلفة الشحن...",
@@ -2846,6 +2848,7 @@ const ar = {
   "storeSettings.paymentMada": "شبكة (مدى)",
   "storeSettings.paymentTabby": "تابي",
   "storeSettings.paymentTamara": "تمارا",
+  "storeSettings.paymentMoyasar": "مواسر (بطاقة/مدى)",
   "storeSettings.toggleEnabled": "مفعل",
   "storeSettings.toggleDisabled": "معطل",
   "storeSettings.tabMenu": "القائمة والسياسات",
@@ -3795,6 +3798,18 @@ const ar = {
   "subscription.payOnline": "ادفع بالبطاقة",
   "subscription.payByBank": "تأكيد التحويل",
   "subscription.bankSuccess": "تم استلام إيصال التحويل، سيتم تأكيد اشتراكك بعد التحقق من المبلغ",
+
+  // ── Suppliers ──
+  "suppliers.title": "الموردون",
+  "suppliers.count": "عدد الموردين",
+  "suppliers.totalPurchases": "إجمالي المشتريات",
+  "suppliers.average": "متوسط قيمة المشتريات",
+  "suppliers.name": "اسم المورد",
+  "suppliers.phone": "الجوال",
+  "suppliers.city": "المدينة",
+  "suppliers.invoicesCount": "عدد الفواتير",
+  "suppliers.empty": "لا يوجد موردون بعد — أضف فواتير مشتريات ليظهر الموردون هنا",
+  "suppliers.loadError": "تعذر تحميل الموردين",
 
   // ── Payment / Transactions ──
   "payment.transactionsTitle": "المعاملات المالية",

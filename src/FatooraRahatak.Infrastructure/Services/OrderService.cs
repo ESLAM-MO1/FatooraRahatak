@@ -258,12 +258,13 @@ public class OrderService : IOrderService
         // ويبقى بدون خصم حتى يصلك تأكيد الدفع الفعلي من بوابة الدفع (webhook/فحص الحالة
         // أو تأكيد التاجر للحوالة). هكذا لو لم يُكمل العميل الدفع أو فشل/أُلغي، يظل الطلب
         // معلقًا بدون أي خصم مخزون. الدفع عند الاستلام (COD) فقط يخصم فورًا (دفع عند التوصيل).
-        var isDeferredStockPayment = paymentMethod is PaymentMethodType.CreditCard
-            or PaymentMethodType.PayPal
-            or PaymentMethodType.BankTransfer
-            or PaymentMethodType.Mada
-            or PaymentMethodType.Tabby
-            or PaymentMethodType.Tamara;
+  var isDeferredStockPayment = paymentMethod is PaymentMethodType.CreditCard
+  or PaymentMethodType.PayPal
+  or PaymentMethodType.BankTransfer
+  or PaymentMethodType.Mada
+  or PaymentMethodType.Tabby
+  or PaymentMethodType.Tamara
+  or PaymentMethodType.Moyasar;
 
         var orderInitialStatus = isDeferredStockPayment ? OrderStatus.PendingPayment : OrderStatus.New;
 
@@ -353,8 +354,8 @@ public class OrderService : IOrderService
             var paymentCallbackUrl = (_config["App:BaseUrl"] ?? "https://your-domain.com")
                 .TrimEnd('/') + "/api/v1/payments/webhook";
 
-            // 💳 طرق الدفع الإلكترونية (بطاقة عبر ميسرة / PayPal / شبكة مدى / تابي / تمارا) تُنشئ رابط دفع ليكمله العميل
-            if (paymentMethod is PaymentMethodType.CreditCard or PaymentMethodType.PayPal or PaymentMethodType.Mada or PaymentMethodType.Tabby or PaymentMethodType.Tamara)
+            // 💳 طرق الدفع الإلكترونية (بطاقة عبر ميسرة / PayPal / شبكة مدى / تابي / تمارا / مواسر) تُنشئ رابط دفع ليكمله العميل
+            if (paymentMethod is PaymentMethodType.CreditCard or PaymentMethodType.PayPal or PaymentMethodType.Mada or PaymentMethodType.Tabby or PaymentMethodType.Tamara or PaymentMethodType.Moyasar)
             {
                 var storeFrontBase = (_config["App:StoreFrontBaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
                 var successUrl = $"{storeFrontBase}/store/{slug}/thank-you/{order.OrderNumber}";

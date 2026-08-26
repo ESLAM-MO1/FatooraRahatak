@@ -169,6 +169,7 @@ const en: Record<string, string> = {
   "nav.categories": "Categories",
   "nav.coupons": "Promo Coupons",
   "nav.customers": "Customers",
+  "nav.suppliers": "Suppliers",
   "nav.orders": "Orders",
   "nav.returns": "Return Requests",
   "nav.transfers": "Stock Transfers",
@@ -2274,6 +2275,7 @@ const en: Record<string, string> = {
   "checkout.paymentMada": "Mada (Network)",
   "checkout.paymentTabby": "Tabby",
   "checkout.paymentTamara": "Tamara",
+  "checkout.paymentMoyasar": "Card / Mada (Moyasar)",
   "checkout.shippingCompanyLabel": "Shipping company",
   "checkout.shippingCostLabel": "Shipping cost",
   "checkout.calculatingShipping": "Calculating shipping cost...",
@@ -2819,6 +2821,7 @@ const en: Record<string, string> = {
   "storeSettings.paymentMada": "Mada (Network)",
   "storeSettings.paymentTabby": "Tabby",
   "storeSettings.paymentTamara": "Tamara",
+  "storeSettings.paymentMoyasar": "Moyasar (Card/Mada)",
   "storeSettings.toggleEnabled": "Enabled",
   "storeSettings.toggleDisabled": "Disabled",
   "storeSettings.tabMenu": "Menu & Policies",
@@ -3768,6 +3771,18 @@ const en: Record<string, string> = {
   "subscription.payOnline": "Pay by Card",
   "subscription.payByBank": "Confirm Transfer",
   "subscription.bankSuccess": "The transfer receipt has been received. Your subscription will be confirmed after the amount is verified.",
+
+  // ── Suppliers ──
+  "suppliers.title": "Suppliers",
+  "suppliers.count": "Suppliers",
+  "suppliers.totalPurchases": "Total Purchases",
+  "suppliers.average": "Average Purchase Value",
+  "suppliers.name": "Supplier Name",
+  "suppliers.phone": "Phone",
+  "suppliers.city": "City",
+  "suppliers.invoicesCount": "Invoices",
+  "suppliers.empty": "No suppliers yet — add purchase invoices and they will appear here",
+  "suppliers.loadError": "Failed to load suppliers",
 
   // ── Payment / Transactions ──
   "payment.transactionsTitle": "Financial Transactions",

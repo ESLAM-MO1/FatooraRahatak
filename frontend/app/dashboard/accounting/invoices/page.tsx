@@ -55,6 +55,10 @@ export default function InvoicesPage() {
   const paymentLabels: Record<string, string> = {
     Cash: t("invoice.paymentCash"),
     Credit: t("invoice.paymentCredit"),
+    Mada: t("invoice.paymentMada"),
+    BankTransfer: t("invoice.paymentBankTransfer"),
+    Tabby: t("invoice.paymentTabby"),
+    Tamara: t("invoice.paymentTamara"),
   };
 
   const fetchData = useCallback(async () => {

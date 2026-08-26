@@ -110,6 +110,7 @@ const paymentLabels: Record<string, string> = {
   Mada: "storeSettings.paymentMada",
   Tabby: "storeSettings.paymentTabby",
   Tamara: "storeSettings.paymentTamara",
+  Moyasar: "storeSettings.paymentMoyasar", // بوابة مواسر (بطاقة/مدى)
 };
 
 const STORE_BASE_URL = process.env.NEXT_PUBLIC_STORE_BASE_URL || "http://localhost:3000";

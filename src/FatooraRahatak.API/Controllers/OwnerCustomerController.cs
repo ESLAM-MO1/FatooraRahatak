@@ -3,8 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Application.DTOs.Customers;
+using FatooraRahatak.Domain.Entities.Accounting;
+using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 using FatooraRahatak.API.Filters;
+using Microsoft.EntityFrameworkCore;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -52,6 +55,31 @@ public class OwnerCustomerController : ControllerBase
             return NotFound(new { success = false, message = "العميل غير موجود" });
 
         return Ok(new { success = true, data = result });
+    }
+
+    // 📦 الموردون: قائمة موحّدة مستخلصة من فواتير المشتريات (InvoiceType.Purchase)
+    [RequirePermission("Customers.View")]
+    [HttpGet("suppliers")]
+    public async Task<IActionResult> GetSuppliers()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        var suppliers = await _context.Set<Invoice>()
+            .Where(i => i.StoreId == storeId.Value && i.InvoiceType == InvoiceType.Purchase && i.PartyName != null)
+            .GroupBy(i => new { i.PartyName, i.PartyPhone, i.PartyCity })
+            .Select(g => new
+            {
+                name = g.Key.PartyName,
+                phone = g.Key.PartyPhone,
+                city = g.Key.PartyCity,
+                invoicesCount = g.Count(),
+                totalPurchases = g.Sum(i => i.TotalAmount)
+            })
+            .OrderBy(s => s.name)
+            .ToListAsync();
+
+        return Ok(new { success = true, data = suppliers });
     }
 
     [RequirePermission("Customers.Add")]

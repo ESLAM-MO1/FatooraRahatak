@@ -9,15 +9,11 @@ export async function openProtectedFile(url: string, fileName?: string) {
     const res = await api.get(url, { responseType: "blob" });
     const blob = res.data as Blob;
     const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = objectUrl;
-    if (fileName) a.download = fileName;
-    else a.target = "_blank";
-    a.rel = "noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+
+    // ✅ عرض الملف في تبويب جديد بدل التحميل (للمستندات، الصور، PDF...)
+    window.open(objectUrl, "_blank", "noopener");
+    // تحرير الـ URL بعد تأخير لمنع كسر العرض
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
     return { ok: true as const };
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } | Blob } };

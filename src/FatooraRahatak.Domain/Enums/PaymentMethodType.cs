@@ -8,5 +8,6 @@ public enum PaymentMethodType
     BankTransfer,
     Mada,
     Tabby,
-    Tamara
+    Tamara,
+    Moyasar
 }

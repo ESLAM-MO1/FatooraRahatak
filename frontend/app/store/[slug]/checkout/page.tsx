@@ -71,6 +71,7 @@ const PAYMENT_LABEL_KEYS: Record<string, string> = {
   Mada: "checkout.paymentMada",
   Tabby: "checkout.paymentTabby",
   Tamara: "checkout.paymentTamara",
+  Moyasar: "checkout.paymentMoyasar",
 };
 
 function paymentIcon(type: string) {
@@ -132,6 +133,14 @@ function paymentIcon(type: string) {
           <path d="M7.5 9.2c.9 0 1.5-.4 1.5-1.2S8.4 6.8 7.5 6.8 6 7.2 6 8s.6 1.2 1.5 1.2z" fill="#fff" />
           <path d="M16.5 9.2c.9 0 1.5-.4 1.5-1.2s-.6-1.2-1.5-1.2-1.5.4-1.5 1.2.6 1.2 1.5 1.2z" fill="#fff" />
           <path d="M12 17.2c2.2 0 3.8-1.4 3.8-3.2H8.2c0 1.8 1.6 3.2 3.8 3.2z" fill="#fff" />
+        </svg>
+      );
+    case "Moyasar":
+      return (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2" />
+          <path d="M2 10h20" />
+          <path d="M6 15h4" />
         </svg>
       );
     default:

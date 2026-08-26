@@ -42,6 +42,7 @@ const ownerNavKeys: NavGroupKey[] = [
       { href: "/dashboard/orders/returns", labelKey: "nav.returns", icon: "receipt", perm: "Orders.View" },
       { href: "/dashboard/shipping", labelKey: "nav.shipping", icon: "truck", perm: "ShippingCompanies.View" },
       { href: "/dashboard/customers", labelKey: "nav.customers", icon: "userGroup", perm: "Customers.View" },
+      { href: "/dashboard/suppliers", labelKey: "nav.suppliers", icon: "truck", perm: "Customers.View" },
       { href: "/dashboard/statistics", labelKey: "nav.statistics", icon: "chart", perm: "Statistics.View" },
     ],
   },

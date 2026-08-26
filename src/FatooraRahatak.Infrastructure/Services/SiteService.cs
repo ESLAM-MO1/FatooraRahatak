@@ -16,13 +16,54 @@ public class SiteService : ISiteService
     public SiteService(AppDbContext context, INotificationService notificationService) { _context = context; _notificationService = notificationService; }
 
     // === Landing Page ===
+    // ⚠️ إصلاح: الفوتر القديم المحفوظ في قاعدة البيانات (من إصدار قديم) يحتوي
+    // social ناقص (Facebook/Instagram/Whatsapp فقط وكلها "#") فتختفي كل أيقونات
+    // السوشيال من الصفحة الرئيسية. نضمن هنا أن كل المنصات تُملأ بروابطها
+    // الافتراضية الفعلية (ما لم يُعدّل الأدمن قيمةً صراحةً) بغضّ النظر عن بنية
+    // القيمة المخزنة قديمًا.
+    private static readonly Dictionary<string, string> DefaultSocialLinks = new()
+    {
+        ["facebook"] = "https://facebook.com/faturatrahatik",
+        ["instagram"] = "https://instagram.com/faturatrahatik",
+        ["whatsapp"] = "https://wa.me/966531118224",
+        ["snapchat"] = "https://snapchat.com/faturatrahatik",
+        ["tiktok"] = "https://tiktok.com/@faturatrahatik",
+        ["telegram"] = "https://t.me/faturatrahatik",
+        ["linkedin"] = "https://linkedin.com/in/faturatrahatik",
+    };
+
     public async Task<LandingPageContentDto> GetLandingPageAsync()
     {
         var setting = await _context.PlatformSettings
             .FirstOrDefaultAsync(s => s.SettingKey == "landing_page_content");
-        if (setting == null || string.IsNullOrWhiteSpace(setting.SettingValue))
-            return new LandingPageContentDto();
-        return LandingPageContentDto.FromJson(setting.SettingValue);
+        var content = setting == null || string.IsNullOrWhiteSpace(setting.SettingValue)
+            ? new LandingPageContentDto()
+            : LandingPageContentDto.FromJson(setting.SettingValue);
+
+        // ✅ دمج الروابط الافتراضية مع القيم المحفوظة (المحفوظة تغلب الافتراضي)
+        // حتى تظهر كل منصات السوشيال حتى لو كانت القيمة المخزنة قديمة/ناقصة.
+        var social = new Dictionary<string, string>(DefaultSocialLinks, StringComparer.OrdinalIgnoreCase);
+        var savedSocial = content.Footer.Social;
+        if (savedSocial != null)
+        {
+            foreach (var prop in typeof(SocialContent).GetProperties())
+            {
+                var val = prop.GetValue(savedSocial) as string;
+                if (!string.IsNullOrWhiteSpace(val) && val != "#")
+                    social[prop.Name] = val;
+            }
+        }
+        content.Footer.Social = new SocialContent
+        {
+            Facebook = social["facebook"],
+            Instagram = social["instagram"],
+            Whatsapp = social["whatsapp"],
+            Snapchat = social["snapchat"],
+            Tiktok = social["tiktok"],
+            Telegram = social["telegram"],
+            Linkedin = social["linkedin"],
+        };
+        return content;
     }
 
     public async Task UpdateLandingPageAsync(LandingPageContentDto dto)

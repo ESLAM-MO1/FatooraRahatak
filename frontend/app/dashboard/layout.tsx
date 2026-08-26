@@ -873,7 +873,7 @@ const handler = () => {
               </button>
 
               {notifOpen && (
-                <div className="fixed sm:absolute left-4 sm:left-auto right-4 sm:right-0 sm:mt-2 mt-1 w-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-[120] overflow-hidden max-w-[calc(100vw-32px)] sm:max-w-none">
+                <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-auto sm:end-0 sm:mt-2 mt-2 w-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-[120] overflow-hidden max-w-[calc(100vw-32px)] sm:max-w-none">
                   <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-100">
                     <p className="text-[13px] font-bold text-[var(--ink)]">{t("dashboard.notifications")}</p>
                     <div className="flex items-center gap-2">
@@ -953,7 +953,7 @@ const handler = () => {
               </button>
 
               {userMenuOpen && (
-                <div className="absolute left-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden max-w-[calc(100vw-32px)]">
+                <div className="absolute left-auto right-auto end-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden max-w-[calc(100vw-32px)]">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <p className="text-[13px] font-bold text-[var(--ink)] truncate">{fullName}</p>
                     <p className="text-[11.5px] text-[var(--sub)] truncate mt-0.5">{email || ""}</p>

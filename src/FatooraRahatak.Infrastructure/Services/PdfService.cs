@@ -11,6 +11,7 @@ public class PdfService : IPdfService
     public byte[] GenerateInvoicePdf(InvoiceDto invoice)
     {
         QuestPDF.Settings.License = LicenseType.Community;
+        PdfFonts.EnsureRegistered();
 
         var isSales = string.Equals(invoice.InvoiceType, "Sales", StringComparison.OrdinalIgnoreCase);
         var partyLabel = isSales ? "العميل" : "المورد";
@@ -20,6 +21,8 @@ public class PdfService : IPdfService
         // (مثل ConstantItem(200) و ConstantColumn(85)) أكبر من عرض صفحة A4 وتُنتج
         // DocumentLayoutException. استخدمنا تخطيطًا نسبيًا (RelativeColumn / RelativeItem)
         // بالكامل حتى يتكيف مع أي عرض صفحة.
+        // ⚠️ إصلاح الخط: Arial لا يدعم العربية في بيئة الرندر — استخدمنا خط Cairo العربي
+        // المضمّن داخل التطبيق (EmbeddedResource) فتظهر النصوص العربية صحيحة في الـ PDF.
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -27,7 +30,7 @@ public class PdfService : IPdfService
                 page.Size(PageSizes.A4);
                 page.Margin(16);
                 page.DefaultTextStyle(t => t
-                    .FontFamily("Arial")
+                    .FontFamily(PdfFonts.ArabicFontFamily)
                     .FontSize(10)
                     .LineHeight(1.4f)
                     .FontColor("#1f2937"));

@@ -9,7 +9,7 @@ import { PAGE_HELP_CONTENT } from "@/lib/pageHelpContent";
 const STORAGE_KEY = "pageHelpButtonPos";
 const BUTTON_SIZE = 56; // w-14 / h-14 (أكبر قليلًا عشان يبقى سهل الضغط على الموبايل)
 const MARGIN = 24;
-const DRAG_THRESHOLD = 8; // للماوس فقط
+const DRAG_THRESHOLD = 12; // للماوس واللمس معًا: حركة أصغر من 12px تُعامَل كضغطة عادية
 
 type Pos = { x: number; y: number };
 
@@ -74,10 +74,10 @@ export default function PageHelp() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // السحب يعمل بالماوس فقط. اللمس على الموبايل لا يتدخل في الـ pointer events
-  // إطلاقًا — فتح النافذة يتم عبر onClick المباشر (مضمون على كل المتصفحات).
+  // السحب يعمل على الماوس واللمس معًا (كان مقيدًا بالماوس فقط في تعديل سابق،
+  // فبقت الأيقونة ثابتة تمامًا على الموبايل). عتبة اللمس 12px تفصل بين الضغطة
+  // العادية (تفتح النافذة) والسحب الفعلي (يحرّك الأيقونة).
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-    if (e.pointerType !== "mouse") return;
     suppressClickRef.current = false;
     draggingRef.current = true;
     movedRef.current = false;
@@ -153,8 +153,8 @@ export default function PageHelp() {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onClick={handleClick}
-        style={pos ? { left: pos.x, top: pos.y } : { left: MARGIN, bottom: MARGIN }}
-        className="fixed z-[95] w-14 h-14 rounded-full bg-[var(--blue)] text-white shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity cursor-pointer select-none"
+        style={pos ? { left: pos.x, top: pos.y, touchAction: "none" } : { left: MARGIN, bottom: MARGIN, touchAction: "none" }}
+        className="fixed z-[95] w-14 h-14 rounded-full bg-[var(--blue)] text-white shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity cursor-grab active:cursor-grabbing select-none touch-none"
         aria-label={t("nav.help")}
         title={t("nav.help")}
       >

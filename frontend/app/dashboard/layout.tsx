@@ -873,17 +873,28 @@ const handler = () => {
               </button>
 
               {notifOpen && (
-                <div className="absolute left-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-100 z-50 overflow-hidden max-w-[calc(100vw-32px)]">
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                <div className="fixed sm:absolute left-4 sm:left-auto right-4 sm:right-0 sm:mt-2 mt-1 w-auto sm:w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-[120] overflow-hidden max-w-[calc(100vw-32px)] sm:max-w-none">
+                  <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b border-gray-100">
                     <p className="text-[13px] font-bold text-[var(--ink)]">{t("dashboard.notifications")}</p>
-                    {unreadCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllRead}
+                          className="text-[11.5px] text-[var(--blue)] hover:underline"
+                        >
+                          {t("dashboard.markAllRead")}
+                        </button>
+                      )}
                       <button
-                        onClick={handleMarkAllRead}
-                        className="text-[11.5px] text-[var(--blue)] hover:underline"
+                        onClick={() => setNotifOpen(false)}
+                        className="sm:hidden w-7 h-7 rounded-md flex items-center justify-center text-[var(--sub)] hover:bg-gray-100 transition-colors"
+                        aria-label={t("common.close")}
                       >
-                        {t("dashboard.markAllRead")}
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 6 6 18M6 6l12 12" />
+                        </svg>
                       </button>
-                    )}
+                    </div>
                   </div>
 
                   <div className="max-h-80 overflow-y-auto">

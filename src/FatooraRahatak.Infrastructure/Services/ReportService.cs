@@ -645,6 +645,7 @@ public static class PdfReportExport
     public static byte[] ToBytes(string title, string subtitle, string[] headers, IEnumerable<string[]> rows)
     {
         QuestPDF.Settings.License = LicenseType.Community;
+        PdfFonts.EnsureRegistered();
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -652,7 +653,7 @@ public static class PdfReportExport
                 page.Size(PageSizes.A4.Landscape());
                 page.Margin(28);
                 page.DefaultTextStyle(t => t
-                    .FontFamily("Arial")
+                    .FontFamily(PdfFonts.ArabicFontFamily)
                     .FontSize(9)
                     .LineHeight(1.5f)
                     .FontColor("#1f2937"));

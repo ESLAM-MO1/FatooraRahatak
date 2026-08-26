@@ -441,9 +441,9 @@ export default function CashierPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setShowPaymentLink(false)} className="btn btn-outline flex-1">{t("pos.later")}</button>
-              <button onClick={() => { window.open(paymentLink, "_blank"); }} className="btn btn-primary flex-1">
+              <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary flex-1 justify-center">
                 <Icon name="link" size={14} /> {t("pos.openGateway")}
-              </button>
+              </a>
             </div>
           </div>
         </div>

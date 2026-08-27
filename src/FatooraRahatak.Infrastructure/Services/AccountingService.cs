@@ -1127,8 +1127,10 @@ public class AccountingService : IAccountingService
 
         var (storeId, _, _) = await ResolveStoreAndRoleAsync(userId);
 
+        // ⚠️ إصلاح سرعة قائمة الفواتير: كان يجلب Items + JournalEntry + Customer لكل فاتورة
+        // رغم أن الجدول لا يعرض العناصر — يستغرق وقتًا طويلًا مع نمو الفواتير.
+        // الآن القائمة تجلب بيانات الصفوف فقط (بدون Items) وتُحسّن الأداء.
         var query = _context.Set<Invoice>()
-            .Include(i => i.Items)
             .Include(i => i.JournalEntry)
             .Include(i => i.Customer)
             .Where(i => i.StoreId == storeId);
@@ -1151,7 +1153,7 @@ public class AccountingService : IAccountingService
             .ToListAsync();
 
         var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
-        var items = invoices.Select(i => EnrichInvoiceWithStore(MapInvoiceToDto(i), store, includeQr: false)).ToList();
+        var items = invoices.Select(i => EnrichInvoiceWithStore(MapInvoiceToDto(i, includeItems: false), store, includeQr: false)).ToList();
 
         return new PagedResult<InvoiceDto>
         {
@@ -1182,7 +1184,7 @@ public class AccountingService : IAccountingService
         return EnrichInvoiceWithStore(MapInvoiceToDto(invoice), store, zatcaEnabled: store?.Package?.HasZatcaInvoice ?? false);
     }
 
-    private static InvoiceDto MapInvoiceToDto(Invoice inv) => new InvoiceDto
+    private static InvoiceDto MapInvoiceToDto(Invoice inv, bool includeItems = true) => new InvoiceDto
     {
         Id = inv.Id,
         InvoiceType = inv.InvoiceType.ToString(),
@@ -1190,7 +1192,7 @@ public class AccountingService : IAccountingService
         InvoiceDate = inv.InvoiceDate,
         CustomerId = inv.CustomerId,
         PartyName = inv.PartyName,
-        // رقم العميل المسجّل يُجلب من حساب العميل، وللضيف/المورد من حقل الطرف
+        // ??? ?????? ??????? ????? ?? ???? ??????? ??????/?????? ?? ??? ?????
         PartyPhone = string.IsNullOrWhiteSpace(inv.PartyPhone) ? inv.Customer?.Phone : inv.PartyPhone,
         PartyCity = inv.PartyCity,
         Notes = inv.Notes,
@@ -1210,7 +1212,7 @@ public class AccountingService : IAccountingService
         ZatcaHash = inv.ZatcaHash,
         QrBase64 = inv.ZatcaQrBase64,
         ZatcaSubmissionDateTime = inv.ZatcaSubmissionDateTime,
-        Items = inv.Items.Select(i => new InvoiceItemDto
+        Items = includeItems && inv.Items != null ? inv.Items.Select(i => new InvoiceItemDto
         {
             Id = i.Id,
             ProductId = i.ProductId,
@@ -1223,7 +1225,7 @@ public class AccountingService : IAccountingService
             LineTotal = i.LineTotal,
             DiscountAmount = i.DiscountAmount,
             LineAfterDiscount = i.LineAfterDiscount
-        }).ToList()
+        }).ToList() : new List<InvoiceItemDto>()
     };
 
     // ⚠️ إضافة (فاتورة إلكترونية): إثراء الـ DTO ببيانات المتجر + توليد QR ضريبة هيئة الزكاة

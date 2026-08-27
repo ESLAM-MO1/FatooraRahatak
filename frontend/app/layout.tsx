@@ -4,6 +4,7 @@ import "./globals.css";
 import "./theme.css";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import I18nProviderWrapper from "@/lib/i18n/I18nProviderWrapper";
+import GlobalFormValidation from "@/components/GlobalFormValidation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className="min-h-full flex flex-col">
+        <GlobalFormValidation />
         <I18nProviderWrapper>
           <ConfirmProvider>{children}</ConfirmProvider>
         </I18nProviderWrapper>

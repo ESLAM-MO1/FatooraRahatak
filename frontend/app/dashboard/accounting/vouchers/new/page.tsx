@@ -145,6 +145,9 @@ export default function NewVoucherPage() {
               <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
                 <option value="Cash">{t("voucher.cash")}</option>
                 <option value="Bank">{t("voucher.bank")}</option>
+                <option value="Transfer">{t("voucher.transfer")}</option>
+                <option value="Cheque">{t("voucher.cheque")}</option>
+                <option value="Other">{t("voucher.other")}</option>
               </select>
             </div>
           </div>

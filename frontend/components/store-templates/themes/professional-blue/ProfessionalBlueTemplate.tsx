@@ -137,6 +137,9 @@ export default function ProfessionalBlueTemplate({
           </form>
           <div className="flex items-center gap-1 ms-auto shrink-0">
             <button className="md:hidden p-2 rounded-full" onClick={() => setSearchOpen(!searchOpen)} style={{ color: "#374151" }}><SearchIcon size={20} /></button>
+            <a href={`/store/${slug}/track-order`} className="p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.trackOrder")}>
+              <TruckIcon size={20} />
+            </a>
             <QuickLoginButton slug={slug} />
             <a href={`/store/${slug}/wishlist`} className="relative p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}>
               <HeartIcon size={20} />

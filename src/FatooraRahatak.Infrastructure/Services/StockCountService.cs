@@ -173,6 +173,25 @@ public class StockCountService : IStockCountService
         catch { }
     }
 
+    public async Task CancelAsync(long storeId, long stockCountId)
+    {
+        var stockCount = await _context.StockCounts
+            .Include(s => s.Warehouse)
+            .FirstOrDefaultAsync(s => s.Id == stockCountId && s.Warehouse.StoreId == storeId);
+
+        if (stockCount == null)
+            throw new InvalidOperationException("الجرد غير موجود");
+
+        // ⚠️ الإلغاء مسموح فقط للجرد قيد التنفيذ (InProgress) — لا يمكن إلغاء جرد
+        // مكتمل أو مُلغى. هذا يحرّر المخزن ليبدأ جردًا جديدًا فورًا.
+        if (stockCount.Status != StockCountStatus.InProgress)
+            throw new InvalidOperationException("لا يمكن إلغاء سوى جرد قيد التنفيذ");
+
+        stockCount.Status = StockCountStatus.Cancelled;
+        stockCount.CompletedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<List<StockCountListDto>> GetAllAsync(long storeId)
     {
         return await _context.StockCounts

@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
 import { isAuthenticated } from "@/lib/auth";
+import { getQuickCustomer } from "@/lib/quickCustomer";
+import { customerApi } from "@/lib/customerApi";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import PhoneInputField from "@/components/PhoneInputField";
@@ -136,6 +138,18 @@ export default function OrderDetailPage() {
 
   const fetchOrder = async (phone?: string) => {
     try {
+      // ✅ العميل المسجل (Quick Login): نمرر توكنه في الـ Authorization header
+      // حتى يتعرف عليه الخادم ويرجع تفاصيل الطلب تلقائيًا بدون إدخال رقم/رقم طلب.
+      const quick = getQuickCustomer(slug);
+      if (quick?.sessionToken) {
+        const res = await customerApi<{ data: any }>(
+          `/public/stores/${slug}/orders/${orderNumber}${phone ? `?phone=${encodeURIComponent(phone)}` : ""}`,
+          quick.sessionToken
+        );
+        setOrder(res.data);
+        setNeedsVerification(false);
+        return true;
+      }
       const res = await api.get(`/public/stores/${slug}/orders/${orderNumber}`, {
         params: phone ? { phone } : {},
       });

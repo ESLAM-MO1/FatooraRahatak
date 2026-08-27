@@ -29,11 +29,18 @@ function getGa4ClientId(): string | undefined {
 interface CustomerAddress {
   id: number;
   fullName: string;
+  phone?: string;
   city: string;
   addressLine: string;
   landmark?: string | null;
   notes?: string | null;
   isDefault: boolean;
+  region?: string | null;
+  district?: string | null;
+  street?: string | null;
+  buildingNumber?: string | null;
+  postalCode?: string | null;
+  nationalAddress?: string | null;
 }
 interface CartItem {
   id: number;
@@ -208,6 +215,19 @@ export default function CheckoutPage() {
   const [quote, setQuote] = useState<ShippingQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
+  // ✅ تعبئة كل حقول الفورم من عنوان محفوظ (الاسم، الجوال، العنوان التفصيلي بالكامل)
+  const fillAddressFields = (addr: CustomerAddress) => {
+    setGuestName(addr.fullName || "");
+    setGuestPhone(addr.phone || "");
+    setShippingAddress(addr.addressLine || "");
+    setAddrCity(addr.city || "");
+    setAddrRegion(addr.region || "");
+    setAddrDistrict(addr.district || "");
+    setAddrStreet(addr.street || "");
+    setAddrBuilding(addr.buildingNumber || "");
+    setAddrPostal(addr.postalCode || "");
+  };
+
   const shippingLabel = (type: string) =>
     SHIPPING_LABEL_KEYS[type] ? t(SHIPPING_LABEL_KEYS[type]) : type;
   const paymentLabel = (type: string) =>
@@ -220,17 +240,16 @@ export default function CheckoutPage() {
 
       const authed = isAuthenticated();
       setLoggedIn(authed);
-      if (authed) {
+      // ✅ تعبئة بيانات العميل المسجل (اسم/جوال/بريد/آخر عنوان) تلقائياً في الفورم
+      const quick = getQuickCustomer(slug);
+      if (quick) {
+        if (quick.fullName) setGuestName(quick.fullName);
+        if (quick.phone) setGuestPhone(quick.phone);
+        if (quick.email) setGuestEmail(quick.email);
+        if (quick.lastAddress) setShippingAddress(quick.lastAddress);
+      } else if (authed) {
         setGuestName(localStorage.getItem("fullName") || "");
         setGuestEmail(localStorage.getItem("email") || "");
-      } else {
-        const quick = getQuickCustomer(slug);
-        if (quick) {
-          if (!guestName && quick.fullName) setGuestName(quick.fullName);
-          if (!guestPhone && quick.phone) setGuestPhone(quick.phone);
-          if (!guestEmail && quick.email) setGuestEmail(quick.email);
-          if (!shippingAddress && quick.lastAddress) setShippingAddress(quick.lastAddress);
-        }
       }
 
       try {
@@ -277,8 +296,7 @@ export default function CheckoutPage() {
             const def = list.find((a: CustomerAddress) => a.isDefault) || list[0];
             if (def) {
               setSelectedAddressId(String(def.id));
-              setGuestName(def.fullName);
-              setShippingAddress(def.addressLine);
+              fillAddressFields(def);
             }
           } catch {
             /* ignore address fetch errors on checkout */
@@ -424,9 +442,22 @@ export default function CheckoutPage() {
       setSubmitting(false);
       setError(paymentMessage || t("checkout.paymentUnavailable"));
     } catch (err) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setError(e.response?.data?.message || t("checkout.errorPlacingOrder"));
+      const e = err as { response?: { data?: { message?: string }; status?: number }; message?: string };
       setSubmitting(false);
+      // رسائل أخطاء مخصصة وواضحة بدل رسالة عامة غامضة
+      if (!navigator.onLine) {
+        setError(t("checkout.errorNoInternet"));
+        return;
+      }
+      if (e?.response?.data?.message) {
+        setError(e.response.data.message);
+        return;
+      }
+      if (e?.response?.status && e.response.status >= 500) {
+        setError(t("checkout.errorServer"));
+        return;
+      }
+      setError(t("checkout.errorPlacingOrder"));
     }
   };
 
@@ -457,7 +488,18 @@ export default function CheckoutPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {error && (
-        <div className="alert alert--danger mb-4">{error}</div>
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
+          <span className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v5M12 16h.01" />
+            </svg>
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13.5px] font-bold text-red-700 mb-0.5">{t("checkout.errorTitle")}</p>
+            <p className="text-[13px] text-red-600 leading-relaxed">{error}</p>
+          </div>
+        </div>
       )}
 
       <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start">
@@ -613,8 +655,7 @@ export default function CheckoutPage() {
                     checked={selectedAddressId === String(addr.id)}
                     onChange={() => {
                       setSelectedAddressId(String(addr.id));
-                      setGuestName(addr.fullName);
-                      setShippingAddress(addr.addressLine);
+                      fillAddressFields(addr);
                     }}
                     className="accent-[var(--theme)] mt-0.5"
                   />

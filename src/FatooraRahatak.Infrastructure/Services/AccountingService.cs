@@ -1703,6 +1703,8 @@ public class AccountingService : IAccountingService
 
     private async Task<Account> GetCashOrBankAccountAsync(long storeId, VoucherPaymentMethod method)
     {
+        // ⚠️ نقدي فقط يتقيد على حساب الصندوق. أي طريقة تانية (بنكي/تحويل/شيك/أخرى)
+        // تتقيد على حساب البنك — نفس المنطق القديم بتاع "Bank" اتوسّع ليشمل باقي الطرق الجديدة.
         return method == VoucherPaymentMethod.Cash
             ? await GetAccountByCodeAsync(storeId, "1101", "الصندوق (النقدية)")
             : await GetAccountByTypeAndKeywordAsync(storeId, AccountType.Asset, "بنك", "البنك");
@@ -1716,7 +1718,7 @@ public class AccountingService : IAccountingService
             throw new InvalidOperationException("قيمة السند يجب أن تكون أكبر من صفر");
 
         if (!Enum.TryParse<VoucherPaymentMethod>(dto.PaymentMethod, true, out var paymentMethod))
-            throw new InvalidOperationException("طريقة الدفع غير صحيحة (Cash أو Bank فقط)");
+            throw new InvalidOperationException("طريقة الدفع غير صحيحة (Cash, Bank, Transfer, Cheque, Other)");
 
         var counterpartAccount = await _context.Accounts
             .FirstOrDefaultAsync(a => a.Id == dto.CounterpartAccountId && a.StoreId == storeId && a.IsActive)

@@ -23,11 +23,12 @@ interface StockCountListItem {
   completedAt: string | null;
 }
 
-const countStatusStyles: Record<string, string> = {
+  const countStatusStyles: Record<string, string> = {
   Draft: "badge badge--yellow",
   InProgress: "badge badge--blue",
   Completed: "badge badge--green",
   Approved: "badge badge--green",
+  Cancelled: "badge badge--red",
 };
 
 export default function StockCountsPage() {
@@ -39,6 +40,7 @@ export default function StockCountsPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [counts, setCounts] = useState<StockCountListItem[]>([]);
 
   const countStatusLabel = (status: string) => {
@@ -47,8 +49,22 @@ export default function StockCountsPage() {
       InProgress: t("stockCount.statusInProgress"),
       Completed: t("stockCount.statusCompleted"),
       Approved: t("stockCount.statusApproved"),
+      Cancelled: t("stockCount.statusCancelled"),
     };
     return map[status] ?? status;
+  };
+
+  const handleCancel = async (id: number) => {
+    setActionError("");
+    setCancellingId(id);
+    try {
+      await api.put(`/stock-counts/${id}/cancel`);
+      await fetchCounts();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("stockCount.errorCancel"));
+    } finally {
+      setCancellingId(null);
+    }
   };
 
   const fetchCounts = useCallback(async () => {
@@ -165,12 +181,25 @@ export default function StockCountsPage() {
                       {new Date(c.createdAt).toLocaleString("ar-SA-u-nu-latn")}
                     </td>
                     <td className="p-4">
-                      <a
-                        href={`/dashboard/stock-counts/${c.id}`}
-                        className="text-[var(--blue)] hover:underline text-[13px] font-medium"
-                      >
-                        {t("stockCount.viewDetails")}
-                      </a>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={`/dashboard/stock-counts/${c.id}`}
+                          className="text-[var(--blue)] hover:underline text-[13px] font-medium"
+                        >
+                          {t("stockCount.viewDetails")}
+                        </a>
+                        {c.status === "InProgress" && (
+                          <Can code="StockCounts.Approve">
+                            <button
+                              onClick={() => handleCancel(c.id)}
+                              disabled={cancellingId === c.id}
+                              className="text-[var(--danger)] hover:underline text-[13px] font-medium"
+                            >
+                              {cancellingId === c.id ? t("common.loading") : t("stockCount.cancel")}
+                            </button>
+                          </Can>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -208,6 +237,17 @@ export default function StockCountsPage() {
                     >
                       {t("stockCount.viewDetails")}
                     </a>
+                    {c.status === "InProgress" && (
+                      <Can code="StockCounts.Approve">
+                        <button
+                          onClick={() => handleCancel(c.id)}
+                          disabled={cancellingId === c.id}
+                          className="text-[var(--danger)] hover:underline text-[13px] font-medium"
+                        >
+                          {cancellingId === c.id ? t("common.loading") : t("stockCount.cancel")}
+                        </button>
+                      </Can>
+                    )}
                   </div>
                 </div>
               ))}

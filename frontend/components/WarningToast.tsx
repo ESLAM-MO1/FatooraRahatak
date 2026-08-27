@@ -1,6 +1,6 @@
 "use client";
 
-import Toast from "@/components/Toast";
+import { AppToast } from "@/components/AppAlert";
 
 interface WarningToastProps {
   message: string | null;
@@ -10,5 +10,5 @@ interface WarningToastProps {
 }
 
 export default function WarningToast({ message, className = "", fixed, onClose }: WarningToastProps) {
-  return <Toast message={message} type="warning" className={className} fixed={fixed} onClose={onClose} />;
+  return <AppToast message={message} type="warning" className={className} fixed={fixed} onClose={onClose} />;
 }

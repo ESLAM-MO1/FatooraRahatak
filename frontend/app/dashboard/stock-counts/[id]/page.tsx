@@ -47,6 +47,7 @@ export default function StockCountDetailPage() {
   const [actionError, setActionError] = useState("");
   const [savingItemId, setSavingItemId] = useState<number | null>(null);
   const [approving, setApproving] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const fetchStockCount = useCallback(async () => {
     setLoading(true);
@@ -106,6 +107,21 @@ export default function StockCountDetailPage() {
       setActionError(err.response?.data?.message || t("stockCount.errorApproving"));
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!(await confirm(t("stockCount.confirmCancel")))) return;
+
+    setActionError("");
+    setCancelling(true);
+    try {
+      await api.put(`/stock-counts/${stockCountId}/cancel`);
+      await fetchStockCount();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("stockCount.errorCancel"));
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -212,11 +228,16 @@ export default function StockCountDetailPage() {
         )}
       </div>
 
-      {isInProgress && stockCount.items.length > 0 && (
-        <div className="mt-6">
+      {isInProgress && (
+        <div className="mt-6 flex items-center gap-3">
           <Can code="StockCounts.Approve">
-            <button onClick={handleApprove} disabled={approving} className="btn btn-primary px-6">
-              {approving ? t("stockCount.approving") : t("stockCount.approve")}
+            {stockCount.items.length > 0 && (
+              <button onClick={handleApprove} disabled={approving} className="btn btn-primary px-6">
+                {approving ? t("stockCount.approving") : t("stockCount.approve")}
+              </button>
+            )}
+            <button onClick={handleCancel} disabled={cancelling} className="btn btn-outline px-6 text-[var(--danger)] border-[var(--danger)] hover:bg-[var(--danger-soft)]">
+              {cancelling ? t("common.loading") : t("stockCount.cancel")}
             </button>
           </Can>
         </div>

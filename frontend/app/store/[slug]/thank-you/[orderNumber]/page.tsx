@@ -244,7 +244,7 @@ export default function ThankYouPage() {
 
         <div className="space-y-3">
           <a
-            href={`/store/${slug}/track-order`}
+            href={`/store/${slug}/orders/${orderNumber}`}
             className="block w-full rounded-lg py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700"
           >
             {t("storefront.trackMyOrder")}

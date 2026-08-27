@@ -1,6 +1,6 @@
 "use client";
 
-import Toast from "@/components/Toast";
+import { AppToast } from "@/components/AppAlert";
 
 interface SuccessToastProps {
   message: string | null;
@@ -10,5 +10,5 @@ interface SuccessToastProps {
 }
 
 export default function SuccessToast({ message, className = "", fixed, onClose }: SuccessToastProps) {
-  return <Toast message={message} type="success" className={className} fixed={fixed} onClose={onClose} />;
+  return <AppToast message={message} type="success" className={className} fixed={fixed} onClose={onClose} />;
 }

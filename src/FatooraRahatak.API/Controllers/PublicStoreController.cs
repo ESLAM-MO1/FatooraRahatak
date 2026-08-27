@@ -181,6 +181,11 @@ public class PublicStoreController : ControllerBase
             if (idClaim != null) customerId = long.Parse(idClaim);
         }
 
+        // ✅ العميل المسجل (Quick Login): نستخدم رقمه من جلسة العميل تلقائيًا
+        // بدل إجباره على إدخال رقم الهاتف ورقم الطلب يدويًا في كل مرة.
+        if (string.IsNullOrWhiteSpace(phone))
+            phone = GetCustomerPhone();
+
         var order = await _publicStoreService.GetOrderAsync(slug, orderNumber, phone, customerId);
         if (order == null)
             return NotFound(new { success = false, message = "الطلب غير موجود أو بيانات التحقق غير صحيحة" });
@@ -258,6 +263,13 @@ public class PublicStoreController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { success = false, message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            // ⚠️ أي خطأ غير متوقع (مثل خطأ في قاعدة البيانات أو NullReference)
+            // يُسجَّل ويُعاد برسالة واضحة وليس خطأ عام. السيرفر لا يفضح التفاصيل.
+            Console.Error.WriteLine($"[CHECKOUT] خطأ غير متوقع: {ex}");
+            return StatusCode(500, new { success = false, message = "عذراً، حدث خطأ غير متوقع أثناء معالجة طلبك. حاول مرة أخرى لاحقاً، وإذا استمرت المشكلة تواصل مع الدعم." });
         }
     }
     [HttpPost("{slug}/orders/return")]

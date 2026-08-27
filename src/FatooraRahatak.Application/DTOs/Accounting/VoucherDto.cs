@@ -21,7 +21,7 @@ public class CreateVoucherDto
 {
     public DateOnly VoucherDate { get; set; }
     public decimal Amount { get; set; }
-    public string PaymentMethod { get; set; } = "Cash"; // "Cash" | "Bank"
+    public string PaymentMethod { get; set; } = "Cash"; // "Cash" | "Bank" | "Transfer" | "Cheque" | "Other"
     public long CounterpartAccountId { get; set; }
     public string? PartyName { get; set; }
     public long? CustomerId { get; set; }

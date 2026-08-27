@@ -108,4 +108,25 @@ public class StockCountController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+
+    // ❌ إلغاء جرد قيد التنفيذ (InProgress) → يُغيّر حالته إلى Cancelled
+    // ويُحرّر المخزن لبدء جرد جديد فورًا (يُصلح الجرد العالق الذي لا يمكن إنهاؤه).
+    [RequirePermission("StockCounts.Approve")]
+    [HttpPut("{id}/cancel")]
+    public async Task<IActionResult> Cancel(long id)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            await _stockCountService.CancelAsync(storeId.Value, id);
+            var result = await _stockCountService.GetByIdAsync(storeId.Value, id);
+            return Ok(new { success = true, data = result, message = "تم إلغاء الجرد بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 }

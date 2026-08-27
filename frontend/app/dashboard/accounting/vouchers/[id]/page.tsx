@@ -30,6 +30,9 @@ interface VoucherDetail {
 const paymentLabels: Record<string, string> = {
   Cash: "voucher.paymentCash",
   Bank: "voucher.paymentBank",
+  Transfer: "voucher.paymentTransfer",
+  Cheque: "voucher.paymentCheque",
+  Other: "voucher.paymentOther",
 };
 
 export default function VoucherDetailPage() {

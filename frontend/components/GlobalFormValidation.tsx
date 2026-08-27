@@ -103,6 +103,16 @@ export default function GlobalFormValidation() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    // ⚠️ أي رسالة خطأ (alert--danger) تظهر في الصفحة → اتمرر إليها تلقائياً
+    const observer = new MutationObserver(() => {
+      const alert = document.querySelector(".alert--danger");
+      if (alert && !alert.getAttribute("data-scrolled-to")) {
+        alert.setAttribute("data-scrolled-to", "1");
+        setTimeout(() => alert.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     const onSubmit = (e: Event) => {
       const form = e.target as HTMLFormElement;
       if (!(form instanceof HTMLFormElement)) return;

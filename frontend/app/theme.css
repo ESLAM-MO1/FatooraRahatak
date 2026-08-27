@@ -558,6 +558,16 @@ label {
 .app-alert-content { font-size: 13px; font-weight: 500; line-height: 1.6; }
 .app-alert-content p { margin: 0; }
 
+/* ============= FIELD ERROR (inline) ============= */
+/* يظهر الخطأ بجانب الحقل نفسه بدل رسالة عامة بعيدة */
+.field-error .field-shell,
+.field-error input,
+.field-error select,
+.field-error textarea {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px rgba(155, 44, 44, 0.08);
+}
+
 /* ============= PROGRESS ============= */
 .progress-track { height: 8px; background: #f0f2f5; border-radius: 999px; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }

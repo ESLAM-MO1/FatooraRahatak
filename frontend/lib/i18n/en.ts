@@ -56,6 +56,9 @@ const en: Record<string, string> = {
   "auth.login": "Login",
   "auth.register": "Create Account",
   "auth.email": "Email",
+  "auth.emailRequired": "Please enter your email",
+  "auth.emailInvalid": "Invalid email format",
+  "auth.passwordRequired": "Please enter your password",
   "auth.password": "Password",
   "auth.confirmPassword": "Confirm Password",
   "auth.name": "Name",
@@ -2257,6 +2260,9 @@ const en: Record<string, string> = {
   "checkout.errorLoadingCart": "Error loading cart",
   "checkout.shippingAddressRequired": "Shipping address is required",
   "checkout.nameAndPhoneRequired": "Name and phone number are required",
+  "checkout.nameRequired": "Please enter your name",
+  "checkout.phoneRequired": "Please enter your phone number",
+  "checkout.cityRequired": "Please enter your city",
   "checkout.errorPlacingOrder": "An unexpected error occurred while placing your order. Please try again.",
   "checkout.errorNoInternet": "You appear to be offline. Check your connection and try again.",
   "checkout.errorServer": "Sorry, the server is busy right now. Please try again shortly, or contact support if the issue persists.",
@@ -3689,7 +3695,6 @@ const en: Record<string, string> = {
   "checkout.shippingTo": "Shipping to",
   "checkout.deliveryMethod": "Delivery method",
   "checkout.paymentMethod": "Payment method",
-  "checkout.phoneRequired": "Phone number is required",
   "checkout.loginToSeeOrders": "Sign in to view your previous orders",
 
   // ── Product Detail (Storefront) ──

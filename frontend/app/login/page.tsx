@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { login, googleAuth } from "@/lib/auth";
 import LangSwitch from "@/components/LangSwitch";
+import { FieldError, FieldErrors, validateFields, required, email as emailRule } from "@/lib/formValidation";
 import "@/lib/i18n/config";
 
 export default function LoginPage() {
@@ -14,11 +15,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({});
+
+    const errs = validateFields(
+      { email, password },
+      [
+        { field: "email", validate: required(t("auth.emailRequired") || "") },
+        { field: "email", validate: emailRule(t("auth.emailInvalid") || "") },
+        { field: "password", validate: required(t("auth.passwordRequired") || "") },
+      ]
+    );
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      return;
+    }
+
     setLoading(true);
     try {
       await login({ email, password });
@@ -79,7 +96,7 @@ export default function LoginPage() {
               <label htmlFor="email" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
                 {t("auth.email")}
               </label>
-              <div className="field-shell">
+              <div className={`field-shell ${fieldErrors.email ? "field-error" : ""}`}>
                 <span className="text-[#9AA4AC]">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                     <path
@@ -96,16 +113,16 @@ export default function LoginPage() {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
                 />
               </div>
+              <FieldError message={fieldErrors.email} />
             </div>
 
             <div className="mb-5">
               <label htmlFor="password" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
                 {t("auth.password")}
               </label>
-              <div className="field-shell">
+              <div className={`field-shell ${fieldErrors.password ? "field-error" : ""}`}>
                 <span className="text-[#9AA4AC]">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
                     <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
@@ -118,7 +135,6 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                 />
                 <button
                   type="button"
@@ -145,6 +161,7 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              <FieldError message={fieldErrors.password} />
             </div>
 
             <div className="flex items-center justify-between mb-6">

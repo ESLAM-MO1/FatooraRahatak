@@ -59,6 +59,9 @@ const ar = {
   "auth.login": "تسجيل الدخول",
   "auth.register": "إنشاء حساب",
   "auth.email": "البريد الإلكتروني",
+  "auth.emailRequired": "يرجى إدخال البريد الإلكتروني",
+  "auth.emailInvalid": "صيغة البريد الإلكتروني غير صحيحة",
+  "auth.passwordRequired": "يرجى إدخال كلمة المرور",
   "auth.password": "كلمة المرور",
   "auth.confirmPassword": "تأكيد كلمة المرور",
   "auth.name": "الاسم",
@@ -2284,6 +2287,9 @@ const ar = {
   "checkout.errorLoadingCart": "حدث خطأ أثناء تحميل السلة",
   "checkout.shippingAddressRequired": "عنوان الشحن مطلوب",
   "checkout.nameAndPhoneRequired": "الاسم ورقم الجوال مطلوبان",
+  "checkout.nameRequired": "يرجى إدخال الاسم",
+  "checkout.phoneRequired": "يرجى إدخال رقم الجوال",
+  "checkout.cityRequired": "يرجى إدخال المدينة",
   "checkout.errorPlacingOrder": "حدث خطأ غير متوقع أثناء إتمام الطلب. حاول مرة أخرى.",
   "checkout.errorNoInternet": "لا يوجد اتصال بالإنترنت. تأكد من اتصالك ثم حاول مرة أخرى.",
   "checkout.errorServer": "عذراً، الخادم مشغول حالياً. حاول مرة أخرى بعد قليل، وإذا استمرت المشكلة تواصل مع الدعم.",
@@ -3716,7 +3722,6 @@ const ar = {
   "checkout.shippingTo": "الشحن إلى",
   "checkout.deliveryMethod": "طريقة التوصيل",
   "checkout.paymentMethod": "طريقة الدفع",
-  "checkout.phoneRequired": "رقم الجوال مطلوب",
   "checkout.loginToSeeOrders": "سجّل دخولك لعرض طلباتك السابقة",
 
   // ── Product Detail (Storefront) ──

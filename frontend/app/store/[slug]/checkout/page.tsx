@@ -9,6 +9,7 @@ import { getQuickCustomer } from "@/lib/quickCustomer";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import PhoneInputField from "@/components/PhoneInputField";
+import { FieldError, FieldErrors, validateFields, required } from "@/lib/formValidation";
 
 // === تتبع التحويلات من السيرفر: قراءة كوكيز بيكسل فيسبوك وجوجل أناليتكس (لو موجودة) ===
 function getCookie(name: string): string | undefined {
@@ -190,6 +191,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loggedIn, setLoggedIn] = useState(false);
 
   const [guestName, setGuestName] = useState("");
@@ -360,8 +362,26 @@ export default function CheckoutPage() {
       setError(t("checkout.methodsRequired"));
       return;
     }
-    if (!loggedIn && (!guestName.trim() || !guestPhone.trim())) {
-      setError(t("checkout.nameAndPhoneRequired"));
+    // ✅ تحقق inline: خطأ يظهر بجانب الحقل نفسه وليس رسالة عامة بعيدة
+    setFieldErrors({});
+    const fErrs = validateFields(
+      {
+        name: guestName,
+        phone: guestPhone,
+        address: shippingAddress,
+        city: addrCity,
+      },
+      [
+        { field: "name", validate: required(t("checkout.nameRequired") || "") },
+        { field: "phone", validate: required(t("checkout.phoneRequired") || "") },
+        { field: "address", validate: required(t("checkout.shippingAddressRequired") || "") },
+        ...(selectedShipping === "DeliveryToAddress"
+          ? [{ field: "city", validate: required(t("checkout.cityRequired") || "") }]
+          : []),
+      ]
+    );
+    if (Object.keys(fErrs).length > 0) {
+      setFieldErrors(fErrs);
       return;
     }
 
@@ -713,9 +733,10 @@ export default function CheckoutPage() {
                 type="text"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
+                className={`w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition ${fieldErrors.name ? "!border-red-400" : ""}`}
                 required={!loggedIn}
               />
+              <FieldError message={fieldErrors.name} />
             </div>
 
             <div className="mt-4">
@@ -726,8 +747,9 @@ export default function CheckoutPage() {
                 value={guestPhone}
                 onChange={setGuestPhone}
                 required={!loggedIn}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-[var(--theme)]"
+                className={`w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus-within:ring-2 focus-within:ring-[var(--theme)] ${fieldErrors.phone ? "!border-red-400" : ""}`}
               />
+              <FieldError message={fieldErrors.phone} />
             </div>
 
             <div className="mt-4">
@@ -759,7 +781,8 @@ export default function CheckoutPage() {
                     <input type="text" value={addrRegion} onChange={e => setAddrRegion(e.target.value)} placeholder={t("checkout.addressRegion")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" />
                   </div>
                   <div>
-                    <input type="text" value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder={t("checkout.addressCity")} className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition" required />
+                    <input type="text" value={addrCity} onChange={e => setAddrCity(e.target.value)} placeholder={t("checkout.addressCity")} className={`w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition ${fieldErrors.city ? "!border-red-400" : ""}`} required />
+                    <FieldError message={fieldErrors.city} />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -779,6 +802,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </div>
+              <FieldError message={fieldErrors.address} />
             </div>
           </div>
 

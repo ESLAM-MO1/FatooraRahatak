@@ -30,11 +30,19 @@ public class LandingPageContentDto
 public class HeroContent
 {
     public string Title { get; set; } = "فاتورة راحتك\nنمِّ عملك بذكاء";
+    public string? TitleAr { get; set; }
+    public string? TitleEn { get; set; }
     public string Description { get; set; } = "اخترنا لك أفضل أدوات التجارة الإلكترونية تحت سقف واحد. من المتجر الإلكتروني، إلى فواتير المبيعات والمشتريات، والقسائم الإلكترونية، ونظام نقاط البيع، والمدفوعات عبر الإنترنت.";
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
     public string BackgroundImage { get; set; } = "";
     public string PrimaryCta { get; set; } = "ابدأ مجاناً";
+    public string? PrimaryCtaAr { get; set; }
+    public string? PrimaryCtaEn { get; set; }
     public string PrimaryCtaHref { get; set; } = "/register";
     public string SecondaryCta { get; set; } = "اعرف أكثر";
+    public string? SecondaryCtaAr { get; set; }
+    public string? SecondaryCtaEn { get; set; }
     public string SecondaryCtaHref { get; set; } = "#";
     public List<StatItem> Stats { get; set; } = new()
     {
@@ -48,27 +56,41 @@ public class StatItem
 {
     public string Number { get; set; } = "";
     public string Label { get; set; } = "";
+    public string? LabelAr { get; set; }
+    public string? LabelEn { get; set; }
 }
 
 public class VideoSectionContent
 {
     public string Title { get; set; } = "كل احتياجات تجارتك في منصة واحدة";
+    public string? TitleAr { get; set; }
+    public string? TitleEn { get; set; }
     public string Description { get; set; } = "تواصل مع عملائك بسهولة وأبقهم على اطلاع دائم. أرسل روابط الدفع والفواتير عبر وسائل التواصل الاجتماعي لتوفير تجربة دفع سلسة.";
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
     public string VideoUrl { get; set; } = "";
 }
 
 public class FeatureContent
 {
     public string Title { get; set; } = "";
+    public string? TitleAr { get; set; }
+    public string? TitleEn { get; set; }
     public string Description { get; set; } = "";
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
     public string Image { get; set; } = "";
     public string KnowMoreText { get; set; } = "اعرف المزيد";
+    public string? KnowMoreTextAr { get; set; }
+    public string? KnowMoreTextEn { get; set; }
     public string KnowMoreHref { get; set; } = "#";
 }
 
 public class DistinctiveSectionContent
 {
     public string Title { get; set; } = "لماذا تختار فاتورة راحتك Faturat Rahatik؟";
+    public string? TitleAr { get; set; }
+    public string? TitleEn { get; set; }
     public List<DistinctiveCard> Cards { get; set; } = new()
     {
         new(){ Title = "أدوات متعددة في نظام واحد", Description = "المتجر، الفواتير، الكاشير، روابط الدفع، والمزيد في منصة واحدة." },
@@ -76,19 +98,29 @@ public class DistinctiveSectionContent
         new(){ Title = "أمان وخصوصية عاليتان", Description = "بياناتك مشفرة ومحمية بأعلى معايير الأمان العالمية." },
     };
     public string CtaText { get; set; } = "";
+    public string? CtaTextAr { get; set; }
+    public string? CtaTextEn { get; set; }
     public string CtaHref { get; set; } = "";
 }
 
 public class DistinctiveCard
 {
     public string Title { get; set; } = "";
+    public string? TitleAr { get; set; }
+    public string? TitleEn { get; set; }
     public string Description { get; set; } = "";
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
 }
 
 public class FooterContent
 {
     public string Description { get; set; } = "منصة متكاملة لإدارة متجرك الإلكتروني، الفواتير، روابط الدفع، الكاشير، والمزيد.";
+    public string? DescriptionAr { get; set; }
+    public string? DescriptionEn { get; set; }
     public string Copyright { get; set; } = "جميع الحقوق محفوظة لفاتورة راحتك";
+    public string? CopyrightAr { get; set; }
+    public string? CopyrightEn { get; set; }
     public SocialContent Social { get; set; } = new();
 }
 

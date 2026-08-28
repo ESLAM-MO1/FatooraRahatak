@@ -8,11 +8,13 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
+import html2pdf from "html2pdf.js";
 import LoadingState from "@/components/LoadingState";
 import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import {
   InvoiceDetail,
   printInvoice,
+  buildInvoiceHtml,
   invoiceTypeLabels,
   invoiceTypeStyles,
   invoicePaymentLabels,
@@ -132,8 +134,18 @@ export default function InvoiceDetailPage() {
 
   const handleDownloadPdf = async () => {
     setError("");
+    // ✅ يولّد الـ PDF من نفس HTML بتاع زر الطباعة — فيطابق الشكل تمامًا (بالـ QR)
+    if (!invoice) return;
     try {
-      await downloadPdf(id, t);
+      const html = buildInvoiceHtml(invoice, t);
+      const worker = html2pdf().set({
+        margin: 8,
+        filename: `${invoice.invoiceNumber}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      });
+      await worker.from(html).save();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("invoice.pdfError");
       setError(message);

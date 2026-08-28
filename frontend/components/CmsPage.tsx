@@ -187,7 +187,6 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
             </h2>
           )}
           {image ? (
-            /* ✅ صورة الصفحة (حسب اللغة المختارة) — يعرضها الأدمن من لوحة التحكم */
             <div className="cms-image">
               <img
                 src={image}
@@ -197,16 +196,7 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
               />
             </div>
           ) : (
-            /* النص الأصلي — يظهر فقط لو مفيش صورة مضافة */
-            <div
-              className="leading-relaxed cms-article"
-              style={{
-                lineHeight: 1.8,
-                color: "var(--ink-light)",
-                ...(isAr ? { direction: "rtl", textAlign: "right" as const } : {}),
-              }}
-              dangerouslySetInnerHTML={{ __html: scopeCmsStyles(content || "") }}
-            />
+            <p className="text-[14px] text-[var(--sub)] text-center py-8">{t("common.noData")}</p>
           )}
         </div>
       </div>

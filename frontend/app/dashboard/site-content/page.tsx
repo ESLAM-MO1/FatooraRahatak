@@ -372,36 +372,32 @@ function ImageUploadField({ label, value, onChange }: { label: string; value: st
     <div>
       <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{label}</label>
       <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex gap-2">
-            <label className="btn btn-outline btn-sm shrink-0 cursor-pointer">
-              {uploading ? t("common.loading") : t("admin.uploadImage")}
-              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-            </label>
-            <input
-              dir="ltr"
-              className="flex-1 rounded-lg border px-3 py-2 text-[13px] outline-none min-w-0"
-              style={{ borderColor: "var(--border)" }}
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="https://..."
-            />
+        <label className="btn btn-outline btn-sm shrink-0 cursor-pointer">
+          {uploading ? t("common.loading") : t("admin.uploadImage")}
+          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+        </label>
+        {value ? (
+          <div className="flex items-center gap-2">
+            <img src={value} alt="" className="w-20 h-20 rounded-lg object-cover border shrink-0" />
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="text-[12px] font-bold text-[var(--danger)] hover:underline"
+            >
+              {t("common.delete")}
+            </button>
           </div>
-          {upErr && <p className="text-[12px] text-red-600 mt-1">{upErr}</p>}
-          {value && <p className="text-[11px] text-[var(--sub)] mt-1 break-all" dir="ltr">{value}</p>}
-        </div>
-        {value && <img src={value} alt="" className="w-20 h-20 rounded-lg object-cover border shrink-0" />}
+        ) : (
+          <p className="text-[12px] text-[var(--sub)]">{t("admin.noImage")}</p>
+        )}
       </div>
+      {upErr && <p className="text-[12px] text-red-600 mt-1">{upErr}</p>}
     </div>
   );
 }
 
 function PageEditor({ pageKey }: { pageKey: string }) {
   const { t } = useTranslation();
-  const [titleAr, setTitleAr] = useState("");
-  const [contentAr, setContentAr] = useState("");
-  const [titleEn, setTitleEn] = useState("");
-  const [contentEn, setContentEn] = useState("");
   const [imageAr, setImageAr] = useState("");
   const [imageEn, setImageEn] = useState("");
   const [loading, setLoading] = useState(true);
@@ -413,8 +409,6 @@ function PageEditor({ pageKey }: { pageKey: string }) {
     setLoading(true); setError("");
     api.get(`/admin/site/pages/${pageKey}`).then(r => {
       const d = r?.data?.data;
-      setTitleAr(d?.titleAr ?? ""); setContentAr(d?.contentAr ?? "");
-      setTitleEn(d?.titleEn ?? ""); setContentEn(d?.contentEn ?? "");
       setImageAr(d?.imageAr ?? ""); setImageEn(d?.imageEn ?? "");
     }).catch(() => setError(t("error.serverError"))).finally(() => setLoading(false));
   }, [pageKey]);
@@ -422,7 +416,7 @@ function PageEditor({ pageKey }: { pageKey: string }) {
   const save = async () => {
     setSaving(true); setSuccess(""); setError("");
     try {
-      await api.put(`/admin/site/pages/${pageKey}`, { titleAr, contentAr, titleEn, contentEn, imageAr, imageEn });
+      await api.put(`/admin/site/pages/${pageKey}`, { imageAr, imageEn });
       setSuccess(t("admin.saveSuccess"));
     } catch { setError(t("admin.saveError")); } finally { setSaving(false); }
   };
@@ -432,23 +426,8 @@ function PageEditor({ pageKey }: { pageKey: string }) {
     <div className="space-y-4">
       <SuccessToast message={success} fixed className="mb-4" />
       {error && <div className="alert alert--danger">{error}</div>}
-      <div>
-        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleAr")}</label>
-        <input dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={titleAr} onChange={e => setTitleAr(e.target.value)} placeholder={t("admin.titleAr")} />
-      </div>
-      <div>
-        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentAr")}</label>
-        <textarea dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'200px'}} value={contentAr} onChange={e => setContentAr(e.target.value)} placeholder={t("admin.contentAr")} />
-      </div>
+      <p className="text-[12.5px] text-[var(--sub)]">{t("admin.imagesOnlyHint")}</p>
       <ImageUploadField label={t("admin.imageAr")} value={imageAr} onChange={setImageAr} />
-      <div>
-        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleEn")}</label>
-        <input dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={titleEn} onChange={e => setTitleEn(e.target.value)} placeholder={t("admin.titleEn")} />
-      </div>
-      <div>
-        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentEn")}</label>
-        <textarea dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'120px'}} value={contentEn} onChange={e => setContentEn(e.target.value)} placeholder={t("admin.contentEn")} />
-      </div>
       <ImageUploadField label={t("admin.imageEn")} value={imageEn} onChange={setImageEn} />
       <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? t("admin.saving") : t("common.save")}</button>
     </div>

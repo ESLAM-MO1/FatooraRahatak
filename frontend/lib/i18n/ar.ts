@@ -1235,6 +1235,8 @@ const ar = {
   "admin.imageAr": "صورة الصفحة (عربي)",
   "admin.imageEn": "صورة الصفحة (إنجليزي)",
   "admin.uploadImage": "رفع صورة",
+  "admin.noImage": "لم يتم رفع صورة بعد",
+  "admin.imagesOnlyHint": "صفحات المزايا تعرض صورة فقط — ارفع صور لكل لغة (عربي + إنجليزي)",
   "admin.imageUploadError": "فشل رفع الصورة",
   "admin.manageFeatures": "إدارة صفحات المزايا",
   "admin.manageAbout": "إدارة صفحات عن فاتورة راحتك",

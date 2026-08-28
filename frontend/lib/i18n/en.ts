@@ -1212,6 +1212,8 @@ const en: Record<string, string> = {
   "admin.imageAr": "Page Image (Arabic)",
   "admin.imageEn": "Page Image (English)",
   "admin.uploadImage": "Upload Image",
+  "admin.noImage": "No image uploaded yet",
+  "admin.imagesOnlyHint": "Feature pages show an image only — upload an image for each language (Arabic + English)",
   "admin.imageUploadError": "Failed to upload image",
   "admin.manageFeatures": "Manage Feature Pages",
   "admin.manageAbout": "Manage About Pages",

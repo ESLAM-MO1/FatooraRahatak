@@ -341,6 +341,61 @@ function HomepageEditor() {
 }
 
 /* ── Page Editor ── */
+function ImageUploadField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
+  const { t } = useTranslation();
+  const [uploading, setUploading] = useState(false);
+  const [upErr, setUpErr] = useState("");
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUpErr("");
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await api.post("/admin/site/upload", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const url = res.data?.data?.url;
+      if (url) onChange(url);
+      else setUpErr(t("error.serverError"));
+    } catch {
+      setUpErr(t("admin.imageUploadError"));
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <div>
+      <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{label}</label>
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex gap-2">
+            <label className="btn btn-outline btn-sm shrink-0 cursor-pointer">
+              {uploading ? t("common.loading") : t("admin.uploadImage")}
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
+            </label>
+            <input
+              dir="ltr"
+              className="flex-1 rounded-lg border px-3 py-2 text-[13px] outline-none min-w-0"
+              style={{ borderColor: "var(--border)" }}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          {upErr && <p className="text-[12px] text-red-600 mt-1">{upErr}</p>}
+          {value && <p className="text-[11px] text-[var(--sub)] mt-1 break-all" dir="ltr">{value}</p>}
+        </div>
+        {value && <img src={value} alt="" className="w-20 h-20 rounded-lg object-cover border shrink-0" />}
+      </div>
+    </div>
+  );
+}
+
 function PageEditor({ pageKey }: { pageKey: string }) {
   const { t } = useTranslation();
   const [titleAr, setTitleAr] = useState("");
@@ -385,13 +440,7 @@ function PageEditor({ pageKey }: { pageKey: string }) {
         <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentAr")}</label>
         <textarea dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'200px'}} value={contentAr} onChange={e => setContentAr(e.target.value)} placeholder={t("admin.contentAr")} />
       </div>
-      <div>
-        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.imageAr")}</label>
-        <div className="flex gap-2">
-          <input dir="ltr" className="flex-1 rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={imageAr} onChange={e => setImageAr(e.target.value)} placeholder="https://..." />
-          {imageAr && <img src={imageAr} alt="" className="w-14 h-14 rounded-lg object-cover border" />}
-        </div>
-      </div>
+      <ImageUploadField label={t("admin.imageAr")} value={imageAr} onChange={setImageAr} />
       <div>
         <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleEn")}</label>
         <input dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={titleEn} onChange={e => setTitleEn(e.target.value)} placeholder={t("admin.titleEn")} />
@@ -400,13 +449,7 @@ function PageEditor({ pageKey }: { pageKey: string }) {
         <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentEn")}</label>
         <textarea dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'120px'}} value={contentEn} onChange={e => setContentEn(e.target.value)} placeholder={t("admin.contentEn")} />
       </div>
-      <div>
-        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.imageEn")}</label>
-        <div className="flex gap-2">
-          <input dir="ltr" className="flex-1 rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={imageEn} onChange={e => setImageEn(e.target.value)} placeholder="https://..." />
-          {imageEn && <img src={imageEn} alt="" className="w-14 h-14 rounded-lg object-cover border" />}
-        </div>
-      </div>
+      <ImageUploadField label={t("admin.imageEn")} value={imageEn} onChange={setImageEn} />
       <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? t("admin.saving") : t("common.save")}</button>
     </div>
   );

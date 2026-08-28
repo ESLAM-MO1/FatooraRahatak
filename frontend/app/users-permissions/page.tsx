@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 import CmsPage from "@/components/CmsPage";
 import "@/lib/i18n/config";
 
 export default function Page() {
-  return <CmsPage pageKey="users-permissions" />;
+  return <CmsPage pageKey="users-permissions" imageOnly />;
 }

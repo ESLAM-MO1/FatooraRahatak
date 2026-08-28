@@ -69,9 +69,11 @@ interface Props {
   pageKey: string;
   heroTitle?: string;
   heroSubtitle?: string;
+  /** true = صفحة مزايا: تعرض الصورة فقط حسب اللغة (بدون نص) */
+  imageOnly?: boolean;
 }
 
-export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
+export default function CmsPage({ pageKey, heroTitle, heroSubtitle, imageOnly = false }: Props) {
   const { t, i18n } = useTranslation();
   const [page, setPage] = useState<SitePageDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -174,7 +176,7 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
               : ""
           }
         >
-          {title && (
+          {title && !imageOnly && (
             <h2
               className={
                 hasHero
@@ -186,17 +188,31 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
               {title}
             </h2>
           )}
-          {image ? (
-            <div className="cms-image">
-              <img
-                src={image}
-                alt={title || ""}
-                className="w-full h-auto rounded-lg border border-[var(--border)] shadow-[var(--shadow)]"
-                loading="lazy"
-              />
-            </div>
+          {imageOnly ? (
+            /* ✅ صفحة مزايا: الصورة فقط (حسب اللغة) بدون أي نص */
+            image ? (
+              <div className="cms-image">
+                <img
+                  src={image}
+                  alt={title || ""}
+                  className="w-full h-auto rounded-lg border border-[var(--border)] shadow-[var(--shadow)]"
+                  loading="lazy"
+                />
+              </div>
+            ) : (
+              <p className="text-[14px] text-[var(--sub)] text-center py-8">{t("common.noData")}</p>
+            )
           ) : (
-            <p className="text-[14px] text-[var(--sub)] text-center py-8">{t("common.noData")}</p>
+            /* الصفحات العادية (عن/سياسات/تواصل): النص كما هو */
+            <div
+              className="leading-relaxed cms-article"
+              style={{
+                lineHeight: 1.8,
+                color: "var(--ink-light)",
+                ...(isAr ? { direction: "rtl", textAlign: "right" as const } : {}),
+              }}
+              dangerouslySetInnerHTML={{ __html: scopeCmsStyles(content || "") }}
+            />
           )}
         </div>
       </div>

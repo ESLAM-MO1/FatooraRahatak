@@ -8,7 +8,6 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import { usePackageFeature } from "@/lib/usePackageFeatures";
 import Icon from "@/components/Icon";
-import html2pdf from "html2pdf.js";
 import LoadingState from "@/components/LoadingState";
 import RestrictedFeatureState from "@/components/RestrictedFeatureState";
 import {
@@ -134,18 +133,21 @@ export default function InvoiceDetailPage() {
 
   const handleDownloadPdf = async () => {
     setError("");
-    // ✅ يولّد الـ PDF من نفس HTML بتاع زر الطباعة — فيطابق الشكل تمامًا (بالـ QR)
+    // ✅ يولّد الـ PDF بنفس طريقة زر الطباعة تمامًا — نافذة HTML + print
+    // (html2canvas كان يكسر العربي في ملفات PDF) — فهنا المتصفح يبني PDF
+    // سليم بالعربي والـ QR بنفس الشكل بالضبط.
     if (!invoice) return;
     try {
-      const html = buildInvoiceHtml(invoice, t);
-      const worker = html2pdf().set({
-        margin: 8,
-        filename: `${invoice.invoiceNumber}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      });
-      await worker.from(html).save();
+      const w = window.open("", "_blank", "width=900,height=700");
+      if (!w) {
+        setError(t("invoice.pdfError"));
+        return;
+      }
+      w.document.write(buildInvoiceHtml(invoice, t));
+      w.document.close();
+      w.focus();
+      w.onafterprint = () => w.close();
+      w.print();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : t("invoice.pdfError");
       setError(message);

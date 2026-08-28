@@ -139,6 +139,31 @@ public class SiteService : ISiteService
             Telegram = social["telegram"],
             Linkedin = social["linkedin"],
         };
+
+        // ⚠️ إصلاح الإنجليزي: المحتوى القديم في DB (قبل إضافة الترجمة) كان عربي فقط بدون
+        // حقول En. نملأ الحقول الإنجليزية الفارغة بترجمات افتراضية حتى يظهر الإنجليزي
+        // محتوى فعليًا (بدل fallback على العربي).
+        var h = content.Hero;
+        if (h != null)
+        {
+            if (string.IsNullOrWhiteSpace(h.TitleEn) && !string.IsNullOrWhiteSpace(h.TitleAr))
+                h.TitleEn = "An Integrated Platform to\nManage Your Entire Store";
+            if (string.IsNullOrWhiteSpace(h.DescriptionEn) && !string.IsNullOrWhiteSpace(h.DescriptionAr))
+                h.DescriptionEn = "Invoices, payment links, POS, online store, payment gateway - everything you need in one system to grow your business.";
+            if (string.IsNullOrWhiteSpace(h.PrimaryCtaEn))
+                h.PrimaryCtaEn = "Start Free Now";
+            if (string.IsNullOrWhiteSpace(h.SecondaryCtaEn))
+                h.SecondaryCtaEn = "Learn More";
+            if (h.Stats != null)
+            {
+                if (h.Stats.Count > 0 && string.IsNullOrWhiteSpace(h.Stats[0].LabelEn)) h.Stats[0].LabelEn = "Merchants";
+                if (h.Stats.Count > 1 && string.IsNullOrWhiteSpace(h.Stats[1].LabelEn)) h.Stats[1].LabelEn = "Invoices";
+                if (h.Stats.Count > 2 && string.IsNullOrWhiteSpace(h.Stats[2].LabelEn)) h.Stats[2].LabelEn = "Uptime";
+            }
+        }
+        if (content.VideoSection != null && string.IsNullOrWhiteSpace(content.VideoSection.TitleEn))
+            content.VideoSection.TitleEn = "Everything Your Business Needs in One Platform";
+
         return content;
     }
 

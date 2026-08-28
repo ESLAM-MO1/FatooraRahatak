@@ -11,6 +11,24 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v
 interface StatItem { number: string; label: string }
 interface FeatureContent { title: string; description: string; image: string; knowMoreText: string; knowMoreHref: string }
 interface DistinctiveCard { title: string; description: string }
+
+// شكل البيانات كما يرجعها الـ API (ثنائي اللغة: Ar/En لكل حقل نصي)
+interface RawStatItem { number: string; labelAr: string; labelEn: string }
+interface RawFeatureContent { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; image: string; knowMoreTextAr: string; knowMoreTextEn: string; knowMoreHref: string }
+interface RawDistinctiveCard { titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string }
+interface RawLandingContent {
+  hero?: { titleAr?: string; titleEn?: string; descriptionAr?: string; descriptionEn?: string; backgroundImage?: string; primaryCtaAr?: string; primaryCtaEn?: string; primaryCtaHref?: string; secondaryCtaAr?: string; secondaryCtaEn?: string; secondaryCtaHref?: string; stats?: RawStatItem[] };
+  videoSection?: { titleAr?: string; titleEn?: string; descriptionAr?: string; descriptionEn?: string; videoUrl?: string };
+  features?: RawFeatureContent[];
+  distinctiveSection?: { titleAr?: string; titleEn?: string; cards?: RawDistinctiveCard[]; ctaTextAr?: string; ctaTextEn?: string; ctaHref?: string };
+}
+
+// يختار النص بلغة الواجهة الحالية، مع رجوع للغة التانية لو الأولى فاضية
+function pickLang(isAr: boolean, ar?: string, en?: string): string {
+  const a = ar || "";
+  const e = en || "";
+  return isAr ? (a || e) : (e || a);
+}
 interface PackageItem {
   id: number;
   name: string;
@@ -86,14 +104,58 @@ function getDefaultContent(t: (s: string) => string): LandingContent {
 
 const FAQ_INITIAL_COUNT = 5;
 
+// يحوّل الشكل الخام (ثنائي اللغة) الجاي من الـ API لشكل موحّد بلغة واحدة
+// بناءً على اللغة الحالية، مع رجوع للقيم الافتراضية المترجمة لو الحقل فاضي
+function resolveContent(raw: RawLandingContent | null, isAr: boolean, dc: LandingContent): LandingContent {
+  if (!raw) return dc;
+  return {
+    hero: {
+      title: pickLang(isAr, raw.hero?.titleAr, raw.hero?.titleEn) || dc.hero.title,
+      description: pickLang(isAr, raw.hero?.descriptionAr, raw.hero?.descriptionEn) || dc.hero.description,
+      backgroundImage: raw.hero?.backgroundImage ?? dc.hero.backgroundImage,
+      primaryCta: pickLang(isAr, raw.hero?.primaryCtaAr, raw.hero?.primaryCtaEn) || dc.hero.primaryCta,
+      primaryCtaHref: raw.hero?.primaryCtaHref ?? dc.hero.primaryCtaHref,
+      secondaryCta: pickLang(isAr, raw.hero?.secondaryCtaAr, raw.hero?.secondaryCtaEn) || dc.hero.secondaryCta,
+      secondaryCtaHref: raw.hero?.secondaryCtaHref ?? dc.hero.secondaryCtaHref,
+      stats: raw.hero?.stats && raw.hero.stats.length > 0
+        ? raw.hero.stats.map(s => ({ number: s.number, label: pickLang(isAr, s.labelAr, s.labelEn) }))
+        : dc.hero.stats,
+    },
+    videoSection: {
+      title: pickLang(isAr, raw.videoSection?.titleAr, raw.videoSection?.titleEn) || dc.videoSection.title,
+      description: pickLang(isAr, raw.videoSection?.descriptionAr, raw.videoSection?.descriptionEn),
+      videoUrl: raw.videoSection?.videoUrl ?? dc.videoSection.videoUrl,
+    },
+    features: raw.features && raw.features.length > 0
+      ? raw.features.map(f => ({
+          title: pickLang(isAr, f.titleAr, f.titleEn),
+          description: pickLang(isAr, f.descriptionAr, f.descriptionEn),
+          image: f.image || "",
+          knowMoreText: pickLang(isAr, f.knowMoreTextAr, f.knowMoreTextEn),
+          knowMoreHref: f.knowMoreHref || "#",
+        }))
+      : dc.features,
+    distinctiveSection: {
+      title: pickLang(isAr, raw.distinctiveSection?.titleAr, raw.distinctiveSection?.titleEn) || dc.distinctiveSection.title,
+      cards: raw.distinctiveSection?.cards && raw.distinctiveSection.cards.length > 0
+        ? raw.distinctiveSection.cards.map(c => ({ title: pickLang(isAr, c.titleAr, c.titleEn), description: pickLang(isAr, c.descriptionAr, c.descriptionEn) }))
+        : dc.distinctiveSection.cards,
+      ctaText: pickLang(isAr, raw.distinctiveSection?.ctaTextAr, raw.distinctiveSection?.ctaTextEn) || dc.distinctiveSection.ctaText,
+      ctaHref: raw.distinctiveSection?.ctaHref || dc.distinctiveSection.ctaHref,
+    },
+  };
+}
+
 export default function HomePage() {
   const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
   const defaultContent = getDefaultContent(t);
-  const [content, setContent] = useState<LandingContent>(defaultContent);
+  const [rawContent, setRawContent] = useState<RawLandingContent | null>(null);
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [faqs, setFaqs] = useState<FaqItem[]>([]);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [showAllFaqs, setShowAllFaqs] = useState(false);
+  const content = resolveContent(rawContent, isAr, defaultContent);
   const { hero, videoSection, features, distinctiveSection } = content;
 
   useEffect(() => {
@@ -101,13 +163,7 @@ export default function HomePage() {
       .then(r => r.json())
       .then(json => {
         const d = json.data || json;
-        const dc = getDefaultContent(t);
-        setContent({
-          hero: { ...dc.hero, ...d.hero },
-          videoSection: { ...dc.videoSection, ...d.videoSection, description: d.videoSection?.description || "" },
-          features: d.features && d.features.length > 0 ? d.features.map((f: any) => ({ ...dc.features[0], ...f })) : dc.features,
-          distinctiveSection: { ...dc.distinctiveSection, ...d.distinctiveSection },
-        });
+        setRawContent(d);
       })
       .catch(() => {});
     fetch(`${API_BASE}/site/packages`)
@@ -138,8 +194,8 @@ export default function HomePage() {
                 {hero.description}
               </p>
               <div className="flex items-center gap-3 sm:gap-6 mb-8 justify-center lg:justify-start flex-wrap">
-                {hero.stats.map((stat) => (
-                  <div key={stat.label} className="text-center">
+                {hero.stats.map((stat, statIdx) => (
+                  <div key={`${stat.number}-${statIdx}`} className="text-center">
                     <p className="text-[18px] sm:text-[22px] lg:text-[26px] font-extrabold text-white">{stat.number}</p>
                     <p className="text-[10px] sm:text-[12px] lg:text-[13px] font-bold" style={{ color: "#9FCBDD" }}>{stat.label}</p>
                   </div>
@@ -213,8 +269,8 @@ export default function HomePage() {
             {distinctiveSection.title}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-            {distinctiveSection.cards.map((item) => (
-              <div key={item.title} className="card p-6 sm:p-8 text-center">
+            {distinctiveSection.cards.map((item, cardIdx) => (
+              <div key={`${item.title}-${cardIdx}`} className="card p-6 sm:p-8 text-center">
                 <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5" style={{ backgroundColor: "var(--blue-50)", color: "var(--blue)" }}>
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 2l7 4v5c0 5-3.5 9.7-7 11-3.5-1.3-7-6-7-11V6l7-4z" /><path d="M9 12l2 2 4-4" />

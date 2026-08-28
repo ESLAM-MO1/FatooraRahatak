@@ -17,12 +17,9 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-// بعد ما الصفحة تخلص تحميل في المتصفح، لو فيه لغة محفوظة مختلفة، بدّلها وقتها بس
-if (typeof window !== "undefined") {
-  const savedLang = localStorage.getItem("lang");
-  if (savedLang && savedLang !== i18n.language) {
-    i18n.changeLanguage(savedLang);
-  }
-}
+// ⚠️ ملحوظة: استرجاع اللغة المحفوظة (localStorage) اتنقل لـ I18nProviderWrapper
+// جوه useEffect، عشان يتنفذ بعد ما الـ hydration يخلص فعليًا مش وقت تحميل الملف.
+// لو اتنفذ هنا (وقت تحميل الـ module) هيحصل قبل الـ hydration ويسبب mismatch
+// لأن السيرفر بيرندر "ar" دايمًا والمتصفح كان بيبدل اللغة قبل ما يقارن.
 
 export default i18n;

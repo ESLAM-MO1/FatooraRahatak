@@ -8,6 +8,8 @@ public class SitePageDto
     public string TitleEn { get; set; } = string.Empty;
     public string ContentAr { get; set; } = string.Empty;
     public string ContentEn { get; set; } = string.Empty;
+    public string? ImageAr { get; set; }
+    public string? ImageEn { get; set; }
 }
 
 public class UpdateSitePageDto
@@ -16,6 +18,8 @@ public class UpdateSitePageDto
     public string TitleEn { get; set; } = string.Empty;
     public string ContentAr { get; set; } = string.Empty;
     public string ContentEn { get; set; } = string.Empty;
+    public string? ImageAr { get; set; }
+    public string? ImageEn { get; set; }
 }
 
 public class SiteFaqItemDto

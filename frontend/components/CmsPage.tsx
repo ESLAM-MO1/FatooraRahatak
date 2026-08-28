@@ -61,6 +61,8 @@ interface SitePageDto {
   titleEn: string;
   contentAr: string;
   contentEn: string;
+  imageAr?: string | null;
+  imageEn?: string | null;
 }
 
 interface Props {
@@ -96,6 +98,7 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
 
   const title = isAr ? page?.titleAr : page?.titleEn;
   const content = isAr ? page?.contentAr : page?.contentEn;
+  const image = isAr ? page?.imageAr : page?.imageEn;
 
   useEffect(() => {
     if (!content) return;
@@ -183,15 +186,28 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle }: Props) {
               {title}
             </h2>
           )}
-          <div
-            className="leading-relaxed cms-article"
-            style={{
-              lineHeight: 1.8,
-              color: "var(--ink-light)",
-              ...(isAr ? { direction: "rtl", textAlign: "right" as const } : {}),
-            }}
-            dangerouslySetInnerHTML={{ __html: scopeCmsStyles(content || "") }}
-          />
+          {image ? (
+            /* ✅ صورة الصفحة (حسب اللغة المختارة) — يعرضها الأدمن من لوحة التحكم */
+            <div className="cms-image">
+              <img
+                src={image}
+                alt={title || ""}
+                className="w-full h-auto rounded-lg border border-[var(--border)] shadow-[var(--shadow)]"
+                loading="lazy"
+              />
+            </div>
+          ) : (
+            /* النص الأصلي — يظهر فقط لو مفيش صورة مضافة */
+            <div
+              className="leading-relaxed cms-article"
+              style={{
+                lineHeight: 1.8,
+                color: "var(--ink-light)",
+                ...(isAr ? { direction: "rtl", textAlign: "right" as const } : {}),
+              }}
+              dangerouslySetInnerHTML={{ __html: scopeCmsStyles(content || "") }}
+            />
+          )}
         </div>
       </div>
     </SiteLayout>

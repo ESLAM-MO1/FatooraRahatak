@@ -221,14 +221,20 @@ function HomepageEditor() {
       <div className="space-y-8">
         <Section title={t("admin.hero")}>
           <Grid>
-            <Field label={t("admin.heroTitle")}><textarea rows={3} value={content.hero?.title || ""} onChange={e => update("hero.title", e.target.value)} /></Field>
-            <Field label={t("admin.heroDesc")}><textarea rows={3} value={content.hero?.description || ""} onChange={e => update("hero.description", e.target.value)} /></Field>
+            <Field label={`${t("admin.heroTitle")} (${t("admin.arabic")})`}><textarea dir="rtl" rows={3} value={content.hero?.titleAr || ""} onChange={e => update("hero.titleAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.heroTitle")} (${t("admin.english")})`}><textarea dir="ltr" rows={3} value={content.hero?.titleEn || ""} onChange={e => update("hero.titleEn", e.target.value)} /></Field>
+            <Field label={`${t("admin.heroDesc")} (${t("admin.arabic")})`}><textarea dir="rtl" rows={3} value={content.hero?.descriptionAr || ""} onChange={e => update("hero.descriptionAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.heroDesc")} (${t("admin.english")})`}><textarea dir="ltr" rows={3} value={content.hero?.descriptionEn || ""} onChange={e => update("hero.descriptionEn", e.target.value)} /></Field>
             <Field label={t("admin.heroImage")}>
               <ImageUpload value={content.hero?.backgroundImage || ""} onChange={v => update("hero.backgroundImage", v)} />
             </Field>
-            <Field label={t("admin.heroPrimaryCta")}><input value={content.hero?.primaryCta || ""} onChange={e => update("hero.primaryCta", e.target.value)} /></Field>
+            <div />
+            <Field label={`${t("admin.heroPrimaryCta")} (${t("admin.arabic")})`}><input dir="rtl" value={content.hero?.primaryCtaAr || ""} onChange={e => update("hero.primaryCtaAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.heroPrimaryCta")} (${t("admin.english")})`}><input dir="ltr" value={content.hero?.primaryCtaEn || ""} onChange={e => update("hero.primaryCtaEn", e.target.value)} /></Field>
             <Field label={t("admin.heroPrimaryLink")}><input value={content.hero?.primaryCtaHref || ""} onChange={e => update("hero.primaryCtaHref", e.target.value)} /></Field>
-            <Field label={t("admin.heroSecondaryCta")}><input value={content.hero?.secondaryCta || ""} onChange={e => update("hero.secondaryCta", e.target.value)} /></Field>
+            <div />
+            <Field label={`${t("admin.heroSecondaryCta")} (${t("admin.arabic")})`}><input dir="rtl" value={content.hero?.secondaryCtaAr || ""} onChange={e => update("hero.secondaryCtaAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.heroSecondaryCta")} (${t("admin.english")})`}><input dir="ltr" value={content.hero?.secondaryCtaEn || ""} onChange={e => update("hero.secondaryCtaEn", e.target.value)} /></Field>
             <Field label={t("admin.heroSecondaryLink")}><input value={content.hero?.secondaryCtaHref || ""} onChange={e => update("hero.secondaryCtaHref", e.target.value)} /></Field>
           </Grid>
         </Section>
@@ -237,15 +243,19 @@ function HomepageEditor() {
           {(content.hero?.stats || []).map((s: any, i: number) => (
             <div key={i} className="flex gap-2 mb-2">
               <input className="flex-1" placeholder={t("admin.statNumber")} value={s.number} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], number: e.target.value }; update("hero.stats", arr); }} />
-              <input className="flex-1" placeholder={t("admin.statLabel")} value={s.label} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], label: e.target.value }; update("hero.stats", arr); }} />
+              <input dir="rtl" className="flex-1" placeholder={`${t("admin.statLabel")} (${t("admin.arabic")})`} value={s.labelAr} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], labelAr: e.target.value }; update("hero.stats", arr); }} />
+              <input dir="ltr" className="flex-1" placeholder={`${t("admin.statLabel")} (${t("admin.english")})`} value={s.labelEn} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], labelEn: e.target.value }; update("hero.stats", arr); }} />
               <button onClick={() => removeArrItem("hero.stats", i)} className="btn btn-danger btn-sm shrink-0">×</button>
             </div>
           ))}
-          <button onClick={() => addArrItem("hero.stats", { number: "", label: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addStat")}</button>
+          <button onClick={() => addArrItem("hero.stats", { number: "", labelAr: "", labelEn: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addStat")}</button>
         </Section>
 
         <Section title={t("admin.videoSection")}>
-          <Field label={t("admin.videoTitle")}><input value={content.videoSection?.title || ""} onChange={e => update("videoSection.title", e.target.value)} /></Field>
+          <Grid>
+            <Field label={`${t("admin.videoTitle")} (${t("admin.arabic")})`}><input dir="rtl" value={content.videoSection?.titleAr || ""} onChange={e => update("videoSection.titleAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.videoTitle")} (${t("admin.english")})`}><input dir="ltr" value={content.videoSection?.titleEn || ""} onChange={e => update("videoSection.titleEn", e.target.value)} /></Field>
+          </Grid>
           <Field label={t("admin.videoUpload")}>
             <ImageUpload value={content.videoSection?.videoUrl || ""} onChange={v => update("videoSection.videoUrl", v)} accept="video/*" labelKey="admin.videoUpload" />
             {content.videoSection?.videoUrl && (
@@ -259,39 +269,53 @@ function HomepageEditor() {
             <div key={i} className="border rounded-lg p-4 mb-4" style={{ borderColor: "var(--border)" }}>
               <div className="flex justify-between mb-3"><span className="font-bold text-sm">{t("admin.featureSection")} {i + 1}</span><button onClick={() => removeArrItem("features", i)} className="btn btn-danger btn-sm">{t("common.delete")}</button></div>
               <Grid>
-                <Field label={t("admin.featureTitle")}><input value={f.title} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], title: e.target.value }; update("features", arr); }} /></Field>
-                <Field label={t("admin.featureDesc")}><textarea rows={2} value={f.description} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], description: e.target.value }; update("features", arr); }} /></Field>
+                <Field label={`${t("admin.featureTitle")} (${t("admin.arabic")})`}><input dir="rtl" value={f.titleAr} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], titleAr: e.target.value }; update("features", arr); }} /></Field>
+                <Field label={`${t("admin.featureTitle")} (${t("admin.english")})`}><input dir="ltr" value={f.titleEn} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], titleEn: e.target.value }; update("features", arr); }} /></Field>
+                <Field label={`${t("admin.featureDesc")} (${t("admin.arabic")})`}><textarea dir="rtl" rows={2} value={f.descriptionAr} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], descriptionAr: e.target.value }; update("features", arr); }} /></Field>
+                <Field label={`${t("admin.featureDesc")} (${t("admin.english")})`}><textarea dir="ltr" rows={2} value={f.descriptionEn} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], descriptionEn: e.target.value }; update("features", arr); }} /></Field>
                 <Field label={t("admin.featureImage")}>
                   <ImageUpload value={f.image || ""} onChange={v => { const arr = [...content.features]; arr[i] = { ...arr[i], image: v }; update("features", arr); }} />
                 </Field>
-                <Field label={t("admin.featureKnowMore")}><input value={f.knowMoreText} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], knowMoreText: e.target.value }; update("features", arr); }} /></Field>
+                <div />
+                <Field label={`${t("admin.featureKnowMore")} (${t("admin.arabic")})`}><input dir="rtl" value={f.knowMoreTextAr} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], knowMoreTextAr: e.target.value }; update("features", arr); }} /></Field>
+                <Field label={`${t("admin.featureKnowMore")} (${t("admin.english")})`}><input dir="ltr" value={f.knowMoreTextEn} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], knowMoreTextEn: e.target.value }; update("features", arr); }} /></Field>
                 <Field label={t("admin.featureKnowMoreLink")}><input value={f.knowMoreHref} onChange={e => { const arr = [...content.features]; arr[i] = { ...arr[i], knowMoreHref: e.target.value }; update("features", arr); }} /></Field>
               </Grid>
             </div>
           ))}
-          <button onClick={() => addArrItem("features", { title: "", description: "", image: "", knowMoreText: t("site.knowMore"), knowMoreHref: "#" })} className="btn btn-outline btn-sm">+ {t("admin.addFeature")}</button>
+          <button onClick={() => addArrItem("features", { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", image: "", knowMoreTextAr: t("site.knowMore"), knowMoreTextEn: "Learn More", knowMoreHref: "#" })} className="btn btn-outline btn-sm">+ {t("admin.addFeature")}</button>
         </Section>
 
         <Section title={t("admin.distinctiveSection")}>
-          <Field label={t("admin.distinctiveTitle")}><input value={content.distinctiveSection?.title || ""} onChange={e => update("distinctiveSection.title", e.target.value)} /></Field>
-          <p className="text-[12px] text-[var(--sub)] mb-2">{t("admin.distinctiveCards")}:</p>
+          <Grid>
+            <Field label={`${t("admin.distinctiveTitle")} (${t("admin.arabic")})`}><input dir="rtl" value={content.distinctiveSection?.titleAr || ""} onChange={e => update("distinctiveSection.titleAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.distinctiveTitle")} (${t("admin.english")})`}><input dir="ltr" value={content.distinctiveSection?.titleEn || ""} onChange={e => update("distinctiveSection.titleEn", e.target.value)} /></Field>
+          </Grid>
+          <p className="text-[12px] text-[var(--sub)] mb-2 mt-2">{t("admin.distinctiveCards")}:</p>
           {(content.distinctiveSection?.cards || []).map((c: any, i: number) => (
-            <div key={i} className="flex gap-2 mb-2">
-              <input className="flex-1" placeholder={t("admin.cardTitle")} value={c.title} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], title: e.target.value }; update("distinctiveSection.cards", arr); }} />
-              <input className="flex-1" placeholder={t("admin.cardDesc")} value={c.description} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], description: e.target.value }; update("distinctiveSection.cards", arr); }} />
+            <div key={i} className="flex gap-2 mb-2 flex-wrap">
+              <input dir="rtl" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardTitle")} (${t("admin.arabic")})`} value={c.titleAr} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], titleAr: e.target.value }; update("distinctiveSection.cards", arr); }} />
+              <input dir="ltr" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardTitle")} (${t("admin.english")})`} value={c.titleEn} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], titleEn: e.target.value }; update("distinctiveSection.cards", arr); }} />
+              <input dir="rtl" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardDesc")} (${t("admin.arabic")})`} value={c.descriptionAr} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], descriptionAr: e.target.value }; update("distinctiveSection.cards", arr); }} />
+              <input dir="ltr" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardDesc")} (${t("admin.english")})`} value={c.descriptionEn} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], descriptionEn: e.target.value }; update("distinctiveSection.cards", arr); }} />
               <button onClick={() => removeArrItem("distinctiveSection.cards", i)} className="btn btn-danger btn-sm shrink-0">×</button>
             </div>
           ))}
-          <button onClick={() => addArrItem("distinctiveSection.cards", { title: "", description: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addCard")}</button>
+          <button onClick={() => addArrItem("distinctiveSection.cards", { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addCard")}</button>
           <GridCols>
-            <Field label={t("admin.ctaText")}><input value={content.distinctiveSection?.ctaText || ""} onChange={e => update("distinctiveSection.ctaText", e.target.value)} /></Field>
+            <Field label={`${t("admin.ctaText")} (${t("admin.arabic")})`}><input dir="rtl" value={content.distinctiveSection?.ctaTextAr || ""} onChange={e => update("distinctiveSection.ctaTextAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.ctaText")} (${t("admin.english")})`}><input dir="ltr" value={content.distinctiveSection?.ctaTextEn || ""} onChange={e => update("distinctiveSection.ctaTextEn", e.target.value)} /></Field>
             <Field label={t("admin.ctaLink")}><input value={content.distinctiveSection?.ctaHref || ""} onChange={e => update("distinctiveSection.ctaHref", e.target.value)} /></Field>
           </GridCols>
         </Section>
 
         <Section title={t("admin.footerSection")}>
-          <Field label={t("admin.footerDesc")}><textarea rows={2} value={content.footer?.description || ""} onChange={e => update("footer.description", e.target.value)} /></Field>
-          <Field label={t("admin.copyright")}><input value={content.footer?.copyright || ""} onChange={e => update("footer.copyright", e.target.value)} /></Field>
+          <Grid>
+            <Field label={`${t("admin.footerDesc")} (${t("admin.arabic")})`}><textarea dir="rtl" rows={2} value={content.footer?.descriptionAr || ""} onChange={e => update("footer.descriptionAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.footerDesc")} (${t("admin.english")})`}><textarea dir="ltr" rows={2} value={content.footer?.descriptionEn || ""} onChange={e => update("footer.descriptionEn", e.target.value)} /></Field>
+            <Field label={`${t("admin.copyright")} (${t("admin.arabic")})`}><input dir="rtl" value={content.footer?.copyrightAr || ""} onChange={e => update("footer.copyrightAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.copyright")} (${t("admin.english")})`}><input dir="ltr" value={content.footer?.copyrightEn || ""} onChange={e => update("footer.copyrightEn", e.target.value)} /></Field>
+          </Grid>
         </Section>
 
         <Section title={t("admin.socialSection")}>
@@ -323,6 +347,8 @@ function PageEditor({ pageKey }: { pageKey: string }) {
   const [contentAr, setContentAr] = useState("");
   const [titleEn, setTitleEn] = useState("");
   const [contentEn, setContentEn] = useState("");
+  const [imageAr, setImageAr] = useState("");
+  const [imageEn, setImageEn] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
@@ -334,13 +360,14 @@ function PageEditor({ pageKey }: { pageKey: string }) {
       const d = r?.data?.data;
       setTitleAr(d?.titleAr ?? ""); setContentAr(d?.contentAr ?? "");
       setTitleEn(d?.titleEn ?? ""); setContentEn(d?.contentEn ?? "");
+      setImageAr(d?.imageAr ?? ""); setImageEn(d?.imageEn ?? "");
     }).catch(() => setError(t("error.serverError"))).finally(() => setLoading(false));
   }, [pageKey]);
 
   const save = async () => {
     setSaving(true); setSuccess(""); setError("");
     try {
-      await api.put(`/admin/site/pages/${pageKey}`, { titleAr, contentAr, titleEn, contentEn });
+      await api.put(`/admin/site/pages/${pageKey}`, { titleAr, contentAr, titleEn, contentEn, imageAr, imageEn });
       setSuccess(t("admin.saveSuccess"));
     } catch { setError(t("admin.saveError")); } finally { setSaving(false); }
   };
@@ -359,12 +386,26 @@ function PageEditor({ pageKey }: { pageKey: string }) {
         <textarea dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'200px'}} value={contentAr} onChange={e => setContentAr(e.target.value)} placeholder={t("admin.contentAr")} />
       </div>
       <div>
+        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.imageAr")}</label>
+        <div className="flex gap-2">
+          <input dir="ltr" className="flex-1 rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={imageAr} onChange={e => setImageAr(e.target.value)} placeholder="https://..." />
+          {imageAr && <img src={imageAr} alt="" className="w-14 h-14 rounded-lg object-cover border" />}
+        </div>
+      </div>
+      <div>
         <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleEn")}</label>
         <input dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={titleEn} onChange={e => setTitleEn(e.target.value)} placeholder={t("admin.titleEn")} />
       </div>
       <div>
         <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentEn")}</label>
         <textarea dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'120px'}} value={contentEn} onChange={e => setContentEn(e.target.value)} placeholder={t("admin.contentEn")} />
+      </div>
+      <div>
+        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.imageEn")}</label>
+        <div className="flex gap-2">
+          <input dir="ltr" className="flex-1 rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={imageEn} onChange={e => setImageEn(e.target.value)} placeholder="https://..." />
+          {imageEn && <img src={imageEn} alt="" className="w-14 h-14 rounded-lg object-cover border" />}
+        </div>
       </div>
       <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? t("admin.saving") : t("common.save")}</button>
     </div>

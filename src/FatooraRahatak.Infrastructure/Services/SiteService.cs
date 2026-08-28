@@ -32,13 +32,89 @@ public class SiteService : ISiteService
         ["linkedin"] = "https://linkedin.com/in/faturatrahatik",
     };
 
+    // ⚠️ ترحيل: النسخة القديمة من محتوى الصفحة الرئيسية كانت أحادية اللغة
+    // (title, description, ...) بدون فصل عربي/إنجليزي. بعد إضافة الدعم ثنائي
+    // اللغة (TitleAr/TitleEn ...) القيم القديمة المحفوظة في قاعدة البيانات لازم
+    // تتحول تلقائيًا لتبقى القيمة العربية (لأن المحتوى القديم كله كان عربي)
+    // بدل ما تُفقد أو ترجع للقيم الافتراضية.
+    private static string MigrateLegacyLandingPageJson(string json)
+    {
+        try
+        {
+            var root = System.Text.Json.Nodes.JsonNode.Parse(json)?.AsObject();
+            if (root == null) return json;
+
+            void MigrateField(System.Text.Json.Nodes.JsonObject obj, string legacyKey, string arKey)
+            {
+                if (obj[arKey] == null && obj[legacyKey] != null)
+                    obj[arKey] = obj[legacyKey]!.DeepClone();
+            }
+
+            MigrateField(root, "siteName", "siteNameAr");
+            MigrateField(root, "siteDescription", "siteDescriptionAr");
+
+            if (root["hero"] is System.Text.Json.Nodes.JsonObject hero)
+            {
+                MigrateField(hero, "title", "titleAr");
+                MigrateField(hero, "description", "descriptionAr");
+                MigrateField(hero, "primaryCta", "primaryCtaAr");
+                MigrateField(hero, "secondaryCta", "secondaryCtaAr");
+                if (hero["stats"] is System.Text.Json.Nodes.JsonArray stats)
+                    foreach (var s in stats)
+                        if (s is System.Text.Json.Nodes.JsonObject so) MigrateField(so, "label", "labelAr");
+            }
+
+            if (root["videoSection"] is System.Text.Json.Nodes.JsonObject video)
+            {
+                MigrateField(video, "title", "titleAr");
+                MigrateField(video, "description", "descriptionAr");
+            }
+
+            if (root["features"] is System.Text.Json.Nodes.JsonArray features)
+                foreach (var f in features)
+                    if (f is System.Text.Json.Nodes.JsonObject fo)
+                    {
+                        MigrateField(fo, "title", "titleAr");
+                        MigrateField(fo, "description", "descriptionAr");
+                        MigrateField(fo, "knowMoreText", "knowMoreTextAr");
+                    }
+
+            if (root["distinctiveSection"] is System.Text.Json.Nodes.JsonObject distinctive)
+            {
+                MigrateField(distinctive, "title", "titleAr");
+                MigrateField(distinctive, "ctaText", "ctaTextAr");
+                if (distinctive["cards"] is System.Text.Json.Nodes.JsonArray cards)
+                    foreach (var c in cards)
+                        if (c is System.Text.Json.Nodes.JsonObject co)
+                        {
+                            MigrateField(co, "title", "titleAr");
+                            MigrateField(co, "description", "descriptionAr");
+                        }
+            }
+
+            if (root["footer"] is System.Text.Json.Nodes.JsonObject footer)
+            {
+                MigrateField(footer, "description", "descriptionAr");
+                MigrateField(footer, "copyright", "copyrightAr");
+            }
+
+            return root.ToJsonString();
+        }
+        catch
+        {
+            // لو حصل أي خطأ في الترحيل، نرجع الـ JSON الأصلي والـ deserializer
+            // هيتعامل معاه عادي (هيستخدم القيم الافتراضية بس).
+            return json;
+        }
+    }
+
     public async Task<LandingPageContentDto> GetLandingPageAsync()
     {
         var setting = await _context.PlatformSettings
             .FirstOrDefaultAsync(s => s.SettingKey == "landing_page_content");
         var content = setting == null || string.IsNullOrWhiteSpace(setting.SettingValue)
             ? new LandingPageContentDto()
-            : LandingPageContentDto.FromJson(setting.SettingValue);
+            : LandingPageContentDto.FromJson(MigrateLegacyLandingPageJson(setting.SettingValue));
 
         // ✅ دمج الروابط الافتراضية مع القيم المحفوظة (المحفوظة تغلب الافتراضي)
         // حتى تظهر كل منصات السوشيال حتى لو كانت القيمة المخزنة قديمة/ناقصة.
@@ -143,7 +219,7 @@ public class SiteService : ISiteService
     {
         return await _context.Set<SitePage>()
             .Where(p => p.PageKey == pageKey)
-            .Select(p => new SitePageDto { Id = p.Id, PageKey = p.PageKey, TitleAr = p.TitleAr, TitleEn = p.TitleEn, ContentAr = p.ContentAr, ContentEn = p.ContentEn })
+            .Select(p => new SitePageDto { Id = p.Id, PageKey = p.PageKey, TitleAr = p.TitleAr, TitleEn = p.TitleEn, ContentAr = p.ContentAr, ContentEn = p.ContentEn, ImageAr = p.ImageAr, ImageEn = p.ImageEn })
             .FirstOrDefaultAsync() ?? new SitePageDto { PageKey = pageKey };
     }
 
@@ -153,6 +229,7 @@ public class SiteService : ISiteService
         if (page == null) { page = new SitePage { PageKey = pageKey }; _context.Set<SitePage>().Add(page); }
         page.TitleAr = dto.TitleAr; page.TitleEn = dto.TitleEn;
         page.ContentAr = dto.ContentAr; page.ContentEn = dto.ContentEn;
+        page.ImageAr = dto.ImageAr; page.ImageEn = dto.ImageEn;
         page.UpdatedAt = DateTime.UtcNow; page.UpdatedByUserId = userId;
         await _context.SaveChangesAsync();
     }

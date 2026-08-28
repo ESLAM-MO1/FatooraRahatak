@@ -112,6 +112,20 @@ interface FooterData {
   social: { facebook: string; instagram: string; whatsapp: string; snapchat: string; tiktok: string; telegram: string; linkedin: string };
 }
 
+interface RawFooterData {
+  descriptionAr?: string;
+  descriptionEn?: string;
+  copyrightAr?: string;
+  copyrightEn?: string;
+  social?: Partial<FooterData["social"]>;
+}
+
+function pickLang(isAr: boolean, ar?: string, en?: string): string {
+  const a = ar || "";
+  const e = en || "";
+  return isAr ? (a || e) : (e || a);
+}
+
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   const { t, i18n } = useTranslation();
   const pathname = usePathname();
@@ -124,11 +138,38 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   const featuresDropdownRef = useRef<HTMLDivElement>(null);
   const aboutBtnRef = useRef<HTMLButtonElement>(null);
   const aboutDropdownRef = useRef<HTMLDivElement>(null);
-  const [featuresPos, setFeaturesPos] = useState<{ top: number; right: number } | null>(null);
-  const [aboutPos, setAboutPos] = useState<{ top: number; right: number } | null>(null);
-  const [footer, setFooter] = useState<FooterData>({ description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#", snapchat: "#", tiktok: "#", telegram: "#", linkedin: "#" } });
+  const [featuresPos, setFeaturesPos] = useState<{ top: number; left: number } | null>(null);
+  const [aboutPos, setAboutPos] = useState<{ top: number; left: number } | null>(null);
+  const isAr = i18n.language === "ar";
+
+  // Computes a dropdown's fixed `left` offset so it always stays fully inside the
+  // viewport, opening toward the natural reading direction (RTL -> panel's right
+  // edge meets the button; LTR -> panel's left edge meets the button), then clamps
+  // it within a 16px margin on both sides so it never gets clipped off-screen.
+  const computeDropdownLeft = (btnRect: DOMRect, panelWidth: number) => {
+    const margin = 16;
+    const desiredLeft = isAr ? btnRect.right - panelWidth : btnRect.left;
+    const maxLeft = window.innerWidth - panelWidth - margin;
+    return Math.max(margin, Math.min(desiredLeft, maxLeft));
+  };
+  const [rawFooter, setRawFooter] = useState<RawFooterData | null>(null);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [menus, setMenus] = useState<SiteMenuItem[]>([]);
+  const footer: FooterData = rawFooter
+    ? {
+        description: pickLang(isAr, rawFooter.descriptionAr, rawFooter.descriptionEn) || t("footer.description"),
+        copyright: pickLang(isAr, rawFooter.copyrightAr, rawFooter.copyrightEn) || t("footer.copyright"),
+        social: {
+          facebook: rawFooter.social?.facebook || "#",
+          instagram: rawFooter.social?.instagram || "#",
+          whatsapp: rawFooter.social?.whatsapp || "#",
+          snapchat: rawFooter.social?.snapchat || "#",
+          tiktok: rawFooter.social?.tiktok || "#",
+          telegram: rawFooter.social?.telegram || "#",
+          linkedin: rawFooter.social?.linkedin || "#",
+        },
+      }
+    : { description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#", snapchat: "#", tiktok: "#", telegram: "#", linkedin: "#" } };
 
   useEffect(() => {
     fetch(`${API_BASE}/site/menus`)
@@ -143,11 +184,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch(`${API_BASE}/site/landing-page`).then(r => r.json()).then(json => {
       const d = json.data || json;
-      if (d.footer) setFooter(prev => ({
-        ...prev,
-        ...d.footer,
-        social: { ...prev.social, ...(d.footer.social || {}) },
-      }));
+      if (d.footer) setRawFooter(d.footer);
     }).catch(() => {});
   }, []);
 
@@ -178,7 +215,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       const btn = featuresBtnRef.current;
       if (!btn) return;
       const rect = btn.getBoundingClientRect();
-      setFeaturesPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      setFeaturesPos({ top: rect.bottom + 8, left: computeDropdownLeft(rect, 920) });
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
@@ -188,7 +225,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener("resize", update);
       setFeaturesPos(null);
     };
-  }, [featuresOpen]);
+  }, [featuresOpen, isAr]);
 
   useLayoutEffect(() => {
     if (!aboutOpen || !aboutBtnRef.current) return;
@@ -196,7 +233,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       const btn = aboutBtnRef.current;
       if (!btn) return;
       const rect = btn.getBoundingClientRect();
-      setAboutPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      setAboutPos({ top: rect.bottom + 8, left: computeDropdownLeft(rect, 240) });
     };
     update();
     window.addEventListener("scroll", update, { passive: true });
@@ -206,7 +243,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener("resize", update);
       setAboutPos(null);
     };
-  }, [aboutOpen]);
+  }, [aboutOpen, isAr]);
 
   const resolved = (location: string, fallback: LinkDef[]): ResolvedLink[] => {
     const isAr = i18n.language === "ar";
@@ -334,16 +371,17 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   style={{
                     position: "fixed",
                     top: featuresPos.top,
-                    right: featuresPos.right,
-                    width: "780px",
-                    maxHeight: "calc(100vh - 100px)",
+                    left: featuresPos.left,
+                    width: "920px",
+                    maxWidth: "calc(100vw - 32px)",
+                    maxHeight: "calc(100vh - " + (featuresPos.top + 24) + "px)",
                     overflowY: "auto",
                     zIndex: 9999,
                     borderColor: "var(--border)",
                   }}
                 >
                   <div className="flex">
-                    <div className="flex-1 grid grid-cols-2 gap-1.5 p-2">
+                    <div className="flex-1 grid grid-cols-3 gap-1.5 p-2">
                       {featuresLinks.map(link => (
                         <div key={link.key} className="relative group">
                           <Link
@@ -417,7 +455,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   style={{
                     position: "fixed",
                     top: aboutPos.top,
-                    right: aboutPos.right,
+                    left: aboutPos.left,
                     width: "240px",
                     maxHeight: "calc(100vh - 100px)",
                     zIndex: 9999,
@@ -486,16 +524,19 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <button
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
-            style={{ color: "var(--ink)" }}
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label={t("nav.mobileMenu")}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" />
-            </svg>
-          </button>
+          <div className="lg:hidden flex items-center gap-1.5">
+            <LangSwitch />
+            <button
+              className="p-2 rounded-lg hover:bg-gray-100"
+              style={{ color: "var(--ink)" }}
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={t("nav.mobileMenu")}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" />
+              </svg>
+            </button>
+          </div>
         </nav>
 
         {mobileOpen && (
@@ -574,9 +615,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
               >
                 {t("nav.contact")}
               </Link>
-              <div className="px-3 pt-2">
-                <LangSwitch />
-              </div>
               <hr style={{ borderColor: "var(--border)" }} />
               <div className="flex items-center gap-2 px-3 pt-2">
                 <Link

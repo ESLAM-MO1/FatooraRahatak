@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -107,7 +107,7 @@ export default function SiteContentPage() {
   );
 }
 
-/* ── Image Upload Widget ── */
+/* â”€â”€ Image Upload Widget â”€â”€ */
 function ImageUpload({ value, onChange, accept = "image/*", labelKey = "admin.uploadImage" }: { value: string; onChange: (url: string) => void; accept?: string; labelKey?: string }) {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
@@ -134,13 +134,13 @@ function ImageUpload({ value, onChange, accept = "image/*", labelKey = "admin.up
           {uploading ? t("common.loading") : t(labelKey)}
           <input type="file" accept={accept} onChange={handleFile} className="hidden" />
         </label>
-        {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">×</button>}
+        {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">Ã—</button>}
       </div>
     </div>
   );
 }
 
-/* ── Homepage / Landing Content Editor ── */
+/* â”€â”€ Homepage / Landing Content Editor â”€â”€ */
 function HomepageEditor() {
   const { t } = useTranslation();
   const [content, setContent] = useState<any>(null);
@@ -245,7 +245,7 @@ function HomepageEditor() {
               <input className="flex-1" placeholder={t("admin.statNumber")} value={s.number} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], number: e.target.value }; update("hero.stats", arr); }} />
               <input dir="rtl" className="flex-1" placeholder={`${t("admin.statLabel")} (${t("admin.arabic")})`} value={s.labelAr} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], labelAr: e.target.value }; update("hero.stats", arr); }} />
               <input dir="ltr" className="flex-1" placeholder={`${t("admin.statLabel")} (${t("admin.english")})`} value={s.labelEn} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], labelEn: e.target.value }; update("hero.stats", arr); }} />
-              <button onClick={() => removeArrItem("hero.stats", i)} className="btn btn-danger btn-sm shrink-0">×</button>
+              <button onClick={() => removeArrItem("hero.stats", i)} className="btn btn-danger btn-sm shrink-0">Ã—</button>
             </div>
           ))}
           <button onClick={() => addArrItem("hero.stats", { number: "", labelAr: "", labelEn: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addStat")}</button>
@@ -298,7 +298,7 @@ function HomepageEditor() {
               <input dir="ltr" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardTitle")} (${t("admin.english")})`} value={c.titleEn} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], titleEn: e.target.value }; update("distinctiveSection.cards", arr); }} />
               <input dir="rtl" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardDesc")} (${t("admin.arabic")})`} value={c.descriptionAr} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], descriptionAr: e.target.value }; update("distinctiveSection.cards", arr); }} />
               <input dir="ltr" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardDesc")} (${t("admin.english")})`} value={c.descriptionEn} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], descriptionEn: e.target.value }; update("distinctiveSection.cards", arr); }} />
-              <button onClick={() => removeArrItem("distinctiveSection.cards", i)} className="btn btn-danger btn-sm shrink-0">×</button>
+              <button onClick={() => removeArrItem("distinctiveSection.cards", i)} className="btn btn-danger btn-sm shrink-0">Ã—</button>
             </div>
           ))}
           <button onClick={() => addArrItem("distinctiveSection.cards", { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addCard")}</button>
@@ -340,7 +340,7 @@ function HomepageEditor() {
   );
 }
 
-/* ── Page Editor ── */
+/* â”€â”€ Image Upload Field (Ù„Ù„ØµÙˆØ±) â”€â”€ */
 function ImageUploadField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
@@ -379,24 +379,17 @@ function ImageUploadField({ label, value, onChange }: { label: string; value: st
         {value ? (
           <div className="flex items-center gap-2">
             <img src={value} alt="" className="w-20 h-20 rounded-lg object-cover border shrink-0" />
-            <button
-              type="button"
-              onClick={() => onChange("")}
-              className="text-[12px] font-bold text-[var(--danger)] hover:underline"
-            >
-              {t("common.delete")}
-            </button>
+            <button type="button" onClick={() => onChange("")} className="text-[12px] font-bold text-[var(--danger)] hover:underline">{t("common.delete")}</button>
           </div>
-        ) : (
-          <p className="text-[12px] text-[var(--sub)]">{t("admin.noImage")}</p>
-        )}
+        ) : <p className="text-[12px] text-[var(--sub)]">{t("admin.noImage")}</p>}
       </div>
       {upErr && <p className="text-[12px] text-red-600 mt-1">{upErr}</p>}
     </div>
   );
 }
 
-function PageEditor({ pageKey }: { pageKey: string }) {
+/* â”€â”€ Feature Page Editor (ØµÙˆØ± ÙÙ‚Ø· â€” Ù„Ù„Ù…Ø²Ø§ÙŠØ§) â”€â”€ */
+function FeaturePageEditor({ pageKey }: { pageKey: string }) {
   const { t } = useTranslation();
   const [imageAr, setImageAr] = useState("");
   const [imageEn, setImageEn] = useState("");
@@ -434,7 +427,67 @@ function PageEditor({ pageKey }: { pageKey: string }) {
   );
 }
 
-/* ── Features Manager ── */
+/* â”€â”€ Page Editor (Ù†ØµÙˆØµ + ØµÙˆØ± â€” Ù„ØµÙØ­Ø§Øª Ø¹Ù† ÙˆØªÙˆØ§ØµÙ„) â”€â”€ */
+function PageEditor({ pageKey }: { pageKey: string }) {
+  const { t } = useTranslation();
+  const [titleAr, setTitleAr] = useState("");
+  const [contentAr, setContentAr] = useState("");
+  const [titleEn, setTitleEn] = useState("");
+  const [contentEn, setContentEn] = useState("");
+  const [imageAr, setImageAr] = useState("");
+  const [imageEn, setImageEn] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setLoading(true); setError("");
+    api.get(`/admin/site/pages/${pageKey}`).then(r => {
+      const d = r?.data?.data;
+      setTitleAr(d?.titleAr ?? ""); setContentAr(d?.contentAr ?? "");
+      setTitleEn(d?.titleEn ?? ""); setContentEn(d?.contentEn ?? "");
+      setImageAr(d?.imageAr ?? ""); setImageEn(d?.imageEn ?? "");
+    }).catch(() => setError(t("error.serverError"))).finally(() => setLoading(false));
+  }, [pageKey]);
+
+  const save = async () => {
+    setSaving(true); setSuccess(""); setError("");
+    try {
+      await api.put(`/admin/site/pages/${pageKey}`, { titleAr, contentAr, titleEn, contentEn, imageAr, imageEn });
+      setSuccess(t("admin.saveSuccess"));
+    } catch { setError(t("admin.saveError")); } finally { setSaving(false); }
+  };
+
+  if (loading) return <LoadingState />;
+  return (
+    <div className="space-y-4">
+      <SuccessToast message={success} fixed className="mb-4" />
+      {error && <div className="alert alert--danger">{error}</div>}
+      <div>
+        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleAr")}</label>
+        <input dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={titleAr} onChange={e => setTitleAr(e.target.value)} placeholder={t("admin.titleAr")} />
+      </div>
+      <div>
+        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentAr")}</label>
+        <textarea dir="rtl" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'200px'}} value={contentAr} onChange={e => setContentAr(e.target.value)} placeholder={t("admin.contentAr")} />
+      </div>
+      <ImageUploadField label={t("admin.imageAr")} value={imageAr} onChange={setImageAr} />
+      <div>
+        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.titleEn")}</label>
+        <input dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={titleEn} onChange={e => setTitleEn(e.target.value)} placeholder={t("admin.titleEn")} />
+      </div>
+      <div>
+        <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.contentEn")}</label>
+        <textarea dir="ltr" className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)',fontFamily:'monospace',minHeight:'120px'}} value={contentEn} onChange={e => setContentEn(e.target.value)} placeholder={t("admin.contentEn")} />
+      </div>
+      <ImageUploadField label={t("admin.imageEn")} value={imageEn} onChange={setImageEn} />
+      <button onClick={save} disabled={saving} className="btn btn-primary">{saving ? t("admin.saving") : t("common.save")}</button>
+    </div>
+  );
+}
+
+/* â”€â”€ Features Manager â”€â”€ */
 function FeaturesManager() {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(FEATURE_PAGES[0].key);
@@ -444,12 +497,12 @@ function FeaturesManager() {
       <select className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none" style={{borderColor:'var(--border)'}} value={selected} onChange={e => setSelected(e.target.value)}>
         {FEATURE_PAGES.map(p => <option key={p.key} value={p.key}>{t(p.labelKey)}</option>)}
       </select>
-      <PageEditor pageKey={selected} />
+      <FeaturePageEditor pageKey={selected} />
     </div>
   );
 }
 
-/* ── About Manager ── */
+/* â”€â”€ About Manager â”€â”€ */
 function AboutManager() {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(ABOUT_PAGES[0].key);
@@ -464,7 +517,7 @@ function AboutManager() {
   );
 }
 
-/* ── FAQ Manager ── */
+/* â”€â”€ FAQ Manager â”€â”€ */
 function FaqManager() {
   const { t } = useTranslation();
   const confirm = useConfirm();
@@ -551,7 +604,7 @@ function FaqManager() {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-[16px] font-bold">{editing.id ? t("common.edit") : t("admin.addFaq")}</h3>
-              <button type="button" onClick={() => setEditing(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+              <button type="button" onClick={() => setEditing(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>âœ•</button>
             </div>
             <div>
               <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.questionAr")}</label>
@@ -592,7 +645,7 @@ function FaqManager() {
   );
 }
 
-/* ── Contact / Support Tickets Manager ── */
+/* â”€â”€ Contact / Support Tickets Manager â”€â”€ */
 function ContactManager() {
   const { t } = useTranslation();
   const [selected, setSelected] = useState(HELP_PAGES[0].key);
@@ -613,7 +666,7 @@ function ContactManager() {
   );
 }
 
-/* ── Status Helpers ── */
+/* â”€â”€ Status Helpers â”€â”€ */
 const STATUS_LABEL_KEYS: Record<string, string> = {
   New: "contact.statusNew",
   InProgress: "contact.statusInProgress",
@@ -631,7 +684,7 @@ function fmtDate(s: string, locale: string) {
   return new Date(s).toLocaleDateString(locale === "ar" ? "ar-SA-u-nu-latn" : "en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-/* ── Ticket Detail Modal ── */
+/* â”€â”€ Ticket Detail Modal â”€â”€ */
 function TicketDetailModal({ ticket, onClose, onStatusChange, onReply }: { ticket: ContactMessage; onClose: () => void; onStatusChange: (id: number, status: string) => void; onReply: (id: number, text: string) => void }) {
   const { t, i18n } = useTranslation();
   const [replyText, setReplyText] = useState("");
@@ -650,7 +703,7 @@ function TicketDetailModal({ ticket, onClose, onStatusChange, onReply }: { ticke
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-[16px] font-bold text-[var(--ink)]">{t("admin.ticketDetails")} <span className="text-[var(--blue)]" dir="ltr">{ticket.ticketNumber}</span></h3>
-          <button onClick={onClose} className="btn btn-outline btn-sm">×</button>
+          <button onClick={onClose} className="btn btn-outline btn-sm">Ã—</button>
         </div>
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4 text-[13px]">
@@ -697,7 +750,7 @@ function TicketDetailModal({ ticket, onClose, onStatusChange, onReply }: { ticke
   );
 }
 
-/* ── Messages / Tickets List ── */
+/* â”€â”€ Messages / Tickets List â”€â”€ */
 function MessagesList() {
   const { t, i18n } = useTranslation();
   const [messages, setMessages] = useState<ContactMessage[]>([]);
@@ -894,7 +947,7 @@ function MessagesList() {
   );
 }
 
-/* ── Helpers ── */
+/* â”€â”€ Helpers â”€â”€ */
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><h3 className="text-[15px] font-bold text-[var(--ink)] mb-4 pb-2 border-b" style={{ borderColor: "var(--border)" }}>{title}</h3>{children}</div>;
 }

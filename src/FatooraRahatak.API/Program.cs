@@ -79,10 +79,15 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAuthService, FatooraRahatak.Infrastructure.Services.AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<MoyasarPaymentProvider>();
-  builder.Services.AddScoped<PayPalPaymentProvider>();
-  builder.Services.AddScoped<TabbyPaymentProvider>();
-  builder.Services.AddScoped<TamaraPaymentProvider>();
+// ⚠️ إصلاح: كانت مسجَّلة بـ AddScoped عادي مع HttpClient بدون Timeout محدد،
+// فكانت أي عملية دفع معلّقة (Pending) تخلي أي نداء لبوابة الدفع (خصوصًا داخل
+// PendingPaymentReconcilerBackgroundService كل 15 ثانية) يعلّق لحد Timeout
+// الديفولت (100 ثانية) × عدد العمليات. AddHttpClient<T> بيدّي كل Provider
+// HttpClient مُدار بمهلة قصيرة ومعقولة بدل ما يفضل معلّق.
+builder.Services.AddHttpClient<MoyasarPaymentProvider>(c => c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient<PayPalPaymentProvider>(c => c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient<TabbyPaymentProvider>(c => c.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddHttpClient<TamaraPaymentProvider>(c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();

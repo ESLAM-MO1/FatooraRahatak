@@ -12,7 +12,7 @@ import { InvoiceDetail, printInvoice } from "@/lib/invoicePrint";
 
 interface Product {
   id: number; categoryId: number | null; nameAr: string; sku: string; barcode: string | null;
-  basePrice: number; discountPrice: number | null; availableQuantity: number;
+  basePrice: number; discountPrice: number | null; availableQuantity: number; primaryImageUrl?: string | null;
 }
 interface CartLine {
   productId: number; nameAr: string; unitPrice: number;
@@ -259,14 +259,44 @@ export default function CashierPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="col-span-full text-center text-[var(--sub)] py-8">{t("pos.noProducts")}</p>
-            ) : filtered.map(product => (
-              <button key={product.id} onClick={() => shift && addToCart(product)} disabled={!shift}
-                className={`text-right p-3 rounded-xl border transition ${!shift ? "opacity-40 cursor-not-allowed" : "hover:border-[var(--blue)] border-gray-200 bg-white"}`}>
-                <p className="text-[13px] font-bold text-[var(--ink)] truncate">{product.nameAr}</p>
-                <p className="text-[12px] text-[var(--blue)] font-bold mt-1">{product.discountPrice || product.basePrice} {t("common.sar")}</p>
-                <p className="text-[10px] text-[var(--sub)]">{t("pos.remaining")}: {product.availableQuantity}</p>
-              </button>
-            ))}
+            ) : filtered.map(product => {
+              const effectivePrice = product.discountPrice ?? product.basePrice;
+              const hasDiscount = product.discountPrice != null && product.discountPrice < product.basePrice;
+              const lowStock = product.availableQuantity <= 5;
+              return (
+                <button key={product.id} onClick={() => shift && addToCart(product)} disabled={!shift}
+                  className={`group relative flex flex-col overflow-hidden rounded-xl border bg-white text-right transition ${!shift ? "opacity-40 cursor-not-allowed" : "hover:border-[var(--blue)] hover:shadow-md border-gray-200"}`}>
+                  <span className={`absolute top-1.5 left-1.5 z-10 rounded-md px-1.5 py-0.5 text-[9.5px] font-bold shadow-sm backdrop-blur ${lowStock ? "bg-[var(--danger)] text-white" : "bg-white/90 text-[var(--sub)]"}`}>
+                    {t("pos.remaining")}: {product.availableQuantity}
+                  </span>
+                  <div className="relative aspect-square w-full bg-gray-50 overflow-hidden">
+                    {product.primaryImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.primaryImageUrl}
+                        alt={product.nameAr}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Icon name="box" className="text-gray-300" size={30} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[12.5px] font-bold text-[var(--ink)] truncate leading-tight">{product.nameAr}</p>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-[13px] font-bold text-[var(--blue)]" dir="ltr">{effectivePrice} {t("common.sar")}</span>
+                      {hasDiscount && (
+                        <span className="text-[10.5px] text-[var(--sub)] line-through" dir="ltr">{product.basePrice}</span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 

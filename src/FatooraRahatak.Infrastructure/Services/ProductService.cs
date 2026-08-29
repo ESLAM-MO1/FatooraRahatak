@@ -125,8 +125,20 @@ public class ProductService : IProductService
             .ToListAsync();
 
         var result = new List<ProductResponseDto>();
+        var productIds = products.Select(p => p.Id).ToList();
+        var primaryImages = await _context.ProductImages
+            .Where(i => productIds.Contains(i.ProductId))
+            .GroupBy(i => i.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                // الصورة الأساسية (IsPrimary) أولًا، وإلا أول صورة حسب SortOrder
+                ImageUrl = g.OrderByDescending(i => i.IsPrimary).ThenBy(i => i.SortOrder).First().ImageUrl
+            })
+            .ToDictionaryAsync(x => x.ProductId, x => x.ImageUrl);
+
         foreach (var p in products)
-            result.Add(await MapToDtoAsync(p));
+            result.Add(await MapToDtoAsync(p, primaryImages.GetValueOrDefault(p.Id), imageLookedUp: true));
 
         return new PagedResult<ProductResponseDto>
         {
@@ -247,11 +259,21 @@ public class ProductService : IProductService
         await _context.SaveChangesAsync();
     }
 
-    private async Task<ProductResponseDto> MapToDtoAsync(Product p)
+    private async Task<ProductResponseDto> MapToDtoAsync(Product p, string? primaryImageUrl = null, bool imageLookedUp = false)
     {
         var totalQuantity = await _context.InventoryStocks
             .Where(s => s.ProductId == p.Id)
             .SumAsync(s => (int?)s.QuantityAvailable) ?? 0;
+
+        if (!imageLookedUp)
+        {
+            primaryImageUrl = await _context.ProductImages
+                .Where(i => i.ProductId == p.Id)
+                .OrderByDescending(i => i.IsPrimary)
+                .ThenBy(i => i.SortOrder)
+                .Select(i => i.ImageUrl)
+                .FirstOrDefaultAsync();
+        }
 
         return new ProductResponseDto
         {
@@ -268,7 +290,8 @@ public class ProductService : IProductService
             CostPrice = p.CostPrice,
             Weight = p.Weight,
             Status = p.Status.ToString(),
-            AvailableQuantity = totalQuantity
+            AvailableQuantity = totalQuantity,
+            PrimaryImageUrl = primaryImageUrl
         };
     }
 }

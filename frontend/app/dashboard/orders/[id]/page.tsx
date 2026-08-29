@@ -254,48 +254,50 @@ export default function OrderDetailPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="card p-5">
-          <h2 className="text-[14px] font-bold text-[var(--blue-deep)] mb-3">{t("orderDetail.customerInfo")}</h2>
-          <div className="space-y-2 text-sm">
-            <p>
-              <span className="text-[var(--sub)]">{t("orderDetail.name")}: </span>
-              <span className="text-[var(--ink)] font-medium">{order.customerName}</span>
-              {order.isGuest && (
-                <span className="mr-2 badge badge--yellow">{t("orderDetail.guest")}</span>
-              )}
-            </p>
+          <h2 className="text-[14px] font-bold text-[var(--blue-deep)] mb-4">{t("orderDetail.customerInfo")}</h2>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
+            <div className="col-span-2">
+              <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.name")}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[var(--ink)] font-bold">{order.customerName}</span>
+                {order.isGuest && (
+                  <span className="badge badge--yellow">{t("orderDetail.guest")}</span>
+                )}
+              </div>
+            </div>
             {order.customerPhone && (
-              <p>
-                <span className="text-[var(--sub)]">{t("orderDetail.phone")}: </span>
-                <span className="text-[var(--ink)]" dir="ltr">{order.customerPhone}</span>
-              </p>
+              <div>
+                <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.phone")}</p>
+                <p className="text-[var(--ink)] font-medium" dir="ltr">{order.customerPhone}</p>
+              </div>
             )}
             {order.customerEmail && (
-              <p>
-                <span className="text-[var(--sub)]">{t("orderDetail.email")}: </span>
-                <span className="text-[var(--ink)]" dir="ltr">{order.customerEmail}</span>
-              </p>
+              <div>
+                <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.email")}</p>
+                <p className="text-[var(--ink)] font-medium" dir="ltr">{order.customerEmail}</p>
+              </div>
             )}
-            <p>
-              <span className="text-[var(--sub)]">{t("orderDetail.orderDate")}: </span>
-              <span className="text-[var(--ink)]">
+            <div className="col-span-2">
+              <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.orderDate")}</p>
+              <p className="text-[var(--ink)] font-medium">
                 {new Date(order.createdAt).toLocaleString("ar-SA-u-nu-latn")}
-              </span>
-            </p>
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="card p-5">
-          <h2 className="text-[14px] font-bold text-[var(--blue-deep)] mb-3">{t("orderDetail.shippingNotes")}</h2>
-          <div className="space-y-2 text-sm">
-            <p>
-              <span className="text-[var(--sub)]">{t("orderDetail.shippingAddress")}: </span>
-              <span className="text-[var(--ink)]">{order.shippingAddress}</span>
-            </p>
+          <h2 className="text-[14px] font-bold text-[var(--blue-deep)] mb-4">{t("orderDetail.shippingNotes")}</h2>
+          <div className="space-y-4 text-sm">
+            <div>
+              <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.shippingAddress")}</p>
+              <p className="text-[var(--ink)] font-medium leading-relaxed">{order.shippingAddress}</p>
+            </div>
             {order.notes && (
-              <p>
-                <span className="text-[var(--sub)]">{t("orderDetail.notes")}: </span>
-                <span className="text-[var(--ink)]">{order.notes}</span>
-              </p>
+              <div>
+                <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.notes")}</p>
+                <p className="text-[var(--ink)] font-medium leading-relaxed">{order.notes}</p>
+              </div>
             )}
           </div>
         </div>

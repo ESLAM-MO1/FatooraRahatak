@@ -64,9 +64,31 @@ public class PendingPaymentReconcilerBackgroundService : BackgroundService
 
         foreach (var payment in pendingPayments)
         {
-            // يستعلم من موياسر مباشرة ويطبّق الأثر (تفعيل الاشتراك/تأكيد الطلب)
-            // عند اكتشاف أن الدفعة مدفوعة — بلا webhook وبلا اعتماد على المستخدم.
-            await paymentService.CheckPaymentStatusAsync(payment.PaymentReference);
+            // ⚠️ إصلاح: كل دفعة بمهلتها وبمعالجة أخطاء خاصة بها — قبل كده كانت
+            // دفعة واحدة عالقة (مثلاً provider id تجريبي/قديم مش بيرد) توقف باقي
+            // الدفعات في نفس الدورة، وتُبقي الاتصال بقاعدة البيانات مفتوح لمدة
+            // طويلة (لحد Timeout الديفولت 100 ثانية لكل دفعة)، وده كان بيأخر أي
+            // Query تانية بتحتاج نفس صف المتجر (كل صفحات الداشبورد تقريبًا).
+            using var perPaymentCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            perPaymentCts.CancelAfter(TimeSpan.FromSeconds(15));
+
+            try
+            {
+                // يستعلم من موياسر مباشرة ويطبّق الأثر (تفعيل الاشتراك/تأكيد الطلب)
+                // عند اكتشاف أن الدفعة مدفوعة — بلا webhook وبلا اعتماد على المستخدم.
+                await paymentService.CheckPaymentStatusAsync(payment.PaymentReference)
+                    .WaitAsync(perPaymentCts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning(
+                    "فحص حالة الدفعة {Reference} استغرق أكثر من 15 ثانية — تم تخطّيها لهذه الدورة",
+                    payment.PaymentReference);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "فشل فحص حالة الدفعة {Reference}", payment.PaymentReference);
+            }
         }
     }
 }

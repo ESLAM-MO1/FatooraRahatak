@@ -15,5 +15,6 @@ public class ProductResponseDto
     public decimal CostPrice { get; set; }
     public decimal? Weight { get; set; }
     public string Status { get; set; } = string.Empty;
-    public int AvailableQuantity { get; set; } 
+    public int AvailableQuantity { get; set; }
+    public string? PrimaryImageUrl { get; set; }
 }

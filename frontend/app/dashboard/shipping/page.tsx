@@ -6,6 +6,8 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
 import SuccessToast from "@/components/SuccessToast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Can from "@/components/Can";
@@ -174,6 +176,7 @@ function printSimulatedLabel(detail: ShipmentDetail, t: (k: string) => string) {
 export default function ShippingPage() {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const gate = usePackageFeature("hasShippingIntegration");
   const [companies, setCompanies] = useState<ShippingCompany[]>([]);
   const [shipments, setShipments] = useState<ShipmentList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -262,8 +265,9 @@ export default function ShippingPage() {
   };
 
   useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
     loadAll();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gate.ready, gate.allowed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openDetail = async (id: number) => {
     setDetailLoading(true);
@@ -479,6 +483,8 @@ export default function ShippingPage() {
     }
   };
 
+  if (!gate.ready) return <LoadingState />;
+  if (!gate.allowed) return <RestrictedFeatureState />;
   if (loading) return <LoadingState />;
 
   return (

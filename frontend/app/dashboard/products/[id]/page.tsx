@@ -275,7 +275,7 @@ export default function ProductDetailsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="text-[var(--sub)] mb-1 text-[12.5px]">SKU</p>
-            <p className="font-bold text-[var(--ink)]" dir="ltr">
+            <p className="font-bold text-[var(--ink)] text-right" dir="ltr">
               {product.sku}
             </p>
           </div>
@@ -462,7 +462,7 @@ export default function ProductDetailsPage() {
                 {variants.map((variant) => (
                   <tr key={variant.id} className="border-b border-[var(--border)] hover:bg-[var(--blue-50)]/40 transition-colors">
                     <td className="p-3 text-[var(--ink)] font-medium">{variant.variantName}</td>
-                    <td className="p-3 text-[var(--sub)]" dir="ltr">{variant.sku}</td>
+                    <td className="p-3 text-[var(--sub)] text-right" dir="ltr">{variant.sku}</td>
                     <td className="p-3 text-[var(--sub)]">
                       {variant.priceAdjustment >= 0 ? "+" : ""}
                       {variant.priceAdjustment.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
@@ -511,7 +511,7 @@ export default function ProductDetailsPage() {
                   </div>
                   <div>
                     <p className="text-[12.5px] text-[var(--sub)] mb-0.5">SKU</p>
-                    <p className="text-[var(--sub)]" dir="ltr">{variant.sku}</p>
+                    <p className="text-[var(--sub)] text-right" dir="ltr">{variant.sku}</p>
                   </div>
                   <div>
                     <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("productDetail.priceDiffCol")}</p>

@@ -1,0 +1,86 @@
+using FatooraRahatak.Domain.Common;
+using FatooraRahatak.Domain.Enums;
+using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Entities.Packages;
+using FatooraRahatak.Domain.Entities.Employees;
+using FatooraRahatak.Domain.Entities.Products;
+using FatooraRahatak.Domain.Entities.Inventory;
+using FatooraRahatak.Domain.Entities.Sales;
+namespace FatooraRahatak.Domain.Entities.Stores;
+public class Store : BaseEntity
+{
+    public long OwnerUserId { get; set; }
+    public string StoreName { get; set; } = string.Empty;
+    public string StoreSlug { get; set; } = string.Empty;
+    public string? CustomDomain { get; set; }
+    public CustomDomainStatus CustomDomainStatus { get; set; } = CustomDomainStatus.None;
+    public string? Logo { get; set; }
+    public string? Favicon { get; set; }
+    public StoreStatus Status { get; set; } = StoreStatus.PendingApproval;
+    public long PackageId { get; set; }
+    public long? ActiveSubscriptionId { get; set; }
+    public DateTime BillingCycleDate { get; set; }
+    public string DefaultLanguage { get; set; } = "ar";
+    public bool IsVatRegistered { get; set; } = false;
+    public string? VatNumber { get; set; }
+    public string? ReturnPolicyText { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactAddress { get; set; }
+    public string? BranchName { get; set; }
+    public string? CommercialRegistrationNumber { get; set; }
+    public string? BioLink { get; set; }
+    public string? FacebookUrl { get; set; }
+    public string? InstagramUrl { get; set; }
+    public string? WhatsappUrl { get; set; }
+    public string? SnapchatUrl { get; set; }
+    public string? TiktokUrl { get; set; }
+    public string? TelegramUrl { get; set; }
+    public string? LinkedinUrl { get; set; }
+    public string? TwitterUrl { get; set; }
+    public string? YoutubeUrl { get; set; }
+    public string? PinterestUrl { get; set; }
+    public string Currency { get; set; } = "SAR";
+    public User Owner { get; set; } = null!;
+    public Package Package { get; set; } = null!;
+    public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
+    public ICollection<Employee> Employees { get; set; } = new List<Employee>();
+    public ICollection<Category> Categories { get; set; } = new List<Category>();
+    public ICollection<Product> Products { get; set; } = new List<Product>();
+    public ICollection<Warehouse> Warehouses { get; set; } = new List<Warehouse>();
+    public ICollection<Cart> Carts { get; set; } = new List<Cart>();
+    public ICollection<Coupon> Coupons { get; set; } = new List<Coupon>();
+    public ICollection<StoreFaqItem> FaqItems { get; set; } = new List<StoreFaqItem>();
+    public ICollection<StoreBlogPost> BlogPosts { get; set; } = new List<StoreBlogPost>();
+    public bool IsSearchEnabled { get; set; } = true;
+    public bool IsReviewsEnabled { get; set; } = false;
+    public int? LowStockThreshold { get; set; }
+    public bool IsCouponsEnabled { get; set; } = true;
+    public bool CustomerNotificationEmail { get; set; } = false;
+    public bool CustomerNotificationWhatsapp { get; set; } = false;
+    public int? ReturnPolicyDays { get; set; }
+    // خصومات الشحن (HasShippingDiscounts): حد شحن مجاني + خصم نسبة على تكلفة الشحن
+    public decimal? FreeShippingThreshold { get; set; }
+    public decimal? ShippingDiscountPercent { get; set; }
+    public bool IsOnline { get; set; } = true;
+    public string ThemeName { get; set; } = "professional-blue";
+    public string? ColorsJson { get; set; } // JSON: {headerColor, buttonColor, accentColor, heroFrom, heroTo, footerColor, newsletterColor}
+    public string? CoverImage { get; set; }
+    public string? CustomCss { get; set; } // قالب مخصص: CSS يُحقن في صفحات المتجر
+
+    // إعدادات القائمة الرئيسية: JSON array من { id, isEnabled, order }
+    public string? MenuConfigJson { get; set; }
+
+    // صفحات المتجر (من نحن/المدونة/الأسئلة الشائعة/السياسات):
+    // JSON array من { key, titleAr, titleEn, contentAr, contentEn, isEnabled }
+    public string? StorePagesJson { get; set; }
+
+    // حساب استقبال مدفوعات المتجر (Moyasar recipient)
+    public PaymentAccountStatus PaymentAccountStatus { get; set; } = PaymentAccountStatus.NotSubmitted;
+    public string? MoyasarRecipientId { get; set; }
+    public string? PayoutBankName { get; set; }
+    public string? PayoutAccountHolder { get; set; }
+    public string? PayoutIban { get; set; }
+    public string? PayoutRejectionReason { get; set; }
+    public bool ShippingOnPlatformAccount { get; set; } = false;
+}

@@ -1,0 +1,599 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Google.Apis.Auth;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using FatooraRahatak.Application.Common;
+using FatooraRahatak.Application.DTOs.Auth;
+using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Domain.Entities.Users;
+using FatooraRahatak.Domain.Enums;
+using FatooraRahatak.Infrastructure.Data;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+namespace FatooraRahatak.Infrastructure.Services;
+
+public class AuthService : IAuthService
+{
+    private readonly AppDbContext _context;
+    private readonly JwtSettings _jwtSettings;
+    private readonly string _googleClientId;
+    private readonly IInvitationService _invitationService;
+    private readonly IEmailService _emailService;
+    private readonly IReferralService _referralService;
+    private readonly ILogger<AuthService> _logger;
+
+    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings, IConfiguration configuration, IInvitationService invitationService, IEmailService emailService, IReferralService referralService, ILogger<AuthService> logger)
+    {
+        _context = context;
+        _jwtSettings = jwtSettings.Value;
+        _googleClientId = configuration["GoogleAuth:ClientId"] ?? string.Empty;
+        _invitationService = invitationService;
+        _emailService = emailService;
+        _referralService = referralService;
+        _logger = logger;
+    }
+
+    public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
+    {
+        var exists = await _context.Users
+            .AnyAsync(u => u.Email == dto.Email || u.Phone == dto.Phone);
+
+        if (exists)
+            throw new InvalidOperationException("البريد الإلكتروني أو رقم الجوال مستخدم بالفعل");
+
+        var emailConfigured = _emailService.IsConfigured();
+
+        var user = new User
+        {
+            FullName = dto.FullName,
+            Email = dto.Email,
+            Phone = dto.Phone,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            UserType = UserType.Owner,
+            IsActive = true,
+            IsVerified = false
+        };
+
+        var code = GenerateNumericCode();
+        var codeHash = BCrypt.Net.BCrypt.HashPassword(code);
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
+        {
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(dto.ReferralCode))
+            {
+                await _referralService.RecordReferralAsync(dto.ReferralCode, user.Id);
+            }
+
+            await _referralService.GetOrCreateReferralCodeAsync(user.Id);
+
+            if (!string.IsNullOrEmpty(dto.InvitationToken))
+            {
+                await _invitationService.AcceptInvitationAsync(dto.InvitationToken, user.Id);
+            }
+
+            _context.VerificationCodes.Add(new VerificationCode
+            {
+                UserId = user.Id,
+                CodeHash = codeHash,
+                Type = VerificationCodeType.EmailVerification,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(10),
+                IsUsed = false
+            });
+
+            await _context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            // ⚠️ إصلاح جذري: إرسال البريد خارج المعاملة. كان الإرسال داخل المعاملة
+            // فيسبب خطأ "SqlTransaction has completed" عند أي تعارض مع اتصال DB،
+            // ويفشل التسجيل كاملاً أو يظهر server error. الآن نلتزم أولاً (المستخدم
+            // بيتسجل)، ثم نرسل الإيميل — فشل الإيميل لا يمنع التسجيل، والرسالة توصل فعلاً.
+            if (emailConfigured)
+            {
+                var (subject, body) = EmailMessageFactory.AccountVerification(user.FullName, code);
+
+                try
+                {
+                    await _emailService.SendTemplatedEmailAsync(user.Email, subject, body);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
+                }
+            }
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+
+        var authResponse = await GenerateAuthResponseAsync(user);
+        if (!emailConfigured)
+            authResponse.VerificationCode = code;
+
+        return authResponse;
+    }
+
+    public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+        if (user == null)
+            throw new UnauthorizedAccessException("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+
+        bool passwordValid;
+        try
+        {
+            passwordValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
+        }
+        catch
+        {
+            passwordValid = false;
+        }
+
+        if (!passwordValid)
+            throw new UnauthorizedAccessException("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+
+        if (!user.IsActive)
+            throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await GenerateAuthResponseAsync(user);
+    }
+
+    public async Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthDto dto)
+    {
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, new GoogleJsonWebSignature.ValidationSettings
+            {
+                Audience = new[] { _googleClientId }
+            });
+        }
+        catch (InvalidJwtException ex)
+        {
+            Console.WriteLine($"GOOGLE AUTH ERROR: {ex.Message}");
+            throw new UnauthorizedAccessException($"توكن جوجل غير صالح: {ex.Message}");
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == payload.Subject || u.Email == payload.Email);
+
+        if (user == null)
+        {
+            user = new User
+            {
+                FullName = payload.Name,
+                Email = payload.Email,
+                Phone = null,
+                GoogleId = payload.Subject,
+                ProfileImage = payload.Picture,
+                UserType = UserType.Owner,
+                IsActive = true,
+                IsVerified = true
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // رسالة ترحيب لأول تسجيل دخول عبر جوجل (قالب موحد عربي)
+            if (_emailService.IsConfigured() && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                try
+                {
+                    var (welcomeSubject, welcomeBody) = EmailMessageFactory.GoogleWelcome(user.FullName ?? "");
+                    await _emailService.SendTemplatedEmailAsync(user.Email, welcomeSubject, welcomeBody);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send Google welcome email to {Email}", user.Email);
+                }
+            }
+        }
+        else if (user.GoogleId == null)
+        {
+            user.GoogleId = payload.Subject;
+            user.IsVerified = true;
+            await _context.SaveChangesAsync();
+        }
+
+        if (!user.IsActive)
+            throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return await GenerateAuthResponseAsync(user);
+    }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
+    {
+        var storedToken = await _context.RefreshTokens
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+        if (storedToken == null || storedToken.IsRevoked || storedToken.ExpiresAt < DateTime.UtcNow)
+            throw new UnauthorizedAccessException("Refresh Token غير صالح أو منتهي");
+
+        storedToken.IsRevoked = true;
+        _context.RefreshTokens.Update(storedToken);
+        await _context.SaveChangesAsync();
+
+        return await GenerateAuthResponseAsync(storedToken.User);
+    }
+
+    public async Task<string?> SendVerificationCodeAsync(string email)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (user.IsVerified)
+            throw new InvalidOperationException("الحساب مفعّل بالفعل");
+
+        return await SendOtpAsync(user, VerificationCodeType.EmailVerification);
+    }
+
+    public async Task VerifyAccountAsync(VerifyAccountDto dto)
+    {
+        await VerifyOtpInternalAsync(dto.Email, dto.Code, VerificationCodeType.EmailVerification);
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        user.IsVerified = true;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<string?> ForgotPasswordAsync(ForgotPasswordDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new InvalidOperationException("لا يوجد حساب مرتبط بهذا البريد الإلكتروني");
+
+        return await SendOtpAsync(user, VerificationCodeType.PasswordReset);
+    }
+
+    public async Task ResetPasswordAsync(ResetPasswordDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        await VerifyOtpInternalAsync(dto.Email, dto.Code, VerificationCodeType.PasswordReset);
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+        var oldTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+            .ToListAsync();
+        foreach (var token in oldTokens)
+            token.IsRevoked = true;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<string?> SendProfileUpdateCodeAsync(long userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        return await SendOtpAsync(user, VerificationCodeType.ProfileUpdate);
+    }
+
+    public async Task UpdateProfileAsync(long userId, UpdateProfileDto dto)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (string.IsNullOrWhiteSpace(dto.Code))
+            throw new InvalidOperationException("رمز التحقق مطلوب لتأكيد التغييرات");
+
+        await VerifyOtpInternalAsync(user.Email, dto.Code, VerificationCodeType.ProfileUpdate);
+
+        if (!string.IsNullOrWhiteSpace(dto.Email) && dto.Email != user.Email
+            && await _context.Users.AnyAsync(u => u.Id != user.Id && u.Email == dto.Email))
+            throw new InvalidOperationException("البريد الإلكتروني مستخدم بالفعل");
+
+        if (!string.IsNullOrWhiteSpace(dto.Phone) && dto.Phone != user.Phone
+            && await _context.Users.AnyAsync(u => u.Id != user.Id && u.Phone == dto.Phone))
+            throw new InvalidOperationException("رقم الجوال مستخدم بالفعل");
+
+        if (!string.IsNullOrWhiteSpace(dto.FullName))
+            user.FullName = dto.FullName;
+        if (!string.IsNullOrWhiteSpace(dto.Phone))
+            user.Phone = dto.Phone;
+        if (!string.IsNullOrWhiteSpace(dto.Email))
+            user.Email = dto.Email;
+        if (dto.ProfileImage != null)
+            user.ProfileImage = dto.ProfileImage;
+
+        if (!string.IsNullOrWhiteSpace(dto.StoreName))
+        {
+            var store = await _context.Stores.FirstOrDefaultAsync(s => s.OwnerUserId == userId);
+            if (store != null)
+                store.StoreName = dto.StoreName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(dto.NewPassword))
+        {
+            if (dto.NewPassword.Length < 6)
+                throw new InvalidOperationException("كلمة المرور يجب ألا تقل عن 6 رموز (أحرف أو أرقام)");
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+            var oldTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+                .ToListAsync();
+            foreach (var token in oldTokens)
+                token.IsRevoked = true;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task SaveProfileImageAsync(long userId, string imageUrl)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        user.ProfileImage = imageUrl;
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<string?> SendPasswordChangeCodeAsync(long userId)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        return await SendOtpAsync(user, VerificationCodeType.PasswordChange);
+    }
+
+    public async Task ChangePasswordAsync(long userId, ChangePasswordDto dto)
+    {
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        if (string.IsNullOrWhiteSpace(dto.NewPassword) || dto.NewPassword.Length < 6)
+            throw new InvalidOperationException("كلمة المرور يجب ألا تقل عن 6 رموز (أحرف أو أرقام)");
+
+        if (string.IsNullOrWhiteSpace(dto.Code))
+            throw new InvalidOperationException("رمز التحقق مطلوب لتغيير كلمة المرور");
+
+        await VerifyOtpInternalAsync(user.Email, dto.Code, VerificationCodeType.PasswordChange);
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+
+        var oldTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+            .ToListAsync();
+        foreach (var token in oldTokens)
+            token.IsRevoked = true;
+
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task<string?> SendOtpAsync(User user, VerificationCodeType type)
+    {
+        var now = DateTime.UtcNow;
+
+        var requestsInLastHour = await _context.VerificationCodes
+            .CountAsync(v => v.UserId == user.Id && v.Type == type && v.CreatedAt > now.AddHours(-1));
+
+        if (requestsInLastHour >= 5)
+            throw new InvalidOperationException("لقد تجاوزت الحد المسموح من طلبات إرسال الكود، حاول لاحقًا");
+
+        var lastCode = await _context.VerificationCodes
+            .Where(v => v.UserId == user.Id && v.Type == type)
+            .OrderByDescending(v => v.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (lastCode != null && (now - lastCode.CreatedAt).TotalSeconds < 60)
+        {
+            var remaining = 60 - (int)(now - lastCode.CreatedAt).TotalSeconds;
+            throw new InvalidOperationException($"يمكنك طلب كود جديد بعد {remaining} ثانية");
+        }
+
+        var code = GenerateNumericCode();
+        var codeHash = BCrypt.Net.BCrypt.HashPassword(code);
+
+        _context.VerificationCodes.Add(new VerificationCode
+        {
+            UserId = user.Id,
+            CodeHash = codeHash,
+            Type = type,
+            ExpiresAt = now.AddMinutes(10),
+            IsUsed = false,
+            Attempts = 0
+        });
+
+        await _context.SaveChangesAsync();
+
+        if (!_emailService.IsConfigured())
+            return code;
+
+        string subject, body;
+        if (type == VerificationCodeType.EmailVerification)
+        {
+            (subject, body) = EmailMessageFactory.AccountVerification(user.FullName, code);
+        }
+        else if (type == VerificationCodeType.PasswordReset)
+        {
+            (subject, body) = EmailMessageFactory.PasswordReset(user.FullName, code);
+        }
+        else if (type == VerificationCodeType.PasswordChange)
+        {
+            (subject, body) = EmailMessageFactory.PasswordChangeVerification(user.FullName, code);
+        }
+        else
+        {
+            (subject, body) = EmailMessageFactory.ProfileUpdateVerification(user.FullName, code);
+        }
+
+        try
+        {
+            await _emailService.SendTemplatedEmailAsync(user.Email, subject, body);
+            return null;
+        }
+        catch
+        {
+            throw new InvalidOperationException("حصل خطأ في إرسال البريد الإلكتروني، تأكد من إعدادات SMTP وحاول مرة أخرى");
+        }
+    }
+
+    private async Task VerifyOtpInternalAsync(string email, string code, VerificationCodeType type)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null)
+            throw new InvalidOperationException("المستخدم غير موجود");
+
+        var validCode = await _context.VerificationCodes
+            .Where(v => v.UserId == user.Id
+                && v.Type == type
+                && !v.IsUsed
+                && v.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(v => v.CreatedAt)
+            .ToListAsync();
+
+        if (validCode.Count == 0)
+            throw new InvalidOperationException("رمز التحقق غير صحيح أو منتهي الصلاحية");
+
+        var codeValid = false;
+        foreach (var candidate in validCode)
+        {
+            if (candidate.Attempts >= 5)
+                continue;
+
+            bool matches;
+            try
+            {
+                matches = BCrypt.Net.BCrypt.Verify(code, candidate.CodeHash);
+            }
+            catch
+            {
+                matches = false;
+            }
+
+            if (matches)
+            {
+                candidate.IsUsed = true;
+                candidate.Attempts++;
+                await _context.SaveChangesAsync();
+                codeValid = true;
+                break;
+            }
+        }
+
+        if (!codeValid)
+        {
+            var target = validCode.FirstOrDefault(c => c.Attempts < 5) ?? validCode[0];
+            target.Attempts++;
+            await _context.SaveChangesAsync();
+
+            if (target.Attempts >= 5)
+                throw new InvalidOperationException("لقد تجاوزت الحد الأقصى من المحاولات، يرجى طلب كود جديد");
+
+            throw new InvalidOperationException("رمز التحقق غير صحيح");
+        }
+    }
+
+    private static string GenerateNumericCode()
+    {
+        var randomBytes = new byte[4];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        var number = BitConverter.ToUInt32(randomBytes, 0) % 1000000;
+        return number.ToString("D6");
+    }
+
+    private async Task<AuthResponseDto> GenerateAuthResponseAsync(User user)
+    {
+        var accessToken = GenerateAccessToken(user);
+        var refreshTokenValue = GenerateRefreshTokenValue();
+        var expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryInMinutes);
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = refreshTokenValue,
+            ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpiryInDays),
+            IsRevoked = false
+        };
+
+        _context.RefreshTokens.Add(refreshToken);
+        await _context.SaveChangesAsync();
+
+        return new AuthResponseDto
+        {
+            UserId = user.Id,
+            FullName = user.FullName,
+            Email = user.Email,
+            UserType = user.UserType.ToString(),
+            StaffRole = user.UserType == UserType.SupportStaff ? user.StaffRole : null,
+            AccessToken = accessToken,
+            RefreshToken = refreshTokenValue,
+            AccessTokenExpiry = expiry
+        };
+    }
+
+    private string GenerateAccessToken(User user)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Email, user.Email),
+            new(ClaimTypes.Name, user.FullName),
+            new(ClaimTypes.Role, user.UserType.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+        };
+
+        // Platform staff (UserType.SupportStaff) carry their specific staff role
+        // (Admin/Support/Finance/Technical) so the API can enforce module-scoped
+        // permissions instead of treating every staff member as a super admin.
+        if (user.UserType == UserType.SupportStaff && !string.IsNullOrEmpty(user.StaffRole))
+        {
+            claims.Add(new Claim("StaffRole", user.StaffRole));
+        }
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryInMinutes),
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    private static string GenerateRefreshTokenValue()
+    {
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes);
+    }
+}

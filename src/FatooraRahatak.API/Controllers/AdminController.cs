@@ -1,0 +1,1461 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using FatooraRahatak.Application.DTOs.Admin;
+using FatooraRahatak.Application.DTOs.Platform;
+using FatooraRahatak.Application.DTOs.Stores;
+using FatooraRahatak.Application.DTOs.Settlement;
+using FatooraRahatak.Application.DTOs.Referral;
+using FatooraRahatak.Application.DTOs.Merchant;
+using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
+namespace FatooraRahatak.API.Controllers;[ApiController]
+[Route("api/v1/admin")]
+[Authorize]
+public class AdminController : ControllerBase
+{
+    private readonly IAdminService _adminService;
+    private readonly ISiteService _siteService;
+    private readonly IReferralService _referralService;
+    private readonly ISiteMenuService _siteMenuService;
+    private readonly IDashboardSectionService _dashboardSectionService;
+    private readonly ICareerService _careerService;
+    private readonly IAcademyService _academyService;
+    private readonly IStoreDesignService _designService;
+    private readonly IMerchantVerificationService _verificationService;
+    private readonly IMerchantAccountService _merchantAccountService;
+    private readonly IReportScheduleService _reportScheduleService;
+    private readonly IEmailService _emailService;
+    private readonly AppDbContext _context;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService, IMerchantAccountService merchantAccountService, IReportScheduleService reportScheduleService, IEmailService emailService, AppDbContext context)
+    {
+        _adminService = adminService;
+        _siteService = siteService;
+        _referralService = referralService;
+        _siteMenuService = siteMenuService;
+        _dashboardSectionService = dashboardSectionService;
+        _careerService = careerService;
+        _academyService = academyService;
+        _designService = designService;
+        _verificationService = verificationService;
+        _merchantAccountService = merchantAccountService;
+        _reportScheduleService = reportScheduleService;
+        _emailService = emailService;
+        _context = context;
+    }
+    private bool IsSuperAdmin()
+    {
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        return role == "SuperAdmin";
+    }
+
+    private string? GetStaffRole() => User.FindFirstValue("StaffRole");
+
+    // RBAC matrix for platform staff (UserType.SupportStaff).
+    // SuperAdmin always has full access regardless of this table.
+    // A staff member's role here is the ONLY thing that grants access to a module -
+    // there is no default/fallback that grants Owner- or SuperAdmin-level access to anyone.
+    private static readonly Dictionary<string, string[]> ModuleAccess = new()
+    {
+        ["Stores"] = new[] { "Admin", "Support" },
+        ["Packages"] = new[] { "Admin", "Finance" },
+        ["Users"] = new[] { "Admin", "Support" },
+        ["Reports"] = new[] { "Admin", "Finance" },
+        ["Billing"] = new[] { "Admin", "Finance" },
+        ["Notifications"] = new[] { "Admin", "Support" },
+        ["Settings"] = new[] { "Admin", "Technical" },
+        ["SiteContent"] = new[] { "Admin", "Technical" },
+        ["SupportOps"] = new[] { "Admin", "Support" },
+        ["Finance"] = new[] { "Admin", "Finance" },
+        ["Domains"] = new[] { "Admin", "Technical" },
+    };
+
+    /// <summary>
+    /// Module-scoped access check for the admin panel.
+    /// SuperAdmin: always allowed.
+    /// SupportStaff: allowed ONLY if their assigned StaffRole (Admin/Support/Finance/Technical)
+    /// is explicitly listed for the requested module in ModuleAccess.
+    /// Everyone else (Owner, Employee, Customer): always forbidden - no fallback to Owner
+    /// or any other elevated access.
+    /// </summary>
+    private IActionResult? CheckAccess(string module)
+    {
+        if (IsSuperAdmin())
+            return null;
+
+        var role = User.FindFirstValue(ClaimTypes.Role);
+        if (role != "SupportStaff")
+            return Forbid();
+
+        var staffRole = GetStaffRole();
+        if (string.IsNullOrEmpty(staffRole))
+            return Forbid();
+
+        if (!ModuleAccess.TryGetValue(module, out var allowedRoles))
+            return Forbid();
+
+        if (!allowedRoles.Contains(staffRole))
+            return Forbid();
+
+        return null;
+    }
+
+    /// <summary>
+    /// Reserved for the most sensitive actions (creating/listing platform staff accounts).
+    /// Only the platform SuperAdmin may perform these - never delegated to any staff role,
+    /// so an "Admin" staff member can never grant itself or others elevated access.
+    /// </summary>
+    private IActionResult? CheckSuperAdminOnly()
+    {
+        if (!IsSuperAdmin())
+            return Forbid();
+        return null;
+    }
+
+    /// <summary>
+    /// Reports module has a view/edit split on top of the normal module check:
+    /// Admin AND Finance staff can view reports, schedules, KPI config, and export data.
+    /// Only Admin staff (and SuperAdmin) may create/edit/delete/toggle schedules or
+    /// change the selected KPIs, since those are write operations on shared config.
+    /// </summary>
+    private IActionResult? CheckReportsAccess(bool requireEdit = false)
+    {
+        var forbidden = CheckAccess("Reports");
+        if (forbidden != null) return forbidden;
+
+        if (requireEdit && !IsSuperAdmin())
+        {
+            var staffRole = GetStaffRole();
+            if (staffRole != "Admin")
+                return Forbid();
+        }
+
+        return null;
+    }
+
+    private long GetCurrentUserId() =>
+        long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private string? GetClientIp() =>
+        HttpContext?.Connection?.RemoteIpAddress?.ToString();
+    [HttpGet("stores")]
+    public async Task<IActionResult> GetAllStores()
+    {
+        var forbidden = CheckAccess("Stores");
+        if (forbidden != null) return forbidden;
+        var stores = await _adminService.GetAllStoresAsync();
+        return Ok(new { success = true, data = stores });
+    }
+    [HttpGet("stores/{id}")]
+    public async Task<IActionResult> GetStoreById(long id)
+    {
+        var forbidden = CheckAccess("Stores");
+        if (forbidden != null) return forbidden;
+        var store = await _adminService.GetStoreByIdAsync(id);
+        if (store == null)
+            return NotFound(new { success = false, message = "المتجر غير موجود" });
+        return Ok(new { success = true, data = store });
+    }
+    [HttpPut("stores/{id}/suspend")]
+    public async Task<IActionResult> SuspendStore(long id)
+    {
+        var forbidden = CheckAccess("Stores");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.SuspendStoreAsync(id);
+            return Ok(new { success = true, message = "تم تعليق المتجر بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+    [HttpPut("stores/{id}/activate")]
+    public async Task<IActionResult> ActivateStore(long id)
+    {
+        var forbidden = CheckAccess("Stores");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.ActivateStoreAsync(id);
+            return Ok(new { success = true, message = "تم تفعيل المتجر بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+    [HttpPut("stores/{id}/custom-domain/activate")]
+    public async Task<IActionResult> ActivateCustomDomain(long id)
+    {
+        var forbidden = CheckAccess("Domains");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.ActivateCustomDomainAsync(id);
+            return Ok(new { success = true, message = "تم تفعيل الدومين الخاص بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+    [HttpGet("packages")]
+    public async Task<IActionResult> GetAllPackages()
+    {
+        var forbidden = CheckAccess("Packages");
+        if (forbidden != null) return forbidden;
+        var packages = await _adminService.GetAllPackagesAsync();
+        return Ok(new { success = true, data = packages });
+    }
+    [HttpGet("packages/{id}")]
+    public async Task<IActionResult> GetPackageById(long id)
+    {
+        var forbidden = CheckAccess("Packages");
+        if (forbidden != null) return forbidden;
+        var package = await _adminService.GetPackageByIdAsync(id);
+        if (package == null)
+            return NotFound(new { success = false, message = "الباقة غير موجودة" });
+        return Ok(new { success = true, data = package });
+    }
+    [HttpPut("packages/{id}")]
+    public async Task<IActionResult> UpdatePackage(long id, [FromBody] UpdatePackageDto dto)
+    {
+        var forbidden = CheckAccess("Packages");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.UpdatePackageAsync(id, dto);
+            return Ok(new { success = true, message = "تم تحديث الباقة بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // --- تاسك 11: إدارة المستخدمين على مستوى المنصة ---
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetAllUsers()
+    {
+        var forbidden = CheckAccess("Users");
+        if (forbidden != null) return forbidden;
+        var users = await _adminService.GetAllUsersAsync();
+        return Ok(new { success = true, data = users });
+    }
+
+    [HttpPut("users/{id}/deactivate")]
+    public async Task<IActionResult> DeactivateUser(long id)
+    {
+        var forbidden = CheckAccess("Users");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.DeactivateUserAsync(id, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم تعطيل المستخدم بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("users/{id}/activate")]
+    public async Task<IActionResult> ActivateUser(long id)
+    {
+        var forbidden = CheckAccess("Users");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.ActivateUserAsync(id);
+            return Ok(new { success = true, message = "تم تفعيل المستخدم بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("reports/overview")]
+    public async Task<IActionResult> GetReportsOverview()
+    {
+        var forbidden = CheckReportsAccess();
+        if (forbidden != null) return forbidden;
+        var overview = await _adminService.GetReportsOverviewAsync();
+        return Ok(new { success = true, data = overview });
+    }
+
+    [HttpGet("reports/export")]
+    public async Task<IActionResult> ExportReportsOverview([FromQuery] string? scope, [FromQuery] string? kpis, [FromQuery] string? format)
+    {
+        var forbidden = CheckReportsAccess();
+        if (forbidden != null) return forbidden;
+
+        var kpiList = (kpis ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        var fmt = (format ?? "excel").ToLowerInvariant();
+        var bytes = await _reportScheduleService.ExportOverviewAsync(scope ?? "Platform", kpiList, fmt);
+        var stamp = DateTime.UtcNow.ToString("yyyyMMdd");
+
+        return fmt switch
+        {
+            "excel" => File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"reports-overview-{stamp}.xlsx"),
+            "pdf" => File(bytes, "application/pdf", $"reports-overview-{stamp}.pdf"),
+            _ => File(bytes, "text/csv", $"reports-overview-{stamp}.csv")
+        };
+    }
+
+    [HttpGet("billing/revenue")]
+    public async Task<IActionResult> GetRevenueDashboard()
+    {
+        var forbidden = CheckAccess("Billing");
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetRevenueDashboardAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("billing/invoices")]
+    public async Task<IActionResult> GetPlatformInvoices([FromQuery] bool? overdueOnly)
+    {
+        var forbidden = CheckAccess("Billing");
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetPlatformInvoicesAsync(overdueOnly);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("billing/invoices/export")]
+    public async Task<IActionResult> ExportPlatformInvoices()
+    {
+        var forbidden = CheckAccess("Billing");
+        if (forbidden != null) return forbidden;
+        var bytes = await _adminService.ExportPlatformInvoicesExcelAsync();
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "platform-invoices.xlsx");
+    }
+
+    [HttpGet("users/owners")]
+    public async Task<IActionResult> GetOwnerUsers()
+    {
+        var forbidden = CheckAccess("Users");
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetOwnerUsersAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("users/staff")]
+    public async Task<IActionResult> CreateStaffUser([FromBody] CreateStaffDto dto)
+    {
+        var forbidden = CheckSuperAdminOnly();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var result = await _adminService.CreateStaffUserAsync(dto);
+            return Ok(new { success = true, data = result, message = "تم إضافة الموظف بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("users/staff")]
+    public async Task<IActionResult> GetStaffUsers()
+    {
+        var forbidden = CheckSuperAdminOnly();
+        if (forbidden != null) return forbidden;
+        var data = await _adminService.GetStaffUsersAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("users/{id}")]
+    public async Task<IActionResult> UpdateUser(long id, [FromBody] UpdateUserDto dto)
+    {
+        var forbidden = CheckAccess("Users");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.UpdateUserAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم تعديل بيانات المستخدم بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("users/staff/{id}")]
+    public async Task<IActionResult> UpdateStaffUser(long id, [FromBody] UpdateStaffDto dto)
+    {
+        var forbidden = CheckSuperAdminOnly();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.UpdateStaffUserAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم تعديل بيانات الموظف بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("users/staff/{id}")]
+    public async Task<IActionResult> DeleteStaffUser(long id)
+    {
+        var forbidden = CheckSuperAdminOnly();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.DeleteStaffUserAsync(id, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم حذف الموظف بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("notifications/send")]
+    public async Task<IActionResult> SendPlatformNotification([FromBody] SendNotificationDto dto)
+    {
+        var forbidden = CheckAccess("Notifications");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var adminId = GetCurrentUserId();
+            await _adminService.SendPlatformNotificationAsync(dto, adminId);
+            return Ok(new { success = true, message = "تم إرسال الإشعار بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("settings")]
+    public async Task<IActionResult> GetSettings()
+    {
+        var forbidden = CheckAccess("Settings");
+        if (forbidden != null) return forbidden;
+        var settings = await _adminService.GetSettingsAsync();
+        return Ok(new { success = true, data = settings });
+    }
+
+    [HttpPut("settings")]
+    public async Task<IActionResult> UpdateSettings([FromBody] UpdatePlatformSettingsDto dto)
+    {
+        var forbidden = CheckAccess("Settings");
+        if (forbidden != null) return forbidden;
+        await _adminService.UpdateSettingsAsync(dto);
+        return Ok(new { success = true, message = "تم تحديث الإعدادات بنجاح" });
+    }
+
+    // === Pages ===
+    [HttpGet("site/pages/{pageKey}")]
+    public async Task<IActionResult> GetPage(string pageKey)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var page = await _siteService.GetPageByKeyAsync(pageKey);
+        return Ok(new { success = true, data = page });
+    }
+
+    [HttpPut("site/pages/{pageKey}")]
+    public async Task<IActionResult> UpdatePage(string pageKey, [FromBody] UpdateSitePageDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.UpdatePageAsync(GetCurrentUserId(), pageKey, dto);
+        return Ok(new { success = true, message = "تم حفظ الصفحة" });
+    }
+
+    [HttpPost("site/upload"), DisableRequestSizeLimit]
+    public async Task<IActionResult> UploadSiteFile(IFormFile file)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, message = "الملف مطلوب" });
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowedImages = new[] { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
+        var allowedVideos = new[] { ".mp4", ".webm", ".mov" };
+        bool isVideo = allowedVideos.Contains(ext);
+        if (!allowedImages.Contains(ext) && !isVideo)
+            return BadRequest(new { success = false, message = "صيغة الملف غير مدعومة" });
+        long maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+        if (file.Length > maxSize)
+            return BadRequest(new { success = false, message = $"حجم الملف يتجاوز الحد المسموح {(isVideo ? "50" : "5")} ميجابايت" });
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        Directory.CreateDirectory(uploadsDir);
+        var fileName = $"{Guid.NewGuid()}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create)) { await file.CopyToAsync(stream); }
+        var url = Helpers.UrlHelpers.AbsoluteUrl(Request, $"/uploads/{fileName}");
+        return Ok(new { success = true, data = new { url } });
+    }
+
+    // === FAQ ===
+    [HttpGet("site/faq")]
+    public async Task<IActionResult> GetAllFaq()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetAllFaqAsync() });
+    }
+
+    [HttpPost("site/faq")]
+    public async Task<IActionResult> CreateFaq([FromBody] CreateFaqItemDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var result = await _siteService.CreateFaqAsync(dto);
+        return Ok(new { success = true, data = result, message = "تمت الإضافة" });
+    }
+
+    [HttpPut("site/faq/{id}")]
+    public async Task<IActionResult> UpdateFaq(long id, [FromBody] CreateFaqItemDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.UpdateFaqAsync(id, dto);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    [HttpDelete("site/faq/{id}")]
+    public async Task<IActionResult> DeleteFaq(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.DeleteFaqAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("site/faq/{id}/toggle-publish")]
+    public async Task<IActionResult> ToggleFaqPublish(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.ToggleFaqPublishAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Contact Messages (Tickets) ===
+    [HttpGet("site/contact-messages")]
+    public async Task<IActionResult> GetContactMessages([FromQuery] string? status, [FromQuery] string? search)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetContactMessagesAsync(status, search) });
+    }
+
+    [HttpGet("site/contact-messages/{id}")]
+    public async Task<IActionResult> GetContactMessageById(long id)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        var msg = await _siteService.GetContactMessageByIdAsync(id);
+        if (msg == null) return NotFound(new { success = false, message = "غير موجود" });
+        return Ok(new { success = true, data = msg });
+    }
+
+    [HttpPut("site/contact-messages/{id}/status")]
+    public async Task<IActionResult> UpdateContactMessageStatus(long id, [FromBody] UpdateTicketStatusDto dto)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        await _siteService.UpdateContactMessageStatusAsync(id, dto.Status);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    [HttpPost("site/contact-messages/{id}/replies")]
+    public async Task<IActionResult> AddTicketReply(long id, [FromBody] CreateTicketReplyDto dto)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "المدير";
+        try
+        {
+            var reply = await _siteService.AddTicketReplyAsync(id, dto, GetCurrentUserId(), adminName);
+            return Ok(new { success = true, data = reply, message = "تم إضافة الرد" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("site/contact-messages/{id}")]
+    public async Task<IActionResult> DeleteContactMessage(long id)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        await _siteService.DeleteContactMessageAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // === Blog ===
+    [HttpGet("site/blog")]
+    public async Task<IActionResult> GetAllBlogPosts()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        return Ok(new { success = true, data = await _siteService.GetAllBlogPostsAsync() });
+    }
+
+    [HttpPost("site/blog")]
+    public async Task<IActionResult> CreateBlogPost([FromBody] CreateBlogPostDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var result = await _siteService.CreateBlogPostAsync(GetCurrentUserId(), dto);
+        return Ok(new { success = true, data = result, message = "تم إنشاء المقال" });
+    }
+
+    [HttpPut("site/blog/{id}")]
+    public async Task<IActionResult> UpdateBlogPost(long id, [FromBody] UpdateBlogPostDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.UpdateBlogPostAsync(id, dto);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    [HttpDelete("site/blog/{id}")]
+    public async Task<IActionResult> DeleteBlogPost(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.DeleteBlogPostAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("site/blog/{id}/publish")]
+    public async Task<IActionResult> PublishBlogPost(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.PublishBlogPostAsync(id);
+        return Ok(new { success = true, message = "تم النشر" });
+    }
+
+    // === Landing Page ===
+    [HttpGet("site/landing-page")]
+    public async Task<IActionResult> GetLandingPage()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var content = await _siteService.GetLandingPageAsync();
+        return Ok(new { success = true, data = content });
+    }
+
+    [HttpPut("site/landing-page")]
+    public async Task<IActionResult> UpdateLandingPage([FromBody] LandingPageContentDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteService.UpdateLandingPageAsync(dto);
+        return Ok(new { success = true, message = "تم حفظ محتوى الصفحة الرئيسية" });
+    }
+
+    // === Themes ===
+    [HttpGet("themes")]
+    public async Task<IActionResult> GetAllThemes()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var themes = await _adminService.GetThemesAsync();
+        return Ok(new { success = true, data = themes });
+    }
+
+    [HttpPut("themes/{id}")]
+    public async Task<IActionResult> UpdateTheme(long id, [FromBody] UpdateThemeDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.SetThemeEnabledAsync(id, dto.IsEnabled);
+            return Ok(new { success = true, message = "تم تحديث حالة الثيم بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { success = false, message = ex.Message });
+        }
+    }
+
+    // === Referrals ===
+    [HttpGet("referrals")]
+    public async Task<IActionResult> GetAllReferrals([FromQuery] string? status, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? search)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetAllReferralsAsync(status, from, to, search);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/{id}/review")]
+    public async Task<IActionResult> ReviewReferral(long id, [FromBody] ReviewReferralDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.ReviewReferralAsync(id, dto.Approve, dto.Note, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تمت الموافقة على الإحالة" : "تم رفض الإحالة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("referrals/settings")]
+    public async Task<IActionResult> GetReferralSettings()
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetReferralSettingsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/settings")]
+    public async Task<IActionResult> UpdateReferralSettings([FromBody] ReferralSettingsDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.UpdateReferralSettingsAsync(dto.DefaultCommissionRate);
+            return Ok(new { success = true, message = "تم تحديث نسبة العمولة الافتراضية" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("referrals/commissions")]
+    public async Task<IActionResult> GetAllCommissions([FromQuery] string? status)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _referralService.GetAllCommissionsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("referrals/commissions/{id}/rate")]
+    public async Task<IActionResult> UpdateCommissionRate(long id, [FromBody] UpdateCommissionRateDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _referralService.UpdateCommissionRateAsync(id, dto.Rate);
+            return Ok(new { success = true, message = "تم تحديث نسبة العمولة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // ملحوظة: اعتماد العمولة وإضافتها لرصيد صاحب الإحالة بقى بيتم أوتوماتيك
+    // كجزء من ReviewReferral (الموافقة على الإحالة) بدل ما يكون endpoint منفصل.
+    // نظام طلبات السحب (Withdrawals) اتشال بالكامل — الرصيد بقى يُستخدم فقط
+    // كخصم مباشر من فاتورة اشتراك اليوزر نفسه (ApplyBalanceAsync في SubscriptionService).
+
+    // === Report Scheduling & KPI Selection (إدارة التقارير) ===
+    [HttpGet("reports/schedules")]
+    public async Task<IActionResult> GetReportSchedules()
+    {
+        var forbidden = CheckReportsAccess(); if (forbidden != null) return forbidden;
+        var data = await _reportScheduleService.GetAllAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("reports/schedules")]
+    public async Task<IActionResult> CreateReportSchedule([FromBody] CreateReportScheduleDto dto)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _reportScheduleService.CreateAsync(dto);
+            return Ok(new { success = true, data, message = "تم إنشاء جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("reports/schedules/{id}")]
+    public async Task<IActionResult> UpdateReportSchedule(long id, [FromBody] CreateReportScheduleDto dto)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _reportScheduleService.UpdateAsync(id, dto);
+            return Ok(new { success = true, data, message = "تم تحديث جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("reports/schedules/{id}")]
+    public async Task<IActionResult> DeleteReportSchedule(long id)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            await _reportScheduleService.DeleteAsync(id);
+            return Ok(new { success = true, message = "تم حذف جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("reports/schedules/{id}/toggle")]
+    public async Task<IActionResult> ToggleReportSchedule(long id)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        try
+        {
+            await _reportScheduleService.ToggleAsync(id);
+            return Ok(new { success = true, message = "تم تغيير حالة جدول التقرير" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("reports/schedules/{id}/export")]
+    public async Task<IActionResult> ExportReportSchedule(long id, [FromQuery] string? format)
+    {
+        var forbidden = CheckReportsAccess(); if (forbidden != null) return forbidden;
+        var fmt = (format ?? "excel").ToLowerInvariant();
+        try
+        {
+            var bytes = await _reportScheduleService.ExportScheduleAsync(id, fmt);
+            var stamp = DateTime.UtcNow.ToString("yyyyMMdd");
+            return fmt switch
+            {
+                "excel" => File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"report-schedule-{id}-{stamp}.xlsx"),
+                "pdf" => File(bytes, "application/pdf", $"report-schedule-{id}-{stamp}.pdf"),
+                _ => File(bytes, "text/csv", $"report-schedule-{id}-{stamp}.csv")
+            };
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("reports/config")]
+    public async Task<IActionResult> GetReportConfig()
+    {
+        var forbidden = CheckReportsAccess(); if (forbidden != null) return forbidden;
+        var data = await _reportScheduleService.GetConfigAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("reports/config")]
+    public async Task<IActionResult> UpdateReportConfig([FromBody] ReportConfigUpdateDto dto)
+    {
+        var forbidden = CheckReportsAccess(requireEdit: true); if (forbidden != null) return forbidden;
+        await _reportScheduleService.UpdateConfigAsync(dto.SelectedKpis ?? new());
+        return Ok(new { success = true, message = "تم تحديث مؤشرات التقارير" });
+    }
+
+
+    // === Merchant Verification (حساب تاجر / مستندات) ===
+    [HttpGet("merchant-verifications")]
+    public async Task<IActionResult> GetAllVerifications([FromQuery] string? status)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        var data = await _verificationService.GetAllVerificationsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("merchant-verifications/{id}")]
+    public async Task<IActionResult> GetVerification(long id)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        var data = await _verificationService.GetAdminVerificationAsync(id);
+        if (data == null) return NotFound(new { success = false, message = "طلب التوثيق غير موجود" });
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("merchant-verifications/{id}/review")]
+    public async Task<IActionResult> ReviewVerification(long id, [FromBody] ReviewVerificationDto dto)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _verificationService.ProcessVerificationAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تم اعتماد التوثيق" : "تم رفض التوثيق" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("merchant-verifications/{id}/documents/{documentId}/review")]
+    public async Task<IActionResult> ReviewVerificationDocument(long id, long documentId, [FromBody] ReviewDocumentDto dto)
+    {
+        var forbidden = CheckAccess("SupportOps"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _verificationService.ReviewDocumentAsync(id, documentId, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تم اعتماد المستند" : "تم رفض المستند" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // === Merchant Accounts (حساب التاجر / مراجعة KYC) ===
+    [HttpGet("merchant-accounts")]
+    public async Task<IActionResult> GetAllMerchantAccounts([FromQuery] string? status)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _merchantAccountService.GetAllAccountsAsync(status);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("merchant-accounts/{id}")]
+    public async Task<IActionResult> GetMerchantAccount(long id)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        var data = await _merchantAccountService.GetAdminAccountAsync(id);
+        if (data == null) return NotFound(new { success = false, message = "حساب التاجر غير موجود" });
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("merchant-accounts/{id}/review")]
+    public async Task<IActionResult> ReviewMerchantAccount(long id, [FromBody] ReviewMerchantAccountDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _merchantAccountService.ProcessAccountReviewAsync(id, dto, GetCurrentUserId());
+            return Ok(new { success = true, message = dto.Approve ? "تم اعتماد حساب التاجر" : "تم رفض حساب التاجر" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("merchant-accounts/{id}/suspend")]
+    public async Task<IActionResult> SuspendMerchantAccount(long id, [FromBody] SuspendMerchantAccountDto dto)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _merchantAccountService.SuspendAccountAsync(id, dto.Reason ?? "", GetCurrentUserId(), GetClientIp());
+            return Ok(new { success = true, message = "تم إيقاف حساب التاجر" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("merchant-accounts/{id}/activate")]
+    public async Task<IActionResult> ActivateMerchantAccount(long id)
+    {
+        var forbidden = CheckAccess("Finance"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _merchantAccountService.ReactivateAccountAsync(id, GetCurrentUserId(), GetClientIp());
+            return Ok(new { success = true, message = "تم إعادة تفعيل حساب التاجر" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // === Site Menus (header/footer + nested sub-menus) ===
+    [HttpGet("site/menus")]
+    public async Task<IActionResult> GetAllMenus()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _siteMenuService.GetAllMenusAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("site/menus")]
+    public async Task<IActionResult> CreateMenu([FromBody] CreateSiteMenuDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            var menu = await _siteMenuService.CreateMenuAsync(dto);
+            return Ok(new { success = true, data = menu, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("site/menus/{id}")]
+    public async Task<IActionResult> UpdateMenu(long id, [FromBody] CreateSiteMenuDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _siteMenuService.UpdateMenuAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("site/menus/{id}")]
+    public async Task<IActionResult> DeleteMenu(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteMenuService.DeleteMenuAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("site/menus/{id}/toggle")]
+    public async Task<IActionResult> ToggleMenu(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _siteMenuService.ToggleMenuActiveAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Dashboard Sections (sidebar groups & icons) ===
+    [HttpGet("dashboard-sections")]
+    public async Task<IActionResult> GetDashboardSections([FromQuery] string? role)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _dashboardSectionService.GetAllAsync(role);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("dashboard-sections")]
+    public async Task<IActionResult> CreateDashboardSection([FromBody] UpsertDashboardSectionDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            var section = await _dashboardSectionService.CreateAsync(dto);
+            return Ok(new { success = true, data = section, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPut("dashboard-sections/{id}")]
+    public async Task<IActionResult> UpdateDashboardSection(long id, [FromBody] UpsertDashboardSectionDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _dashboardSectionService.UpdateAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("dashboard-sections/{id}")]
+    public async Task<IActionResult> DeleteDashboardSection(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _dashboardSectionService.DeleteAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpPut("dashboard-sections/{id}/toggle")]
+    public async Task<IActionResult> ToggleDashboardSection(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _dashboardSectionService.ToggleAsync(id);
+        return Ok(new { success = true, message = "تم التحديث" });
+    }
+
+    // === Careers (job postings & applications) ===
+    [HttpGet("jobs")]
+    public async Task<IActionResult> GetJobs()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _careerService.GetJobsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("jobs")]
+    public async Task<IActionResult> CreateJob([FromBody] UpsertJobPostingDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            var job = await _careerService.CreateJobAsync(dto);
+            return Ok(new { success = true, data = job, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("jobs/{id}")]
+    public async Task<IActionResult> UpdateJob(long id, [FromBody] UpsertJobPostingDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _careerService.UpdateJobAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("jobs/{id}")]
+    public async Task<IActionResult> DeleteJob(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _careerService.DeleteJobAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpGet("job-applications")]
+    public async Task<IActionResult> GetJobApplications([FromQuery] long? jobId)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _careerService.GetApplicationsAsync(jobId);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("job-applications/{id}/status")]
+    public async Task<IActionResult> UpdateJobApplicationStatus(long id, [FromBody] UpdateJobApplicationStatusDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _careerService.UpdateApplicationStatusAsync(id, dto.Status);
+            return Ok(new { success = true, message = "تم تحديث الحالة" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("job-applications/{id}")]
+    public async Task<IActionResult> DeleteJobApplication(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _careerService.DeleteApplicationAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // === Academy (courses) ===
+    [HttpGet("courses")]
+    public async Task<IActionResult> GetCourses()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetCoursesAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("courses")]
+    public async Task<IActionResult> CreateCourse([FromBody] UpsertAcademyCourseDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            var course = await _academyService.CreateCourseAsync(dto);
+            return Ok(new { success = true, data = course, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("courses/{id}")]
+    public async Task<IActionResult> UpdateCourse(long id, [FromBody] UpsertAcademyCourseDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdateCourseAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("courses/{id}")]
+    public async Task<IActionResult> DeleteCourse(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _academyService.DeleteCourseAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpGet("academy-intro")]
+    public async Task<IActionResult> GetAcademyIntro()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetPageIntroAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("academy-intro")]
+    public async Task<IActionResult> UpdateAcademyIntro([FromBody] AcademyPageIntroDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdatePageIntroAsync(dto);
+            return Ok(new { success = true, message = "تم حفظ إعدادات الصفحة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpGet("courses/{courseId}/lessons")]
+    public async Task<IActionResult> GetCourseLessons(long courseId)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetLessonsAsync(courseId);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("courses/{courseId}/lessons")]
+    public async Task<IActionResult> CreateCourseLesson(long courseId, [FromBody] UpsertAcademyLessonDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            var lesson = await _academyService.CreateLessonAsync(courseId, dto);
+            return Ok(new { success = true, data = lesson, message = "تمت الإضافة" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("courses/lessons/{id}")]
+    public async Task<IActionResult> UpdateCourseLesson(long id, [FromBody] UpsertAcademyLessonDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdateLessonAsync(id, dto);
+            return Ok(new { success = true, message = "تم التحديث" });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("courses/lessons/{id}")]
+    public async Task<IActionResult> DeleteCourseLesson(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _academyService.DeleteLessonAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    [HttpGet("course-enrollments")]
+    public async Task<IActionResult> GetCourseEnrollments([FromQuery] long? courseId)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _academyService.GetEnrollmentsAsync(courseId);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPut("course-enrollments/{id}/status")]
+    public async Task<IActionResult> UpdateCourseEnrollmentStatus(long id, [FromBody] UpdateAcademyEnrollmentStatusDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _academyService.UpdateEnrollmentStatusAsync(id, dto.Status);
+            return Ok(new { success = true, message = "تم تحديث الحالة" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpDelete("course-enrollments/{id}")]
+    public async Task<IActionResult> DeleteCourseEnrollment(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        await _academyService.DeleteEnrollmentAsync(id);
+        return Ok(new { success = true, message = "تم الحذف" });
+    }
+
+    // === Store design requests (chat with platform admin) ===
+    [HttpGet("design-requests")]
+    public async Task<IActionResult> GetDesignRequests()
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _designService.GetRequestsAsync();
+        return Ok(new { success = true, data });
+    }
+
+    [HttpGet("design-requests/{id}/messages")]
+    public async Task<IActionResult> GetDesignRequestMessages(long id)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        var data = await _designService.GetMessagesAsync(id);
+        return Ok(new { success = true, data });
+    }
+
+    [HttpPost("design-requests/{id}/messages")]
+    public async Task<IActionResult> SendDesignRequestMessage(long id, [FromBody] SendStoreDesignMessageDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            var senderName = User.FindFirstValue(ClaimTypes.Name) ?? "الإدارة";
+            var message = await _designService.SendMessageAsync(id, "Admin", senderName, dto);
+            return Ok(new { success = true, data = message, message = "تم إرسال الرد" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+
+    [HttpPut("design-requests/{id}/status")]
+    public async Task<IActionResult> UpdateDesignRequestStatus(long id, [FromBody] UpdateStoreDesignRequestStatusDto dto)
+    {
+        var forbidden = CheckAccess("SiteContent"); if (forbidden != null) return forbidden;
+        try
+        {
+            await _designService.UpdateStatusAsync(id, dto.Status);
+            return Ok(new { success = true, message = "تم تحديث الحالة" });
+        }
+        catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+    [HttpPost("test-email")]
+    public async Task<IActionResult> TestEmail([FromBody] TestEmailDto dto)
+    {
+        if (!_emailService.IsConfigured())
+            return BadRequest("خدمة الإيميل غير مفعّلة");
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            return BadRequest("لازم تحدد الإيميل");
+
+        (string Subject, string Body) message;
+        var fakeName = "مستخدم تجريبي";
+        var fakeCode = "123456";
+
+        switch (dto.Type?.ToLower())
+        {
+            case "accountverification":
+                message = EmailMessageFactory.AccountVerification(fakeName, fakeCode);
+                break;
+            case "welcome":
+                message = EmailMessageFactory.Welcome(fakeName);
+                break;
+            case "googlewelcome":
+                message = EmailMessageFactory.GoogleWelcome(fakeName);
+                break;
+            case "passwordreset":
+                message = EmailMessageFactory.PasswordReset(fakeName, fakeCode);
+                break;
+            case "profileupdateverification":
+                message = EmailMessageFactory.ProfileUpdateVerification(fakeName, fakeCode);
+                break;
+            case "passwordchangeverification":
+                message = EmailMessageFactory.PasswordChangeVerification(fakeName, fakeCode);
+                break;
+            case "quickloginotp":
+                message = EmailMessageFactory.QuickLoginOtp("متجر تجريبي", fakeCode);
+                break;
+            case "testnotification":
+                message = EmailMessageFactory.TestNotification("متجر تجريبي");
+                break;
+            case "merchantdocumentdecision":
+                message = EmailMessageFactory.MerchantDocumentDecision("متجر تجريبي", "السجل التجاري", true, null);
+                break;
+
+            case "orderconfirmation":
+            case "orderstatusupdate":
+            case "returnrequestsubmitted":
+            case "returnrequestdecision":
+            case "invoicepaid":
+            case "subscriptionexpiring":
+            case "subscriptionactivated":
+            case "subscriptionusagelimit":
+            case "subscriptionrenewalfailed":
+                return await SendComplexTestEmailAsync(dto);
+
+            default:
+                return BadRequest("نوع الرسالة غير معروف: " + dto.Type);
+        }
+
+        await _emailService.SendTemplatedEmailAsync(dto.Email, message.Subject, message.Body);
+        return Ok(new { sent = true, to = dto.Email, type = dto.Type });
+    }
+
+    private async Task<IActionResult> SendComplexTestEmailAsync(TestEmailDto dto)
+    {
+        var store = await _context.Stores.FirstOrDefaultAsync();
+        if (store == null)
+            return BadRequest("لا يوجد أي متجر في قاعدة البيانات لاستخدامه كبيانات تجريبية");
+
+        (string Subject, string Body) message;
+
+        switch (dto.Type!.ToLower())
+        {
+            case "orderconfirmation":
+                {
+                    var order = await _context.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.OrderConfirmation(store, order, order.Items.ToList());
+                    break;
+                }
+            case "orderstatusupdate":
+                {
+                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.OrderStatusUpdate(store, order, "تم الشحن", "#C9A227");
+                    break;
+                }
+            case "returnrequestsubmitted":
+                {
+                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.ReturnRequestSubmitted(store, order, "سبب تجريبي للإرجاع");
+                    break;
+                }
+            case "returnrequestdecision":
+                {
+                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.ReturnRequestDecision(store, order, true, "تمت الموافقة");
+                    break;
+                }
+            case "invoicepaid":
+                {
+                    var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.StoreId == store.Id);
+                    if (invoice == null) return BadRequest("لا توجد فاتورة متاحة للاختبار");
+                    message = EmailMessageFactory.InvoicePaid(store, invoice);
+                    break;
+                }
+            case "subscriptionexpiring":
+                {
+                    var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.StoreId == store.Id);
+                    if (sub == null) return BadRequest("لا يوجد اشتراك متاح للاختبار");
+                    var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == sub.PackageId);
+                    if (package == null) return BadRequest("لا توجد باقة مرتبطة");
+                    message = EmailMessageFactory.SubscriptionExpiring(store, sub, package, 3);
+                    break;
+                }
+            case "subscriptionactivated":
+                {
+                    var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.StoreId == store.Id);
+                    if (sub == null) return BadRequest("لا يوجد اشتراك متاح للاختبار");
+                    var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == sub.PackageId);
+                    if (package == null) return BadRequest("لا توجد باقة مرتبطة");
+                    message = EmailMessageFactory.SubscriptionActivated(store, sub, package);
+                    break;
+                }
+            case "subscriptionusagelimit":
+                {
+                    var package = await _context.Packages.FirstOrDefaultAsync();
+                    if (package == null) return BadRequest("لا توجد باقة متاحة للاختبار");
+                    message = EmailMessageFactory.SubscriptionUsageLimit(store, package, "عدد الفواتير", 90, 100, 90m);
+                    break;
+                }
+            case "subscriptionrenewalfailed":
+                {
+                    var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.StoreId == store.Id);
+                    if (sub == null) return BadRequest("لا يوجد اشتراك متاح للاختبار");
+                    var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == sub.PackageId);
+                    if (package == null) return BadRequest("لا توجد باقة مرتبطة");
+                    message = EmailMessageFactory.SubscriptionRenewalFailed(store, sub, package, "فشل الدفع");
+                    break;
+                }
+            default:
+                return BadRequest("نوع غير مدعوم");
+        }
+
+        await _emailService.SendTemplatedEmailAsync(dto.Email, message.Subject, message.Body);
+        return Ok(new { sent = true, to = dto.Email, type = dto.Type, note = "استخدمت بيانات حقيقية من قاعدة البيانات" });
+    }
+
+    public class TestEmailDto
+    {
+        public string Email { get; set; } = "";
+        public string Type { get; set; } = "";
+    }
+}

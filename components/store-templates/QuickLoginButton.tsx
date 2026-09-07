@@ -156,7 +156,7 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
                     dir="ltr"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
+                    placeholder="example@domain.com"
                     required
                     className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-blue-500"
                   />

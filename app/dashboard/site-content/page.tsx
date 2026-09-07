@@ -134,7 +134,7 @@ function ImageUpload({ value, onChange, accept = "image/*", labelKey = "admin.up
           {uploading ? t("common.loading") : t(labelKey)}
           <input type="file" accept={accept} onChange={handleFile} className="hidden" />
         </label>
-        {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">Ã—</button>}
+        {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">×</button>}
       </div>
     </div>
   );
@@ -245,7 +245,7 @@ function HomepageEditor() {
               <input className="flex-1" placeholder={t("admin.statNumber")} value={s.number} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], number: e.target.value }; update("hero.stats", arr); }} />
               <input dir="rtl" className="flex-1" placeholder={`${t("admin.statLabel")} (${t("admin.arabic")})`} value={s.labelAr} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], labelAr: e.target.value }; update("hero.stats", arr); }} />
               <input dir="ltr" className="flex-1" placeholder={`${t("admin.statLabel")} (${t("admin.english")})`} value={s.labelEn} onChange={e => { const arr = [...content.hero.stats]; arr[i] = { ...arr[i], labelEn: e.target.value }; update("hero.stats", arr); }} />
-              <button onClick={() => removeArrItem("hero.stats", i)} className="btn btn-danger btn-sm shrink-0">Ã—</button>
+              <button onClick={() => removeArrItem("hero.stats", i)} className="btn btn-danger btn-sm shrink-0">×</button>
             </div>
           ))}
           <button onClick={() => addArrItem("hero.stats", { number: "", labelAr: "", labelEn: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addStat")}</button>
@@ -298,7 +298,7 @@ function HomepageEditor() {
               <input dir="ltr" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardTitle")} (${t("admin.english")})`} value={c.titleEn} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], titleEn: e.target.value }; update("distinctiveSection.cards", arr); }} />
               <input dir="rtl" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardDesc")} (${t("admin.arabic")})`} value={c.descriptionAr} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], descriptionAr: e.target.value }; update("distinctiveSection.cards", arr); }} />
               <input dir="ltr" className="flex-1 min-w-[140px]" placeholder={`${t("admin.cardDesc")} (${t("admin.english")})`} value={c.descriptionEn} onChange={e => { const arr = [...content.distinctiveSection.cards]; arr[i] = { ...arr[i], descriptionEn: e.target.value }; update("distinctiveSection.cards", arr); }} />
-              <button onClick={() => removeArrItem("distinctiveSection.cards", i)} className="btn btn-danger btn-sm shrink-0">Ã—</button>
+              <button onClick={() => removeArrItem("distinctiveSection.cards", i)} className="btn btn-danger btn-sm shrink-0">×</button>
             </div>
           ))}
           <button onClick={() => addArrItem("distinctiveSection.cards", { titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "" })} className="btn btn-outline btn-sm mt-1">+ {t("admin.addCard")}</button>
@@ -703,7 +703,7 @@ function TicketDetailModal({ ticket, onClose, onStatusChange, onReply }: { ticke
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b" style={{ borderColor: "var(--border)" }}>
           <h3 className="text-[16px] font-bold text-[var(--ink)]">{t("admin.ticketDetails")} <span className="text-[var(--blue)]" dir="ltr">{ticket.ticketNumber}</span></h3>
-          <button onClick={onClose} className="btn btn-outline btn-sm">Ã—</button>
+          <button onClick={onClose} className="btn btn-outline btn-sm">×</button>
         </div>
         <div className="p-6 space-y-5">
           <div className="grid grid-cols-2 gap-4 text-[13px]">

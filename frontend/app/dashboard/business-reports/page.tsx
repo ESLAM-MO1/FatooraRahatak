@@ -223,8 +223,6 @@ export default function BusinessReportsPage() {
         </div>
       </div>
 
-      {error && <div className="alert alert--danger mb-4">{error}</div>}
-
       {loading ? (
         <div className="card p-6 flex items-center gap-3 text-[var(--sub)]">
           <span className="w-4 h-4 rounded-full border-2 border-[var(--blue)] border-t-transparent animate-spin" />
@@ -394,6 +392,24 @@ function LowStockView({ data, t }: { data: any; t: (k: string) => string }) {
 }
 
 function MovementsView({ data, t }: { data: any; t: (k: string) => string }) {
+  const typeMap: Record<string, string> = {
+    Purchase: "شراء",
+    Sale: "بيع",
+    Return: "مرتجع",
+    Adjustment: "تسوية",
+    Transfer: "تحويل",
+    Initial: "بداية رصيد",
+    Damage: "تالف",
+  };
+  const refMap: Record<string, string> = {
+    PurchaseInvoice: "فاتورة شراء",
+    SalesInvoice: "فاتورة بيع",
+    ReturnRequest: "طلب إرجاع",
+    StockTransfer: "تحويل مخزون",
+    ManualAdjustment: "تسوية يدوية",
+    InitialStock: "جرد افتتاحي",
+    DamagedStock: "تلف مخزون",
+  };
   return (
     <Table
       head={[t("report.date"), t("report.product"), t("report.variant"), t("report.warehouse"), t("report.type"), t("report.quantity"), t("report.reference")]}
@@ -402,9 +418,9 @@ function MovementsView({ data, t }: { data: any; t: (k: string) => string }) {
         r.productName,
         r.variantName || "—",
         r.warehouseName,
-        r.type,
+        typeMap[r.type] ?? r.type,
         r.quantity,
-        r.referenceType || "—",
+        refMap[r.referenceType] ?? r.referenceType ?? "—",
       ])}
       breakpoint="lg"
     />

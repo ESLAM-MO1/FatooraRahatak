@@ -56,6 +56,8 @@ api.interceptors.response.use(
     if (message) {
       error.response.data = { ...error.response.data, message };
     }
+    // ⚠️ إصلاح: عندما ترفض الباقة الميزة (403/400 بسبب الباقة)، نظهر رسالة الباقة
+    // الحقيقية للمستخدم بدل رسالة عامة "حدث خطأ" — ونستدعي الـ upgrade prompt.
     const isPackage403 = error.response?.status === 403 && !!message?.includes("باقتك");
     const isPackage400 =
       error.response?.status === 400 &&
@@ -63,7 +65,7 @@ api.interceptors.response.use(
       (message.includes("ترقية") || message.includes("تسمح بإضافة") || message.includes("الحد الأقصى"));
     if (isPackage403 || isPackage400) {
       triggerUpgradePrompt(message as string);
-      error.response.data = { ...error.response.data, message: undefined };
+      // لا نمسح الرسالة هنا — تُترك لتظهر للمستخدم مع توجيه للترقية
     }
     return Promise.reject(error);
   }

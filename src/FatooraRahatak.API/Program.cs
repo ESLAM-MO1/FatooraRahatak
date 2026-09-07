@@ -15,6 +15,12 @@ using FatooraRahatak.Application.Validators;
 using FatooraRahatak.API.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ⚠️ تحميل المتغيرات من ملف .env إن وُجد (على السيرفر واللوكال):
+// MOYASAR_PUBLISHABLE_KEY / MOYASAR_SECRET_KEY وغيرها تُقرأ من البيئة أولًا،
+// وفيها أولوية على قيم appsettings.json (راجع MoyasarPaymentProvider).
+try { DotNetEnv.Env.Load(); } catch { /* عدم وجود ملف .env ليس خطأ */ }
+
 var corsOrigins = (builder.Configuration["App:CorsOrigins"] ?? "http://localhost:3000")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(options =>
@@ -138,6 +144,7 @@ builder.Services.AddScoped<IQuickLoginService, QuickLoginService>();
 builder.Services.AddDirectoryBrowser();
 builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
 builder.Services.AddHostedService<PendingPaymentReconcilerBackgroundService>();
+builder.Services.AddHostedService<SubscriptionAlertsBackgroundService>();
 builder.Services.AddScoped<IShippingProvider, SmsaShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, AramexShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, ZajilShippingProvider>();

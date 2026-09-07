@@ -296,7 +296,7 @@ public class PublicStoreController : ControllerBase
     {
         try
         {
-            var result = await _quickLoginService.SendOtpAsync(slug, dto.Phone);
+            var result = await _quickLoginService.SendOtpAsync(slug, dto.Email);
             return Ok(new { success = true, data = result });
         }
         catch (InvalidOperationException ex)
@@ -309,9 +309,9 @@ public class PublicStoreController : ControllerBase
     {
         try
         {
-            var result = await _quickLoginService.VerifyOtpAsync(slug, dto.Phone, dto.Code);
+            var result = await _quickLoginService.VerifyOtpAsync(slug, dto.Email, dto.Code);
             if (result == null)
-                return NotFound(new { success = false, message = "لم نعثر على بيانات سابقة لهذا الرقم" });
+                return NotFound(new { success = false, message = "لم نعثر على بيانات سابقة لهذا البريد الإلكتروني" });
             return Ok(new { success = true, data = result });
         }
         catch (InvalidOperationException ex)

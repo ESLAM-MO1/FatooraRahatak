@@ -5,12 +5,6 @@ export interface StoreMethodInfo {
   type: string;
 }
 
-export interface StoreTrustBadge {
-  icon: string;
-  text: string;
-  isEnabled: boolean;
-}
-
 export interface StoreData {
   id: number;
   storeName: string;
@@ -45,7 +39,6 @@ export interface StoreData {
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;
   isReviewsEnabled: boolean;
-  trustBadges: StoreTrustBadge[];
 }
 
 const StoreCtx = createContext<StoreData | null>(null);

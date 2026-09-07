@@ -1181,7 +1181,13 @@ public class AccountingService : IAccountingService
         var store = await _context.Stores
             .Include(s => s.Package)
             .FirstOrDefaultAsync(s => s.Id == storeId);
-        return EnrichInvoiceWithStore(MapInvoiceToDto(invoice), store, zatcaEnabled: store?.Package?.HasZatcaInvoice ?? false);
+        var detail = EnrichInvoiceWithStore(MapInvoiceToDto(invoice), store, zatcaEnabled: store?.Package?.HasZatcaInvoice ?? false);
+
+        // ⚠️ إصلاح جذري: اللوجو قد يكون صورة Base64 ضخمة (رصدنا 2.7MB لمتجر واحد)
+        // فتصبح استجابة الفاتورة الواحدة ~2.7MB ويبطئ فتحها أو يتجاوز مهلة المتصفح.
+        // اللوجو مستخدم فقط في الطباعة/التصدير — يُزال من الاستجابة ويُجلَب منفصلاً عند الحاجة.
+        detail.StoreLogo = null;
+        return detail;
     }
 
     private static InvoiceDto MapInvoiceToDto(Invoice inv, bool includeItems = true) => new InvoiceDto
@@ -1234,7 +1240,12 @@ public class AccountingService : IAccountingService
     private static InvoiceDto EnrichInvoiceWithStore(InvoiceDto dto, Store store, bool includeQr = true, bool zatcaEnabled = true)
     {
         dto.StoreName = store.StoreName;
-        dto.StoreLogo = store.Logo;
+        // ⚠️ إصلاح جذري لحجم استجابة قائمة الفواتير: اللوجو (قد يكون صورة Base64
+        // ضخمة — رصدنا لوجو ~2.7MB لمتجر واحد) كان يُضمَّن في كل فاتورة داخل القائمة
+        // فتصبح الاستجابة عشرات الميغا ويتجاوز المتصفح الـ timeout. اللوجو يُضمَّن
+        // فقط في القوائم الخفيفة (includeQr=false) — ويبقى في التفاصيل/الطباعة.
+        if (includeQr)
+            dto.StoreLogo = store.Logo;
         dto.ContactPhone = store.ContactPhone;
         dto.ContactEmail = store.ContactEmail;
         dto.ContactAddress = store.ContactAddress;
@@ -1251,13 +1262,20 @@ public class AccountingService : IAccountingService
         {
             if (string.IsNullOrWhiteSpace(dto.QrBase64))
             {
-                var dateTime = dto.InvoiceDate.ToDateTime(TimeOnly.MinValue);
-                dto.QrBase64 = ZatcaQrHelper.BuildQrBase64(
-                    store.StoreName,
-                    store.VatNumber,
-                    dateTime,
-                    dto.TotalAmount,
-                    dto.TaxAmount);
+                try
+                {
+                    var dateTime = dto.InvoiceDate.ToDateTime(TimeOnly.MinValue);
+                    dto.QrBase64 = ZatcaQrHelper.BuildQrBase64(
+                        store.StoreName,
+                        store.VatNumber,
+                        dateTime,
+                        dto.TotalAmount,
+                        dto.TaxAmount);
+                }
+                catch
+                {
+                    // تجاهل فشل توليد QR — لا يمنع عرض الفاتورة
+                }
             }
         }
 

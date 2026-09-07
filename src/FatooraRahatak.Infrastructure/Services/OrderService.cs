@@ -27,8 +27,9 @@ public class OrderService : IOrderService
     private readonly IOrderStockService _orderStockService;
     private readonly IConfiguration _config;
     private readonly IConversionTrackingService _conversionTrackingService;
+    private readonly IEmailService _emailService;
 
-    public OrderService(AppDbContext context, INotificationService notificationService, ICustomerNotificationService customerNotificationService, IAccountingService accountingService, IPaymentService paymentService, IOrderStockService orderStockService, IConfiguration config, IConversionTrackingService conversionTrackingService)
+    public OrderService(AppDbContext context, INotificationService notificationService, ICustomerNotificationService customerNotificationService, IAccountingService accountingService, IPaymentService paymentService, IOrderStockService orderStockService, IConfiguration config, IConversionTrackingService conversionTrackingService, IEmailService emailService)
     {
         _context = context;
         _notificationService = notificationService;
@@ -38,6 +39,7 @@ public class OrderService : IOrderService
         _orderStockService = orderStockService;
         _config = config;
         _conversionTrackingService = conversionTrackingService;
+        _emailService = emailService;
     }
 
     public async Task<OrderConfirmationDto> CheckoutAsync(string slug, long? customerId, CheckoutRequestDto dto)
@@ -910,6 +912,31 @@ public class OrderService : IOrderService
                 $"تم استلام طلب إرجاع للطلب رقم {order.OrderNumber}",
                 NotificationType.OrderReturned,
                 $"/dashboard/orders/returns");
+        }
+        catch { }
+
+        // إشعار العميل بتأكيد استلام طلب الإرجاع (بريد إلكتروني بالقالب الموحد)
+        try
+        {
+            if (store.CustomerNotificationEmail)
+            {
+                string? customerEmail = null;
+                if (order.CustomerId != null)
+                {
+                    var cust = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == order.CustomerId);
+                    customerEmail = cust?.Email;
+                }
+                else
+                {
+                    customerEmail = order.GuestEmail;
+                }
+
+                if (!string.IsNullOrWhiteSpace(customerEmail) && _emailService.IsConfigured())
+                {
+                    var (subj, msg) = EmailMessageFactory.ReturnRequestSubmitted(store, order, dto.Reason);
+                    await _emailService.SendTemplatedEmailAsync(customerEmail, subj, msg);
+                }
+            }
         }
         catch { }
     }

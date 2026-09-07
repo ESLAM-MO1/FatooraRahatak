@@ -87,7 +87,12 @@ export default function TransfersPage() {
 
       <div className="card overflow-hidden">
         {transfers.length === 0 ? (
-          <p className="p-6 text-[var(--sub)] text-sm">{t("transfers.noResults")}</p>
+          <div className="p-6 text-center">
+            <p className="text-[var(--sub)] text-sm mb-4">{t("transfers.noResults")}</p>
+            <a href="/dashboard/inventory?tab=transfer" className="btn btn-primary">
+              + {t("transfers.addTransfer")}
+            </a>
+          </div>
         ) : (
           <>
           <div className="overflow-x-auto">

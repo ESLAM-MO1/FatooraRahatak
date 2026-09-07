@@ -387,7 +387,6 @@ public class StoreService : IStoreService
             IsCouponsEnabled = store.IsCouponsEnabled,
             CustomerNotificationEmail = store.CustomerNotificationEmail,
             CustomerNotificationWhatsapp = store.CustomerNotificationWhatsapp,
-            TrustBadgesJson = store.TrustBadgesJson,
             ReturnPolicyDays = store.ReturnPolicyDays,
             FreeShippingThreshold = store.FreeShippingThreshold,
             ShippingDiscountPercent = store.ShippingDiscountPercent,
@@ -606,7 +605,6 @@ public class StoreService : IStoreService
         store.IsCouponsEnabled = dto.IsCouponsEnabled;
         store.CustomerNotificationEmail = dto.CustomerNotificationEmail;
         store.CustomerNotificationWhatsapp = dto.CustomerNotificationWhatsapp;
-        store.TrustBadgesJson = dto.TrustBadgesJson;
         store.ReturnPolicyDays = dto.ReturnPolicyDays;
         await _context.SaveChangesAsync();
 

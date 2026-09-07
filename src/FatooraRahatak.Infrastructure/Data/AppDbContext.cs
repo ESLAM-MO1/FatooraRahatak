@@ -137,6 +137,7 @@ public class AppDbContext : DbContext
     public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();
     public DbSet<ZatcaCredential> ZatcaCredentials => Set<ZatcaCredential>();
     public DbSet<PlatformIntegration> PlatformIntegrations => Set<PlatformIntegration>();
+    public DbSet<EmailNotificationLog> EmailNotificationLogs => Set<EmailNotificationLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -157,6 +158,9 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Permission>()
             .HasIndex(p => p.PermissionCode).IsUnique();
+
+        modelBuilder.Entity<EmailNotificationLog>()
+            .HasIndex(e => e.NotificationKey);
 
         modelBuilder.Entity<Store>()
             .HasOne(s => s.Owner)

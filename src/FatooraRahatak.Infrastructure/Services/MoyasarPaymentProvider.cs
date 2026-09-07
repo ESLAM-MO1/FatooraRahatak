@@ -17,8 +17,19 @@ public class MoyasarPaymentProvider
 
     public MoyasarPaymentProvider(IConfiguration configuration, HttpClient httpClient, ILogger<MoyasarPaymentProvider> logger)
     {
-        _publicKey = configuration["Moyasar:PublicKey"] ?? "";
-        _secretKey = configuration["Moyasar:SecretKey"] ?? "";
+        // ⚠️ الأولوية: Environment Variable → appsettings.json
+        // MOYASAR_PUBLISHABLE_KEY و MOYASAR_SECRET_KEY هما الاسمين القياسيين اللي
+        // بتستخدمهم البوابة (publishable key + secret key). لو مضبوطين في الـ env
+        // ياخد منهم، وإلا ياخد من appsettings.json (Moyasar:PublicKey / Moyasar:SecretKey).
+        var envPublishable = Environment.GetEnvironmentVariable("MOYASAR_PUBLISHABLE_KEY");
+        var envSecret = Environment.GetEnvironmentVariable("MOYASAR_SECRET_KEY");
+
+        _publicKey = !string.IsNullOrWhiteSpace(envPublishable)
+            ? envPublishable
+            : (configuration["Moyasar:PublicKey"] ?? "");
+        _secretKey = !string.IsNullOrWhiteSpace(envSecret)
+            ? envSecret
+            : (configuration["Moyasar:SecretKey"] ?? "");
         _baseUrl = configuration["Moyasar:BaseUrl"] ?? "https://api.moyasar.com/v1";
         _httpClient = httpClient;
         _logger = logger;

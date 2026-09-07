@@ -19,12 +19,11 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [customer, setCustomer] = useState<QuickLoginCustomer | null>(() => getQuickCustomer(slug));
-  const [step, setStep] = useState<"phone" | "code" | "done">("phone");
-  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<"email" | "code" | "done">("email");
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [devCode, setDevCode] = useState("");
   const [maskedContact, setMaskedContact] = useState("");
 
   const applyCustomer = (c: QuickLoginCustomer) => {
@@ -60,14 +59,13 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
       const res = await fetch(`${API_BASE}/public/stores/${slug}/quick-login/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data?.message || t("storefront.quickLoginError"));
         return;
       }
-      setDevCode(data?.data?.devCode || "");
       setMaskedContact(data?.data?.maskedContact || "");
       setStep("code");
     } catch (err: unknown) {
@@ -86,7 +84,7 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
       const res = await fetch(`${API_BASE}/public/stores/${slug}/quick-login/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code }),
+        body: JSON.stringify({ email, code }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -112,10 +110,9 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
 
   const openModal = () => {
     setError("");
-    setStep(customer ? "done" : "phone");
-    setPhone("");
+    setStep(customer ? "done" : "email");
+    setEmail("");
     setCode("");
-    setDevCode("");
     setOpen(true);
     if (customer) {
       refreshFromServer();
@@ -149,17 +146,17 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
               <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 text-[20px] leading-none w-9 h-9 flex items-center justify-center rounded-full">×</button>
             </div>
 
-            {step === "phone" && (
+            {step === "email" && (
               <form onSubmit={handleSend} className="space-y-4">
-                <p className="text-[13px] text-gray-500">{t("storefront.quickLoginPhoneDesc")}</p>
+                <p className="text-[13px] text-gray-500">{t("storefront.quickLoginEmailDesc")}</p>
                 <div>
-                  <label className="block text-[12px] font-bold mb-1" style={{ color: "#0F172A" }}>{t("storefront.quickLoginPhone")}</label>
+                  <label className="block text-[12px] font-bold mb-1" style={{ color: "#0F172A" }}>{t("storefront.quickLoginEmail")}</label>
                   <input
-                    type="tel"
+                    type="email"
                     dir="ltr"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+966 5XXXXXXXX"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
                     required
                     className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -188,16 +185,11 @@ export default function QuickLoginButton({ slug, darkHeader = false, headerLinkC
                     className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-[14px] outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                {devCode && (
-                  <p className="rounded-lg px-3 py-2 text-[12px] bg-amber-50 border border-amber-200 text-amber-800">
-                    {t("storefront.quickLoginDevCode")}: <b dir="ltr">{devCode}</b>
-                  </p>
-                )}
                 {error && <p className="text-[12px] text-red-600">{error}</p>}
                 <button type="submit" disabled={loading} className="w-full rounded-lg py-2.5 text-[14px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60" style={{ background: "#1D4ED8" }}>
                   {loading ? t("storefront.quickLoginVerifying") : t("storefront.quickLoginVerify")}
                 </button>
-                <button type="button" onClick={() => setStep("phone")} className="w-full text-center text-[12px] font-medium text-gray-500 hover:text-gray-700">
+                <button type="button" onClick={() => setStep("email")} className="w-full text-center text-[12px] font-medium text-gray-500 hover:text-gray-700">
                   {t("storefront.quickLoginBack")}
                 </button>
               </form>

@@ -106,6 +106,13 @@ export default function InventoryPage() {
   }, [fetchStock, t]);
 
   useEffect(() => {
+    const tabParam = new URLSearchParams(window.location.search).get("tab");
+    if (tabParam === "transfer" || tabParam === "damage" || tabParam === "stock") {
+      setActiveTab(tabParam);
+    }
+  }, []);
+
+  useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
 

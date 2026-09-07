@@ -72,7 +72,12 @@ export default function DamagesPage() {
 
       <div className="card overflow-hidden">
         {damages.length === 0 ? (
-          <p className="p-6 text-[var(--sub)] text-sm">{t("damages.noResults")}</p>
+          <div className="p-6 text-center">
+            <p className="text-[var(--sub)] text-sm mb-4">{t("damages.noResults")}</p>
+            <a href="/dashboard/inventory?tab=damage" className="btn btn-primary">
+              + {t("damages.addDamage")}
+            </a>
+          </div>
         ) : (
           <>
           <div className="overflow-x-auto">

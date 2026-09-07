@@ -5,7 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { getUserType } from "@/lib/auth";
 import Icon from "@/components/Icon";
-import KycAlert from "@/components/KycAlert";
+import OnboardingWizard from "@/components/OnboardingWizard";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 
@@ -197,14 +197,7 @@ export default function DashboardHome() {
       ) : (
         <>
           {kyc && !kyc.isApproved && (
-            <KycAlert
-              message={t("dashboard.kycRequired")}
-              links={[
-                { label: t("nav.merchantAccount"), href: "/dashboard/merchant-account" },
-                { label: t("nav.verification"), href: "/dashboard/merchant-verification" },
-              ]}
-              className="mb-6"
-            />
+            <OnboardingWizard className="mb-6" />
           )}
 
           {error && (

@@ -58,8 +58,6 @@ public class PublicStoreService : IPublicStoreService
             })
             .ToListAsync();
 
-        var trustBadges = ParseTrustBadges(store.TrustBadgesJson);
-
         return new PublicStoreDto
         {
             Id = store.Id,
@@ -99,7 +97,6 @@ public class PublicStoreService : IPublicStoreService
             CustomerNotificationEmail = store.CustomerNotificationEmail,
             CustomerNotificationWhatsapp = store.CustomerNotificationWhatsapp,
             IsCardPaymentsEnabled = paymentMethods.Any(m => m.Type == PaymentMethodType.CreditCard.ToString()),
-            TrustBadges = trustBadges,
             ShippingMethods = shippingMethods,
             PaymentMethods = paymentMethods,
             ShippingCompanies = shippingCompanies
@@ -127,23 +124,6 @@ public class PublicStoreService : IPublicStoreService
                 Position = b.Position.ToString()
             })
             .ToListAsync();
-    }
-
-    private static List<PublicTrustBadgeDto> ParseTrustBadges(string? json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-            return new List<PublicTrustBadgeDto>();
-
-        try
-        {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var badges = JsonSerializer.Deserialize<List<PublicTrustBadgeDto>>(json, options);
-            return badges ?? new List<PublicTrustBadgeDto>();
-        }
-        catch
-        {
-            return new List<PublicTrustBadgeDto>();
-        }
     }
 
     public async Task<List<PublicCategoryDto>?> GetCategoriesAsync(string slug)

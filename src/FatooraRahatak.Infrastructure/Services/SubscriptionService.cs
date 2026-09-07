@@ -12,6 +12,7 @@ public class SubscriptionService : ISubscriptionService
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IEmailService _emailService;
 
     private static readonly string[] PackageOrder = { "المجانية", "الإنطلاق", "التوسع", "الريادة" };
 
@@ -31,10 +32,11 @@ public class SubscriptionService : ISubscriptionService
         return monthlyPrice * months * (1 - discount);
     }
 
-    public SubscriptionService(AppDbContext context, INotificationService notificationService)
+    public SubscriptionService(AppDbContext context, INotificationService notificationService, IEmailService emailService)
     {
         _context = context;
         _notificationService = notificationService;
+        _emailService = emailService;
     }
 
     public async Task<SubscriptionStatusDto> GetStatusAsync(long storeId)
@@ -484,6 +486,21 @@ public class SubscriptionService : ISubscriptionService
                 $"تم تفعيل باقتك \"{subscription.Package?.PackageName ?? ""}\" بنجاح. اشتراكك الجديد ساري حتى {subscription.EndDate:yyyy-MM-dd}",
                 NotificationType.PackageActivated,
                 "/dashboard/subscription");
+        }
+        catch { }
+
+        // إرسال بريد تأكيد تفعيل الباقة (قالب موحد) لصاحب المتجر
+        try
+        {
+            if (_emailService.IsConfigured())
+            {
+                var owner = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == store.OwnerUserId);
+                if (owner != null && !string.IsNullOrWhiteSpace(owner.Email) && subscription.Package != null)
+                {
+                    var (subj, msg) = EmailMessageFactory.SubscriptionActivated(store, subscription, subscription.Package);
+                    await _emailService.SendTemplatedEmailAsync(owner.Email, subj, msg);
+                }
+            }
         }
         catch { }
     }

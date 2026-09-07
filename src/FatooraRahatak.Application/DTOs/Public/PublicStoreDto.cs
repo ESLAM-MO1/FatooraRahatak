@@ -39,7 +39,6 @@ public class PublicStoreDto
     public bool CustomerNotificationEmail { get; set; } = false;
     public bool CustomerNotificationWhatsapp { get; set; } = false;
     public bool IsCardPaymentsEnabled { get; set; } = false;
-    public List<PublicTrustBadgeDto> TrustBadges { get; set; } = new();
     public List<PublicShippingMethodDto> ShippingMethods { get; set; } = new();
     public List<PublicPaymentMethodDto> PaymentMethods { get; set; } = new();
     public List<PublicShippingCompanyDto> ShippingCompanies { get; set; } = new();
@@ -51,13 +50,6 @@ public class PublicShippingCompanyDto
     public string Name { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
     public bool IsDefault { get; set; }
-}
-
-public class PublicTrustBadgeDto
-{
-    public string Icon { get; set; } = string.Empty;
-    public string Text { get; set; } = string.Empty;
-    public bool IsEnabled { get; set; } = true;
 }
 
 public class PublicStorePageDto

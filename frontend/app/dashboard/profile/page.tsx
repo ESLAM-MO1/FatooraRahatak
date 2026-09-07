@@ -94,10 +94,8 @@ export default function ProfilePage() {
       setSaving(true);
       try {
         const res = await api.post("/auth/send-profile-otp");
-        const code = res.data?.code || "";
-        setOtpCode(code);
         setOtpStep(true);
-        setMessage({ type: "success", text: `${res.data?.message || t("profile.otpSent")}${code ? ` — ${code}` : ""}` });
+        setMessage({ type: "success", text: res.data?.message || t("profile.otpSent") });
       } catch (err) {
         setMessage({ type: "error", text: errMessage(err, t("profile.saveError")) });
       } finally {

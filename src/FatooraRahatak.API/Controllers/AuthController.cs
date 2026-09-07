@@ -107,12 +107,11 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var code = await _authService.ForgotPasswordAsync(dto);
+            await _authService.ForgotPasswordAsync(dto);
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز استرجاع كلمة المرور إلى بريدك الإلكتروني",
-                code
+                message = "تم إرسال رمز استرجاع كلمة المرور إلى بريدك الإلكتروني"
             });
         }
         catch (InvalidOperationException ex)
@@ -221,12 +220,11 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var code = await _authService.SendProfileUpdateCodeAsync(GetUserId());
+            await _authService.SendProfileUpdateCodeAsync(GetUserId());
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
-                code
+                message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني"
             });
         }
         catch (InvalidOperationException ex)
@@ -241,12 +239,11 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var code = await _authService.SendPasswordChangeCodeAsync(GetUserId());
+            await _authService.SendPasswordChangeCodeAsync(GetUserId());
             return Ok(new
             {
                 success = true,
-                message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني",
-                code
+                message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني"
             });
         }
         catch (InvalidOperationException ex)

@@ -58,7 +58,6 @@ public class Store : BaseEntity
     public bool IsCouponsEnabled { get; set; } = true;
     public bool CustomerNotificationEmail { get; set; } = false;
     public bool CustomerNotificationWhatsapp { get; set; } = false;
-    public string? TrustBadgesJson { get; set; } // JSON array of { icon, text, isEnabled }
     public int? ReturnPolicyDays { get; set; }
     // خصومات الشحن (HasShippingDiscounts): حد شحن مجاني + خصم نسبة على تكلفة الشحن
     public decimal? FreeShippingThreshold { get; set; }

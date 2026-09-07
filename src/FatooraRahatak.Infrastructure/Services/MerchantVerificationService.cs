@@ -292,7 +292,8 @@ public class MerchantVerificationService : IMerchantVerificationService
         {
             try
             {
-                await _emailService.SendEmailAsync(ownerEmail, titleAr, messageAr);
+                var (subj, msg) = EmailMessageFactory.MerchantDocumentDecision(verification.Store.StoreName, DocumentTypeLabel(doc.DocumentType), dto.Approve, dto.RejectReason);
+                await _emailService.SendTemplatedEmailAsync(ownerEmail, subj, msg);
             }
             catch
             {

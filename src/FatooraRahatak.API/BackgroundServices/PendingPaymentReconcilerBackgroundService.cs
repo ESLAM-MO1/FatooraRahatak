@@ -53,11 +53,17 @@ public class PendingPaymentReconcilerBackgroundService : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var paymentService = scope.ServiceProvider.GetRequiredService<IPaymentService>();
 
-        // كل المدفوعات المعلّقة (لم تُفعَّل بعد) التي لها معرّف فاتورة/دفع لدى موياسر
+        // كل المدفوعات المعلّقة (لم تُفعَّل بعد) التي لها معرّف فاتورة/دفع لدى موياسر.
+        // ⚠️ إصلاح جذري: نستعلم فقط عن الدفعات المعلّقة الحديثة (آخر 24 ساعة).
+        // الدفعات المعلّقة القديمة (أيام/أسابيع) هي دفعات متروكة/تجريبية لن تُسدَّد
+        // أبدًا، ومع ذلك كانت تُستعلم عنها كل 15 ثانية فتُبقي اتصال DB + HTTP طويل
+        // مفتوحًا وتؤخّر كل استعلامات الداشبورد (فواتير، طلبات، ...) حتى Timeout.
+        var cutoffDate = DateTime.UtcNow.AddHours(-24);
         var pendingPayments = await db.Payments
             .Where(p => p.Status == PaymentStatus.Pending
                      && p.ProviderType == PaymentProviderType.Moyasar
-                     && !string.IsNullOrWhiteSpace(p.ProviderPaymentId))
+                     && !string.IsNullOrWhiteSpace(p.ProviderPaymentId)
+                     && p.CreatedAt >= cutoffDate)
             .OrderBy(p => p.CreatedAt)
             .Take(25)
             .ToListAsync(ct);

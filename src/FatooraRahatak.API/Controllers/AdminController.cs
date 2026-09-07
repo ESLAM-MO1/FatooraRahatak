@@ -8,6 +8,9 @@ using FatooraRahatak.Application.DTOs.Settlement;
 using FatooraRahatak.Application.DTOs.Referral;
 using FatooraRahatak.Application.DTOs.Merchant;
 using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.Infrastructure.Services;
+using Microsoft.EntityFrameworkCore;
 namespace FatooraRahatak.API.Controllers;[ApiController]
 [Route("api/v1/admin")]
 [Authorize]
@@ -24,7 +27,9 @@ public class AdminController : ControllerBase
     private readonly IMerchantVerificationService _verificationService;
     private readonly IMerchantAccountService _merchantAccountService;
     private readonly IReportScheduleService _reportScheduleService;
-    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService, IMerchantAccountService merchantAccountService, IReportScheduleService reportScheduleService)
+    private readonly IEmailService _emailService;
+    private readonly AppDbContext _context;
+    public AdminController(IAdminService adminService, ISiteService siteService, IReferralService referralService, ISiteMenuService siteMenuService, IDashboardSectionService dashboardSectionService, ICareerService careerService, IAcademyService academyService, IStoreDesignService designService, IMerchantVerificationService verificationService, IMerchantAccountService merchantAccountService, IReportScheduleService reportScheduleService, IEmailService emailService, AppDbContext context)
     {
         _adminService = adminService;
         _siteService = siteService;
@@ -37,6 +42,8 @@ public class AdminController : ControllerBase
         _verificationService = verificationService;
         _merchantAccountService = merchantAccountService;
         _reportScheduleService = reportScheduleService;
+        _emailService = emailService;
+        _context = context;
     }
     private bool IsSuperAdmin()
     {
@@ -1297,5 +1304,158 @@ public class AdminController : ControllerBase
             return Ok(new { success = true, message = "تم تحديث الحالة" });
         }
         catch (InvalidOperationException ex) { return NotFound(new { success = false, message = ex.Message }); }
+    }
+    [HttpPost("test-email")]
+    public async Task<IActionResult> TestEmail([FromBody] TestEmailDto dto)
+    {
+        if (!_emailService.IsConfigured())
+            return BadRequest("خدمة الإيميل غير مفعّلة");
+        if (string.IsNullOrWhiteSpace(dto.Email))
+            return BadRequest("لازم تحدد الإيميل");
+
+        (string Subject, string Body) message;
+        var fakeName = "مستخدم تجريبي";
+        var fakeCode = "123456";
+
+        switch (dto.Type?.ToLower())
+        {
+            case "accountverification":
+                message = EmailMessageFactory.AccountVerification(fakeName, fakeCode);
+                break;
+            case "welcome":
+                message = EmailMessageFactory.Welcome(fakeName);
+                break;
+            case "googlewelcome":
+                message = EmailMessageFactory.GoogleWelcome(fakeName);
+                break;
+            case "passwordreset":
+                message = EmailMessageFactory.PasswordReset(fakeName, fakeCode);
+                break;
+            case "profileupdateverification":
+                message = EmailMessageFactory.ProfileUpdateVerification(fakeName, fakeCode);
+                break;
+            case "passwordchangeverification":
+                message = EmailMessageFactory.PasswordChangeVerification(fakeName, fakeCode);
+                break;
+            case "quickloginotp":
+                message = EmailMessageFactory.QuickLoginOtp("متجر تجريبي", fakeCode);
+                break;
+            case "testnotification":
+                message = EmailMessageFactory.TestNotification("متجر تجريبي");
+                break;
+            case "merchantdocumentdecision":
+                message = EmailMessageFactory.MerchantDocumentDecision("متجر تجريبي", "السجل التجاري", true, null);
+                break;
+
+            case "orderconfirmation":
+            case "orderstatusupdate":
+            case "returnrequestsubmitted":
+            case "returnrequestdecision":
+            case "invoicepaid":
+            case "subscriptionexpiring":
+            case "subscriptionactivated":
+            case "subscriptionusagelimit":
+            case "subscriptionrenewalfailed":
+                return await SendComplexTestEmailAsync(dto);
+
+            default:
+                return BadRequest("نوع الرسالة غير معروف: " + dto.Type);
+        }
+
+        await _emailService.SendTemplatedEmailAsync(dto.Email, message.Subject, message.Body);
+        return Ok(new { sent = true, to = dto.Email, type = dto.Type });
+    }
+
+    private async Task<IActionResult> SendComplexTestEmailAsync(TestEmailDto dto)
+    {
+        var store = await _context.Stores.FirstOrDefaultAsync();
+        if (store == null)
+            return BadRequest("لا يوجد أي متجر في قاعدة البيانات لاستخدامه كبيانات تجريبية");
+
+        (string Subject, string Body) message;
+
+        switch (dto.Type!.ToLower())
+        {
+            case "orderconfirmation":
+                {
+                    var order = await _context.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.OrderConfirmation(store, order, order.Items.ToList());
+                    break;
+                }
+            case "orderstatusupdate":
+                {
+                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.OrderStatusUpdate(store, order, "تم الشحن", "#C9A227");
+                    break;
+                }
+            case "returnrequestsubmitted":
+                {
+                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.ReturnRequestSubmitted(store, order, "سبب تجريبي للإرجاع");
+                    break;
+                }
+            case "returnrequestdecision":
+                {
+                    var order = await _context.Orders.FirstOrDefaultAsync(o => o.StoreId == store.Id);
+                    if (order == null) return BadRequest("لا يوجد طلب متاح للاختبار");
+                    message = EmailMessageFactory.ReturnRequestDecision(store, order, true, "تمت الموافقة");
+                    break;
+                }
+            case "invoicepaid":
+                {
+                    var invoice = await _context.Invoices.FirstOrDefaultAsync(i => i.StoreId == store.Id);
+                    if (invoice == null) return BadRequest("لا توجد فاتورة متاحة للاختبار");
+                    message = EmailMessageFactory.InvoicePaid(store, invoice);
+                    break;
+                }
+            case "subscriptionexpiring":
+                {
+                    var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.StoreId == store.Id);
+                    if (sub == null) return BadRequest("لا يوجد اشتراك متاح للاختبار");
+                    var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == sub.PackageId);
+                    if (package == null) return BadRequest("لا توجد باقة مرتبطة");
+                    message = EmailMessageFactory.SubscriptionExpiring(store, sub, package, 3);
+                    break;
+                }
+            case "subscriptionactivated":
+                {
+                    var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.StoreId == store.Id);
+                    if (sub == null) return BadRequest("لا يوجد اشتراك متاح للاختبار");
+                    var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == sub.PackageId);
+                    if (package == null) return BadRequest("لا توجد باقة مرتبطة");
+                    message = EmailMessageFactory.SubscriptionActivated(store, sub, package);
+                    break;
+                }
+            case "subscriptionusagelimit":
+                {
+                    var package = await _context.Packages.FirstOrDefaultAsync();
+                    if (package == null) return BadRequest("لا توجد باقة متاحة للاختبار");
+                    message = EmailMessageFactory.SubscriptionUsageLimit(store, package, "عدد الفواتير", 90, 100, 90m);
+                    break;
+                }
+            case "subscriptionrenewalfailed":
+                {
+                    var sub = await _context.Subscriptions.FirstOrDefaultAsync(s => s.StoreId == store.Id);
+                    if (sub == null) return BadRequest("لا يوجد اشتراك متاح للاختبار");
+                    var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == sub.PackageId);
+                    if (package == null) return BadRequest("لا توجد باقة مرتبطة");
+                    message = EmailMessageFactory.SubscriptionRenewalFailed(store, sub, package, "فشل الدفع");
+                    break;
+                }
+            default:
+                return BadRequest("نوع غير مدعوم");
+        }
+
+        await _emailService.SendTemplatedEmailAsync(dto.Email, message.Subject, message.Body);
+        return Ok(new { sent = true, to = dto.Email, type = dto.Type, note = "استخدمت بيانات حقيقية من قاعدة البيانات" });
+    }
+
+    public class TestEmailDto
+    {
+        public string Email { get; set; } = "";
+        public string Type { get; set; } = "";
     }
 }

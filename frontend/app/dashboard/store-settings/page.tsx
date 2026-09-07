@@ -74,7 +74,6 @@ interface StoreData {
   isCouponsEnabled: boolean;
   customerNotificationEmail: boolean;
   customerNotificationWhatsapp: boolean;
-  trustBadgesJson: string | null;
   returnPolicyDays: number | null;
   menuConfigJson: string | null;
   storePagesJson: string | null;
@@ -540,10 +539,7 @@ export default function StoreSettingsPage() {
     customerNotificationWhatsapp: false,
     returnPolicyDays: null as number | null,
   });
-  const [trustBadges, setTrustBadges] = useState<TrustBadge[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [notifTesting, setNotifTesting] = useState(false);
-  const [notifTestSuccess, setNotifTestSuccess] = useState("");
 
   const [pageEditable, setPageEditable] = useState<PageEditableItem[]>([]);
   const [openPageKey, setOpenPageKey] = useState<string | null>(null);
@@ -594,7 +590,6 @@ export default function StoreSettingsPage() {
         customerNotificationWhatsapp: d.customerNotificationWhatsapp ?? false,
         returnPolicyDays: d.returnPolicyDays ?? null,
       });
-      setTrustBadges(parseTrustBadges(d.trustBadgesJson));
       const pagesCfg = parseStorePages(d.storePagesJson);
       setPageEditable(
         PAGE_KEYS.map((key) => {
@@ -809,9 +804,7 @@ export default function StoreSettingsPage() {
     setAdvancedSuccess("");
     setSettingsSaving(true);
     try {
-      const cleanBadges = trustBadges.filter((b) => b.icon.trim() !== "" || b.text.trim() !== "");
-      const res = await api.put("/stores/settings", { ...advancedSettings, trustBadgesJson: JSON.stringify(cleanBadges) });
-      setTrustBadges(cleanBadges);
+      const res = await api.put("/stores/settings", { ...advancedSettings });
       setAdvancedSuccess(res.data.message);
     } catch (err: any) {
       setError(err.response?.data?.message || t("storeSettings.genericError"));
@@ -819,35 +812,6 @@ export default function StoreSettingsPage() {
       setSettingsSaving(false);
     }
   };
-
-  const handleSendTestNotification = async () => {
-    setError("");
-    setNotifTestSuccess("");
-    setNotifTesting(true);
-    try {
-      const res = await api.post("/stores/send-test-notification");
-      setNotifTestSuccess(res.data.message);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("storeSettings.testNotificationError"));
-    } finally {
-      setNotifTesting(false);
-    }
-  };
-
-  const parseTrustBadges = (json: string | null): TrustBadge[] => {
-    if (!json) return [];
-    try {
-      const parsed = JSON.parse(json);
-      if (Array.isArray(parsed)) return parsed as TrustBadge[];
-    } catch {
-      /* ignore */
-    }
-    return [];
-  };
-
-  const addBadge = () => setTrustBadges((prev) => [...prev, { icon: "", text: "", isEnabled: true }]);
-  const updateBadge = (idx: number, patch: Partial<TrustBadge>) => setTrustBadges((prev) => prev.map((b, i) => (i === idx ? { ...b, ...patch } : b)));
-  const removeBadge = (idx: number) => setTrustBadges((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSaveReturnPolicy = async (e?: React.FormEvent) => {
     e?.preventDefault?.();
@@ -1724,17 +1688,6 @@ export default function StoreSettingsPage() {
                     <ToggleSwitch enabled={advancedSettings.customerNotificationWhatsapp} onToggle={() => setAdvancedSettings((s) => ({ ...s, customerNotificationWhatsapp: !s.customerNotificationWhatsapp }))} />
                   </div>
                 </div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3 bg-blue-50 rounded-2xl px-4 py-3 border border-blue-100">
-                  <div className="flex-1">
-                    <p className="text-[12px] font-bold text-[var(--ink)]">{t("storeSettings.testNotificationTitle")}</p>
-                    <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.testNotificationDesc")}</p>
-                  </div>
-                  <button type="button" onClick={handleSendTestNotification} disabled={notifTesting} className="btn btn-outline btn-sm shrink-0">
-                    {notifTesting ? t("storeSettings.sending") : t("storeSettings.sendTestNotification")}
-                  </button>
-                </div>
-                <SuccessToast message={notifTestSuccess} fixed className="mt-3" />
-                <p className="text-[11px] text-amber-700 mt-2">{t("storeSettings.notificationNote")}</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1756,40 +1709,6 @@ export default function StoreSettingsPage() {
                       placeholder="--"
                     />
                   </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-100 pt-5">
-                <p className="text-[13px] font-bold text-[var(--ink)]">{t("storeSettings.trustBadges")}</p>
-                <p className="text-[11px] text-[var(--sub)] mb-3">{t("storeSettings.trustBadgesDesc")}</p>
-                <div className="space-y-2">
-                  {trustBadges.map((badge, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-                      <input
-                        type="text"
-                        value={badge.icon}
-                        onChange={(e) => updateBadge(idx, { icon: e.target.value })}
-                        placeholder={t("storeSettings.trustBadgeIconPlaceholder")}
-                        className="w-14 px-2 py-1.5 rounded-md border border-gray-200 text-[13px] text-center bg-white focus:outline-none focus:ring-1 focus:ring-[var(--blue)]"
-                        dir="ltr"
-                      />
-                      <input
-                        type="text"
-                        value={badge.text}
-                        onChange={(e) => updateBadge(idx, { text: e.target.value })}
-                        placeholder={t("storeSettings.trustBadgeTextPlaceholder")}
-                        className="flex-1 px-3 py-1.5 rounded-md border border-gray-200 text-[13px] bg-white focus:outline-none focus:ring-1 focus:ring-[var(--blue)]"
-                      />
-                      <span className="text-[11px] text-[var(--sub)] shrink-0">{t("storeSettings.trustBadgeEnabled")}</span>
-                      <ToggleSwitch enabled={badge.isEnabled} onToggle={() => updateBadge(idx, { isEnabled: !badge.isEnabled })} />
-                      <button type="button" onClick={() => removeBadge(idx)} className="shrink-0 text-[12px] font-bold text-red-500 hover:text-red-600 px-1 py-1">
-                        {t("storeSettings.trustBadgeRemove")}
-                      </button>
-                    </div>
-                  ))}
-                  <button type="button" onClick={addBadge} className="btn btn-outline btn-sm">
-                    + {t("storeSettings.trustBadgeAdd")}
-                  </button>
                 </div>
               </div>
 

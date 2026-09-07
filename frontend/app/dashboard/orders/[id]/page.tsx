@@ -255,8 +255,8 @@ export default function OrderDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="card p-5">
           <h2 className="text-[14px] font-bold text-[var(--blue-deep)] mb-4">{t("orderDetail.customerInfo")}</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
-            <div className="col-span-2">
+          <div className="divide-y divide-[var(--border)]">
+            <div className="py-2.5">
               <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.name")}</p>
               <div className="flex items-center gap-2">
                 <span className="text-[var(--ink)] font-bold">{order.customerName}</span>
@@ -266,18 +266,18 @@ export default function OrderDetailPage() {
               </div>
             </div>
             {order.customerPhone && (
-              <div>
+              <div className="py-2.5">
                 <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.phone")}</p>
                 <p className="text-[var(--ink)] font-medium" dir="ltr">{order.customerPhone}</p>
               </div>
             )}
             {order.customerEmail && (
-              <div>
+              <div className="py-2.5">
                 <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.email")}</p>
                 <p className="text-[var(--ink)] font-medium" dir="ltr">{order.customerEmail}</p>
               </div>
             )}
-            <div className="col-span-2">
+            <div className="py-2.5">
               <p className="text-[var(--sub)] text-[12px] mb-1">{t("orderDetail.orderDate")}</p>
               <p className="text-[var(--ink)] font-medium">
                 {new Date(order.createdAt).toLocaleString("ar-SA-u-nu-latn")}

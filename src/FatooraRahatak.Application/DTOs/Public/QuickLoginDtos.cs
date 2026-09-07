@@ -2,12 +2,12 @@ namespace FatooraRahatak.Application.DTOs.Public;
 
 public class QuickLoginRequestDto
 {
-    public string Phone { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
 }
 
 public class QuickLoginVerifyDto
 {
-    public string Phone { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
     public string Code { get; set; } = string.Empty;
 }
 
@@ -18,7 +18,6 @@ public class QuickLoginSendResultDto
     public string? MaskedContact { get; set; }
     public bool CustomerFound { get; set; }
     public string? CustomerName { get; set; }
-    public string? DevCode { get; set; }
 }
 
 public class QuickLoginCustomerDto

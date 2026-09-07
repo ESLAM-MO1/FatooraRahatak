@@ -13,12 +13,11 @@ interface Props {
 
 export default function CustomerLoginCard({ slug, onLoggedIn }: Props) {
   const { t } = useTranslation();
-  const [step, setStep] = useState<"phone" | "code">("phone");
-  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [devCode, setDevCode] = useState("");
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,14 +27,13 @@ export default function CustomerLoginCard({ slug, onLoggedIn }: Props) {
       const res = await fetch(`${API_BASE}/public/stores/${slug}/quick-login/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data?.message || t("storefront.quickLoginError"));
         return;
       }
-      setDevCode(data?.data?.devCode || "");
       setStep("code");
     } catch {
       setError(t("storefront.quickLoginNetworkError"));
@@ -52,7 +50,7 @@ export default function CustomerLoginCard({ slug, onLoggedIn }: Props) {
       const res = await fetch(`${API_BASE}/public/stores/${slug}/quick-login/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code }),
+        body: JSON.stringify({ email, code }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -75,17 +73,17 @@ export default function CustomerLoginCard({ slug, onLoggedIn }: Props) {
       <h1 className="text-lg font-bold text-gray-900 mb-2">{t("storefront.myAccount")}</h1>
       <p className="text-sm text-gray-500 mb-6">{t("storefront.notLoggedInHint")}</p>
 
-      <form onSubmit={step === "phone" ? handleSend : handleVerify} className="space-y-3 text-left">
-        {step === "phone" ? (
+      <form onSubmit={step === "email" ? handleSend : handleVerify} className="space-y-3 text-left">
+        {step === "email" ? (
           <>
             <div>
-              <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("storefront.quickLoginPhone")}</label>
+              <label className="block text-[12px] font-bold text-gray-700 mb-1">{t("storefront.quickLoginEmail")}</label>
               <input
-                type="tel"
+                type="email"
                 dir="ltr"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+966 5XXXXXXXX"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
                 required
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -110,15 +108,10 @@ export default function CustomerLoginCard({ slug, onLoggedIn }: Props) {
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            {devCode && (
-              <p className="rounded-lg px-3 py-2 text-[12px] bg-amber-50 border border-amber-200 text-amber-800">
-                {t("storefront.quickLoginDevCode")}: <b dir="ltr">{devCode}</b>
-              </p>
-            )}
             <button type="submit" disabled={loading} className="w-full rounded-lg py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60">
               {loading ? t("storefront.quickLoginVerifying") : t("storefront.quickLoginVerify")}
             </button>
-            <button type="button" onClick={() => setStep("phone")} className="w-full text-center text-[12px] text-gray-500 hover:text-gray-700">
+            <button type="button" onClick={() => setStep("email")} className="w-full text-center text-[12px] text-gray-500 hover:text-gray-700">
               {t("storefront.quickLoginBack")}
             </button>
           </>

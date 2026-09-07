@@ -74,3 +74,5 @@ docs_gen/__pycache__/
 
 front_log.txt
 frontend/.next/
+src/FatooraRahatak.API/wwwroot/uploads/*
+!src/FatooraRahatak.API/wwwroot/uploads/.gitkeep

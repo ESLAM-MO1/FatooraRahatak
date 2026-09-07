@@ -30,8 +30,9 @@ public class PaymentService : IPaymentService
     private readonly INotificationService _notificationService;
     private readonly IConfiguration _config;
     private readonly ILogger<PaymentService> _logger;
+    private readonly IEmailService _emailService;
 
-    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config, ILogger<PaymentService> logger)
+    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config, ILogger<PaymentService> logger, IEmailService emailService)
     {
         _context = context;
         _provider = provider;
@@ -44,6 +45,7 @@ public class PaymentService : IPaymentService
         _notificationService = notificationService;
         _config = config;
         _logger = logger;
+        _emailService = emailService;
     }
 
     public async Task<CreatePaymentResult> CreatePaymentLinkAsync(CreatePaymentDto dto, long? storeId = null)
@@ -773,10 +775,28 @@ public class PaymentService : IPaymentService
         {
             if (payment.InvoiceId.HasValue)
             {
-                var invoice = await _context.Invoices.FindAsync(payment.InvoiceId.Value);
+                var invoice = await _context.Invoices
+                    .Include(i => i.Store)
+                    .Include(i => i.Customer)
+                    .FirstOrDefaultAsync(i => i.Id == payment.InvoiceId.Value);
                 if (invoice != null)
                 {
                     invoice.PaymentStatus = payment.Status;
+
+                    // إرسال بريد تأكيد الفاتورة للعميل بعد نجاح الدفع
+                    if (payment.Status == PaymentStatus.Paid && _emailService.IsConfigured())
+                    {
+                        try
+                        {
+                            var partyEmail = invoice.Customer?.Email;
+                            if (!string.IsNullOrWhiteSpace(partyEmail))
+                            {
+                                var (subj, msg) = EmailMessageFactory.InvoicePaid(invoice.Store, invoice);
+                                await _emailService.SendTemplatedEmailAsync(partyEmail, subj, msg);
+                            }
+                        }
+                        catch { }
+                    }
                 }
             }
 

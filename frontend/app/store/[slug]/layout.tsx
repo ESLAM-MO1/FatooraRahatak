@@ -11,12 +11,6 @@ import { parseMenuConfig, parseStorePages } from "@/lib/storePages";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
-export interface StoreTrustBadge {
-  icon: string;
-  text: string;
-  isEnabled: boolean;
-}
-
 export interface StoreTemplateProps {
   children: React.ReactNode;
   storeName: string;
@@ -44,7 +38,6 @@ export interface StoreTemplateProps {
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;
   isReviewsEnabled: boolean;
-  trustBadges: StoreTrustBadge[];
   menuConfigJson: string | null;
   storePagesJson: string | null;
 }
@@ -123,7 +116,6 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           paymentMethods: d.paymentMethods || [],
           isSearchEnabled: d.isSearchEnabled ?? true,
           isReviewsEnabled: d.isReviewsEnabled ?? false,
-          trustBadges: d.trustBadges || [],
           menuConfigJson: d.menuConfigJson || null,
           storePagesJson: d.storePagesJson || null,
         });
@@ -207,7 +199,6 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           paymentMethods={store.paymentMethods}
           isSearchEnabled={store.isSearchEnabled}
           isReviewsEnabled={store.isReviewsEnabled}
-          trustBadges={store.trustBadges}
           menuConfigJson={store.menuConfigJson}
           storePagesJson={store.storePagesJson}
         >

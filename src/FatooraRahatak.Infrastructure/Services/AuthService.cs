@@ -13,6 +13,7 @@ using FatooraRahatak.Domain.Entities.Users;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -24,8 +25,9 @@ public class AuthService : IAuthService
     private readonly IInvitationService _invitationService;
     private readonly IEmailService _emailService;
     private readonly IReferralService _referralService;
+    private readonly ILogger<AuthService> _logger;
 
-    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings, IConfiguration configuration, IInvitationService invitationService, IEmailService emailService, IReferralService referralService)
+    public AuthService(AppDbContext context, IOptions<JwtSettings> jwtSettings, IConfiguration configuration, IInvitationService invitationService, IEmailService emailService, IReferralService referralService, ILogger<AuthService> logger)
     {
         _context = context;
         _jwtSettings = jwtSettings.Value;
@@ -33,6 +35,7 @@ public class AuthService : IAuthService
         _invitationService = invitationService;
         _emailService = emailService;
         _referralService = referralService;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -89,34 +92,25 @@ public class AuthService : IAuthService
 
             await _context.SaveChangesAsync();
 
+            await transaction.CommitAsync();
+
+            // ⚠️ إصلاح جذري: إرسال البريد خارج المعاملة. كان الإرسال داخل المعاملة
+            // فيسبب خطأ "SqlTransaction has completed" عند أي تعارض مع اتصال DB،
+            // ويفشل التسجيل كاملاً أو يظهر server error. الآن نلتزم أولاً (المستخدم
+            // بيتسجل)، ثم نرسل الإيميل — فشل الإيميل لا يمنع التسجيل، والرسالة توصل فعلاً.
             if (emailConfigured)
             {
-                var subject = "تفعيل حسابك في فاتورة راحتك";
-                var body = $@"
-                    <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
-                        <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
-                        <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
-                        <p style='font-size:14px;color:#555'>رمز التفعيل الخاص بك هو:</p>
-                        <div style='text-align:center;margin:24px 0'>
-                            <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
-                        </div>
-                        <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
-                        <hr style='border:none;border-top:1px solid #eee' />
-                        <p style='font-size:12px;color:#bbb;text-align:center'>© {DateTime.UtcNow.Year} فاتورة راحتك. جميع الحقوق محفوظة.</p>
-                    </div>";
+                var (subject, body) = EmailMessageFactory.AccountVerification(user.FullName, code);
 
                 try
                 {
-                    await _emailService.SendEmailAsync(user.Email, subject, body);
+                    await _emailService.SendTemplatedEmailAsync(user.Email, subject, body);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    await transaction.RollbackAsync();
-                    throw new InvalidOperationException("حصل خطأ في إرسال رمز التفعيل إلى بريدك الإلكتروني، تأكد من إعدادات البريد الإلكتروني وحاول مرة أخرى");
+                    _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
                 }
             }
-
-            await transaction.CommitAsync();
         }
         catch
         {
@@ -185,7 +179,7 @@ public class AuthService : IAuthService
             {
                 FullName = payload.Name,
                 Email = payload.Email,
-                Phone = string.Empty,
+                Phone = null,
                 GoogleId = payload.Subject,
                 ProfileImage = payload.Picture,
                 UserType = UserType.Owner,
@@ -194,6 +188,20 @@ public class AuthService : IAuthService
             };
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+
+            // رسالة ترحيب لأول تسجيل دخول عبر جوجل (قالب موحد عربي)
+            if (_emailService.IsConfigured() && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                try
+                {
+                    var (welcomeSubject, welcomeBody) = EmailMessageFactory.GoogleWelcome(user.FullName ?? "");
+                    await _emailService.SendTemplatedEmailAsync(user.Email, welcomeSubject, welcomeBody);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send Google welcome email to {Email}", user.Email);
+                }
+            }
         }
         else if (user.GoogleId == null)
         {
@@ -426,72 +434,24 @@ public class AuthService : IAuthService
         string subject, body;
         if (type == VerificationCodeType.EmailVerification)
         {
-            subject = "تفعيل حسابك في فاتورة راحتك";
-            body = $@"
-                <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
-                    <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
-                    <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
-                    <p style='font-size:14px;color:#555'>رمز التفعيل الخاص بك هو:</p>
-                    <div style='text-align:center;margin:24px 0'>
-                        <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
-                    </div>
-                    <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق.</p>
-                    <hr style='border:none;border-top:1px solid #eee' />
-                    <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
-                </div>";
+            (subject, body) = EmailMessageFactory.AccountVerification(user.FullName, code);
         }
         else if (type == VerificationCodeType.PasswordReset)
         {
-            subject = "استرجاع كلمة المرور - فاتورة راحتك";
-            body = $@"
-                <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
-                    <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
-                    <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
-                    <p style='font-size:14px;color:#555'>رمز استرجاع كلمة المرور الخاص بك هو:</p>
-                    <div style='text-align:center;margin:24px 0'>
-                        <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
-                    </div>
-                    <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
-                    <hr style='border:none;border-top:1px solid #eee' />
-                    <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
-                </div>";
+            (subject, body) = EmailMessageFactory.PasswordReset(user.FullName, code);
         }
         else if (type == VerificationCodeType.PasswordChange)
         {
-            subject = "تغيير كلمة المرور - فاتورة راحتك";
-            body = $@"
-                <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
-                    <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
-                    <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
-                    <p style='font-size:14px;color:#555'>رمز تأكيد تغيير كلمة المرور الخاص بك هو:</p>
-                    <div style='text-align:center;margin:24px 0'>
-                        <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
-                    </div>
-                    <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
-                    <hr style='border:none;border-top:1px solid #eee' />
-                    <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
-                </div>";
+            (subject, body) = EmailMessageFactory.PasswordChangeVerification(user.FullName, code);
         }
         else
         {
-            subject = "تأكيد تعديل بيانات الحساب - فاتورة راحتك";
-            body = $@"
-                <div style='font-family:Arial;max-width:480px;margin:auto;padding:20px;border:1px solid #e0e0e0;border-radius:10px'>
-                    <h2 style='color:#1a237e;text-align:center'>فاتورة راحتك</h2>
-                    <p style='font-size:16px;color:#333'>مرحبًا {user.FullName}،</p>
-                    <p style='font-size:14px;color:#555'>رمز تأكيد تعديل بيانات حسابك هو:</p>
-                    <div style='text-align:center;margin:24px 0'>
-                        <span style='font-size:32px;font-weight:bold;letter-spacing:8px;color:#1a237e;direction:ltr;display:inline-block'>{code}</span>
-                    </div>
-                    <p style='font-size:13px;color:#999'>هذا الرمز صالح لمدة 10 دقائق. إذا لم تطلب هذا الرمز، يمكنك تجاهل هذه الرسالة.</p>
-                    <hr style='border:none;border-top:1px solid #eee' />
-                    <p style='font-size:12px;color:#bbb;text-align:center'>© {now.Year} فاتورة راحتك.</p>
-                </div>";
+            (subject, body) = EmailMessageFactory.ProfileUpdateVerification(user.FullName, code);
         }
 
         try
         {
-            await _emailService.SendEmailAsync(user.Email, subject, body);
+            await _emailService.SendTemplatedEmailAsync(user.Email, subject, body);
             return null;
         }
         catch

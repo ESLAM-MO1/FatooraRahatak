@@ -47,10 +47,8 @@ public class CustomerNotificationService : ICustomerNotificationService
         {
             try
             {
-                await _emailService.SendEmailAsync(
-                    customerEmail,
-                    $"طلب جديد رقم {order.OrderNumber}",
-                    BuildOrderEmailHtml(store, order, items));
+                var (subject, body) = EmailMessageFactory.OrderConfirmation(store, order, items);
+                await _emailService.SendTemplatedEmailAsync(customerEmail, subject, body);
             }
             catch (Exception ex)
             {
@@ -85,10 +83,8 @@ public class CustomerNotificationService : ICustomerNotificationService
             if (string.IsNullOrWhiteSpace(store.ContactEmail) && string.IsNullOrWhiteSpace(owner?.Email))
                 throw new InvalidOperationException("لا يوجد بريد إلكتروني لاستقبال الرسالة التجريبية. أضف بريد المتجر في إعدادات التواصل.");
             var toEmail = !string.IsNullOrWhiteSpace(store.ContactEmail) ? store.ContactEmail! : owner!.Email!;
-            await _emailService.SendEmailAsync(
-                toEmail,
-                $"رسالة تجريبية من {store.StoreName}",
-                $"<html dir='rtl'><body style='font-family:Tahoma,Arial,sans-serif;background:#f5f6f8;padding:24px;'><div style='max-width:520px;margin:auto;background:#fff;border-radius:14px;padding:24px;border:1px solid #e8e9ec;color:#1f2937;'><h2 style='margin:0 0 8px;color:#1d4ed8;'>رسالة تجريبية ✅</h2><p style='margin:0 0 16px;'>تم تفعيل إشعارات البريد بنجاح. ستصل هذه الرسالة للعملاء عند إنشاء طلب جديد في متجرك.</p><p style='margin:0;color:#6b7280;font-size:12px;'>{store.StoreName}</p></div></body></html>");
+            var (testSubject, testBody) = EmailMessageFactory.TestNotification(store.StoreName);
+            await _emailService.SendTemplatedEmailAsync(toEmail, testSubject, testBody);
             emailSent = true;
         }
 
@@ -137,10 +133,8 @@ public class CustomerNotificationService : ICustomerNotificationService
         {
             try
             {
-                await _emailService.SendEmailAsync(
-                    customerEmail,
-                    $"تحديث حالة الطلب {order.OrderNumber}",
-                    BuildStatusEmailHtml(store, order, statusText));
+                var (subject, body) = EmailMessageFactory.OrderStatusUpdate(store, order, statusText);
+                await _emailService.SendTemplatedEmailAsync(customerEmail, subject, body);
             }
             catch (Exception ex)
             {
@@ -182,10 +176,8 @@ public class CustomerNotificationService : ICustomerNotificationService
         {
             try
             {
-                await _emailService.SendEmailAsync(
-                    customerEmail,
-                    $"قرار طلب الإرجاع — الطلب {order.OrderNumber}",
-                    $"<html dir='rtl'><body style='font-family:Tahoma,Arial,sans-serif;background:#f5f6f8;padding:24px;'><div style='max-width:520px;margin:auto;background:#fff;border-radius:14px;padding:24px;border:1px solid #e8e9ec;color:#1f2937;'><h2 style='margin:0 0 8px;color:#1d4ed8;'>{store.StoreName}</h2><p style='margin:0;line-height:1.7;white-space:pre-line;'>{decisionText}</p></div></body></html>");
+                var (subject, body) = EmailMessageFactory.ReturnRequestDecision(store, order, approved, note);
+                await _emailService.SendTemplatedEmailAsync(customerEmail, subject, body);
             }
             catch (Exception ex)
             {
@@ -206,58 +198,6 @@ public class CustomerNotificationService : ICustomerNotificationService
                 _logger.LogError(ex, "Failed to send return decision WhatsApp for order {OrderNumber}", order.OrderNumber);
             }
         }
-    }
-
-    private static string BuildStatusEmailHtml(Store store, Order order, string statusText)
-    {
-        return $@"
-<html dir='rtl'><body style='font-family:Tahoma,Arial,sans-serif;background:#f5f6f8;margin:0;padding:24px;'>
-  <div style='max-width:520px;margin:auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e8e9ec;'>
-    <div style='background:#1d4ed8;color:#ffffff;padding:20px 24px;'>
-      <h2 style='margin:0;font-size:18px;'>تحديث حالة الطلب</h2>
-    </div>
-    <div style='padding:24px;color:#1f2937;'>
-      <p style='margin:0 0 6px;'>رقم الطلب: <b>{order.OrderNumber}</b></p>
-      <p style='margin:0 0 16px;'>أصبحت حالة طلبك: <b>{statusText}</b></p>
-      <p style='margin:0 0 16px;'>الإجمالي: <b>{order.TotalAmount.ToString("0.00")} ر.س</b></p>
-      <p style='margin:0;color:#6b7280;'>{store.StoreName}</p>
-    </div>
-  </div>
-</body></html>";
-    }
-
-    private static string BuildOrderEmailHtml(Store store, Order order, IReadOnlyList<OrderItem> items)
-    {
-        var rows = string.Join("",
-            items.Select(i =>
-                $"<tr><td style=\"padding:8px;border-bottom:1px solid #eee;\">{i.ProductNameSnapshot}</td>" +
-                $"<td style=\"padding:8px;border-bottom:1px solid #eee;text-align:center;\">{i.Quantity}</td>" +
-                $"<td style=\"padding:8px;border-bottom:1px solid #eee;text-align:left;direction:ltr;\">{i.UnitPriceSnapshot.ToString("0.00")} ر.س</td></tr>"));
-
-        return $@"
-<html dir='rtl'><body style='font-family:Tahoma,Arial,sans-serif;background:#f5f6f8;margin:0;padding:24px;'>
-  <div style='max-width:520px;margin:auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e8e9ec;'>
-    <div style='background:#1d4ed8;color:#ffffff;padding:20px 24px;'>
-      <h2 style='margin:0;font-size:18px;'>شكرًا لطلبك من {store.StoreName}</h2>
-    </div>
-    <div style='padding:24px;color:#1f2937;'>
-      <p style='margin:0 0 6px;'>رقم الطلب: <b>{order.OrderNumber}</b></p>
-      <p style='margin:0 0 16px;'>تم استلام طلبك بنجاح وسيتم تجهيزه وتوصيله في أقرب وقت.</p>
-      <table style='width:100%;border-collapse:collapse;font-size:13px;'>
-        <thead><tr style='background:#f9fafb;'>
-          <th style='padding:8px;text-align:right;'>المنتج</th>
-          <th style='padding:8px;text-align:center;'>الكمية</th>
-          <th style='padding:8px;text-align:left;'>السعر</th>
-        </tr></thead>
-        <tbody>{rows}</tbody>
-      </table>
-      <div style='margin-top:16px;padding-top:14px;border-top:2px solid #eef0f3;display:flex;justify-content:space-between;font-size:14px;'>
-        <b>الإجمالي</b>
-        <b>{order.TotalAmount.ToString("0.00")} ر.س</b>
-      </div>
-    </div>
-  </div>
-</body></html>";
     }
 
     private static string BuildOrderWhatsAppMessage(Store store, Order order, IReadOnlyList<OrderItem> items)

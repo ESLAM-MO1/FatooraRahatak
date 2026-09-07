@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using FatooraRahatak.Application.Interfaces;
 
 namespace FatooraRahatak.Infrastructure.Services;
@@ -13,8 +14,9 @@ public class EmailService : IEmailService
     private readonly string _smtpPassword;
     private readonly string _fromAddress;
     private readonly string _fromName;
+    private readonly ILogger<EmailService> _logger;
 
-    public EmailService(IConfiguration configuration)
+    public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
     {
         _smtpHost = configuration["Smtp:Host"] ?? "";
         int.TryParse(configuration["Smtp:Port"] ?? "587", out _smtpPort);
@@ -22,6 +24,7 @@ public class EmailService : IEmailService
         _smtpPassword = configuration["Smtp:Password"] ?? "";
         _fromAddress = configuration["Smtp:FromAddress"] ?? _smtpUsername;
         _fromName = configuration["Smtp:FromName"] ?? "فاتورة راحتك";
+        _logger = logger;
     }
 
     public bool IsConfigured()
@@ -55,9 +58,15 @@ public class EmailService : IEmailService
         {
             await client.SendMailAsync(message);
         }
-        catch (SmtpException)
+        catch (SmtpException ex)
         {
+            _logger.LogError(ex, "SMTP send failed to {To} subject={Subject}", to, subject);
             throw new InvalidOperationException("حدث خطأ في إرسال البريد الإلكتروني، تأكد من صحة إعدادات SMTP وحاول مرة أخرى");
         }
+    }
+
+    public async Task SendTemplatedEmailAsync(string to, string subject, string bodyHtml)
+    {
+        await SendEmailAsync(to, subject, EmailTemplateRenderer.Render(subject, bodyHtml));
     }
 }

@@ -42,7 +42,6 @@ public class StoreInfoDto
     public bool IsCouponsEnabled { get; set; }
     public bool CustomerNotificationEmail { get; set; }
     public bool CustomerNotificationWhatsapp { get; set; }
-    public string? TrustBadgesJson { get; set; }
     public int? ReturnPolicyDays { get; set; }
     public decimal? FreeShippingThreshold { get; set; }
     public decimal? ShippingDiscountPercent { get; set; }

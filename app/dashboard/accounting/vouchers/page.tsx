@@ -1,0 +1,204 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
+import api from "@/lib/api";
+import { usePackageFeature } from "@/lib/usePackageFeatures";
+import Icon from "@/components/Icon";
+import PageHeader from "@/components/PageHeader";
+import LoadingState from "@/components/LoadingState";
+import RestrictedFeatureState from "@/components/RestrictedFeatureState";
+import Can from "@/components/Can";
+
+interface Voucher {
+  id: number;
+  voucherType: string;
+  voucherNumber: string;
+  voucherDate: string;
+  amount: number;
+  paymentMethod: string;
+  counterpartAccountNameAr: string;
+  partyName: string | null;
+  description: string | null;
+  journalEntryId: number | null;
+  journalEntryNumber: string | null;
+}
+
+export default function VouchersPage() {
+  const { t } = useTranslation();
+  const gate = usePackageFeature("hasAccountingFull");
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [filterType, setFilterType] = useState<"" | "Receipt" | "Payment">("");
+
+  const fetchData = useCallback(async (type: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await api.get("/vouchers", { params: type ? { voucherType: type } : {} });
+      setVouchers(res.data.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("voucher.loadError"));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
+    fetchData(filterType);
+  }, [fetchData, filterType, gate.ready, gate.allowed]);
+
+  if (!gate.ready) {
+    return <LoadingState />;
+  }
+
+  if (!gate.allowed) {
+    return <RestrictedFeatureState />;
+  }
+
+  return (
+    <div>
+      <PageHeader icon="wallet" title={t("voucher.title")}>
+        <Can code="Vouchers.Add">
+          <Link href="/dashboard/accounting/vouchers/new" className="btn btn-primary">
+            <Icon name="plus" />
+            {t("voucher.newVoucher")}
+          </Link>
+        </Can>
+      </PageHeader>
+
+      {error && <div className="alert alert--danger mb-4">{error}</div>}
+
+      <div className="flex gap-2 mb-4">
+        {[
+          { value: "", label: t("voucher.all") },
+          { value: "Receipt", label: t("voucher.receiptVouchers") },
+          { value: "Payment", label: t("voucher.paymentVouchers") },
+        ].map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setFilterType(f.value as any)}
+            className={`px-3.5 py-1.5 rounded-lg text-[12.5px] font-bold transition-colors ${
+              filterType === f.value ? "bg-[var(--blue)] text-white" : "bg-[#F1F2F4] text-[var(--sub)]"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="card overflow-hidden">
+        {loading ? (
+          <LoadingState />
+        ) : vouchers.length === 0 ? (
+          <p className="p-6 text-[var(--sub)] text-sm">{t("voucher.noVouchers")}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="hidden lg:table w-full text-sm">
+              <thead className="bg-[var(--gold-soft)]/40 border-b border-[var(--border)]">
+                <tr>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.number")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.type")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.date")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.counterpartAccount")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.party")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.amount")}</th>
+                  <th className="text-right p-4 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("voucher.relatedEntry")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vouchers.map((v) => (
+                  <tr key={v.id} className="border-b border-[var(--border)] hover:bg-[var(--blue-50)]/40 transition-colors">
+                    <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">
+                      <Link href={`/dashboard/accounting/vouchers/${v.id}`} className="text-[var(--blue)] hover:underline">
+                        {v.voucherNumber}
+                      </Link>
+                    </td>
+                    <td className="p-4">
+                      <span className={`badge ${v.voucherType === "Receipt" ? "badge--green" : "badge--red"}`}>
+                        {v.voucherType === "Receipt" ? t("voucher.receipt") : t("voucher.payment")}
+                      </span>
+                    </td>
+                    <td className="p-4 text-[var(--sub)]" dir="ltr">{v.voucherDate}</td>
+                    <td className="p-4 text-[var(--ink)]">{v.counterpartAccountNameAr}</td>
+                    <td className="p-4 text-[var(--sub)]">{v.partyName || "—"}</td>
+                    <td className="p-4 text-[var(--ink)] font-medium" dir="ltr">
+                      {v.amount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                    </td>
+                    <td className="p-4">
+                      {v.journalEntryId ? (
+                        <Link
+                          href={`/dashboard/accounting/journal-entries/${v.journalEntryId}`}
+                          className="text-[var(--blue)] hover:underline text-[12.5px]"
+                        >
+                          {v.journalEntryNumber}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="lg:hidden space-y-3">
+              {vouchers.map((v) => (
+                <div key={v.id} className="card p-4 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.number")}</p>
+                      <Link href={`/dashboard/accounting/vouchers/${v.id}`} className="text-[12px] text-[var(--blue)] hover:underline font-medium" dir="ltr">
+                        {v.voucherNumber}
+                      </Link>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.type")}</p>
+                      <span className={`badge ${v.voucherType === "Receipt" ? "badge--green" : "badge--red"}`}>
+                        {v.voucherType === "Receipt" ? t("voucher.receipt") : t("voucher.payment")}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.date")}</p>
+                      <p className="text-[12px] text-[var(--ink)]" dir="ltr">{v.voucherDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.counterpartAccount")}</p>
+                      <p className="text-[12px] text-[var(--ink)]">{v.counterpartAccountNameAr}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.party")}</p>
+                      <p className="text-[12px] text-[var(--sub)]">{v.partyName || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.amount")}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium" dir="ltr">
+                        {v.amount.toLocaleString("ar-SA-u-nu-latn")} {t("common.sar")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("voucher.relatedEntry")}</p>
+                      {v.journalEntryId ? (
+                        <Link
+                          href={`/dashboard/accounting/journal-entries/${v.journalEntryId}`}
+                          className="text-[12px] text-[var(--blue)] hover:underline"
+                        >
+                          {v.journalEntryNumber}
+                        </Link>
+                      ) : (
+                        <p className="text-[12px] text-[var(--sub)]">—</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

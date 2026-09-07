@@ -57,6 +57,7 @@ const ar = {
 
   // ── Auth ──
   "auth.login": "تسجيل الدخول",
+  "auth.googleSignIn": "الدخول باستخدام جوجل",
   "auth.register": "إنشاء حساب",
   "auth.email": "البريد الإلكتروني",
   "auth.emailRequired": "يرجى إدخال البريد الإلكتروني",

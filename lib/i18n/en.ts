@@ -54,6 +54,7 @@ const en: Record<string, string> = {
   "common.noResults": "No results found",
 
   "auth.login": "Login",
+  "auth.googleSignIn": "Sign in with Google",
   "auth.register": "Create Account",
   "auth.email": "Email",
   "auth.emailRequired": "Please enter your email",

@@ -110,30 +110,18 @@ export default function SiteContentPage() {
 /* â”€â”€ Image Upload Widget â”€â”€ */
 function ImageUpload({ value, onChange, accept = "image/*", labelKey = "admin.uploadImage" }: { value: string; onChange: (url: string) => void; accept?: string; labelKey?: string }) {
   const { t } = useTranslation();
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError("");
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await api.post("/admin/site/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
-      onChange(res.data.data.url);
-    } catch { setError(t("error.serverError")); }
-    finally { setUploading(false); }
-  };
   return (
     <div className="flex flex-col gap-2">
-      {error && <p className="text-[12px] font-bold" style={{ color: "var(--danger)" }}>{error}</p>}
       <div className="flex items-center gap-3">
-        {value && <img src={value} alt="" className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: "var(--border)" }} />}
-        <label className="btn btn-outline btn-sm cursor-pointer">
-          {uploading ? t("common.loading") : t(labelKey)}
-          <input type="file" accept={accept} onChange={handleFile} className="hidden" />
-        </label>
+        {value && <img src={value} alt="" className="w-16 h-16 rounded-lg object-cover border" style={{ borderColor: "var(--border)" }} onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+        <input
+          type="text"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://res.cloudinary.com/..."
+          dir="ltr"
+          className="flex-1 text-[13px]"
+        />
         {value && <button onClick={() => onChange("")} className="btn btn-danger btn-sm">×</button>}
       </div>
     </div>

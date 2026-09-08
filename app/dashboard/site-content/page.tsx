@@ -331,47 +331,21 @@ function HomepageEditor() {
 /* â”€â”€ Image Upload Field (Ù„Ù„ØµÙˆØ±) â”€â”€ */
 function ImageUploadField({ label, value, onChange }: { label: string; value: string; onChange: (url: string) => void }) {
   const { t } = useTranslation();
-  const [uploading, setUploading] = useState(false);
-  const [upErr, setUpErr] = useState("");
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUpErr("");
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await api.post("/admin/site/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      const url = res.data?.data?.url;
-      if (url) onChange(url);
-      else setUpErr(t("error.serverError"));
-    } catch {
-      setUpErr(t("admin.imageUploadError"));
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  };
-
   return (
     <div>
       <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{label}</label>
       <div className="flex items-start gap-3">
-        <label className="btn btn-outline btn-sm shrink-0 cursor-pointer">
-          {uploading ? t("common.loading") : t("admin.uploadImage")}
-          <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={uploading} />
-        </label>
-        {value ? (
-          <div className="flex items-center gap-2">
-            <img src={value} alt="" className="w-20 h-20 rounded-lg object-cover border shrink-0" />
-            <button type="button" onClick={() => onChange("")} className="text-[12px] font-bold text-[var(--danger)] hover:underline">{t("common.delete")}</button>
-          </div>
-        ) : <p className="text-[12px] text-[var(--sub)]">{t("admin.noImage")}</p>}
+        {value && <img src={value} alt="" className="w-20 h-20 rounded-lg object-cover border shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />}
+        <input
+          type="text"
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://res.cloudinary.com/..."
+          dir="ltr"
+          className="flex-1 text-[13px]"
+        />
+        {value && <button type="button" onClick={() => onChange("")} className="text-[12px] font-bold text-[var(--danger)] hover:underline shrink-0">{t("common.delete")}</button>}
       </div>
-      {upErr && <p className="text-[12px] text-red-600 mt-1">{upErr}</p>}
     </div>
   );
 }

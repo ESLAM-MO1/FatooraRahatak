@@ -119,11 +119,6 @@ export default function AcademyPage() {
       {intro && (loc(intro.titleAr, intro.titleEn) || loc(intro.descriptionAr, intro.descriptionEn) || intro.imageUrl) && (
         <div className="max-w-5xl mx-auto px-4 pt-12">
           <div className="rounded-2xl border overflow-hidden" style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)" }}>
-            {intro.imageUrl && (
-              <div className="w-full h-48 sm:h-64 bg-gray-100">
-                <img src={intro.imageUrl} alt={loc(intro.titleAr, intro.titleEn)} className="w-full h-full object-cover" />
-              </div>
-            )}
             <div className="p-6 sm:p-8 text-center">
               {loc(intro.titleAr, intro.titleEn) && (
                 <h2 className="text-[22px] sm:text-[26px] font-extrabold mb-3" style={{ color: "var(--blue-deep)" }}>{loc(intro.titleAr, intro.titleEn)}</h2>

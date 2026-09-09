@@ -7,9 +7,6 @@ const api = axios.create({
   // يخلي الصفحة تفضل "جاري التحميل" للأبد من غير أي رسالة خطأ. 20 ثانية كافية
   // لأي عملية عادية، وأي حاجة أبطأ من كده لازم تظهر كخطأ واضح للمستخدم.
   timeout: 20000,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 api.interceptors.request.use((config) => {

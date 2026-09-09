@@ -76,6 +76,17 @@ const FOOTER_TOOLS: LinkDef[] = [
   { labelKey: "page.pos", href: "/pos" },
   { labelKey: "page.paymentGateway", href: "/payment-gateway" },
   { labelKey: "page.websiteIntegration", href: "/website-integration" },
+  { labelKey: "page.usersPermissions", href: "/users-permissions" },
+  { labelKey: "page.packagesDomains", href: "/packages-domains" },
+  { labelKey: "page.generalAccounts", href: "/general-accounts" },
+  { labelKey: "page.affiliate", href: "/affiliate" },
+  { labelKey: "page.productManagement", href: "/product-management" },
+  { labelKey: "page.customerManagement", href: "/customer-management" },
+  { labelKey: "page.purchases", href: "/purchases" },
+  { labelKey: "page.pricing", href: "/pricing" },
+  { labelKey: "page.suppliers", href: "/suppliers" },
+  { labelKey: "page.sales", href: "/sales" },
+  { labelKey: "page.reports", href: "/reports" },
 ];
 
 const FOOTER_ABOUT: LinkDef[] = [

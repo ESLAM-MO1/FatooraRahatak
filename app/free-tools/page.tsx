@@ -3,5 +3,5 @@ import CmsPage from "@/components/CmsPage";
 import "@/lib/i18n/config";
 
 export default function Page() {
-  return <CmsPage pageKey="free-tools" imageOnly />;
+  return <CmsPage pageKey="free-tools" />;
 }

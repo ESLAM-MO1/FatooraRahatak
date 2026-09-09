@@ -666,10 +666,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div>
-              <h3 className="text-[15px] font-bold text-white mb-5">{t("footer.tools")}</h3>
-              <ul className="space-y-3">
+              <h3 className="text-[15px] font-bold text-white mb-5 text-center">{t("footer.tools")}</h3>
+              <ul className="columns-2 gap-x-6 space-y-3">
                 {footerTools.map(link => (
-                  <li key={link.key}>
+                  <li key={link.key} className="break-inside-avoid">
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>
                       {link.label}
                     </Link>

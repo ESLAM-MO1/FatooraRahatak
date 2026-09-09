@@ -84,8 +84,6 @@ export default function AcademyAdminPage() {
   const [pageIntro, setPageIntro] = useState({ titleAr: "", titleEn: "", descriptionAr: "", descriptionEn: "", imageUrl: "" });
   const [introLoading, setIntroLoading] = useState(false);
   const [introSaving, setIntroSaving] = useState(false);
-  const [introUploading, setIntroUploading] = useState(false);
-  const introFileRef = useRef<HTMLInputElement>(null);
   const [courseUploading, setCourseUploading] = useState(false);
   const courseFileRef = useRef<HTMLInputElement>(null);
 
@@ -140,27 +138,6 @@ export default function AcademyAdminPage() {
       setMessage({ type: "error", text: e?.response?.data?.message || t("error.serverError") });
     } finally {
       setIntroSaving(false);
-    }
-  };
-
-  const uploadIntroImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIntroUploading(true);
-    setMessage(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await api.post("/admin/site/upload", fd);
-      const url = res.data?.data?.url || res.data?.url;
-      if (url) setPageIntro(prev => ({ ...prev, imageUrl: url }));
-      else setMessage({ type: "error", text: t("academy.uploadError") });
-    } catch (err) {
-      const e = err as { response?: { data?: { message?: string } } };
-      setMessage({ type: "error", text: e?.response?.data?.message || t("academy.uploadError") });
-    } finally {
-      setIntroUploading(false);
-      if (introFileRef.current) introFileRef.current.value = "";
     }
   };
 
@@ -457,10 +434,15 @@ export default function AcademyAdminPage() {
                   {pageIntro.imageUrl ? <img src={pageIntro.imageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-[10.5px] text-[var(--sub)]">{t("academy.noImage")}</span>}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <input ref={introFileRef} type="file" accept="image/*" className="hidden" onChange={uploadIntroImage} />
-                  <button type="button" onClick={() => introFileRef.current?.click()} disabled={introUploading} className="btn btn-outline btn-sm">
-                    {introUploading ? t("common.loading") : pageIntro.imageUrl ? t("academy.changeImage") : t("academy.uploadImage")}
-                  </button>
+                  <div className="field-shell">
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={pageIntro.imageUrl}
+                      onChange={e => setPageIntro({ ...pageIntro, imageUrl: e.target.value })}
+                      placeholder="https://..."
+                    />
+                  </div>
                   <p className="text-[11px] text-[var(--sub)] mt-1">{t("academy.imageUploadHint")}</p>
                 </div>
               </div>

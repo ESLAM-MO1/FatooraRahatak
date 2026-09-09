@@ -166,7 +166,7 @@ export default function CmsPage({ pageKey, heroTitle, heroSubtitle, imageOnly = 
   return (
     <SiteLayout>
       {hasHero && (
-        <Hero title={heroTitle} subtitle={heroSubtitle} />
+        <Hero title={heroTitle} subtitle={heroSubtitle} imageUrl={image || undefined} />
       )}
       <div className={hasHero ? "max-w-4xl mx-auto px-4 py-12" : "max-w-3xl mx-auto px-4 py-16"}>
         <div

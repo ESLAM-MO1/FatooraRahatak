@@ -114,7 +114,7 @@ export default function AcademyPage() {
 
   return (
     <SiteLayout>
-      <Hero title={t("page.academy")} subtitle={t("academyPublic.intro")} />
+      <Hero title={t("page.academy")} subtitle={t("academyPublic.intro")} imageUrl={intro?.imageUrl || undefined} />
 
       {intro && (loc(intro.titleAr, intro.titleEn) || loc(intro.descriptionAr, intro.descriptionEn) || intro.imageUrl) && (
         <div className="max-w-5xl mx-auto px-4 pt-12">

@@ -33,6 +33,17 @@ export default function CareersPage() {
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [pageImage, setPageImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get("/site/pages/careers")
+      .then((res) => {
+        const d = res.data?.data ?? res.data;
+        setPageImage(d?.imageAr || d?.imageEn || null);
+      })
+      .catch(() => setPageImage(null));
+  }, []);
+
   useEffect(() => {
     api.get("/site/jobs").then((res) => setJobs(res.data?.data || [])).catch(() => setJobs([])).finally(() => setLoading(false));
   }, []);
@@ -113,7 +124,7 @@ export default function CareersPage() {
 
   return (
     <SiteLayout>
-      <Hero title={t("page.careers")} subtitle={t("careersPublic.intro")} />
+      <Hero title={t("page.careers")} subtitle={t("careersPublic.intro")} imageUrl={pageImage || undefined} />
 
       <div className="max-w-5xl mx-auto px-4 py-12">
         {loading ? (

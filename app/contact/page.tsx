@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { SiteLayout } from "../site-layout";
 import Hero from "@/components/Hero";
@@ -29,6 +29,18 @@ export default function ContactPage() {
   const [error, setError] = useState("");
   const [ticketNumber, setTicketNumber] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const [pageImage, setPageImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/site/pages/contact`)
+      .then((r) => r.json())
+      .then((res) => {
+        const d = res?.data ?? res;
+        setPageImage(d?.imageAr || d?.imageEn || null);
+      })
+      .catch(() => setPageImage(null));
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -99,7 +111,7 @@ export default function ContactPage() {
   return (
     <SiteLayout>
       <div>
-        <Hero title={t("page.contact")} subtitle={t("common.help")} />
+        <Hero title={t("page.contact")} subtitle={t("common.help")} imageUrl={pageImage || undefined} />
         <div className="max-w-3xl mx-auto px-4 py-12">
           {error && (
             <div className="alert alert--danger mb-6">{error}</div>

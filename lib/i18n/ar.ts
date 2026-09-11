@@ -2320,7 +2320,7 @@ const ar = {
   "checkout.loggedInNotice": "أنت مسجل دخول، سيتم ربط الطلب بحسابك تلقائيًا",
   "checkout.nameLabel": "الاسم",
   "checkout.phoneLabel": "رقم الجوال",
-  "checkout.emailLabel": "البريد الإلكتروني (اختياري)",
+  "checkout.emailLabel": "البريد الإلكتروني",
   "checkout.shippingAddressLabel": "عنوان الشحن",
   "checkout.notesLabel": "ملاحظات (اختياري)",
   "checkout.confirming": "جاري تأكيد الطلب...",

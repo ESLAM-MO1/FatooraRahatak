@@ -2293,7 +2293,7 @@ const en: Record<string, string> = {
   "checkout.loggedInNotice": "You are logged in, order will be linked to your account automatically",
   "checkout.nameLabel": "Name",
   "checkout.phoneLabel": "Phone number",
-  "checkout.emailLabel": "Email (optional)",
+  "checkout.emailLabel": "Email",
   "checkout.shippingAddressLabel": "Shipping address",
   "checkout.notesLabel": "Notes (optional)",
   "checkout.confirming": "Confirming order...",

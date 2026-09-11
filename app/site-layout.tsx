@@ -652,7 +652,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
 
       <footer style={{ backgroundColor: "var(--blue-deep)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-14">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-8 lg:gap-10">
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
                 <div className="brand-logo-frame" style={{ width: 54, height: 54 }}>
@@ -665,9 +665,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
-            <div>
+            <div className="lg:col-span-2">
               <h3 className="text-[15px] font-bold text-white mb-5 text-center">{t("footer.tools")}</h3>
-              <ul className="columns-2 gap-x-6 space-y-3">
+              <ul className="columns-3 gap-x-6 space-y-3">
                 {footerTools.map(link => (
                   <li key={link.key} className="break-inside-avoid">
                     <Link href={link.href} className="text-[13.5px] transition-colors hover:text-white" style={{ color: "#BFE6F3" }}>

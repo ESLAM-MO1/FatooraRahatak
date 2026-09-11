@@ -42,7 +42,7 @@ public static class EmailTemplateRenderer
         sb.AppendLine("</style></head><body>");
         sb.AppendLine("<div class=\"container\">");
         sb.AppendLine("<div class=\"header\" style=\"background:" + BrandColor + ";padding:20px 28px;text-align:center\">");
-        sb.AppendLine("<img src=\"https://fatora.trillion-invest.tech/logo.png\" alt=\"فاتورة راحتك\" style=\"max-width:160px;height:auto;margin-bottom:6px\" />");
+        sb.AppendLine("<img src=\"https://rahtk.sa/logo.png\" alt=\"فاتورة راحتك\" style=\"max-width:160px;height:auto;margin-bottom:6px\" />");
         sb.AppendLine("<h1 style=\"margin:6px 0 0;font-size:20px;color:#1a1a2e;letter-spacing:0.5px\">فاتورة راحتك</h1>");
         sb.AppendLine("<div class=\"sub\" style=\"margin:2px 0 0;font-size:12px;color:rgba(26,26,46,0.7)\">منصة الفواتير والمتاجر الإلكترونية</div></div>");
         sb.AppendLine("<div class=\"body\">");
@@ -50,7 +50,7 @@ public static class EmailTemplateRenderer
         sb.AppendLine("</div>");
         sb.AppendLine("<div class=\"footer\">");
         sb.AppendLine("<p>فاتورة راحتك - جميع الحقوق محفوظة &copy; " + DateTime.UtcNow.Year + "</p>");
-        sb.AppendLine("<p>للاستفسارات والدعم الفني: <a href=\"mailto:support@rahatik.com\" style=\"color:" + BrandColor + ";text-decoration:none\">support@rahatik.com</a></p>");
+        sb.AppendLine("<p>للاستفسارات والدعم الفني: <a href=\"mailto:faturatrahatik@gmail.com\" style=\"color:" + BrandColor + ";text-decoration:none\">faturatrahatik@gmail.com</a></p>");
         sb.AppendLine("</div>");
         sb.AppendLine("</div></body></html>");
         return sb.ToString();

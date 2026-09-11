@@ -368,7 +368,7 @@ export default function CheckoutPage() {
       {
         name: guestName,
         phone: guestPhone,
-        address: shippingAddress,
+        address: composedAddress,
         city: addrCity,
       },
       [

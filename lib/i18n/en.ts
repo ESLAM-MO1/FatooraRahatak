@@ -1174,6 +1174,7 @@ const en: Record<string, string> = {
   "admin.addStat": "Add Stat",
   "admin.videoSection": "Video Section",
   "admin.videoTitle": "Title",
+  "admin.videoDesc": "Description",
   "admin.videoUpload": "Upload Video",
   "admin.featureSection": "Features",
   "admin.featureTitle": "Title",

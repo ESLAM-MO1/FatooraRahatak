@@ -1197,6 +1197,7 @@ const ar = {
   "admin.addStat": "إضافة إحصائية",
   "admin.videoSection": "قسم الفيديو",
   "admin.videoTitle": "العنوان",
+  "admin.videoDesc": "الوصف",
   "admin.videoUpload": "رفع فيديو",
   "admin.featureSection": "المزايا",
   "admin.featureTitle": "العنوان",

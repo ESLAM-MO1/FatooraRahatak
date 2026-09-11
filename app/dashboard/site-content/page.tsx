@@ -243,6 +243,8 @@ function HomepageEditor() {
           <Grid>
             <Field label={`${t("admin.videoTitle")} (${t("admin.arabic")})`}><input dir="rtl" value={content.videoSection?.titleAr || ""} onChange={e => update("videoSection.titleAr", e.target.value)} /></Field>
             <Field label={`${t("admin.videoTitle")} (${t("admin.english")})`}><input dir="ltr" value={content.videoSection?.titleEn || ""} onChange={e => update("videoSection.titleEn", e.target.value)} /></Field>
+            <Field label={`${t("admin.videoDesc")} (${t("admin.arabic")})`}><textarea dir="rtl" rows={2} value={content.videoSection?.descriptionAr || ""} onChange={e => update("videoSection.descriptionAr", e.target.value)} /></Field>
+            <Field label={`${t("admin.videoDesc")} (${t("admin.english")})`}><textarea dir="ltr" rows={2} value={content.videoSection?.descriptionEn || ""} onChange={e => update("videoSection.descriptionEn", e.target.value)} /></Field>
           </Grid>
           <Field label={t("admin.videoUpload")}>
             <ImageUpload value={content.videoSection?.videoUrl || ""} onChange={v => update("videoSection.videoUrl", v)} accept="video/*" labelKey="admin.videoUpload" />

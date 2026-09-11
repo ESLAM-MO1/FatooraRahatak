@@ -368,12 +368,16 @@ export default function CheckoutPage() {
       {
         name: guestName,
         phone: guestPhone,
+        email: guestEmail,
         address: composedAddress,
         city: addrCity,
       },
       [
         { field: "name", validate: required(t("checkout.nameRequired") || "") },
         { field: "phone", validate: required(t("checkout.phoneRequired") || "") },
+        ...(!loggedIn
+          ? [{ field: "email", validate: required(t("checkout.emailRequired") || "") }]
+          : []),
         { field: "address", validate: required(t("checkout.shippingAddressRequired") || "") },
         ...(selectedShipping === "DeliveryToAddress"
           ? [{ field: "city", validate: required(t("checkout.cityRequired") || "") }]
@@ -760,8 +764,10 @@ export default function CheckoutPage() {
                 type="email"
                 value={guestEmail}
                 onChange={(e) => setGuestEmail(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition"
+                required={!loggedIn}
+                className={`w-full px-3.5 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--theme)] transition ${fieldErrors.email ? "!border-red-400" : ""}`}
               />
+              <FieldError message={fieldErrors.email} />
             </div>
           </div>
 

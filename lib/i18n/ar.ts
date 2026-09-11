@@ -2310,6 +2310,7 @@ const ar = {
   "checkout.nameAndPhoneRequired": "الاسم ورقم الجوال مطلوبان",
   "checkout.nameRequired": "يرجى إدخال الاسم",
   "checkout.phoneRequired": "يرجى إدخال رقم الجوال",
+  "checkout.emailRequired": "يرجى إدخال البريد الإلكتروني",
   "checkout.cityRequired": "يرجى إدخال المدينة",
   "checkout.errorPlacingOrder": "حدث خطأ غير متوقع أثناء إتمام الطلب. حاول مرة أخرى.",
   "checkout.errorNoInternet": "لا يوجد اتصال بالإنترنت. تأكد من اتصالك ثم حاول مرة أخرى.",

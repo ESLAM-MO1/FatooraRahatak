@@ -2283,6 +2283,7 @@ const en: Record<string, string> = {
   "checkout.nameAndPhoneRequired": "Name and phone number are required",
   "checkout.nameRequired": "Please enter your name",
   "checkout.phoneRequired": "Please enter your phone number",
+  "checkout.emailRequired": "Please enter your email address",
   "checkout.cityRequired": "Please enter your city",
   "checkout.errorPlacingOrder": "An unexpected error occurred while placing your order. Please try again.",
   "checkout.errorNoInternet": "You appear to be offline. Check your connection and try again.",

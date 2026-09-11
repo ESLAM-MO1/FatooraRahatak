@@ -107,8 +107,21 @@ function getShippingCompaniesLabel(value: number | null, t: (s: string, opts?: a
   return t("packages.shippingIntegrationCount", { count: value });
 }
 
+const PACKAGE_NAME_EN: Record<string, string> = {
+  "المجانية": "Free",
+  "الإنطلاق": "Launch",
+  "التوسع": "Growth",
+  "الريادة": "Leadership",
+};
+
+function translatePackageName(name: string, isAr: boolean): string {
+  if (isAr) return name;
+  return PACKAGE_NAME_EN[name] || name;
+}
+
 export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice, savePercent }: PackageCardProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
 
   return (
     <div className={`package-card ${isCurrent ? "package-card--current" : ""}`}>
@@ -119,7 +132,7 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
           className="inline-block w-3.5 h-3.5 rounded-full shrink-0"
           style={{ backgroundColor: pkg.color }}
         />
-        <h3 className="text-[15px] font-bold text-[var(--blue-deep)]">{pkg.name}</h3>
+        <h3 className="text-[15px] font-bold text-[var(--blue-deep)]">{translatePackageName(pkg.name, isAr)}</h3>
       </div>
 
       <div className="mb-4">

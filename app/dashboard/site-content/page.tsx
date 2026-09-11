@@ -566,7 +566,7 @@ function FaqManager() {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[85vh] overflow-y-auto p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-[16px] font-bold">{editing.id ? t("common.edit") : t("admin.addFaq")}</h3>
-              <button type="button" onClick={() => setEditing(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>âœ•</button>
+              <button type="button" onClick={() => setEditing(null)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
             </div>
             <div>
               <label className="text-[12.5px] font-bold text-[var(--sub)] mb-1 block">{t("admin.questionAr")}</label>

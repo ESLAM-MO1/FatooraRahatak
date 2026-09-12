@@ -2621,6 +2621,10 @@ const ar = {
   "returns.handleError": "فشل معالجة طلب الإرجاع",
   "returns.decisionNote": "ملاحظة القرار (اختياري)",
   "returns.decisionNotePlaceholder": "ملاحظة اختيارية تظهر للعميل",
+  "order.returnStatusTitle": "حالة طلب الإرجاع",
+  "order.returnStatusPending": "قيد المراجعة",
+  "order.returnStatusRejected": "تم رفض الطلب",
+  "order.returnDecisionNoteLabel": "ملاحظة المتجر",
 
   // ── Customer Detail ──
   "customerDetail.loadError": "حدث خطأ أثناء تحميل تفاصيل العميل",

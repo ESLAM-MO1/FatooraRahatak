@@ -39,6 +39,7 @@ interface OrderDetail {
   items: OrderItem[];
   statusHistory: StatusHistoryItem[];
   shipments?: ShipmentInfo[];
+  latestReturnRequest?: ReturnRequestInfo | null;
 }
 
 interface BankTransferInfo {
@@ -63,6 +64,14 @@ interface ShipmentInfo {
   destinationCity: string;
   events: ShipmentEvent[];
 }
+interface ReturnRequestInfo {
+  status: string;
+  reason: string;
+  decisionNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
 
 function sessionPhoneKey(orderNumber: string) {
   return `order_phone_${orderNumber}`;
@@ -304,7 +313,7 @@ export default function OrderDetailPage() {
         <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusInfo.className}`}>
           {statusInfo.label}
         </span>
-        {order.status === "Delivered" && !isReturned && (
+        {order.status === "Delivered" && !isReturned && order.latestReturnRequest?.status !== "Pending" && (
           <button
             onClick={() => setShowReturn(true)}
             className="store-btn"
@@ -374,7 +383,34 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
+      {order.latestReturnRequest && (order.latestReturnRequest.status === "Pending" || order.latestReturnRequest.status === "Rejected") && (
+          <div
+            className={`rounded-lg border p-4 mb-6 space-y-1.5 ${
+              order.latestReturnRequest.status === "Rejected"
+                ? "border-red-200 bg-red-50/50"
+                : "border-orange-200 bg-orange-50/50"
+            }`}
+          >
+            <p className="text-[13px] font-bold text-gray-800">
+              {t("order.returnStatusTitle")}:{" "}
+              <span className={order.latestReturnRequest.status === "Rejected" ? "text-red-700" : "text-orange-700"}>
+                {order.latestReturnRequest.status === "Rejected" ? t("order.returnStatusRejected") : t("order.returnStatusPending")}
+              </span>
+            </p>
+            <p className="text-[13px] text-gray-700">
+              <span className="text-gray-500">{t("order.returnReasonLabel")}: </span>
+              {order.latestReturnRequest.reason}
+            </p>
+            {order.latestReturnRequest.decisionNote && (
+              <p className="text-[13px] text-gray-700">
+                <span className="text-gray-500">{t("order.returnDecisionNoteLabel")}: </span>
+                {order.latestReturnRequest.decisionNote}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
         <p className="text-sm text-gray-500">{t("order.orderNumberLabel")}</p>
         <p className="text-lg font-bold text-gray-800 mb-4 break-all">{order.orderNumber}</p>
 

@@ -19,6 +19,7 @@ public class PublicOrderDetailDto
     public List<PublicOrderItemDto> Items { get; set; } = new();
     public List<PublicOrderStatusHistoryDto> StatusHistory { get; set; } = new();
     public List<PublicShipmentDto> Shipments { get; set; } = new();
+    public PublicReturnRequestDto? LatestReturnRequest { get; set; }
 }
 
 public class PublicShipmentDto
@@ -50,4 +51,13 @@ public class PublicOrderStatusHistoryDto
 {
     public string Status { get; set; } = string.Empty;
     public DateTime ChangedAt { get; set; }
+}
+
+public class PublicReturnRequestDto
+{
+    public string Status { get; set; } = string.Empty;
+    public string Reason { get; set; } = string.Empty;
+    public string? DecisionNote { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? DecidedAt { get; set; }
 }

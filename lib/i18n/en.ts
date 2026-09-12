@@ -2594,6 +2594,10 @@ const en: Record<string, string> = {
   "returns.handleError": "Failed to process the return request",
   "returns.decisionNote": "Decision note (optional)",
   "returns.decisionNotePlaceholder": "Optional note shown to the customer",
+  "order.returnStatusTitle": "Return request status",
+  "order.returnStatusPending": "Under review",
+  "order.returnStatusRejected": "Rejected",
+  "order.returnDecisionNoteLabel": "Store note",
 
   // ── Customer Detail ──
   "customerDetail.loadError": "Error loading customer details",

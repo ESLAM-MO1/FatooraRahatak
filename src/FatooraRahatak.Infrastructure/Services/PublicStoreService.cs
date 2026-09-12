@@ -507,6 +507,11 @@ public class PublicStoreService : IPublicStoreService
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync();
 
+        var latestReturnRequest = await _context.ReturnRequests
+            .Where(r => r.OrderId == order.Id)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync();
+
         return new PublicOrderDetailDto
         {
             Id = order.Id,
@@ -532,6 +537,14 @@ public class PublicStoreService : IPublicStoreService
                 }
                 : null,
             CreatedAt = order.CreatedAt,
+            LatestReturnRequest = latestReturnRequest == null ? null : new PublicReturnRequestDto
+            {
+                Status = latestReturnRequest.Status.ToString(),
+                Reason = latestReturnRequest.Reason,
+                DecisionNote = latestReturnRequest.DecisionNote,
+                CreatedAt = latestReturnRequest.CreatedAt,
+                DecidedAt = latestReturnRequest.DecidedAt
+            },
             Items = order.Items.Select(i => new PublicOrderItemDto
             {
                 ProductNameSnapshot = i.ProductNameSnapshot,

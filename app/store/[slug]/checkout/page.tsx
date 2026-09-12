@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useMemo} from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -217,6 +217,14 @@ export default function CheckoutPage() {
   const [quote, setQuote] = useState<ShippingQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
 
+  const composedAddress = useMemo(
+    () =>
+      [addrRegion, addrCity, addrDistrict, addrStreet, addrBuilding ? `مبنى ${addrBuilding}` : null, addrPostal ? `الرمز البريدي ${addrPostal}` : null]
+        .filter(Boolean)
+        .join("، "),
+    [addrRegion, addrCity, addrDistrict, addrStreet, addrBuilding, addrPostal]
+  );
+
   // ✅ تعبئة كل حقول الفورم من عنوان محفوظ (الاسم، الجوال، العنوان التفصيلي بالكامل)
   const fillAddressFields = (addr: CustomerAddress) => {
     setGuestName(addr.fullName || "");
@@ -321,7 +329,7 @@ export default function CheckoutPage() {
   }, [slug]);
 
   useEffect(() => {
-    if (selectedShipping !== "DeliveryToAddress" || !shippingAddress.trim() || shippingAddress.trim().length < 3) {
+    if (selectedShipping !== "DeliveryToAddress" || !composedAddress.trim() || composedAddress.trim().length < 3) {
       setQuote(null);
       return;
     }
@@ -333,7 +341,7 @@ export default function CheckoutPage() {
       try {
         const res = await api.post(`/public/stores/${slug}/shipping-quote`, {
           sessionId,
-          shippingAddress: shippingAddress.trim(),
+          shippingAddress: composedAddress.trim(),
         });
         setQuote(res.data.data);
       } catch {
@@ -345,15 +353,12 @@ export default function CheckoutPage() {
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shippingAddress, selectedShipping, slug]);
+  }, [composedAddress, selectedShipping, slug]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!cart) return;
 
-    const composedAddress = [addrRegion, addrCity, addrDistrict, addrStreet, addrBuilding ? `مبنى ${addrBuilding}` : null, addrPostal ? `الرمز البريدي ${addrPostal}` : null]
-      .filter(Boolean)
-      .join("، ");
     if (!addrCity.trim()) {
       setError(t("checkout.shippingAddressRequired"));
       return;

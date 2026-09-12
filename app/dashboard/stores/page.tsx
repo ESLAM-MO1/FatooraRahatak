@@ -23,6 +23,11 @@ interface Store {
   packageConsumptionPercent: number;
 }
 
+interface PackageOption {
+  id: number;
+  packageName: string;
+}
+
 const statusLabel = (status: string, t: (key: string) => string) => {
   switch (status) {
     case "Active":
@@ -64,6 +69,10 @@ export default function StoresPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [packageFilter, setPackageFilter] = useState("");
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [packages, setPackages] = useState<PackageOption[]>([]);
+  const [packageModalStore, setPackageModalStore] = useState<Store | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState<string>("");
+  const [changingPackage, setChangingPackage] = useState(false);
 
   const userType = getUserType();
 
@@ -74,7 +83,17 @@ export default function StoresPage() {
       return;
     }
     fetchStores();
+    fetchPackages();
   }, [userType]);
+
+  const fetchPackages = async () => {
+    try {
+      const res = await api.get("/admin/packages");
+      setPackages(res.data.data || []);
+    } catch {
+      /* تجاهل خطأ جلب الباقات، الزر لن يعمل لكن الصفحة تبقى سليمة */
+    }
+  };
 
   const fetchStores = async () => {
     setLoading(true);
@@ -127,6 +146,31 @@ export default function StoresPage() {
     }
   };
 
+  const openPackageModal = (store: Store) => {
+    setPackageModalStore(store);
+    setSelectedPackageId("");
+    setActionError("");
+  };
+
+  const handleChangePackage = async () => {
+    if (!packageModalStore || !selectedPackageId) return;
+    if (!(await confirm(t("store.changePackageConfirm", { name: packageModalStore.storeName })))) return;
+
+    setActionError("");
+    setActionSuccess("");
+    setChangingPackage(true);
+    try {
+      await api.put(`/admin/stores/${packageModalStore.id}/change-package`, { packageId: Number(selectedPackageId) });
+      setActionSuccess(t("store.changePackageSuccess", { name: packageModalStore.storeName }));
+      setPackageModalStore(null);
+      await fetchStores();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("store.changePackageError"));
+    } finally {
+      setChangingPackage(false);
+    }
+  };
+
   const filteredStores = stores.filter((store) => {
     const statusMatch = !statusFilter || store.status === statusFilter;
     const packageMatch = !packageFilter || store.packageName === packageFilter;
@@ -134,7 +178,7 @@ export default function StoresPage() {
   });
 
   const statuses = [...new Set(stores.map((s) => s.status))];
-  const packages = [...new Set(stores.map((s) => s.packageName))];
+  const packageNames = [...new Set(stores.map((s) => s.packageName))];
 
   if (loading) {
     return <LoadingState />;
@@ -178,7 +222,7 @@ export default function StoresPage() {
               className="px-3 py-2 text-sm bg-transparent w-full outline-none"
             >
               <option value="">{t("common.all")}</option>
-              {packages.map((pkg) => (
+              {packageNames.map((pkg) => (
                 <option key={pkg} value={pkg}>
                   {pkg}
                 </option>
@@ -288,6 +332,12 @@ export default function StoresPage() {
                             {processingId === store.id ? t("store.activating") : t("store.activate")}
                           </button>
                         )}
+                        <button
+                          onClick={() => openPackageModal(store)}
+                          className="text-[var(--blue)] hover:underline text-sm"
+                        >
+                          {t("store.changePackage")}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -390,6 +440,46 @@ export default function StoresPage() {
           </div>
         )}
       </div>
+
+      {packageModalStore && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-[16px] font-bold text-[var(--ink)]">
+              {t("store.changePackageTitle", { name: packageModalStore.storeName })}
+            </h3>
+            <p className="text-[13px] text-[var(--sub)]">{t("store.currentPackage")}: {packageModalStore.packageName}</p>
+            <select
+              className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none"
+              style={{ borderColor: "var(--border)" }}
+              value={selectedPackageId}
+              onChange={(e) => setSelectedPackageId(e.target.value)}
+            >
+              <option value="">{t("store.selectPackage")}</option>
+              {packages.map((p) => (
+                <option key={p.id} value={p.id}>{p.packageName}</option>
+              ))}
+            </select>
+            {actionError && <div className="alert alert--danger text-[12px]">{actionError}</div>}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setPackageModalStore(null)}
+                className="btn btn-outline btn-sm"
+                disabled={changingPackage}
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleChangePackage}
+                className="btn btn-primary btn-sm"
+                disabled={!selectedPackageId || changingPackage}
+              >
+                {changingPackage ? t("store.changingPackage") : t("common.confirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

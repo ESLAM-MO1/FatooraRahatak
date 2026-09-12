@@ -433,6 +433,12 @@ export default function StoresPage() {
                         {processingId === store.id ? t("store.activating") : t("store.activate")}
                       </button>
                     )}
+                    <button
+                      onClick={() => openPackageModal(store)}
+                      className="text-[var(--blue)] hover:underline text-sm"
+                    >
+                      {t("store.changePackage")}
+                    </button>
                   </div>
                 </div>
               ))}

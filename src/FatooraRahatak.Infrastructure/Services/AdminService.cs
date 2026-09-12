@@ -132,6 +132,55 @@ public class AdminService : IAdminService
         await _context.SaveChangesAsync();
     }
 
+    // ترقية/تغيير باقة متجر مجانًا من قبل الأدمن (بدون دفع فعلي)
+    public async Task ChangeStorePackageAsync(long storeId, long newPackageId)
+    {
+        var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
+        if (store == null)
+            throw new InvalidOperationException("المتجر غير موجود");
+
+        var package = await _context.Packages.FirstOrDefaultAsync(p => p.Id == newPackageId);
+        if (package == null)
+            throw new InvalidOperationException("الباقة غير موجودة");
+
+        store.PackageId = newPackageId;
+
+        var subscription = store.ActiveSubscriptionId.HasValue
+            ? await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == store.ActiveSubscriptionId.Value)
+            : null;
+
+        if (subscription != null)
+        {
+            subscription.PackageId = newPackageId;
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.PaymentStatus = "Paid";
+            subscription.DueAmount = 0;
+            subscription.StartDate = DateTime.UtcNow;
+            subscription.EndDate = DateTime.UtcNow.AddYears(1);
+            subscription.GracePeriodEnd = null;
+        }
+        else
+        {
+            subscription = new Subscription
+            {
+                StoreId = storeId,
+                PackageId = newPackageId,
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddYears(1),
+                BillingCycle = BillingCycle.Monthly,
+                Status = SubscriptionStatus.Active,
+                PaymentStatus = "Paid",
+                AutoRenew = false,
+                DueAmount = 0,
+            };
+            _context.Subscriptions.Add(subscription);
+            await _context.SaveChangesAsync();
+            store.ActiveSubscriptionId = subscription.Id;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<List<AdminUserListDto>> GetOwnerUsersAsync()
     {
         return await _context.Users

@@ -187,6 +187,21 @@ public class AdminController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+    [HttpPut("stores/{id}/change-package")]
+    public async Task<IActionResult> ChangeStorePackage(long id, [FromBody] ChangeStorePackageDto dto)
+    {
+        var forbidden = CheckAccess("Stores");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.ChangeStorePackageAsync(id, dto.PackageId);
+            return Ok(new { success = true, message = "تم تغيير باقة المتجر بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
     [HttpPut("stores/{id}/custom-domain/activate")]
     public async Task<IActionResult> ActivateCustomDomain(long id)
     {

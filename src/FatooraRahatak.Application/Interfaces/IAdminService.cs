@@ -6,6 +6,7 @@ public interface IAdminService
     Task<AdminStoreDetailDto?> GetStoreByIdAsync(long id);
     Task SuspendStoreAsync(long id);
     Task ActivateStoreAsync(long id);
+    Task ChangeStorePackageAsync(long storeId, long newPackageId);
     Task ActivateCustomDomainAsync(long storeId);
     Task<List<AdminPackageDto>> GetAllPackagesAsync();
     Task<AdminPackageDto?> GetPackageByIdAsync(long id);

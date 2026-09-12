@@ -10,6 +10,22 @@ import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import { formatNumber } from "@/lib/formatNumber";
 
+// أسماء الباقات مخزّنة بالعربي فقط في قاعدة البيانات (عمود واحد)،
+// فلما تتحول اللغة للإنجليزي بنعرض الاسم الإنجليزي المقابل من هنا بدل النص العربي الخام.
+const PACKAGE_NAME_EN: Record<string, string> = {
+  "المجانية": "Free",
+  "الإنطلاق": "Launch",
+  "التوسع": "Growth",
+  "الريادة": "Leadership",
+};
+
+function packageDisplayName(name: string, lang: string): string {
+  if (lang.startsWith("en")) {
+    return PACKAGE_NAME_EN[name] || name;
+  }
+  return name;
+}
+
 interface Package {
   id: number;
   packageName: string;
@@ -116,7 +132,7 @@ function CrossIcon() {
 }
 
 export default function PackagesPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState("packages");
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +252,7 @@ export default function PackagesPage() {
     setActionSuccess("");
     try {
       await api.put(`/admin/packages/${pkg.id}`, editForm);
-      setActionSuccess(t("packagesAdmin.updateSuccess", { name: pkg.packageName }));
+      setActionSuccess(t("packagesAdmin.updateSuccess", { name: packageDisplayName(pkg.packageName, i18n.language) }));
       setEditingId(null);
       setEditForm({});
       await fetchPackages();
@@ -536,7 +552,7 @@ export default function PackagesPage() {
                     className="inline-block w-3.5 h-3.5 rounded-full shrink-0"
                     style={{ backgroundColor: cardColor }}
                   />
-                  <h3 className="text-[15px] font-bold text-[var(--blue-deep)]">{pkg.packageName}</h3>
+                  <h3 className="text-[15px] font-bold text-[var(--blue-deep)]">{packageDisplayName(pkg.packageName, i18n.language)}</h3>
                 </div>
 
                 <div className="mb-4">
@@ -768,7 +784,7 @@ export default function PackagesPage() {
                         >
                           <td className="p-3 text-[var(--ink)] font-medium">{inv.storeName}</td>
                           <td className="p-3 text-[var(--sub)]" dir="ltr">{inv.storeSlug}</td>
-                          <td className="p-3 text-[var(--sub)]">{inv.packageName}</td>
+                          <td className="p-3 text-[var(--sub)]">{packageDisplayName(inv.packageName, i18n.language)}</td>
                           <td className="p-3 text-[var(--ink)] font-bold">{formatCurrency(inv.amount)}</td>
                           <td className="p-3 text-[var(--sub)]" dir="ltr">
                             {new Date(inv.dueDate).toLocaleDateString("ar-SA-u-nu-latn")}
@@ -797,7 +813,7 @@ export default function PackagesPage() {
                           </div>
                           <div>
                             <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.package")}</p>
-                            <p className="text-[12px] text-[var(--sub)]">{inv.packageName}</p>
+                            <p className="text-[12px] text-[var(--sub)]">{packageDisplayName(inv.packageName, i18n.language)}</p>
                           </div>
                           <div>
                             <p className="text-[11px] font-bold text-[var(--sub)]">{t("packagesAdmin.invoiceAmount")}</p>

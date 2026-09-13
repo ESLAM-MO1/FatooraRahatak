@@ -133,4 +133,5 @@ public class SocialContent
     public string Tiktok { get; set; } = "https://tiktok.com/@faturatrahatik";
     public string Telegram { get; set; } = "https://t.me/faturatrahatik";
     public string Linkedin { get; set; } = "https://linkedin.com/in/faturatrahatik";
+    public string Twitter { get; set; } = "";
 }

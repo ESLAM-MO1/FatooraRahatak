@@ -1225,6 +1225,7 @@ const ar = {
   "admin.tiktok": "تيك توك",
   "admin.telegram": "تيليجرام",
   "admin.linkedin": "لينكدإن",
+  "admin.twitter": "تويتر (X)",
   "admin.saveHomepage": "حفظ محتوى الصفحة الرئيسية",
   "admin.managePages": "إدارة صفحات",
   "admin.selectPage": "اختر الصفحة",

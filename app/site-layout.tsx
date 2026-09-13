@@ -120,7 +120,7 @@ interface BlogPost {
 interface FooterData {
   description: string;
   copyright: string;
-  social: { facebook: string; instagram: string; whatsapp: string; snapchat: string; tiktok: string; telegram: string; linkedin: string };
+  social: { facebook: string; instagram: string; whatsapp: string; snapchat: string; tiktok: string; telegram: string; linkedin: string; twitter: string };
 }
 
 interface RawFooterData {
@@ -173,6 +173,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
         social: {
           facebook: rawFooter.social?.facebook || "#",
           instagram: rawFooter.social?.instagram || "#",
+          twitter: rawFooter.social?.twitter || "#",
           whatsapp: rawFooter.social?.whatsapp || "#",
           snapchat: rawFooter.social?.snapchat || "#",
           tiktok: rawFooter.social?.tiktok || "#",
@@ -180,7 +181,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
           linkedin: rawFooter.social?.linkedin || "#",
         },
       }
-    : { description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#", snapchat: "#", tiktok: "#", telegram: "#", linkedin: "#" } };
+    : { description: t("footer.description"), copyright: t("footer.copyright"), social: { facebook: "#", instagram: "#", whatsapp: "#", snapchat: "#", tiktok: "#", telegram: "#", linkedin: "#", twitter: "#" } };
 
   useEffect(() => {
     fetch(`${API_BASE}/site/menus`)
@@ -786,6 +787,11 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
               {footer.social.linkedin !== "#" && (
                 <Link href={footer.social.linkedin} aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="2"><path d="M6.5 8H4v12h2.5V8z" /><circle cx="5.5" cy="5" r="1.8" /><path d="M20 13.4c0-3-1.6-4.6-3.8-4.6-1.3 0-2 .5-2.5 1.2V8.9H11V20h2.6v-6.1c0-1.2.6-2.1 1.8-2.1s1.6.9 1.6 2.1V20H20v-6.6z" /></svg>
+                </Link>
+              )}
+              {footer.social.twitter !== "#" && footer.social.twitter && (
+                <Link href={footer.social.twitter} aria-label="X (Twitter)" target="_blank" rel="noopener noreferrer">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="1.8"><path d="M4 4l7.2 9.6L4.4 20H7l5.6-5 4.4 5H20l-7.5-9.9L19.4 4h-2.6l-5.1 4.6L7.6 4H4Z" /></svg>
                 </Link>
               )}
             </div>

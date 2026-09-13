@@ -1202,6 +1202,7 @@ const en: Record<string, string> = {
   "admin.tiktok": "TikTok",
   "admin.telegram": "Telegram",
   "admin.linkedin": "LinkedIn",
+  "admin.twitter": "X (Twitter)",
   "admin.saveHomepage": "Save Homepage Content",
   "admin.managePages": "Manage Pages",
   "admin.selectPage": "Select Page",

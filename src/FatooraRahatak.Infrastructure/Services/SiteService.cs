@@ -30,6 +30,7 @@ public class SiteService : ISiteService
         ["tiktok"] = "https://tiktok.com/@faturatrahatik",
         ["telegram"] = "https://t.me/faturatrahatik",
         ["linkedin"] = "https://linkedin.com/in/faturatrahatik",
+        ["twitter"] = "",
     };
 
     // ⚠️ ترحيل: النسخة القديمة من محتوى الصفحة الرئيسية كانت أحادية اللغة
@@ -138,6 +139,7 @@ public class SiteService : ISiteService
             Tiktok = social["tiktok"],
             Telegram = social["telegram"],
             Linkedin = social["linkedin"],
+            Twitter = social["twitter"],
         };
 
         // ⚠️ إصلاح الإنجليزي: المحتوى القديم في DB (قبل إضافة الترجمة) كان عربي فقط بدون

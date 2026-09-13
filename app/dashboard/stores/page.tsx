@@ -21,6 +21,8 @@ interface Store {
   status: string;
   createdAt: string;
   packageConsumptionPercent: number;
+  customDomain?: string | null;
+  customDomainStatus?: string;
 }
 
 interface PackageOption {
@@ -68,6 +70,7 @@ export default function StoresPage() {
   const [actionSuccess, setActionSuccess] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [packageFilter, setPackageFilter] = useState("");
+  const [pendingDomainOnly, setPendingDomainOnly] = useState(false);
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [packages, setPackages] = useState<PackageOption[]>([]);
   const [packageModalStore, setPackageModalStore] = useState<Store | null>(null);
@@ -174,7 +177,8 @@ export default function StoresPage() {
   const filteredStores = stores.filter((store) => {
     const statusMatch = !statusFilter || store.status === statusFilter;
     const packageMatch = !packageFilter || store.packageName === packageFilter;
-    return statusMatch && packageMatch;
+    const domainMatch = !pendingDomainOnly || store.customDomainStatus === "Pending";
+    return statusMatch && packageMatch && domainMatch;
   });
 
   const statuses = [...new Set(stores.map((s) => s.status))];
@@ -230,6 +234,15 @@ export default function StoresPage() {
             </select>
           </div>
         </div>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={pendingDomainOnly}
+            onChange={(e) => setPendingDomainOnly(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="text-sm font-medium text-[var(--ink)]">{t("store.pendingDomainOnly")}</span>
+        </label>
       </div>
 
       <div className="card overflow-hidden">
@@ -260,7 +273,12 @@ export default function StoresPage() {
                     className="border-b hover:bg-[var(--border)]"
                     style={{ borderColor: "var(--border)" }}
                   >
-                    <td className="p-3 text-[var(--ink)] font-medium">{store.storeName}</td>
+                    <td className="p-3 text-[var(--ink)] font-medium">
+                      {store.storeName}
+                      {store.customDomainStatus === "Pending" && (
+                        <span className="badge badge--yellow ms-2 text-[10px]">{t("store.pendingDomainBadge")}</span>
+                      )}
+                    </td>
                     <td className="p-3 text-[var(--sub)]" dir="ltr">
                       {store.storeSlug}
                     </td>
@@ -350,7 +368,12 @@ export default function StoresPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.name")}</p>
-                      <p className="text-[12px] text-[var(--ink)] font-medium">{store.storeName}</p>
+                      <p className="text-[12px] text-[var(--ink)] font-medium">
+                        {store.storeName}
+                        {store.customDomainStatus === "Pending" && (
+                          <span className="badge badge--yellow ms-2 text-[10px]">{t("store.pendingDomainBadge")}</span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.status")}</p>

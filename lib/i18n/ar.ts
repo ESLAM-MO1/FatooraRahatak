@@ -1518,6 +1518,8 @@ const ar = {
   "store.suspend": "تعليق",
   "store.activate": "تفعيل",
   "store.changePackage": "تغيير الباقة",
+  "store.pendingDomainOnly": "دومينات معلّقة فقط",
+  "store.pendingDomainBadge": "دومين معلّق",
   "store.changePackageTitle": "تغيير باقة {{name}}",
   "store.currentPackage": "الباقة الحالية",
   "store.selectPackage": "اختر الباقة الجديدة",

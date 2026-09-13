@@ -11,4 +11,6 @@ public class AdminStoreListDto
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public double PackageConsumptionPercent { get; set; }
+    public string? CustomDomain { get; set; }
+    public string CustomDomainStatus { get; set; } = string.Empty;
 }

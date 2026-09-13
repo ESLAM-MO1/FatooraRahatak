@@ -1490,6 +1490,8 @@ const en: Record<string, string> = {
   "store.suspend": "Suspend",
   "store.activate": "Activate",
   "store.changePackage": "Change Package",
+  "store.pendingDomainOnly": "Pending Domains Only",
+  "store.pendingDomainBadge": "Pending Domain",
   "store.changePackageTitle": "Change {{name}} Package",
   "store.currentPackage": "Current Package",
   "store.selectPackage": "Select New Package",

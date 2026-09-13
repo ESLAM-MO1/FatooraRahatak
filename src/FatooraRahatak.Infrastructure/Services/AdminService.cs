@@ -52,7 +52,9 @@ public class AdminService : IAdminService
                 ProductsCount = s.Products.Count,
                 EmployeesCount = s.Employees.Count(e => e.Status == "Active"),
                 WarehousesCount = s.Warehouses.Count,
-                OrdersCount = _context.Orders.Count(o => o.StoreId == s.Id)
+                OrdersCount = _context.Orders.Count(o => o.StoreId == s.Id),
+                s.CustomDomain,
+                CustomDomainStatus = s.CustomDomainStatus.ToString()
             })
             .ToListAsync();
 
@@ -79,7 +81,9 @@ public class AdminService : IAdminService
                 PackageName = s.PackageName,
                 Status = s.Status,
                 CreatedAt = s.CreatedAt,
-                PackageConsumptionPercent = ratios.Count > 0 ? Math.Round(ratios.Max(), 1) : 0
+                PackageConsumptionPercent = ratios.Count > 0 ? Math.Round(ratios.Max(), 1) : 0,
+                CustomDomain = s.CustomDomain,
+                CustomDomainStatus = s.CustomDomainStatus
             };
         }).ToList();
     }

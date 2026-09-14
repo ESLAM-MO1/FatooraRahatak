@@ -1493,6 +1493,9 @@ const ar = {
   "order.statusCancelled": "ملغي",
   "order.statusPendingRefund": "بانتظار الاسترداد",
   "order.statusPendingPayment": "بانتظار الدفع",
+  "order.retryPayment": "أكمل الدفع",
+  "order.retryPaymentError": "تعذر إنشاء رابط الدفع، حاول مرة أخرى",
+  "order.paymentPendingNotice": "طلبك بانتظار إتمام الدفع الإلكتروني.",
   "order.loadError": "حدث خطأ أثناء تحميل الطلبات",
   "order.allStatuses": "جميع الحالات",
 
@@ -3605,6 +3608,8 @@ const ar = {
   "storefront.thankYouNote": "سجّل دخولك لعرض طلباتك ومتابعتها",
   "storefront.paymentCompleted": "تم تأكيد الدفع الإلكتروني بنجاح.",
   "storefront.paymentFailed": "تعذر إتمام الدفع الإلكتروني. إذا تم خصم المبلغ فسيُعاد تلقائيًا.",
+  "storefront.retryPayment": "أكمل الدفع",
+  "storefront.retryPaymentError": "تعذر إنشاء رابط الدفع، حاول مرة أخرى",
   "storefront.backToStore": "العودة للمتجر",
   "storefront.trackMyOrder": "تتبع طلبي",
   "storefront.viewMyOrders": "عرض طلباتي",

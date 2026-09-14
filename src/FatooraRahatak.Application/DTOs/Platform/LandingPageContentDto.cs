@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace FatooraRahatak.Application.DTOs.Platform;
 
@@ -133,5 +134,6 @@ public class SocialContent
     public string Tiktok { get; set; } = "https://tiktok.com/@faturatrahatik";
     public string Telegram { get; set; } = "https://t.me/faturatrahatik";
     public string Linkedin { get; set; } = "https://linkedin.com/in/faturatrahatik";
+    [JsonPropertyName("twitter")]
     public string Twitter { get; set; } = "";
 }

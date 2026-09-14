@@ -38,6 +38,8 @@ export default function ThankYouPage() {
   const [submitting, setSubmitting] = useState(false);
   const [receiptError, setReceiptError] = useState("");
   const [receiptDone, setReceiptDone] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
 
   const quick = getQuickCustomer(slug);
   const loggedIn = Boolean(quick?.sessionToken);
@@ -137,6 +139,25 @@ export default function ThankYouPage() {
     }
   };
 
+  const handleRetryPayment = async () => {
+    setRetrying(true);
+    setRetryError("");
+    try {
+      const res = await api.post(`/public/stores/${slug}/orders/${orderNumber}/retry-payment`);
+      const url = res.data?.data?.paymentLinkUrl;
+      if (url) {
+        window.location.assign(url);
+      } else {
+        setRetryError(res.data?.data?.message || t("storefront.retryPaymentError"));
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setRetryError(e.response?.data?.message || t("storefront.retryPaymentError"));
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   const isBankTransfer = order?.paymentMethod === "BankTransfer";
 
   return (
@@ -150,6 +171,18 @@ export default function ThankYouPage() {
         {paymentState === "failed" && (
           <div className="alert alert--danger mb-4">
             {t("storefront.paymentFailed")}
+          </div>
+        )}
+        {paymentState === "none" && !isBankTransfer && order?.paymentMethod && ["CreditCard", "PayPal", "Mada", "Tabby", "Tamara", "Moyasar"].includes(order.paymentMethod) && (
+          <div className="mb-4 text-left">
+            <button
+              onClick={handleRetryPayment}
+              disabled={retrying}
+              className="w-full rounded-lg py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300"
+            >
+              {retrying ? t("common.loading") : t("storefront.retryPayment")}
+            </button>
+            {retryError && <p className="text-[12px] text-red-600 mt-2 text-center">{retryError}</p>}
           </div>
         )}
         <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">

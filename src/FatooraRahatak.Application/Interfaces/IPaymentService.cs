@@ -6,6 +6,7 @@ namespace FatooraRahatak.Application.Interfaces;
 public interface IPaymentService
 {
     Task<CreatePaymentResult> CreatePaymentLinkAsync(CreatePaymentDto dto, long? storeId = null);
+    Task<CreatePaymentResult> RetryOrderPaymentAsync(string slug, string orderNumber);
     Task<PaymentStatusResult> CheckPaymentStatusAsync(string paymentReference, long? storeId = null);
     Task<PaymentStatusResult> CheckOrderPaymentStatusAsync(long storeId, string orderNumber);
     Task<PaymentStatusResult> CheckOrderPaymentStatusBySlugAsync(string slug, string orderNumber);

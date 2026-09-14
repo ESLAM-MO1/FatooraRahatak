@@ -121,6 +121,8 @@ export default function OrderDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [returnMsg, setReturnMsg] = useState("");
   const [returnError, setReturnError] = useState("");
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
 
   const submitReturn = async (e: FormEvent) => {
     e.preventDefault();
@@ -142,6 +144,26 @@ export default function OrderDetailPage() {
       setReturnError(e2.response?.data?.message || t("order.returnError"));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRetryPayment = async () => {
+    if (!order) return;
+    setRetrying(true);
+    setRetryError("");
+    try {
+      const res = await api.post(`/public/stores/${slug}/orders/${orderNumber}/retry-payment`);
+      const url = res.data?.data?.paymentLinkUrl;
+      if (url) {
+        window.location.assign(url);
+      } else {
+        setRetryError(res.data?.data?.message || t("order.retryPaymentError"));
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setRetryError(e.response?.data?.message || t("order.retryPaymentError"));
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -383,29 +405,46 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      {order.latestReturnRequest && (order.latestReturnRequest.status === "Pending" || order.latestReturnRequest.status === "Rejected") && (
-          <div
-            className={`rounded-lg border p-4 mb-6 space-y-1.5 ${
-              order.latestReturnRequest.status === "Rejected"
-                ? "border-red-200 bg-red-50/50"
-                : "border-orange-200 bg-orange-50/50"
-            }`}
+      {order.status === "PendingPayment" && order.paymentMethod && ["CreditCard", "PayPal", "Mada", "Tabby", "Tamara", "Moyasar"].includes(order.paymentMethod) && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
+          <p className="text-sm text-gray-600 mb-3">{t("order.paymentPendingNotice")}</p>
+          <button
+            onClick={handleRetryPayment}
+            disabled={retrying}
+            className="store-btn w-full disabled:bg-gray-300"
           >
-            <p className="text-[13px] font-bold text-gray-800">
-              {t("order.returnStatusTitle")}:{" "}
-              <span className={order.latestReturnRequest.status === "Rejected" ? "text-red-700" : "text-orange-700"}>
+            {retrying ? t("common.loading") : t("order.retryPayment")}
+          </button>
+          {retryError && <p className="text-[12px] text-red-600 mt-2">{retryError}</p>}
+        </div>
+      )}
+
+      {order.latestReturnRequest && (order.latestReturnRequest.status === "Pending" || order.latestReturnRequest.status === "Rejected") && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <svg viewBox="0 0 24 24" fill="none" width="16" height="16" className="text-gray-400 shrink-0">
+                  <path d="M3 3v6h6M3.5 9a9 9 0 1 0 2.13-5.36" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <p className="text-sm font-bold text-gray-800">{t("order.returnStatusTitle")}</p>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  order.latestReturnRequest.status === "Rejected"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-orange-100 text-orange-700"
+                }`}
+              >
                 {order.latestReturnRequest.status === "Rejected" ? t("order.returnStatusRejected") : t("order.returnStatusPending")}
               </span>
-            </p>
-            <p className="text-[13px] text-gray-700">
-              <span className="text-gray-500">{t("order.returnReasonLabel")}: </span>
-              {order.latestReturnRequest.reason}
-            </p>
+            </div>
+            <p className="text-sm text-gray-500">{t("order.returnReasonLabel")}</p>
+            <p className="text-gray-800 mb-3">{order.latestReturnRequest.reason}</p>
             {order.latestReturnRequest.decisionNote && (
-              <p className="text-[13px] text-gray-700">
-                <span className="text-gray-500">{t("order.returnDecisionNoteLabel")}: </span>
-                {order.latestReturnRequest.decisionNote}
-              </p>
+              <>
+                <p className="text-sm text-gray-500">{t("order.returnDecisionNoteLabel")}</p>
+                <p className="text-gray-800">{order.latestReturnRequest.decisionNote}</p>
+              </>
             )}
           </div>
         )}

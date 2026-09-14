@@ -554,6 +554,39 @@ public class PaymentService : IPaymentService
         return await CheckOrderPaymentStatusAsync(store.Id, orderNumber);
     }
 
+    public async Task<CreatePaymentResult> RetryOrderPaymentAsync(string slug, string orderNumber)
+    {
+        var store = await _context.Stores.FirstOrDefaultAsync(s => s.StoreSlug == slug);
+        if (store == null)
+            return new CreatePaymentResult { Success = false, Message = "المتجر غير موجود" };
+
+        var order = await _context.Orders
+            .Include(o => o.Store)
+            .FirstOrDefaultAsync(o => o.StoreId == store.Id && o.OrderNumber == orderNumber);
+        if (order == null)
+            return new CreatePaymentResult { Success = false, Message = "الطلب غير موجود" };
+
+        if (order.Status != OrderStatus.PendingPayment)
+            return new CreatePaymentResult { Success = false, Message = "لا يمكن إعادة الدفع لهذا الطلب" };
+
+        if (order.PaymentMethodType is not (PaymentMethodType.CreditCard or PaymentMethodType.PayPal or PaymentMethodType.Mada or PaymentMethodType.Tabby or PaymentMethodType.Tamara or PaymentMethodType.Moyasar))
+            return new CreatePaymentResult { Success = false, Message = "طريقة الدفع لهذا الطلب لا تدعم إعادة المحاولة" };
+
+        var storeFrontBase = (_config["App:StoreFrontBaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+        var successUrl = $"{storeFrontBase}/store/{slug}/thank-you/{order.OrderNumber}";
+        var paymentCallbackUrl = (_config["App:BaseUrl"] ?? "https://your-domain.com").TrimEnd('/') + "/api/v1/payments/webhook";
+
+        return await CreatePaymentLinkAsync(new CreatePaymentDto
+        {
+            OrderId = order.Id,
+            Amount = order.TotalAmount,
+            Currency = string.IsNullOrWhiteSpace(order.Store!.Currency) ? "SAR" : order.Store!.Currency,
+            Description = $"دفع الطلب {order.OrderNumber}",
+            SuccessUrl = successUrl,
+            CallbackUrl = paymentCallbackUrl
+        }, store.Id);
+    }
+
     public async Task<PaymentStatusResult> CheckOrderPaymentStatusAsync(long storeId, string orderNumber)
     {
         var order = await _context.Orders

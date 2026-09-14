@@ -5,7 +5,7 @@ import Link from "next/link";
 import api from "@/lib/api";
 import { customerApi } from "@/lib/customerApi";
 import { isAuthenticated } from "@/lib/auth";
-import { getQuickCustomer } from "@/lib/quickCustomer";
+import { getQuickCustomer, setQuickCustomer } from "@/lib/quickCustomer";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import PhoneInputField from "@/components/PhoneInputField";
@@ -443,6 +443,17 @@ export default function CheckoutPage() {
       const paymentMessage = res.data.data.paymentMessage;
       const paymentMethod = res.data.data.paymentMethod;
       localStorage.removeItem(getCartSessionKey(slug));
+      const existingQuick = getQuickCustomer(slug);
+      setQuickCustomer(slug, {
+        userId: existingQuick?.userId ?? null,
+        fullName: guestName.trim() || existingQuick?.fullName || "",
+        email: guestEmail.trim() || existingQuick?.email || "",
+        phone: guestPhone.trim() || existingQuick?.phone || "",
+        lastAddress: composedAddress || existingQuick?.lastAddress,
+        sessionToken: existingQuick?.sessionToken,
+        orderCount: (existingQuick?.orderCount ?? 0) + 1,
+        recentOrders: existingQuick?.recentOrders ?? [],
+      });
       if (guestPhone.trim()) {
         sessionStorage.setItem(`order_phone_${orderNumber}`, guestPhone.trim());
       }

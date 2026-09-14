@@ -209,6 +209,22 @@ public class PublicStoreController : ControllerBase
         }
     }
 
+    [HttpPost("{slug}/orders/{orderNumber}/retry-payment")]
+    public async Task<IActionResult> RetryOrderPayment(string slug, string orderNumber)
+    {
+        try
+        {
+            var result = await _paymentService.RetryOrderPaymentAsync(slug, orderNumber);
+            if (!result.Success)
+                return BadRequest(new { success = false, message = result.Message });
+            return Ok(new { success = true, data = result });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     // 📄 رفع إيصال الحوالة البنكية من العميل — متحقق منه بجلسة سريعة برقم الهاتف
     // (نفس آلية التحقق الخاصة بجلب تفاصيل الطلب تمامًا)
     [HttpPost("{slug}/orders/{orderNumber}/bank-transfer/receipt")]

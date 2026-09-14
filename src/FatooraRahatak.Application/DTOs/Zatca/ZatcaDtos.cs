@@ -4,8 +4,6 @@ public class ZatcaOnboardDto
 {
     public string? VatNumber { get; set; }
     public string? Otp { get; set; }
-    public string? ComplianceRequestId { get; set; }
-    public string? ComplianceRequestSecret { get; set; }
 }
 
 public class ZatcaCredentialDto

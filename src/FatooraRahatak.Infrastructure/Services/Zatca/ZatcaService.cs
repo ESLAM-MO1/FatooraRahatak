@@ -64,24 +64,12 @@ public class ZatcaService : IZatcaService
         if (string.IsNullOrWhiteSpace(dto.Otp))
             throw new InvalidOperationException("كود OTP من بوابة الفاتورة الإلكترونية مطلوب لتسجيل الجهاز");
 
-        var complianceRequestId = string.IsNullOrWhiteSpace(dto.ComplianceRequestId) ? null : dto.ComplianceRequestId.Trim();
-        var complianceRequestSecret = string.IsNullOrWhiteSpace(dto.ComplianceRequestSecret) ? null : dto.ComplianceRequestSecret.Trim();
-
         var credential = await _context.ZatcaCredentials.FirstOrDefaultAsync(z => z.StoreId == storeId);
         if (credential == null)
         {
             credential = new ZatcaCredential { StoreId = storeId };
             _context.ZatcaCredentials.Add(credential);
         }
-
-        complianceRequestId ??= credential.ComplianceRequestId;
-        complianceRequestSecret ??= credential.ComplianceRequestSecret;
-
-        if (string.IsNullOrWhiteSpace(complianceRequestId) || string.IsNullOrWhiteSpace(complianceRequestSecret))
-            throw new InvalidOperationException(
-                "بيانات طلب الالتزام (Compliance Request ID/Secret) مطلوبة — تُستخرج من حسابك في بوابة الفاتورة الإلكترونية (Fatoora Portal)");
-
-        var isRenewal = !string.IsNullOrWhiteSpace(credential.ProductionCsid);
 
         var serialNumber = BuildSerialNumber(vatNumber);
         var (csrBase64, privateKeyPem) = ZatcaCsrBuilder.GenerateCsr(
@@ -90,17 +78,21 @@ public class ZatcaService : IZatcaService
             _settings.Value.OrganizationUnit,
             serialNumber);
 
-        ZatcaComplianceResponse response;
+        ZatcaComplianceResponse complianceResponse;
+        ZatcaComplianceResponse productionResponse;
         try
         {
-            response = await _client.ComplianceOnboardAsync(
-                csrBase64,
-                vatNumber,
-                dto.Otp.Trim(),
-                _settings.Value.SolutionName,
-                complianceRequestId,
-                complianceRequestSecret,
-                isProductionRenewal: isRenewal);
+            // الخطوة 1: CSR + OTP فقط، بدون أي بيانات دخول -> شهادة تجريبية (Compliance CSID)
+            complianceResponse = await _client.ComplianceOnboardAsync(csrBase64, dto.Otp.Trim());
+
+            if (string.IsNullOrWhiteSpace(complianceResponse.RequestId))
+                throw new InvalidOperationException("زاتكا لم تُرجع معرّف طلب الالتزام (Request ID) في رد الخطوة الأولى");
+
+            // الخطوة 2: نستخدم الشهادة التجريبية كبيانات دخول -> الشهادة النهائية (Production CSID)
+            productionResponse = await _client.ProductionOnboardAsync(
+                complianceResponse.RequestId!,
+                complianceResponse.BinarySecurityToken!,
+                complianceResponse.Secret!);
         }
         catch (Exception ex)
         {
@@ -113,12 +105,13 @@ public class ZatcaService : IZatcaService
 
         credential.VatNumber = vatNumber;
         credential.Otp = dto.Otp.Trim();
-        credential.ComplianceRequestId = complianceRequestId;
-        credential.ComplianceRequestSecret = complianceRequestSecret;
-        credential.ProductionCsid = response.BinarySecurityToken;
-        credential.CsidSecret = response.Secret;
+        credential.ComplianceRequestId = complianceResponse.RequestId;
+        credential.ComplianceUuid = complianceResponse.BinarySecurityToken;
+        credential.ComplianceRequestSecret = complianceResponse.Secret;
+        credential.ProductionCsid = productionResponse.BinarySecurityToken;
+        credential.CsidSecret = productionResponse.Secret;
         credential.CsidPrivateKey = privateKeyPem;
-        credential.ProductionUuid = response.RequestId;
+        credential.ProductionUuid = productionResponse.RequestId;
         credential.SolutionName = _settings.Value.SolutionName;
         credential.Status = ZatcaCredentialStatus.ProductionOnboarded;
         credential.ErrorMessage = null;
@@ -128,7 +121,7 @@ public class ZatcaService : IZatcaService
 
         try
         {
-            using var cert = new X509Certificate2(Convert.FromBase64String(response.BinarySecurityToken!));
+            using var cert = new X509Certificate2(Convert.FromBase64String(productionResponse.BinarySecurityToken!));
             credential.CsidCertificate = cert.ExportCertificatePem();
             credential.CsidExpiresAt = cert.NotAfter;
         }

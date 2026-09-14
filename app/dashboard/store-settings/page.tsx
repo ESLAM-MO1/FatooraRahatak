@@ -514,7 +514,7 @@ export default function StoreSettingsPage() {
   const [zatcaCredential, setZatcaCredential] = useState<{ status: string; vatNumber: string | null; hasCsid: boolean; csidExpiresAt: string | null; errorMessage: string | null } | null>(null);
   const [zatcaLoading, setZatcaLoading] = useState(true);
   const [zatcaOnboarding, setZatcaOnboarding] = useState(false);
-  const [zatcaForm, setZatcaForm] = useState({ vatNumber: "", otp: "", complianceRequestId: "", complianceRequestSecret: "" });
+  const [zatcaForm, setZatcaForm] = useState({ vatNumber: "", otp: "" });
   const [zatcaError, setZatcaError] = useState("");
   const [zatcaSuccess, setZatcaSuccess] = useState("");
 
@@ -591,8 +591,6 @@ export default function StoreSettingsPage() {
       const res = await api.post("/owner/zatca/onboard", {
         vatNumber: zatcaForm.vatNumber.trim() || null,
         otp: zatcaForm.otp.trim(),
-        complianceRequestId: zatcaForm.complianceRequestId.trim() || null,
-        complianceRequestSecret: zatcaForm.complianceRequestSecret.trim() || null,
       });
       setZatcaCredential(res.data.data);
       setZatcaSuccess(res.data.message || t("storeSettings.zatcaOnboardSuccess"));
@@ -1188,17 +1186,14 @@ export default function StoreSettingsPage() {
                   {zatcaCredential?.status === "Failed" && zatcaCredential.errorMessage && (
                     <div className="alert alert--danger">{zatcaCredential.errorMessage}</div>
                   )}
-                  <FormField icon="hash" label={t("storeSettings.zatcaVatNumber")}>
-                    <input type="text" value={zatcaForm.vatNumber} onChange={(e) => setZatcaForm({ ...zatcaForm, vatNumber: e.target.value })} placeholder="300000000000003" dir="ltr" maxLength={15} />
-                  </FormField>
-                  <FormField icon="key" label={t("storeSettings.zatcaComplianceRequestId")}>
-                    <input type="text" value={zatcaForm.complianceRequestId} onChange={(e) => setZatcaForm({ ...zatcaForm, complianceRequestId: e.target.value })} dir="ltr" />
-                  </FormField>
-                  <FormField icon="key" label={t("storeSettings.zatcaComplianceRequestSecret")}>
-                    <input type="password" value={zatcaForm.complianceRequestSecret} onChange={(e) => setZatcaForm({ ...zatcaForm, complianceRequestSecret: e.target.value })} dir="ltr" />
-                  </FormField>
+                  <p className="text-[12px] text-[var(--sub)]">{t("storeSettings.zatcaVatLabel")}: {zatcaForm.vatNumber || "—"}</p>
+                  <ol className="text-[12px] text-[var(--sub)] list-decimal pr-4 space-y-1">
+                    <li>{t("storeSettings.zatcaStep1")}</li>
+                    <li>{t("storeSettings.zatcaStep2")}</li>
+                    <li>{t("storeSettings.zatcaStep3")}</li>
+                  </ol>
                   <FormField icon="hash" label={t("storeSettings.zatcaOtp")}>
-                    <input type="text" value={zatcaForm.otp} onChange={(e) => setZatcaForm({ ...zatcaForm, otp: e.target.value })} dir="ltr" />
+                    <input type="text" value={zatcaForm.otp} onChange={(e) => setZatcaForm({ ...zatcaForm, otp: e.target.value })} placeholder="123456" dir="ltr" maxLength={6} />
                   </FormField>
                   <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.zatcaHelpText")}</p>
                   <Can code="StoreSettings.Edit">

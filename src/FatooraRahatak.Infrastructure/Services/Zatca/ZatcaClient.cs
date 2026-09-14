@@ -20,24 +20,15 @@ public class ZatcaClient
 
     public async Task<ZatcaComplianceResponse> ComplianceOnboardAsync(
         string csrBase64,
-        string vatNumber,
         string otp,
-        string solutionName,
-        string complianceRequestId,
-        string complianceRequestSecret,
-        bool isProductionRenewal,
         CancellationToken ct = default)
     {
-        var endpoint = isProductionRenewal ? "/compliance" : "/production/csids";
-        var url = BaseUrl + endpoint;
+        var url = BaseUrl + "/compliance";
 
         var payload = new Dictionary<string, string>
         {
             ["csr"] = csrBase64,
-            ["otp"] = otp,
-            ["vat_number"] = vatNumber,
-            ["invoice_counter"] = "1",
-            ["solution_name"] = solutionName
+            ["otp"] = otp
         };
 
         var request = new HttpRequestMessage(HttpMethod.Post, url)
@@ -45,11 +36,50 @@ public class ZatcaClient
             Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
         };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("Accept-Version", isProductionRenewal ? "V2" : "V1");
+        request.Headers.TryAddWithoutValidation("Accept-Version", "V2");
+        request.Headers.TryAddWithoutValidation("Accept-Language", "en");
+
+        using var response = await _httpClient.SendAsync(request, ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"تعذر التحقق من بيانات زاتكا ({(int)response.StatusCode}): {Truncate(body, 500)}");
+
+        var result = JsonSerializer.Deserialize<ZatcaComplianceResponse>(body, JsonOpts)
+            ?? new ZatcaComplianceResponse();
+
+        if (result.Errors is { Count: > 0 })
+            throw new InvalidOperationException($"زاتكا رفضت الطلب: {string.Join(" | ", result.Errors)}");
+
+        if (string.IsNullOrWhiteSpace(result.BinarySecurityToken))
+            throw new InvalidOperationException("زاتكا لم تُرجع شهادة تجريبية (Compliance CSID) في الرد");
+
+        return result;
+    }
+
+    public async Task<ZatcaComplianceResponse> ProductionOnboardAsync(
+        string complianceRequestId,
+        string complianceCsid,
+        string complianceSecret,
+        CancellationToken ct = default)
+    {
+        var url = BaseUrl + "/production/csids";
+
+        var payload = new Dictionary<string, string>
+        {
+            ["compliance_request_id"] = complianceRequestId
+        };
+
+        var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+        };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.TryAddWithoutValidation("Accept-Version", "V2");
         request.Headers.TryAddWithoutValidation("Accept-Language", "en");
         request.Headers.Authorization = new AuthenticationHeaderValue(
             "Basic",
-            Convert.ToBase64String(Encoding.UTF8.GetBytes($"{complianceRequestId}:{complianceRequestSecret}")));
+            Convert.ToBase64String(Encoding.UTF8.GetBytes($"{complianceCsid}:{complianceSecret}")));
 
         using var response = await _httpClient.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);
@@ -64,7 +94,7 @@ public class ZatcaClient
             throw new InvalidOperationException($"زاتكا رفضت الطلب: {string.Join(" | ", result.Errors)}");
 
         if (string.IsNullOrWhiteSpace(result.BinarySecurityToken))
-            throw new InvalidOperationException("زاتكا لم تُرجع شهادة CSID في الرد");
+            throw new InvalidOperationException("زاتكا لم تُرجع شهادة CSID النهائية في الرد");
 
         return result;
     }

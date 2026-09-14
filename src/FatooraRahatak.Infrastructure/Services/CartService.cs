@@ -171,6 +171,21 @@ public class CartService : ICartService
         return Math.Min(Math.Max(discount, 0m), subtotal); 
     }
 
+    public async Task RemoveCouponAsync(long storeId, long cartId)
+    {
+        var cart = await _context.Carts.FirstOrDefaultAsync(c => c.Id == cartId && c.StoreId == storeId);
+        if (cart == null)
+            throw new InvalidOperationException("السلة غير موجودة");
+
+        var usages = await _context.CouponUsages.Where(u => u.CartId == cart.Id).ToListAsync();
+        if (usages.Count == 0)
+            throw new InvalidOperationException("لا يوجد كوبون مطبق على هذه السلة");
+
+        _context.CouponUsages.RemoveRange(usages);
+        cart.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
+
     public async Task MarkAbandonedCartsAsync()
     {
 

@@ -86,4 +86,18 @@ public class CartController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+
+    [HttpDelete("{cartId}/coupon")]
+    public async Task<IActionResult> RemoveCoupon(long storeId, long cartId)
+    {
+        try
+        {
+            await _cartService.RemoveCouponAsync(storeId, cartId);
+            return Ok(new { success = true, message = "تم إزالة الكوبون من السلة" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
 }

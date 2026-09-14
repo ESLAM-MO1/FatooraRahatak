@@ -9,5 +9,6 @@ public interface ICartService
     Task<CartResponseDto> UpdateItemAsync(long storeId, long cartItemId, UpdateCartItemDto dto);
     Task RemoveItemAsync(long storeId, long cartItemId);
     Task<decimal> ApplyCouponAsync(long storeId, ApplyCouponDto dto);
+    Task RemoveCouponAsync(long storeId, long cartId);
     Task MarkAbandonedCartsAsync(); 
 }

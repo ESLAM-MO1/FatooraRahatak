@@ -154,6 +154,22 @@ export default function CartPage() {
     }
   };
 
+  const handleRemoveCoupon = async () => {
+    if (!storeId || !cart) return;
+    setApplyingCoupon(true);
+    setCouponError("");
+    try {
+      await api.delete(`/stores/${storeId}/cart/${cart.id}/coupon`);
+      setDiscountAmount(null);
+      setCouponSuccess("");
+      setCouponCode("");
+    } catch (err: any) {
+      setCouponError(err.response?.data?.message || t("cart.errorRemovingCoupon"));
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -284,6 +300,16 @@ export default function CartPage() {
               <div className="alert alert--danger mt-3">
                 {couponError}
               </div>
+            )}
+            {discountAmount !== null && (
+              <button
+                type="button"
+                onClick={handleRemoveCoupon}
+                disabled={applyingCoupon}
+                className="text-red-600 hover:underline text-sm mt-2 disabled:opacity-40"
+              >
+                {t("cart.removeCoupon")}
+              </button>
             )}
             <SuccessToast message={couponSuccess} fixed className="mb-4" />
           </div>

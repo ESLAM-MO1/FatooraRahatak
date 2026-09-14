@@ -2275,6 +2275,8 @@ const en: Record<string, string> = {
   "cart.errorLoadingStore": "Error loading store",
   "cart.errorUpdatingQuantity": "Error updating quantity",
   "cart.errorRemovingItem": "Error removing item",
+  "cart.removeCoupon": "Remove Coupon",
+  "cart.errorRemovingCoupon": "Failed to remove coupon",
   "cart.errorApplyingCoupon": "Error applying coupon",
   "cart.couponAppliedSuccess": "Coupon applied successfully",
   "cart.empty": "Your cart is empty",

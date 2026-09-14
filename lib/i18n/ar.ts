@@ -2302,6 +2302,8 @@ const ar = {
   "cart.errorLoadingStore": "حدث خطأ أثناء تحميل المتجر",
   "cart.errorUpdatingQuantity": "حدث خطأ أثناء تحديث الكمية",
   "cart.errorRemovingItem": "حدث خطأ أثناء حذف المنتج",
+  "cart.removeCoupon": "إزالة الكوبون",
+  "cart.errorRemovingCoupon": "تعذر إزالة الكوبون",
   "cart.errorApplyingCoupon": "حدث خطأ أثناء تطبيق الكوبون",
   "cart.couponAppliedSuccess": "تم تطبيق الكوبون بنجاح",
   "cart.empty": "سلتك فارغة حاليًا",

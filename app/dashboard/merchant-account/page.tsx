@@ -134,11 +134,16 @@ export default function MerchantAccountPage() {
   const [status, setStatus] = useState("NotSubmitted");
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState("NotSubmitted");
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }));
 
   useEffect(() => {
+    api
+      .get("/owner/merchant-account/kyc-status")
+      .then((res) => setVerificationStatus(res.data?.data?.verificationStatus || "NotSubmitted"))
+      .catch(() => {});
     api
       .get("/owner/merchant-account")
       .then((res) => {
@@ -337,7 +342,7 @@ export default function MerchantAccountPage() {
         </div>
       )}
 
-      {status !== "Approved" && (
+      {verificationStatus !== "Approved" && (
         <KycAlert
           message={t("merchantAccount.needDocsBanner")}
           links={[{ label: t("verification.title"), href: "/dashboard/merchant-verification" }]}

@@ -511,6 +511,12 @@ export default function StoreSettingsPage() {
 
   const [vatNumber, setVatNumber] = useState("");
   const [vatNumberSaving, setVatNumberSaving] = useState(false);
+  const [zatcaCredential, setZatcaCredential] = useState<{ status: string; vatNumber: string | null; hasCsid: boolean; csidExpiresAt: string | null; errorMessage: string | null } | null>(null);
+  const [zatcaLoading, setZatcaLoading] = useState(true);
+  const [zatcaOnboarding, setZatcaOnboarding] = useState(false);
+  const [zatcaForm, setZatcaForm] = useState({ vatNumber: "", otp: "", complianceRequestId: "", complianceRequestSecret: "" });
+  const [zatcaError, setZatcaError] = useState("");
+  const [zatcaSuccess, setZatcaSuccess] = useState("");
 
   const [socialForm, setSocialForm] = useState({ bioLink: "", facebook: "", instagram: "", whatsapp: "", snapchat: "", tiktok: "", telegram: "", linkedin: "", twitter: "", youtube: "", pinterest: "" });
   const [socialSaving, setSocialSaving] = useState(false);
@@ -564,6 +570,40 @@ export default function StoreSettingsPage() {
     { key: "special", labelKey: "storeSettings.themeGroupSpecial", icon: "🎯", items: availableThemes.filter((th) => th.group === "special") },
   ].filter((g) => g.items.length > 0);
 
+  const loadZatcaCredential = async () => {
+    setZatcaLoading(true);
+    try {
+      const res = await api.get("/owner/zatca/credential");
+      setZatcaCredential(res.data.data);
+    } catch (err) {
+      setZatcaCredential(null);
+    } finally {
+      setZatcaLoading(false);
+    }
+  };
+
+  const handleZatcaOnboard = async (e: FormEvent) => {
+    e.preventDefault();
+    setZatcaOnboarding(true);
+    setZatcaError("");
+    setZatcaSuccess("");
+    try {
+      const res = await api.post("/owner/zatca/onboard", {
+        vatNumber: zatcaForm.vatNumber.trim() || null,
+        otp: zatcaForm.otp.trim(),
+        complianceRequestId: zatcaForm.complianceRequestId.trim() || null,
+        complianceRequestSecret: zatcaForm.complianceRequestSecret.trim() || null,
+      });
+      setZatcaCredential(res.data.data);
+      setZatcaSuccess(res.data.message || t("storeSettings.zatcaOnboardSuccess"));
+      setZatcaForm((f) => ({ ...f, otp: "" }));
+    } catch (err: any) {
+      setZatcaError(err.response?.data?.message || t("storeSettings.zatcaOnboardError"));
+    } finally {
+      setZatcaOnboarding(false);
+    }
+  };
+
   const loadStore = async () => {
     setLoading(true);
     setError("");
@@ -572,6 +612,7 @@ export default function StoreSettingsPage() {
       const d = res.data.data;
       setStore(d);
       setVatNumber(d.vatNumber || "");
+      setZatcaForm((f) => ({ ...f, vatNumber: d.vatNumber || "" }));
       setContactForm({ phone: d.contactPhone || "", email: d.contactEmail || "", address: d.contactAddress || "", branchName: d.branchName || "", crNumber: d.commercialRegistrationNumber || "" });
       setSocialForm({ bioLink: d.bioLink || "", facebook: d.facebookUrl || "", instagram: d.instagramUrl || "", whatsapp: d.whatsappUrl || "", snapchat: d.snapchatUrl || "", tiktok: d.tiktokUrl || "", telegram: d.telegramUrl || "", linkedin: d.linkedinUrl || "", twitter: d.twitterUrl || "", youtube: d.youtubeUrl || "", pinterest: d.pinterestUrl || "" });
       setCurrencyLang({ currency: d.currency || "SAR", language: d.defaultLanguage || "ar" });
@@ -622,6 +663,7 @@ export default function StoreSettingsPage() {
 
   useEffect(() => {
     loadStore();
+    loadZatcaCredential();
     loadEnabledThemes();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1122,6 +1164,50 @@ export default function StoreSettingsPage() {
                   </button>
                 </Can>
               </form>
+            </SettingCard>
+
+            <SettingCard icon="shield" title={t("storeSettings.zatcaTitle")} desc={t("storeSettings.zatcaDesc")} accent="green">
+              {zatcaError && <div className="alert alert--danger mb-3">{zatcaError}</div>}
+              <SuccessToast message={zatcaSuccess} fixed className="mb-4" />
+              {zatcaLoading ? (
+                <p className="text-[12.5px] text-[var(--sub)]">{t("common.loading")}</p>
+              ) : zatcaCredential?.status === "ProductionOnboarded" && zatcaCredential.hasCsid ? (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="badge badge--green">{t("storeSettings.zatcaConnected")}</span>
+                    {zatcaCredential.csidExpiresAt && (
+                      <span className="text-[11px] text-[var(--sub)]">
+                        {t("storeSettings.zatcaExpiresAt")}: {new Date(zatcaCredential.csidExpiresAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12px] text-[var(--sub)]">{t("storeSettings.zatcaVatLabel")}: {zatcaCredential.vatNumber}</p>
+                </div>
+              ) : (
+                <form onSubmit={handleZatcaOnboard} className="space-y-3">
+                  {zatcaCredential?.status === "Failed" && zatcaCredential.errorMessage && (
+                    <div className="alert alert--danger">{zatcaCredential.errorMessage}</div>
+                  )}
+                  <FormField icon="hash" label={t("storeSettings.zatcaVatNumber")}>
+                    <input type="text" value={zatcaForm.vatNumber} onChange={(e) => setZatcaForm({ ...zatcaForm, vatNumber: e.target.value })} placeholder="300000000000003" dir="ltr" maxLength={15} />
+                  </FormField>
+                  <FormField icon="key" label={t("storeSettings.zatcaComplianceRequestId")}>
+                    <input type="text" value={zatcaForm.complianceRequestId} onChange={(e) => setZatcaForm({ ...zatcaForm, complianceRequestId: e.target.value })} dir="ltr" />
+                  </FormField>
+                  <FormField icon="key" label={t("storeSettings.zatcaComplianceRequestSecret")}>
+                    <input type="password" value={zatcaForm.complianceRequestSecret} onChange={(e) => setZatcaForm({ ...zatcaForm, complianceRequestSecret: e.target.value })} dir="ltr" />
+                  </FormField>
+                  <FormField icon="hash" label={t("storeSettings.zatcaOtp")}>
+                    <input type="text" value={zatcaForm.otp} onChange={(e) => setZatcaForm({ ...zatcaForm, otp: e.target.value })} dir="ltr" />
+                  </FormField>
+                  <p className="text-[11px] text-[var(--sub)]">{t("storeSettings.zatcaHelpText")}</p>
+                  <Can code="StoreSettings.Edit">
+                    <button type="submit" disabled={zatcaOnboarding} className="btn btn-primary btn-sm">
+                      {zatcaOnboarding ? t("storeSettings.saving") : t("storeSettings.zatcaOnboardButton")}
+                    </button>
+                  </Can>
+                </form>
+              )}
             </SettingCard>
 
             <SettingCard icon="globe" title={t("storeSettings.currencyAndLang")} accent="blue">

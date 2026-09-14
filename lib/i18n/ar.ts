@@ -2590,6 +2590,7 @@ const ar = {
   "orderDetail.changeStatus": "تغيير الحالة",
   "orderDetail.saveStatus": "حفظ الحالة",
   "orderDetail.cancelOrder": "إلغاء الطلب",
+  "orderDetail.createShipment": "إنشاء شحنة",
   "orderDetail.cancelConfirm": "هل أنت متأكد من إلغاء هذا الطلب؟ سيتم إعادة الكميات للمخزون.",
   "orderDetail.cancelSuccess": "تم إلغاء الطلب وإعادة الكميات للمخزون",
   "orderDetail.cancelError": "فشل إلغاء الطلب",

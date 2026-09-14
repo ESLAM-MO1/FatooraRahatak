@@ -236,6 +236,16 @@ export default function OrderDetailPage() {
         <span className={statusStyles[order.status] ?? "badge badge--gray"}>
           {statusLabel(order.status)}
         </span>
+        {(order.status === "New" || order.status === "Processing") && (
+          <Can code="ShippingCompanies.Add">
+            <Link
+              href={`/dashboard/shipping?createOrder=${encodeURIComponent(order.orderNumber)}`}
+              className="btn btn-primary btn-sm"
+            >
+              <Icon name="truck" /> {t("orderDetail.createShipment")}
+            </Link>
+          </Can>
+        )}
         {(order.status === "New" || order.status === "Processing" || order.status === "PendingPayment") && (
           <Can code="Orders.Edit">
             <button

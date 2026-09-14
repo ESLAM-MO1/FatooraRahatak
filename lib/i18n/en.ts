@@ -2563,6 +2563,7 @@ const en: Record<string, string> = {
   "orderDetail.changeStatus": "Change Status",
   "orderDetail.saveStatus": "Save Status",
   "orderDetail.cancelOrder": "Cancel Order",
+  "orderDetail.createShipment": "Create Shipment",
   "orderDetail.cancelConfirm": "Are you sure you want to cancel this order? Stock quantities will be restored.",
   "orderDetail.cancelSuccess": "Order cancelled and stock restored",
   "orderDetail.cancelError": "Failed to cancel the order",

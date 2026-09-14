@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
@@ -176,6 +177,7 @@ function printSimulatedLabel(detail: ShipmentDetail, t: (k: string) => string) {
 export default function ShippingPage() {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const searchParams = useSearchParams();
   const gate = usePackageFeature("hasShippingIntegration");
   const [companies, setCompanies] = useState<ShippingCompany[]>([]);
   const [shipments, setShipments] = useState<ShipmentList[]>([]);
@@ -268,6 +270,16 @@ export default function ShippingPage() {
     if (!gate.ready || !gate.allowed) return;
     loadAll();
   }, [gate.ready, gate.allowed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ✅ فتح تبويب الشحنات وتعبئة رقم الطلب تلقائيًا لما نجي من صفحة تفاصيل الطلب
+  useEffect(() => {
+    const orderFromQuery = searchParams.get("createOrder");
+    if (orderFromQuery) {
+      setTab("shipments");
+      setShipmentOpen(true);
+      setShipmentForm((f) => ({ ...f, orderId: orderFromQuery }));
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openDetail = async (id: number) => {
     setDetailLoading(true);

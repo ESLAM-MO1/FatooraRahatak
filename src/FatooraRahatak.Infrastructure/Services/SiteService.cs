@@ -337,7 +337,7 @@ public class SiteService : ISiteService
                     "تذكرة دعم جديدة",
                     $"تذكرة جديدة رقم {entity.TicketNumber} من {entity.Name}: {entity.Subject}",
                     NotificationType.SupportTicketCreated,
-                    "/dashboard/tickets");
+                    "/dashboard/site-content");
             }
         }
         catch { }

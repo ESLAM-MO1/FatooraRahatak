@@ -66,10 +66,12 @@ public class StoreService : IStoreService
 
     private readonly AppDbContext _context;
     private readonly IDomainService _domainService;
-    public StoreService(AppDbContext context, IDomainService domainService)
+    private readonly INotificationService _notificationService;
+    public StoreService(AppDbContext context, IDomainService domainService, INotificationService notificationService)
     {
         _context = context;
         _domainService = domainService;
+        _notificationService = notificationService;
     }
 
     private async Task<Store?> ResolveStoreAsync(long userId)
@@ -213,6 +215,25 @@ public class StoreService : IStoreService
         store.CustomDomain = domain;
         store.CustomDomainStatus = CustomDomainStatus.Pending;
         await _context.SaveChangesAsync();
+
+        try
+        {
+            var adminIds = await _context.Set<Domain.Entities.Users.User>()
+                .Where(u => u.UserType == UserType.SuperAdmin && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var adminId in adminIds)
+            {
+                await _notificationService.CreateAsync(
+                    adminId,
+                    "طلب ربط نطاق مخصص",
+                    $"طلب متجر \"{store.StoreName}\" ربط النطاق المخصص: {domain}",
+                    NotificationType.DomainRequestSubmitted,
+                    "/dashboard/domains");
+            }
+        }
+        catch { }
+
         return new CustomDomainResponseDto
         {
             CustomDomain = store.CustomDomain,

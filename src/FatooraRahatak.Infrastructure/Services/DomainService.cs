@@ -160,6 +160,24 @@ public class DomainService : IDomainService
         store.CustomDomainStatus = CustomDomainStatus.Pending;
         await _context.SaveChangesAsync();
 
+        try
+        {
+            var adminIds = await _context.Set<User>()
+                .Where(u => u.UserType == UserType.SuperAdmin && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var adminId in adminIds)
+            {
+                await _notificationService.CreateAsync(
+                    adminId,
+                    "طلب ربط نطاق مخصص",
+                    $"طلب متجر \"{store.StoreName}\" ربط النطاق المخصص: {domain}",
+                    NotificationType.DomainRequestSubmitted,
+                    "/dashboard/domains");
+            }
+        }
+        catch { }
+
         return new CustomDomainDto
         {
             StoreId = store.Id,

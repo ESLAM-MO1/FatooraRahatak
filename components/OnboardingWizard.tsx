@@ -113,7 +113,7 @@ export default function OnboardingWizard({ className = "" }: { className?: strin
       {steps.length > 0 && (
         <p className="text-[11.5px] text-[var(--sub)] mt-4 text-center">
           {t("onboarding.reminder")}{" "}
-          <Link href="/dashboard/profile" className="text-[var(--blue)] font-bold hover:underline">
+          <Link href={steps[0]?.href || "/dashboard/profile"} className="text-[var(--blue)] font-bold hover:underline">
             {t("onboarding.completeLater")}
           </Link>
         </p>

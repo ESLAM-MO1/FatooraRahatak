@@ -161,7 +161,7 @@ public class MerchantVerificationService : IMerchantVerificationService
 
         try
         {
-            var storeName = await _context.Stores.Where(s => s.Id == storeId).Select(s => s.Name).FirstOrDefaultAsync();
+            var storeName = await _context.Stores.Where(s => s.Id == storeId).Select(s => s.StoreName).FirstOrDefaultAsync();
             var adminIds = await _context.Set<Domain.Entities.Users.User>()
                 .Where(u => u.UserType == Domain.Enums.UserType.SuperAdmin && u.IsActive)
                 .Select(u => u.Id)

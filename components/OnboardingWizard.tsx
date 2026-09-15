@@ -41,7 +41,7 @@ export default function OnboardingWizard({ className = "" }: { className?: strin
 
         const hasProfile = !!(profile?.fullName && profile?.email);
         const hasMerchant = merchant?.status === "Approved" || merchant?.status === "Pending";
-        const hasKyc = kyc?.isApproved || (merchant?.status === "Approved" && kyc?.documentsCount > 0);
+        const hasKyc = kyc?.verificationStatus === "Approved";
         const isApproved = kyc?.isApproved === true || merchant?.status === "Approved";
 
         const allSteps: StepMeta[] = [

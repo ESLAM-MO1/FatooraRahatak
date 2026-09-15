@@ -323,6 +323,25 @@ public class SiteService : ISiteService
         };
         _context.Set<ContactMessage>().Add(entity);
         await _context.SaveChangesAsync();
+
+        try
+        {
+            var adminIds = await _context.Set<User>()
+                .Where(u => u.UserType == UserType.SuperAdmin && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var adminId in adminIds)
+            {
+                await _notificationService.CreateAsync(
+                    adminId,
+                    "تذكرة دعم جديدة",
+                    $"تذكرة جديدة رقم {entity.TicketNumber} من {entity.Name}: {entity.Subject}",
+                    NotificationType.SupportTicketCreated,
+                    "/dashboard/tickets");
+            }
+        }
+        catch { }
+
         return new ContactMessageDto
         {
             Id = entity.Id, Name = entity.Name, Email = entity.Email, Phone = entity.Phone,

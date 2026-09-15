@@ -5,6 +5,7 @@ using FatooraRahatak.Domain.Entities.Platform.Domains;
 using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.Domain.Entities.Users;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -13,13 +14,15 @@ namespace FatooraRahatak.Infrastructure.Services;
 public class DomainService : IDomainService
 {
     private readonly AppDbContext _context;
+    private readonly INotificationService _notificationService;
     private const string PlatformDomain = "fatorahr.com";
     private const string DefaultTargetIp = "185.199.108.153";
     private const string DefaultTargetCname = "fatorahr.com";
 
-    public DomainService(AppDbContext context)
+    public DomainService(AppDbContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     #region Managed Domains
@@ -561,6 +564,24 @@ public class DomainService : IDomainService
         };
         _context.Set<DomainRegistrationRequest>().Add(entity);
         await _context.SaveChangesAsync();
+
+        try
+        {
+            var adminIds = await _context.Set<User>()
+                .Where(u => u.UserType == UserType.SuperAdmin && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var adminId in adminIds)
+            {
+                await _notificationService.CreateAsync(
+                    adminId,
+                    "طلب دومين جديد",
+                    $"تم إرسال طلب تسجيل دومين جديد: {entity.DomainName}",
+                    NotificationType.DomainRequestSubmitted,
+                    "/dashboard/domains");
+            }
+        }
+        catch { }
 
         return new DomainRegistrationRequestDto
         {

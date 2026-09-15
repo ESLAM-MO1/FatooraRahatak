@@ -11,11 +11,13 @@ public class MerchantVerificationService : IMerchantVerificationService
 {
     private readonly AppDbContext _context;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
 
-    public MerchantVerificationService(AppDbContext context, IEmailService emailService)
+    public MerchantVerificationService(AppDbContext context, IEmailService emailService, INotificationService notificationService)
     {
         _context = context;
         _emailService = emailService;
+        _notificationService = notificationService;
     }
 
     private Task<bool> StoreExistsAsync(long storeId) =>
@@ -156,6 +158,25 @@ public class MerchantVerificationService : IMerchantVerificationService
         verification.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        try
+        {
+            var storeName = await _context.Stores.Where(s => s.Id == storeId).Select(s => s.Name).FirstOrDefaultAsync();
+            var adminIds = await _context.Set<Domain.Entities.Users.User>()
+                .Where(u => u.UserType == Domain.Enums.UserType.SuperAdmin && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+            foreach (var adminId in adminIds)
+            {
+                await _notificationService.CreateAsync(
+                    adminId,
+                    "طلب توثيق جديد",
+                    $"تم إرسال طلب توثيق حساب تاجر جديد للمراجعة: {storeName}",
+                    Domain.Enums.NotificationType.VerificationSubmitted,
+                    "/dashboard/admin-verifications");
+            }
+        }
+        catch { }
 
         return await ToDtoAsync(verification.Id, storeId);
     }

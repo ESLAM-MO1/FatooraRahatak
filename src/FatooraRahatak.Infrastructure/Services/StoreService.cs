@@ -229,7 +229,7 @@ public class StoreService : IStoreService
                     "طلب ربط نطاق مخصص",
                     $"طلب متجر \"{store.StoreName}\" ربط النطاق المخصص: {domain}",
                     NotificationType.DomainRequestSubmitted,
-                    "/dashboard/domains");
+                    $"/dashboard/stores/{store.Id}");
             }
         }
         catch { }

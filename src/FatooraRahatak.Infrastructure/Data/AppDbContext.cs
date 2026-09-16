@@ -132,6 +132,7 @@ public class AppDbContext : DbContext
     public DbSet<MerchantVerification> MerchantVerifications => Set<MerchantVerification>();
     public DbSet<MerchantDocument> MerchantDocument => Set<MerchantDocument>();
     public DbSet<StoreCustomer> StoreCustomers => Set<StoreCustomer>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<MerchantAccount> MerchantAccounts => Set<MerchantAccount>();
     public DbSet<SettlementBatch> SettlementBatches => Set<SettlementBatch>();
     public DbSet<SettlementLine> SettlementLines => Set<SettlementLine>();

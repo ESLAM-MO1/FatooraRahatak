@@ -15,14 +15,16 @@ public class DomainService : IDomainService
 {
     private readonly AppDbContext _context;
     private readonly INotificationService _notificationService;
+    private readonly IPleskService _pleskService;
     private const string PlatformDomain = "fatorahr.com";
     private const string DefaultTargetIp = "185.199.108.153";
     private const string DefaultTargetCname = "fatorahr.com";
 
-    public DomainService(AppDbContext context, INotificationService notificationService)
+    public DomainService(AppDbContext context, INotificationService notificationService, IPleskService pleskService)
     {
         _context = context;
         _notificationService = notificationService;
+        _pleskService = pleskService;
     }
 
     #region Managed Domains
@@ -196,6 +198,12 @@ public class DomainService : IDomainService
         if (string.IsNullOrWhiteSpace(store.CustomDomain))
             throw new InvalidOperationException("لا يوجد دومين مخصص لهذا المتجر");
 
+        var (aliasOk, aliasOutput) = await _pleskService.CreateDomainAliasAsync(store.CustomDomain);
+        if (!aliasOk)
+            throw new InvalidOperationException($"فشل ربط الدومين على السيرفر: {aliasOutput}");
+
+        await _pleskService.IssueSslAsync(store.CustomDomain);
+
         store.CustomDomainStatus = CustomDomainStatus.Active;
         await _context.SaveChangesAsync();
 
@@ -214,6 +222,11 @@ public class DomainService : IDomainService
     {
         var store = await _context.Stores.FindAsync(storeId);
         if (store == null) return false;
+
+        if (!string.IsNullOrWhiteSpace(store.CustomDomain))
+        {
+            try { await _pleskService.RemoveDomainAliasAsync(store.CustomDomain); } catch { }
+        }
 
         store.CustomDomain = null;
         store.CustomDomainStatus = CustomDomainStatus.None;

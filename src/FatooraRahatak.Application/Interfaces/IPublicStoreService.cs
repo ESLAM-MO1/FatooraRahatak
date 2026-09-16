@@ -6,6 +6,7 @@ namespace FatooraRahatak.Application.Interfaces;
 public interface IPublicStoreService
 {
     Task<PublicStoreDto?> GetStoreBySlugAsync(string slug);
+    Task<string?> ResolveSlugByCustomDomainAsync(string domain);
     Task<List<PublicBannerDto>?> GetBannersAsync(string slug);
     Task<List<PublicCategoryDto>?> GetCategoriesAsync(string slug);
     Task<List<PublicProductDto>?> GetProductsAsync(string slug, long? categoryId);

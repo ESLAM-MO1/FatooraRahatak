@@ -30,6 +30,18 @@ public class PublicStoreService : IPublicStoreService
             .FirstOrDefaultAsync(s => s.StoreSlug == slug && s.Status == StoreStatus.Active && s.IsOnline);
     }
 
+    public async Task<string?> ResolveSlugByCustomDomainAsync(string domain)
+    {
+        var normalized = (domain ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized)) return null;
+
+        return await _context.Stores
+            .Where(s => s.CustomDomain != null && s.CustomDomain.ToLower() == normalized
+                     && s.CustomDomainStatus == FatooraRahatak.Domain.Enums.CustomDomainStatus.Active)
+            .Select(s => s.StoreSlug)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<PublicStoreDto?> GetStoreBySlugAsync(string slug)
     {
         var store = await GetActiveStoreBySlugAsync(slug);

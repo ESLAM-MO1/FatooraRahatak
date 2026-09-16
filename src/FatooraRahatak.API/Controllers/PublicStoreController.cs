@@ -40,6 +40,19 @@ public class PublicStoreController : ControllerBase
         !string.IsNullOrWhiteSpace(customerPhone) &&
         new string(phone.Where(char.IsDigit).ToArray()).TrimStart('0') ==
         new string(customerPhone.Where(char.IsDigit).ToArray()).TrimStart('0');
+    [HttpGet("resolve-domain")]
+    public async Task<IActionResult> ResolveDomain([FromQuery] string domain)
+    {
+        if (string.IsNullOrWhiteSpace(domain))
+            return BadRequest(new { success = false, message = "الدومين مطلوب" });
+
+        var slug = await _publicStoreService.ResolveSlugByCustomDomainAsync(domain);
+        if (slug == null)
+            return NotFound(new { success = false, message = "لا يوجد متجر مرتبط بهذا الدومين" });
+
+        return Ok(new { success = true, data = new { slug } });
+    }
+
     [HttpGet("{slug}")]
     public async Task<IActionResult> GetStore(string slug)
     {

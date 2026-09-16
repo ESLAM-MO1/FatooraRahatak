@@ -256,6 +256,7 @@ export default function StoresPage() {
               <thead className="bg-[var(--border)] border-b" style={{ borderColor: "var(--border)" }}>
                 <tr>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.name")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("domains.storeId")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.slug")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.owner")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.email")}</th>
@@ -278,6 +279,16 @@ export default function StoresPage() {
                       {store.customDomainStatus === "Pending" && (
                         <span className="badge badge--yellow ms-2 text-[10px]">{t("store.pendingDomainBadge")}</span>
                       )}
+                    </td>
+                    <td className="p-3 text-[var(--sub)]" dir="ltr">
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(String(store.id))}
+                        className="hover:text-[var(--blue)] cursor-pointer"
+                        title={t("common.copy")}
+                      >
+                        #{store.id}
+                      </button>
                     </td>
                     <td className="p-3 text-[var(--sub)]" dir="ltr">
                       {store.storeSlug}
@@ -378,6 +389,17 @@ export default function StoresPage() {
                     <div>
                       <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.status")}</p>
                       <span className={statusBadgeClass(store.status)}>{statusLabel(store.status, t)}</span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("domains.storeId")}</p>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard?.writeText(String(store.id))}
+                        className="text-[12px] text-[var(--sub)] hover:text-[var(--blue)]"
+                        dir="ltr"
+                      >
+                        #{store.id}
+                      </button>
                     </div>
                     <div>
                       <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.slug")}</p>

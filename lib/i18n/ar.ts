@@ -3888,6 +3888,15 @@ const ar = {
   "subscription.bankSuccess": "تم استلام إيصال التحويل، سيتم تأكيد اشتراكك بعد التحقق من المبلغ",
 
   // ── Suppliers ──
+  "suppliers.add": "إضافة مورد",
+  "suppliers.addTitle": "إضافة مورد جديد",
+  "suppliers.fullName": "اسم المورد",
+  "suppliers.notes": "ملاحظات",
+  "suppliers.addSuccess": "تم إضافة المورد بنجاح",
+  "suppliers.addError": "يرجى إدخال اسم المورد",
+  "suppliers.saving": "جارٍ الحفظ...",
+  "suppliers.save": "حفظ",
+  "suppliers.legacy": "من فواتير سابقة",
   "suppliers.title": "الموردون",
   "suppliers.count": "عدد الموردين",
   "suppliers.totalPurchases": "إجمالي المشتريات",

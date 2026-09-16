@@ -3861,6 +3861,15 @@ const en: Record<string, string> = {
   "subscription.bankSuccess": "The transfer receipt has been received. Your subscription will be confirmed after the amount is verified.",
 
   // ── Suppliers ──
+  "suppliers.add": "Add Supplier",
+  "suppliers.addTitle": "Add New Supplier",
+  "suppliers.fullName": "Supplier Name",
+  "suppliers.notes": "Notes",
+  "suppliers.addSuccess": "Supplier added successfully",
+  "suppliers.addError": "Please enter the supplier name",
+  "suppliers.saving": "Saving...",
+  "suppliers.save": "Save",
+  "suppliers.legacy": "From past invoices",
   "suppliers.title": "Suppliers",
   "suppliers.count": "Suppliers",
   "suppliers.totalPurchases": "Total Purchases",

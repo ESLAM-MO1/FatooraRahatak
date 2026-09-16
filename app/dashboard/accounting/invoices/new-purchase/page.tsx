@@ -44,6 +44,7 @@ export default function NewPurchaseInvoicePage() {
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierCity, setSupplierCity] = useState("");
+  const [registeredSuppliers, setRegisteredSuppliers] = useState<{ name: string; phone: string | null; city: string | null }[]>([]);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([{ ...emptyLine }]);
   const [error, setError] = useState("");
@@ -68,6 +69,13 @@ export default function NewPurchaseInvoicePage() {
     .get("/stores/my-store")
     .then((res) => setIsVatRegistered(res.data.data.isVatRegistered))
     .catch(() => {});
+  }, [gate.ready, gate.allowed]);
+  useEffect(() => {
+    if (!gate.ready || !gate.allowed) return;
+    api
+      .get("/owner/customers/suppliers")
+      .then((res) => setRegisteredSuppliers(res.data.data || []))
+      .catch(() => {});
   }, [gate.ready, gate.allowed]);
 
   // ⚠️ hooks يجب استدعاؤها قبل أي return شرطي (قواعد React Hooks)
@@ -205,11 +213,25 @@ export default function NewPurchaseInvoicePage() {
             <div className="field-shell">
               <input
                 type="text"
+                list="registered-suppliers-list"
                 value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSupplierName(value);
+                  const match = registeredSuppliers.find((s) => s.name === value);
+                  if (match) {
+                    if (match.phone) setSupplierPhone(match.phone);
+                    if (match.city) setSupplierCity(match.city);
+                  }
+                }}
                 placeholder={t("invoice.supplierNamePlaceholder")}
                 required
               />
+              <datalist id="registered-suppliers-list">
+                {registeredSuppliers.map((s) => (
+                  <option key={s.name} value={s.name} />
+                ))}
+              </datalist>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">

@@ -20,11 +20,14 @@ public class AdminService : IAdminService
     private readonly INotificationService _notificationService;
     private readonly JwtSettings _jwtSettings;
 
-    public AdminService(AppDbContext context, INotificationService notificationService, IOptions<JwtSettings> jwtSettings)
+    private readonly IPleskService _pleskService;
+
+    public AdminService(AppDbContext context, INotificationService notificationService, IOptions<JwtSettings> jwtSettings, IPleskService pleskService)
     {
         _context = context;
         _notificationService = notificationService;
         _jwtSettings = jwtSettings.Value;
+        _pleskService = pleskService;
     }
 
     public async Task<List<AdminStoreListDto>> GetAllStoresAsync()
@@ -399,8 +402,24 @@ public class AdminService : IAdminService
         if (string.IsNullOrWhiteSpace(store.CustomDomain))
             throw new InvalidOperationException("لا يوجد دومين خاص مطلوب لهذا المتجر");
 
+        // ⚠️ إصلاح جذري: كانت هذه الدالة تكتفي بتغيير الحالة إلى Active في قاعدة
+        // البيانات فقط، دون ربط alias فعلي في Plesk ولا إصدار شهادة SSL — ما يعني
+        // "تفعيل" وهمي: الدومين يظهر مفعّلاً في لوحة التحكم بينما هو غير موجّه
+        // وبلا HTTPS فعليًا على أرض الواقع. الآن تتبع نفس المسار الصحيح المستخدم
+        // في DomainService.SetCustomDomainDnsVerifiedAsync: ربط alias فعلي أولاً،
+        // ثم إصدار SSL، ولا تُفعَّل الحالة إلا بعد نجاح الخطوتين معًا.
+        var (aliasOk, aliasOutput) = await _pleskService.CreateDomainAliasAsync(store.CustomDomain);
+        if (!aliasOk)
+            throw new InvalidOperationException($"فشل ربط الدومين على السيرفر: {aliasOutput}");
+
+        var (sslOk, sslOutput) = await _pleskService.IssueSslAsync(store.CustomDomain);
+        if (!sslOk)
+            throw new InvalidOperationException($"تم ربط الدومين لكن فشل إصدار شهادة SSL (تأكد أن الدومين يوجّه فعليًا لسيرفرنا أولاً): {sslOutput}");
+
         store.CustomDomainStatus = CustomDomainStatus.Active;
         await _context.SaveChangesAsync();
+
+        CustomDomainCorsCache.AddDomain(store.CustomDomain);
 
         try
         {

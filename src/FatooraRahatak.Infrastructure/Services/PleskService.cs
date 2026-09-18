@@ -10,9 +10,19 @@ public class PleskService : IPleskService
     private const string DomAliasBin = "/usr/local/psa/bin/domalias";
     private const string SudoBin = "/usr/bin/sudo";
 
-    public Task<(bool Success, string Output)> CreateDomainAliasAsync(string domain) =>
-        RunCommandAsync(SudoBin,
+    public async Task<(bool Success, string Output)> CreateDomainAliasAsync(string domain)
+    {
+        var (success, output) = await RunCommandAsync(SudoBin,
             $"{DomAliasBin} --create {domain} -domain {ParentDomain} -web true -mail false -dns true -seo-redirect false");
+
+        // Idempotent: the alias may already exist from an earlier attempt whose next
+        // step (SSL issuance) failed. Without this, activation would retry alias
+        // creation forever every cycle and never reach the SSL step.
+        if (!success && output.ToLowerInvariant().Contains("already exists"))
+            return (true, output);
+
+        return (success, output);
+    }
 
     public Task<(bool Success, string Output)> RemoveDomainAliasAsync(string domain) =>
         RunCommandAsync(SudoBin, $"{DomAliasBin} --delete {domain}");

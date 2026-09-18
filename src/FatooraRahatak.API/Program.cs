@@ -21,7 +21,11 @@ var builder = WebApplication.CreateBuilder(args);
 // وفيها أولوية على قيم appsettings.json (راجع MoyasarPaymentProvider).
 try { DotNetEnv.Env.Load(); } catch { /* عدم وجود ملف .env ليس خطأ */ }
 
-var corsOrigins = (builder.Configuration["App:CorsOrigins"] ?? "http://localhost:3000")
+// الأصول الثابتة (من appsettings) تبقى مسموحة دائمًا كـ fallback (localhost, أدوات تطوير...).
+// أما الدومينات المخصصة للمتاجر (CustomDomain) فتُقرأ ديناميكيًا من الداتابيز
+// عبر FatooraRahatak.Infrastructure.Services.CustomDomainCorsCache، وتتحدّث فورًا
+// عند تفعيل أي دومين جديد بدون الحاجة لإعادة تشغيل الخدمة أو تعديل appsettings.json يدويًا.
+var staticCorsOrigins = (builder.Configuration["App:CorsOrigins"] ?? "http://localhost:3000")
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(options =>
 {
@@ -30,7 +34,9 @@ builder.Services.AddCors(options =>
         policy.SetIsOriginAllowed(origin =>
         {
             var trimmed = origin.TrimEnd('.').ToLowerInvariant();
-            return corsOrigins.Any(o => string.Equals(o.TrimEnd('.').ToLowerInvariant(), trimmed, StringComparison.Ordinal));
+            if (staticCorsOrigins.Any(o => string.Equals(o.TrimEnd('.').ToLowerInvariant(), trimmed, StringComparison.Ordinal)))
+                return true;
+            return FatooraRahatak.Infrastructure.Services.CustomDomainCorsCache.IsAllowed(trimmed);
         })
               .AllowAnyHeader()
               .AllowAnyMethod();
@@ -209,6 +215,13 @@ using (var scope = app.Services.CreateScope())
 
     var domainService = scope.ServiceProvider.GetRequiredService<IDomainService>();
     await domainService.SeedSubdomainsForExistingStoresAsync();
+
+    // تحميل الدومينات المخصصة المفعّلة حاليًا إلى كاش CORS عند إقلاع الخدمة
+    var activeCustomDomains = await db.Stores
+        .Where(s => s.CustomDomain != null && s.CustomDomain != "" && s.CustomDomainStatus == FatooraRahatak.Domain.Enums.CustomDomainStatus.Active)
+        .Select(s => s.CustomDomain!)
+        .ToListAsync();
+    FatooraRahatak.Infrastructure.Services.CustomDomainCorsCache.ReplaceAll(activeCustomDomains);
 
     // Backfill: ترقية أكواد الإحالة القصيرة (أقل من 7 خانات) إلى كود رقمي أطول 7-8 خانات
     var referralService = scope.ServiceProvider.GetRequiredService<IReferralService>();

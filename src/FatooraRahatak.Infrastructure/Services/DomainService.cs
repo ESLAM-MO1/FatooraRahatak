@@ -207,6 +207,9 @@ public class DomainService : IDomainService
         store.CustomDomainStatus = CustomDomainStatus.Active;
         await _context.SaveChangesAsync();
 
+        // تفعيل CORS فورًا لهذا الدومين بدون الحاجة لإعادة تشغيل الخدمة
+        CustomDomainCorsCache.AddDomain(store.CustomDomain);
+
         return new CustomDomainDto
         {
             StoreId = store.Id,
@@ -226,6 +229,7 @@ public class DomainService : IDomainService
         if (!string.IsNullOrWhiteSpace(store.CustomDomain))
         {
             try { await _pleskService.RemoveDomainAliasAsync(store.CustomDomain); } catch { }
+            CustomDomainCorsCache.RemoveDomain(store.CustomDomain);
         }
 
         store.CustomDomain = null;

@@ -1337,6 +1337,11 @@ export default function StoreSettingsPage() {
               <span className={statusInfo.className}>{t(statusInfo.labelKey)}</span>
             </div>
 
+            <div className="alert alert--info mb-5">
+              <Icon name="globe" size={16} className="shrink-0 mt-0.5" />
+              <span>{t("storeSettings.domainSetupInstructions")}</span>
+            </div>
+
             {currentStatus === "Pending" && (
               <div className="alert alert--warning mb-5">
                 <Icon name="clock" size={16} className="shrink-0 mt-0.5" />

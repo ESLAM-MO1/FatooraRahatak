@@ -2856,6 +2856,7 @@ const en: Record<string, string> = {
   "storeSettings.customDomain": "Custom Domain",
   "storeSettings.currentDomain": "Current Domain",
   "storeSettings.domainPendingMessage": "Your domain is pending activation. Point its A record to 50.6.196.176 from your domain provider's dashboard, and it will activate automatically within minutes once DNS propagates.",
+  "storeSettings.domainSetupInstructions": "Before adding your domain: go to your domain provider's dashboard and point its A record to 50.6.196.176, then enter the domain below and save.",
   "storeSettings.newDomain": "New Domain",
   "storeSettings.domainPlaceholder": "yourdomain.com",
   "storeSettings.domainSaving": "Saving...",

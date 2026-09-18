@@ -152,6 +152,7 @@ builder.Services.AddDirectoryBrowser();
 builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
 builder.Services.AddHostedService<PendingPaymentReconcilerBackgroundService>();
 builder.Services.AddHostedService<SubscriptionAlertsBackgroundService>();
+builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.CustomDomainActivationBackgroundService>();
 builder.Services.AddScoped<IShippingProvider, SmsaShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, AramexShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, ZajilShippingProvider>();

@@ -1,6 +1,7 @@
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
+using FatooraRahatak.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace FatooraRahatak.API.BackgroundServices;
@@ -48,6 +49,7 @@ public class SubscriptionExpiryBackgroundService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
+        var pleskService = scope.ServiceProvider.GetRequiredService<IPleskService>();
         var changed = false;
 
         // 1) اشتراكات نشطة انتهت مدتها → فترة سماح 7 أيام
@@ -99,6 +101,18 @@ public class SubscriptionExpiryBackgroundService : BackgroundService
                     sub.Store.PackageId = freePackage.Id;
                     sub.Store.Status = StoreStatus.Active;
                     sub.Store.UpdatedAt = now;
+
+                    // الباقة المجانية لا تشمل ميزة الدومين المخصص: يُزال فورًا
+                    // في نفس لحظة النزول (بعد انتهاء فترة السماح أسبوع بلا تجديد)،
+                    // ويرجع المتجر تلقائيًا لرابطه المجاني rahtk.sa/store/{slug}
+                    // الذي يبقى يعمل دائمًا بغض النظر عن الباقة.
+                    if (!string.IsNullOrWhiteSpace(sub.Store.CustomDomain))
+                    {
+                        try { await pleskService.RemoveDomainAliasAsync(sub.Store.CustomDomain); } catch { }
+                        CustomDomainCorsCache.RemoveDomain(sub.Store.CustomDomain);
+                        sub.Store.CustomDomain = null;
+                        sub.Store.CustomDomainStatus = FatooraRahatak.Domain.Enums.CustomDomainStatus.None;
+                    }
                 }
 
                 try

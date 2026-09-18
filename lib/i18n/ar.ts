@@ -2882,7 +2882,7 @@ const ar = {
   "storeSettings.trustBadgeRemove": "حذف",
   "storeSettings.customDomain": "نطاق مخصص",
   "storeSettings.currentDomain": "النطاق الحالي",
-  "storeSettings.domainPendingMessage": "النطاق قيد الانتظار للتفعيل",
+  "storeSettings.domainPendingMessage": "النطاق قيد الانتظار للتفعيل. وجّه سجل A (A Record) الخاص بالدومين إلى العنوان 50.6.196.176 من لوحة تحكم مزوّد الدومين، وسيتم التفعيل تلقائيًا خلال دقائق بعد اكتمال انتشار DNS.",
   "storeSettings.newDomain": "نطاق جديد",
   "storeSettings.domainPlaceholder": "yourdomain.com",
   "storeSettings.domainSaving": "جاري الحفظ...",

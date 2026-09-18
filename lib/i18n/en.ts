@@ -2855,7 +2855,7 @@ const en: Record<string, string> = {
   "storeSettings.trustBadgeRemove": "Remove",
   "storeSettings.customDomain": "Custom Domain",
   "storeSettings.currentDomain": "Current Domain",
-  "storeSettings.domainPendingMessage": "Domain is pending activation",
+  "storeSettings.domainPendingMessage": "Your domain is pending activation. Point its A record to 50.6.196.176 from your domain provider's dashboard, and it will activate automatically within minutes once DNS propagates.",
   "storeSettings.newDomain": "New Domain",
   "storeSettings.domainPlaceholder": "yourdomain.com",
   "storeSettings.domainSaving": "Saving...",

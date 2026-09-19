@@ -3976,6 +3976,7 @@ const en: Record<string, string> = {
   "adminMerchantAccounts.filterRejected": "Rejected",
   "adminMerchantAccounts.filterAll": "All",
   "adminMerchantAccounts.statusSuspended": "Suspended",
+  "adminMerchantAccounts.filterSuspended": "Suspended",
   "adminMerchantAccounts.suspend": "Suspend account",
   "adminMerchantAccounts.suspended": "Account suspended",
   "adminMerchantAccounts.activate": "Reactivate",

@@ -4003,6 +4003,7 @@ const ar = {
   "adminMerchantAccounts.filterRejected": "مرفوضة",
   "adminMerchantAccounts.filterAll": "الكل",
   "adminMerchantAccounts.statusSuspended": "موقوف",
+  "adminMerchantAccounts.filterSuspended": "موقوفة",
   "adminMerchantAccounts.suspend": "إيقاف الحساب",
   "adminMerchantAccounts.suspended": "تم إيقاف الحساب",
   "adminMerchantAccounts.activate": "إعادة التفعيل",

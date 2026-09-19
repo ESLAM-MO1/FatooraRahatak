@@ -38,6 +38,7 @@ export interface StoreTemplateProps {
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;
   isReviewsEnabled: boolean;
+  hidePlatformBranding: boolean;
   menuConfigJson: string | null;
   storePagesJson: string | null;
 }
@@ -116,6 +117,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           paymentMethods: d.paymentMethods || [],
           isSearchEnabled: d.isSearchEnabled ?? true,
           isReviewsEnabled: d.isReviewsEnabled ?? false,
+          hidePlatformBranding: d.hidePlatformBranding ?? false,
           menuConfigJson: d.menuConfigJson || null,
           storePagesJson: d.storePagesJson || null,
         });
@@ -199,6 +201,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           paymentMethods={store.paymentMethods}
           isSearchEnabled={store.isSearchEnabled}
           isReviewsEnabled={store.isReviewsEnabled}
+          hidePlatformBranding={store.hidePlatformBranding}
           menuConfigJson={store.menuConfigJson}
           storePagesJson={store.storePagesJson}
         >

@@ -74,7 +74,7 @@ function ProductCard({ product, slug, currencySymbol, colors, t, isWishlist, has
 }
 
 export default function NaturalGreenTemplate({
-  children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
+  children, storeName, slug, hidePlatformBranding, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
   contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
@@ -230,7 +230,7 @@ export default function NaturalGreenTemplate({
           </div>
         </div>
         <div className="max-w-5xl mx-auto px-4 mt-8 pt-5 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.6)" }}>© {new Date().getFullYear()} {storeName}. {t("storefront.footerBy")}</p>
+          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.6)" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>
     </div>

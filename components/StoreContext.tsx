@@ -39,6 +39,7 @@ export interface StoreData {
   paymentMethods: StoreMethodInfo[];
   isSearchEnabled: boolean;
   isReviewsEnabled: boolean;
+  hidePlatformBranding: boolean;
 }
 
 const StoreCtx = createContext<StoreData | null>(null);

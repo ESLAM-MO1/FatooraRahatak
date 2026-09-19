@@ -20,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 }
 
 export default function RoyalPurpleTemplate({
-  children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
+  children, storeName, slug, hidePlatformBranding, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
   contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
@@ -194,7 +194,7 @@ export default function RoyalPurpleTemplate({
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>© {new Date().getFullYear()} {storeName}. {t("storefront.footerBy")}</p>
+          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>
     </div>

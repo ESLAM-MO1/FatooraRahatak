@@ -20,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 }
 
 export default function BlackMinimalTemplate({
-  children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
+  children, storeName, slug, hidePlatformBranding, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
   contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
@@ -164,7 +164,7 @@ export default function BlackMinimalTemplate({
               iconSize={16}
             />
           </div>
-          <p className="mt-6 pt-5 border-t text-[11px]" style={{ borderColor: "#262626", color: "#737373" }}>© {new Date().getFullYear()} {storeName}. {t("storefront.footerBy")}</p>
+          <p className="mt-6 pt-5 border-t text-[11px]" style={{ borderColor: "#262626", color: "#737373" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>
     </div>

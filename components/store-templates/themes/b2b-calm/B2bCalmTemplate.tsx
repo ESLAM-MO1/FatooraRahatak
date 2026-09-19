@@ -20,7 +20,7 @@ interface TemplateProps extends StoreTemplateProps {
 }
 
 export default function B2bCalmTemplate({
-  children, storeName, slug, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
+  children, storeName, slug, hidePlatformBranding, showHero = true, storeId, logo, currency = "SAR", coverImage = null,
   contactPhone, contactEmail, contactAddress, facebookUrl, instagramUrl, whatsappUrl, snapchatUrl, tiktokUrl, telegramUrl, linkedinUrl, twitterUrl, youtubeUrl, pinterestUrl, themeMeta, colors,
 }: TemplateProps) {
   const { t, i18n } = useTranslation();
@@ -177,7 +177,7 @@ export default function B2bCalmTemplate({
           </div>
         </div>
         <div className="max-w-6xl mx-auto px-4 mt-8 pt-5 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
-          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.6)" }}>© {new Date().getFullYear()} {storeName}. {t("storefront.footerBy")}</p>
+          <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.6)" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>
     </div>

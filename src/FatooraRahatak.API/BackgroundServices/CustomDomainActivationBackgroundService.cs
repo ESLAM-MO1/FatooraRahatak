@@ -91,7 +91,12 @@ public class CustomDomainActivationBackgroundService : BackgroundService
             }
 
             // 3) إصدار شهادة SSL (Let's Encrypt) — شرط أساسي لاعتبار الدومين مفعّلاً فعليًا
-            var (sslOk, sslOutput) = await pleskService.IssueSslAsync(domain);
+            var activeDomains = await db.Stores
+                .Where(s => s.CustomDomain != null && s.CustomDomain != "" && s.CustomDomainStatus == CustomDomainStatus.Active)
+                .Select(s => s.CustomDomain!)
+                .ToListAsync(ct);
+            var allAliasesToSecure = activeDomains.Append(domain).Distinct().ToList();
+            var (sslOk, sslOutput) = await pleskService.IssueSslAsync(allAliasesToSecure);
             if (!sslOk)
             {
                 _logger.LogWarning("فشل إصدار SSL للدومين {Domain}: {Output}", domain, sslOutput);

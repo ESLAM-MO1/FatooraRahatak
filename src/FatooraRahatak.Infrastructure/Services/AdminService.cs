@@ -412,7 +412,12 @@ public class AdminService : IAdminService
         if (!aliasOk)
             throw new InvalidOperationException($"فشل ربط الدومين على السيرفر: {aliasOutput}");
 
-        var (sslOk, sslOutput) = await _pleskService.IssueSslAsync(store.CustomDomain);
+        var activeDomains4 = await _context.Stores
+            .Where(s => s.CustomDomain != null && s.CustomDomain != "" && s.CustomDomainStatus == CustomDomainStatus.Active)
+            .Select(s => s.CustomDomain!)
+            .ToListAsync();
+        var allAliasesToSecure4 = activeDomains4.Append(store.CustomDomain).Distinct().ToList();
+        var (sslOk, sslOutput) = await _pleskService.IssueSslAsync(allAliasesToSecure4);
         if (!sslOk)
             throw new InvalidOperationException($"تم ربط الدومين لكن فشل إصدار شهادة SSL (تأكد أن الدومين يوجّه فعليًا لسيرفرنا أولاً): {sslOutput}");
 

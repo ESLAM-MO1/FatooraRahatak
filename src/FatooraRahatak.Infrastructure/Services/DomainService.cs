@@ -202,7 +202,12 @@ public class DomainService : IDomainService
         if (!aliasOk)
             throw new InvalidOperationException($"فشل ربط الدومين على السيرفر: {aliasOutput}");
 
-        await _pleskService.IssueSslAsync(store.CustomDomain);
+        var activeDomains5 = await _context.Stores
+            .Where(s => s.CustomDomain != null && s.CustomDomain != "" && s.CustomDomainStatus == CustomDomainStatus.Active)
+            .Select(s => s.CustomDomain!)
+            .ToListAsync();
+        var allAliasesToSecure5 = activeDomains5.Append(store.CustomDomain).Distinct().ToList();
+        await _pleskService.IssueSslAsync(allAliasesToSecure5);
 
         store.CustomDomainStatus = CustomDomainStatus.Active;
         await _context.SaveChangesAsync();

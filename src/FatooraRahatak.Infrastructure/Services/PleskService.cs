@@ -27,11 +27,12 @@ public class PleskService : IPleskService
     public Task<(bool Success, string Output)> RemoveDomainAliasAsync(string domain) =>
         RunCommandAsync(SudoBin, $"{DomAliasBin} --delete {domain}");
 
-    public Task<(bool Success, string Output)> IssueSslAsync(string domain) =>
-        // -aliases بدون قيمة معناها "أمّن كل الـ aliases النشطة" بدل استبدال القائمة بدومين واحد بس،
-        // لأن تمرير -aliases {domain} بيستبدل كل الدومينات التانية الموجودة في الشهادة (باگ حقيقي حصل فعليًا).
-        RunCommandAsync(SudoBin,
-            $"{PleskBin} ext sslit --certificate -issue -domain {ParentDomain} -aliases -secure-domain -challenge http");
+    public Task<(bool Success, string Output)> IssueSslAsync(IEnumerable<string> allDomains)
+    {
+        var aliasList = string.Join(",", allDomains.Distinct());
+        return RunCommandAsync(SudoBin,
+            $"{PleskBin} ext sslit --certificate -issue -domain {ParentDomain} -aliases {aliasList} -secure-domain -challenge http");
+    }
 
     private static async Task<(bool, string)> RunCommandAsync(string fileName, string arguments)
     {

@@ -32,6 +32,7 @@ public class Package : BaseEntity
     public bool HasCashOnDelivery { get; set; }
     public bool HasShippingDiscounts { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool HidePlatformBranding { get; set; } = false;
 
     public ICollection<Store> Stores { get; set; } = new List<Store>();
     public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();

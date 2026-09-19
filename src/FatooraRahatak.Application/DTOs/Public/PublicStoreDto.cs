@@ -39,6 +39,7 @@ public class PublicStoreDto
     public bool CustomerNotificationEmail { get; set; } = false;
     public bool CustomerNotificationWhatsapp { get; set; } = false;
     public bool IsCardPaymentsEnabled { get; set; } = false;
+    public bool HidePlatformBranding { get; set; } = false;
     public List<PublicShippingMethodDto> ShippingMethods { get; set; } = new();
     public List<PublicPaymentMethodDto> PaymentMethods { get; set; } = new();
     public List<PublicShippingCompanyDto> ShippingCompanies { get; set; } = new();

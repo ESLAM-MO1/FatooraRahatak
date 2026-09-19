@@ -57,6 +57,8 @@ public class PublicStoreService : IPublicStoreService
             .Select(m => new PublicPaymentMethodDto { Type = m.Type.ToString() })
             .ToListAsync();
 
+        var package = await _context.Packages.FindAsync(store.PackageId);
+
         var shippingCompanies = await _context.ShippingCompanies
             .Where(c => c.StoreId == store.Id && c.Enabled)
             .OrderBy(c => c.IsDefault ? 0 : 1)
@@ -109,6 +111,7 @@ public class PublicStoreService : IPublicStoreService
             CustomerNotificationEmail = store.CustomerNotificationEmail,
             CustomerNotificationWhatsapp = store.CustomerNotificationWhatsapp,
             IsCardPaymentsEnabled = paymentMethods.Any(m => m.Type == PaymentMethodType.CreditCard.ToString()),
+            HidePlatformBranding = package?.HidePlatformBranding ?? false,
             ShippingMethods = shippingMethods,
             PaymentMethods = paymentMethods,
             ShippingCompanies = shippingCompanies

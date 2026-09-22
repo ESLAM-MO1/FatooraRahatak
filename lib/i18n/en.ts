@@ -3775,6 +3775,7 @@ const en: Record<string, string> = {
   "productDetail.selectVariant": "Select Type",
   "productDetail.quantity": "Quantity",
   "productDetail.availableQuantity": "Available {{count}} pcs",
+  "productDetail.warranty": "Warranty: {{months}} months",
   "productDetail.outOfStockCurrently": "Currently unavailable",
   "productDetail.outOfStock": "Out of stock",
   "productDetail.adding": "Adding...",

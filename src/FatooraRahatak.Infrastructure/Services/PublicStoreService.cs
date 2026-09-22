@@ -350,6 +350,8 @@ public class PublicStoreService : IPublicStoreService
             AvailableQuantity = totalQuantity,
             AverageRating = rating.Count > 0 ? rating.Average() : 0,
             RatingCount = rating.Count,
+            HasWarranty = product.HasWarranty,
+            WarrantyMonths = product.WarrantyMonths,
             Images = product.Images
                 .OrderByDescending(i => i.IsPrimary)
                 .ThenBy(i => i.SortOrder)

@@ -36,6 +36,8 @@ interface ProductDetail {
   sku: string;
   hasVariants: boolean;
   availableQuantity: number;
+  hasWarranty: boolean;
+  warrantyMonths: number | null;
   images: ProductImage[];
   variants: ProductVariant[];
 }
@@ -462,6 +464,12 @@ export default function ProductDetailPage() {
               {maxAvailable > 0 ? t("productDetail.availableQuantity", { count: maxAvailable }) : t("productDetail.outOfStockCurrently")}
             </p>
           </div>
+
+          {product.hasWarranty && product.warrantyMonths != null && (
+            <div className="mb-4 text-sm font-medium text-gray-700">
+              {t("productDetail.warranty", { months: product.warrantyMonths })}
+            </div>
+          )}
 
           <SuccessToast message={addSuccess} fixed className="mb-4" />
           {addError && (

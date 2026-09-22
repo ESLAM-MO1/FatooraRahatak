@@ -3802,6 +3802,7 @@ const ar = {
   "productDetail.selectVariant": "اختر النوع",
   "productDetail.quantity": "الكمية",
   "productDetail.availableQuantity": "متاح {{count}} قطعة",
+  "productDetail.warranty": "الضمان: {{months}} شهر",
   "productDetail.outOfStockCurrently": "غير متوفر حاليًا",
   "productDetail.outOfStock": "غير متوفر",
   "productDetail.adding": "جاري الإضافة...",

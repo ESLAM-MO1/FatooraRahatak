@@ -47,6 +47,8 @@ public class PublicProductDetailDto
     public int AvailableQuantity { get; set; }
     public double AverageRating { get; set; }
     public int RatingCount { get; set; }
+    public bool HasWarranty { get; set; }
+    public int? WarrantyMonths { get; set; }
     public List<PublicProductImageDto> Images { get; set; } = new();
     public List<PublicProductVariantDto> Variants { get; set; } = new();
 }

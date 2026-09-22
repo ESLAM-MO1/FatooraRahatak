@@ -904,7 +904,13 @@ public class OrderService : IOrderService
 
         if (customerId == null)
         {
-            if (string.IsNullOrWhiteSpace(dto.GuestPhone) || order.GuestPhone != dto.GuestPhone)
+            var normalizedInput = string.IsNullOrWhiteSpace(dto.GuestPhone)
+                ? ""
+                : new string(dto.GuestPhone.Where(char.IsDigit).ToArray()).TrimStart('0');
+            var normalizedOrderPhone = string.IsNullOrWhiteSpace(order.GuestPhone)
+                ? ""
+                : new string(order.GuestPhone.Where(char.IsDigit).ToArray()).TrimStart('0');
+            if (normalizedInput.Length == 0 || normalizedInput != normalizedOrderPhone)
                 throw new InvalidOperationException("رقم الجوال غير مطابق لبيانات الطلب");
         }
         else if (order.CustomerId != customerId)

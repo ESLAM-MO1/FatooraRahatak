@@ -512,7 +512,12 @@ public class PublicStoreService : IPublicStoreService
         else if (!string.IsNullOrWhiteSpace(phone))
         {
             var expectedPhone = order.CustomerId != null ? order.Customer!.Phone : order.GuestPhone;
-            authorized = expectedPhone == phone;
+            if (!string.IsNullOrWhiteSpace(expectedPhone))
+            {
+                var normalizedInput = new string(phone.Where(char.IsDigit).ToArray()).TrimStart('0');
+                var normalizedExpected = new string(expectedPhone.Where(char.IsDigit).ToArray()).TrimStart('0');
+                authorized = normalizedInput.Length > 0 && normalizedInput == normalizedExpected;
+            }
         }
 
         if (!authorized) return null;

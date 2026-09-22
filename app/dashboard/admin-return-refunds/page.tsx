@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
-import { useI18n } from "@/lib/i18n/context";
+import { useTranslation } from "react-i18next";
+import "@/lib/i18n/config";
+import api from "@/lib/api";
 
 interface ManualRefund {
   id: number;
@@ -17,7 +18,7 @@ interface ManualRefund {
 }
 
 export default function AdminReturnRefundsPage() {
-  const { t } = useI18n();
+  const { t } = useTranslation();
   const [items, setItems] = useState<ManualRefund[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<number | null>(null);

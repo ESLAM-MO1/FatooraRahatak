@@ -201,8 +201,6 @@ const en: Record<string, string> = {
   "nav.transactions": "Transactions",
   "nav.settlements": "Settlements",
   "nav.manualRefunds": "Manual Refunds",
-  "common.confirm": "Confirm",
-  "common.noData": "No data",
   "nav.verification": "Account Verification",
   "nav.adminVerifications": "Store Verifications",
   "nav.adminMerchantAccounts": "Merchant Accounts",

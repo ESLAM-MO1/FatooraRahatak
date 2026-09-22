@@ -204,6 +204,7 @@ const ar = {
   "nav.subscription": "الباقة والاشتراك",
   "nav.transactions": "المعاملات",
   "nav.settlements": "التسويات المالية",
+  "nav.manualRefunds": "استردادات يدوية",
   "nav.verification": "توثيق الحساب",
   "nav.adminVerifications": "توثيق المتاجر",
   "nav.adminMerchantAccounts": "حسابات التجار",

@@ -41,6 +41,7 @@ public class PublicShipmentEventDto
 
 public class PublicOrderItemDto
 {
+    public long Id { get; set; }
     public string ProductNameSnapshot { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPriceSnapshot { get; set; }

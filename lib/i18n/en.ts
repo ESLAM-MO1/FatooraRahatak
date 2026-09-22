@@ -2376,6 +2376,10 @@ const en: Record<string, string> = {
   // ── Order Verify ──
   "order.verifyError": "Order number or phone number is incorrect",
   "order.requestReturn": "Request Return",
+  "order.returnSelectItemsLabel": "Select items to return",
+  "order.returnReasonTypeLabel": "Reason type",
+  "order.returnReasonChangeOfMind": "Change of mind",
+  "order.returnReasonDefectOrWarranty": "Defect / warranty issue",
   "order.returnTitle": "Request a Return",
   "order.returnReasonLabel": "Return reason",
   "order.returnSubmit": "Submit Request",

@@ -2403,6 +2403,10 @@ const ar = {
   // ── Order Verify ──
   "order.verifyError": "رقم الطلب أو رقم الجوال غير صحيح",
   "order.requestReturn": "طلب إرجاع",
+  "order.returnSelectItemsLabel": "اختر المنتجات المطلوب إرجاعها",
+  "order.returnReasonTypeLabel": "نوع السبب",
+  "order.returnReasonChangeOfMind": "تغيير الرأي",
+  "order.returnReasonDefectOrWarranty": "عيب في المنتج / ضمان",
   "order.returnTitle": "طلب إرجاع",
   "order.returnReasonLabel": "سبب الإرجاع",
   "order.returnSubmit": "إرسال الطلب",

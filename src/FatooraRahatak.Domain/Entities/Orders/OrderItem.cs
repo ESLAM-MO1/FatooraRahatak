@@ -12,6 +12,14 @@ public class OrderItem : BaseEntity
     public int Quantity { get; set; }
     public decimal UnitPriceSnapshot { get; set; }
     public decimal LineTotal { get; set; }
+    public int? WarrantyMonths { get; set; }
+    public DateTime? WarrantyStartDate { get; set; }
+
+    public DateTime? WarrantyEndDate => WarrantyStartDate.HasValue && WarrantyMonths.HasValue
+        ? WarrantyStartDate.Value.AddMonths(WarrantyMonths.Value)
+        : null;
+
+    public bool IsUnderWarranty => WarrantyEndDate.HasValue && WarrantyEndDate.Value >= DateTime.UtcNow;
 
     public Order Order { get; set; } = null!;
     public Product Product { get; set; } = null!;

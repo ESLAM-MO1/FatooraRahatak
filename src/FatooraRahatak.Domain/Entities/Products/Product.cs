@@ -18,6 +18,8 @@ public class Product : BaseEntity
     public decimal? DiscountPrice { get; set; }
     public decimal CostPrice { get; set; } = 0; 
     public bool HasVariants { get; set; } = false;
+    public bool HasWarranty { get; set; } = false;
+    public int? WarrantyMonths { get; set; }
     public decimal? Weight { get; set; }
     public ProductStatus Status { get; set; } = ProductStatus.Draft;
     public string? SeoTitle { get; set; }

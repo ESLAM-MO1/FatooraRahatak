@@ -14,4 +14,7 @@ public interface IOrderStockService
 
     /// <summary>إرجاع كميات عناصر الطلب إلى المخزون وإنشاء حركة Return.</summary>
     Task RestockAsync(Order order, long? userId = null);
+
+    /// <summary>إرجاع كميات محددة فقط من عناصر الطلب (إرجاع جزئي) وإنشاء حركة Return لكل عنصر.</summary>
+    Task RestockItemsAsync(long storeId, List<(OrderItem Item, int Quantity)> items, long? userId = null);
 }

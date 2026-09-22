@@ -562,6 +562,7 @@ public class PublicStoreService : IPublicStoreService
             },
             Items = order.Items.Select(i => new PublicOrderItemDto
             {
+                Id = i.Id,
                 ProductNameSnapshot = i.ProductNameSnapshot,
                 Quantity = i.Quantity,
                 UnitPriceSnapshot = i.UnitPriceSnapshot,

@@ -14,6 +14,7 @@ public class ReturnRequest : BaseEntity
     public string? GuestPhone { get; set; }
     public string? GuestName { get; set; }
     public string Reason { get; set; } = string.Empty;
+    public ReturnReasonType ReasonType { get; set; } = ReturnReasonType.ChangeOfMind;
     public ReturnRequestStatus Status { get; set; } = ReturnRequestStatus.Pending;
     public string? DecisionNote { get; set; }
     public long? DecidedByUserId { get; set; }
@@ -25,4 +26,5 @@ public class ReturnRequest : BaseEntity
     public Order Order { get; set; } = null!;
     public User? Customer { get; set; }
     public User? DecidedBy { get; set; }
+    public ICollection<ReturnRequestItem> Items { get; set; } = new List<ReturnRequestItem>();
 }

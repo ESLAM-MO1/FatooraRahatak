@@ -1,16 +1,32 @@
 namespace FatooraRahatak.Application.DTOs.Orders;
 
+public class ReturnItemInputDto
+{
+    public long OrderItemId { get; set; }
+    public int Quantity { get; set; }
+}
+
 public class RequestReturnDto
 {
     public long OrderId { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string? GuestPhone { get; set; }
+    public string ReasonType { get; set; } = "ChangeOfMind";
+    public List<ReturnItemInputDto> Items { get; set; } = new();
 }
 
 public class HandleReturnRequestDto
 {
     public bool Approve { get; set; }
     public string? Note { get; set; }
+}
+
+public class ReturnRequestItemDto
+{
+    public long OrderItemId { get; set; }
+    public string ProductNameSnapshot { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal RefundAmount { get; set; }
 }
 
 public class ReturnRequestDto
@@ -22,10 +38,12 @@ public class ReturnRequestDto
     public string? GuestPhone { get; set; }
     public decimal OrderTotal { get; set; }
     public string Reason { get; set; } = string.Empty;
+    public string ReasonType { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string? DecisionNote { get; set; }
     public decimal? RefundAmount { get; set; }
     public string? RefundStatus { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? DecidedAt { get; set; }
+    public List<ReturnRequestItemDto> Items { get; set; } = new();
 }

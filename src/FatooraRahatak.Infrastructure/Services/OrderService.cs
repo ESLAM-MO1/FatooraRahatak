@@ -690,6 +690,24 @@ public class OrderService : IOrderService
         order.Status = statusEnum;
         order.UpdatedAt = DateTime.UtcNow;
 
+        // عند التسليم: تسجيل بداية فترة الضمان (snapshot) لكل منتج مفعّل عليه ضمان
+        if (statusEnum == OrderStatus.Delivered)
+        {
+            var productIds = order.Items.Select(i => i.ProductId).Distinct().ToList();
+            var warrantyInfo = await _context.Products
+                .Where(p => productIds.Contains(p.Id) && p.HasWarranty && p.WarrantyMonths != null)
+                .ToDictionaryAsync(p => p.Id, p => p.WarrantyMonths);
+
+            foreach (var item in order.Items)
+            {
+                if (warrantyInfo.TryGetValue(item.ProductId, out var months) && months.HasValue)
+                {
+                    item.WarrantyMonths = months;
+                    item.WarrantyStartDate = DateTime.UtcNow;
+                }
+            }
+        }
+
         _context.OrderStatusHistories.Add(new OrderStatusHistory
         {
             OrderId = order.Id,
@@ -864,12 +882,19 @@ public class OrderService : IOrderService
         if (dto.OrderId <= 0 || string.IsNullOrWhiteSpace(dto.Reason))
             throw new InvalidOperationException("رقم الطلب وسبب الإرجاع مطلوبان");
 
+        if (dto.Items == null || dto.Items.Count == 0)
+            throw new InvalidOperationException("يجب اختيار منتج واحد على الأقل للإرجاع");
+
+        if (!Enum.TryParse<Domain.Enums.ReturnReasonType>(dto.ReasonType, true, out var reasonType))
+            reasonType = Domain.Enums.ReturnReasonType.ChangeOfMind;
+
         var store = await _context.Stores
             .FirstOrDefaultAsync(s => s.StoreSlug == slug && s.Status == StoreStatus.Active);
         if (store == null)
             throw new InvalidOperationException("المتجر غير موجود أو غير نشط");
 
         var order = await _context.Orders
+            .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Id == dto.OrderId && o.StoreId == store.Id);
         if (order == null)
             throw new InvalidOperationException("الطلب غير موجود");
@@ -892,14 +917,58 @@ public class OrderService : IOrderService
         if (hasPending)
             throw new InvalidOperationException("يوجد طلب إرجاع قيد المراجعة لهذا الطلب بالفعل");
 
-        _context.ReturnRequests.Add(new ReturnRequest
+        // الكميات اللي سبق طلب إرجاعها (Pending أو Approved) لكل عنصر — عشان منمنعش تكرار إرجاع نفس القطعة
+        var alreadyRequested = await _context.Set<Domain.Entities.Orders.ReturnRequestItem>()
+            .Where(ri => ri.ReturnRequest.OrderId == order.Id
+                && ri.ReturnRequest.Status != Domain.Enums.ReturnRequestStatus.Rejected)
+            .GroupBy(ri => ri.OrderItemId)
+            .Select(g => new { OrderItemId = g.Key, Qty = g.Sum(x => x.Quantity) })
+            .ToListAsync();
+
+        var returnRequest = new ReturnRequest
         {
             StoreId = store.Id,
             OrderId = order.Id,
             CustomerId = customerId,
             GuestPhone = customerId == null ? dto.GuestPhone : null,
-            Reason = dto.Reason.Trim()
-        });
+            Reason = dto.Reason.Trim(),
+            ReasonType = reasonType
+        };
+
+        decimal totalRefund = 0;
+
+        foreach (var reqItem in dto.Items)
+        {
+            if (reqItem.Quantity <= 0)
+                throw new InvalidOperationException("الكمية المطلوب إرجاعها غير صحيحة");
+
+            var orderItem = order.Items.FirstOrDefault(i => i.Id == reqItem.OrderItemId);
+            if (orderItem == null)
+                throw new InvalidOperationException("أحد المنتجات المختارة لا ينتمي لهذا الطلب");
+
+            var previouslyRequested = alreadyRequested.FirstOrDefault(a => a.OrderItemId == orderItem.Id)?.Qty ?? 0;
+            if (previouslyRequested + reqItem.Quantity > orderItem.Quantity)
+                throw new InvalidOperationException($"الكمية المطلوب إرجاعها من \"{orderItem.ProductNameSnapshot}\" أكبر من الكمية المتاحة للإرجاع");
+
+            if (reasonType == Domain.Enums.ReturnReasonType.DefectOrWarranty && !orderItem.IsUnderWarranty)
+                throw new InvalidOperationException($"انتهت فترة الضمان الخاصة بـ \"{orderItem.ProductNameSnapshot}\"، لا يمكن إرجاعه بسبب عيب/ضمان");
+
+            var lineRefund = orderItem.Quantity > 0
+                ? Math.Round(orderItem.UnitPriceSnapshot * reqItem.Quantity, 2)
+                : 0;
+            totalRefund += lineRefund;
+
+            returnRequest.Items.Add(new Domain.Entities.Orders.ReturnRequestItem
+            {
+                OrderItemId = orderItem.Id,
+                Quantity = reqItem.Quantity,
+                RefundAmount = lineRefund
+            });
+        }
+
+        returnRequest.RefundAmount = totalRefund;
+
+        _context.ReturnRequests.Add(returnRequest);
 
         await _context.SaveChangesAsync();
 
@@ -946,6 +1015,8 @@ public class OrderService : IOrderService
         return await _context.ReturnRequests
             .Include(r => r.Order)
             .Include(r => r.Customer)
+            .Include(r => r.Items)
+                .ThenInclude(ri => ri.OrderItem)
             .Where(r => r.StoreId == storeId)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new ReturnRequestDto
@@ -957,12 +1028,20 @@ public class OrderService : IOrderService
                 GuestPhone = r.GuestPhone,
                 OrderTotal = r.Order.TotalAmount,
                 Reason = r.Reason,
+                ReasonType = r.ReasonType.ToString(),
                 Status = r.Status.ToString(),
                 DecisionNote = r.DecisionNote,
                 RefundAmount = r.RefundAmount,
                 RefundStatus = r.RefundStatus,
                 CreatedAt = r.CreatedAt,
-                DecidedAt = r.DecidedAt
+                DecidedAt = r.DecidedAt,
+                Items = r.Items.Select(ri => new ReturnRequestItemDto
+                {
+                    OrderItemId = ri.OrderItemId,
+                    ProductNameSnapshot = ri.OrderItem.ProductNameSnapshot,
+                    Quantity = ri.Quantity,
+                    RefundAmount = ri.RefundAmount
+                }).ToList()
             })
             .ToListAsync();
     }
@@ -992,12 +1071,33 @@ public class OrderService : IOrderService
                 // وإلا ينتقل الطلب لحالة PendingRefund دون إعادة مخزون.
                 // أما الدفع عند الاستلام (لا توجد دفعة إلكترونية) فيُعاد المخزون مباشرة
                 // لأن الاسترداد يتم يدويًا خارج بوابة الدفع.
+                var isFullReturn = order.Items.Count == returnRequest.Items.Count
+                    && order.Items.All(oi => returnRequest.Items.Any(ri => ri.OrderItemId == oi.Id && ri.Quantity == oi.Quantity));
+
                 var paidPayment = await _context.Payments
                     .FirstOrDefaultAsync(p => p.OrderId == order.Id
                         && p.Status == PaymentStatus.Paid
                         && !string.IsNullOrWhiteSpace(p.ProviderPaymentId));
 
-                if (paidPayment != null)
+                if (paidPayment != null && !isFullReturn)
+                {
+                    // إرجاع جزئي بدفع إلكتروني: RefundPaymentAsync الحالية بترجّع كل المبلغ المدفوع
+                    // دايمًا (معندهاش باراميتر مبلغ)، فاستخدامها هنا هيرجّع فلوس أكتر من اللازم.
+                    // الاسترداد الجزئي الفعلي يتم يدويًا من التاجر عبر بوابة الدفع حاليًا.
+                    returnRequest.RefundStatus = "استرداد جزئي - يتم يدويًا من بوابة الدفع";
+
+                    order.Status = OrderStatus.Returned;
+                    order.UpdatedAt = DateTime.UtcNow;
+                    _context.OrderStatusHistories.Add(new OrderStatusHistory
+                    {
+                        OrderId = order.Id,
+                        Status = OrderStatus.Returned,
+                        ChangedByUserId = changedByUserId,
+                        ChangedAt = DateTime.UtcNow
+                    });
+                    await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
+                }
+                else if (paidPayment != null)
                 {
                     var refund = await _paymentService.RefundPaymentAsync(storeId, paidPayment.PaymentReference);
                     returnRequest.RefundAmount = refund.Amount;
@@ -1028,7 +1128,7 @@ public class OrderService : IOrderService
                             ChangedByUserId = changedByUserId,
                             ChangedAt = DateTime.UtcNow
                         });
-                        await RestockItemsAsync(order, changedByUserId);
+                        await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
                     }
                 }
                 else
@@ -1045,7 +1145,7 @@ public class OrderService : IOrderService
                         ChangedByUserId = changedByUserId,
                         ChangedAt = DateTime.UtcNow
                     });
-                    await RestockItemsAsync(order, changedByUserId);
+                    await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
 
                     // ⚠️ إرجاع مدفوع/COD: عكس قيد البيع (ذمم مدينة/نقدية) لأن البضاعة عادت
                     await _accountingService.ReverseOrderSalesInvoiceAsync(storeId, order.Id);
@@ -1086,6 +1186,19 @@ public class OrderService : IOrderService
             }
             catch { }
         }
+    }
+
+    // إعادة كميات محددة فقط (إرجاع جزئي) بناءً على عناصر طلب الإرجاع الموافق عليه
+    private async Task RestockReturnRequestItemsAsync(long storeId, Order order, ICollection<Domain.Entities.Orders.ReturnRequestItem> returnItems, long? userId)
+    {
+        var items = new List<(OrderItem Item, int Quantity)>();
+        foreach (var ri in returnItems)
+        {
+            var orderItem = order.Items.FirstOrDefault(oi => oi.Id == ri.OrderItemId);
+            if (orderItem != null)
+                items.Add((orderItem, ri.Quantity));
+        }
+        await _orderStockService.RestockItemsAsync(storeId, items, userId);
     }
 
     // إعادة الكمية إلى المخزون (عكس خصم الـ Checkout): تُضاف إلى أول رصيد مطابق في مخزن المتجر

@@ -116,6 +116,70 @@ public class OrderStockService : IOrderStockService
         }
     }
 
+    /// <summary>
+    /// إعادة كميات محددة (إرجاع جزئي) بدل الطلب كامل — تُستخدم عند الموافقة على
+    /// طلب إرجاع يشمل منتجًا أو أكثر بكمية أقل من إجمالي الطلب.
+    /// </summary>
+    public async Task RestockItemsAsync(long storeId, List<(OrderItem Item, int Quantity)> items, long? userId = null)
+    {
+        foreach (var (item, quantity) in items)
+        {
+            if (quantity <= 0) continue;
+
+            var stock = await _context.InventoryStocks
+                .Include(s => s.Warehouse)
+                .FirstOrDefaultAsync(s => s.ProductId == item.ProductId
+                    && s.VariantId == item.VariantId
+                    && s.Warehouse.StoreId == storeId);
+
+            if (stock == null)
+            {
+                var warehouse = await _context.Warehouses
+                    .FirstOrDefaultAsync(w => w.StoreId == storeId);
+                if (warehouse == null)
+                {
+                    warehouse = new Warehouse
+                    {
+                        StoreId = storeId,
+                        WarehouseName = "المستودع الرئيسي",
+                        IsDefault = true
+                    };
+                    _context.Warehouses.Add(warehouse);
+                    await _context.SaveChangesAsync();
+                }
+
+                stock = new InventoryStock
+                {
+                    WarehouseId = warehouse.Id,
+                    ProductId = item.ProductId,
+                    VariantId = item.VariantId,
+                    QuantityAvailable = quantity,
+                    QuantityReserved = 0
+                };
+                _context.InventoryStocks.Add(stock);
+                await _context.SaveChangesAsync();
+            }
+            else
+            {
+                stock.QuantityAvailable += quantity;
+            }
+
+            _context.InventoryTransactions.Add(new InventoryTransaction
+            {
+                WarehouseId = stock.WarehouseId,
+                ProductId = item.ProductId,
+                VariantId = item.VariantId,
+                TransactionType = InventoryTransactionType.Return,
+                Quantity = quantity,
+                ReferenceType = "ReturnRequest",
+                ReferenceId = item.OrderId,
+                CreatedByUserId = userId
+            });
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     private async Task<List<InventoryStock>> LockStockRowsAsync(long storeId, long productId, long? variantId)
     {
         var warehouseSubquery = "SELECT Id FROM Warehouses WHERE StoreId = {1}";

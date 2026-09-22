@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import PhoneInputField from "@/components/PhoneInputField";
 interface OrderItem {
+  id: number;
   productNameSnapshot: string;
   quantity: number;
   unitPriceSnapshot: number;
@@ -118,15 +119,37 @@ export default function OrderDetailPage() {
   const [verifying, setVerifying] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
   const [returnReason, setReturnReason] = useState("");
+  const [returnReasonType, setReturnReasonType] = useState<"ChangeOfMind" | "DefectOrWarranty">("ChangeOfMind");
+  const [returnQuantities, setReturnQuantities] = useState<Record<number, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [returnMsg, setReturnMsg] = useState("");
   const [returnError, setReturnError] = useState("");
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState("");
 
+  const toggleReturnItem = (itemId: number, maxQty: number, checked: boolean) => {
+    setReturnQuantities((prev) => {
+      const next = { ...prev };
+      if (checked) {
+        next[itemId] = maxQty;
+      } else {
+        delete next[itemId];
+      }
+      return next;
+    });
+  };
+
+  const setReturnItemQty = (itemId: number, qty: number, maxQty: number) => {
+    const safeQty = Math.max(1, Math.min(qty, maxQty));
+    setReturnQuantities((prev) => ({ ...prev, [itemId]: safeQty }));
+  };
+
   const submitReturn = async (e: FormEvent) => {
     e.preventDefault();
-    if (!order || !returnReason.trim()) return;
+    const items = Object.entries(returnQuantities)
+      .filter(([, qty]) => qty > 0)
+      .map(([orderItemId, quantity]) => ({ orderItemId: Number(orderItemId), quantity }));
+    if (!order || !returnReason.trim() || items.length === 0) return;
     setSubmitting(true);
     setReturnError("");
     setReturnMsg("");
@@ -134,11 +157,15 @@ export default function OrderDetailPage() {
       await api.post(`/public/stores/${slug}/orders/return`, {
         orderId: order.id,
         reason: returnReason.trim(),
+        reasonType: returnReasonType,
+        items,
         guestPhone: sessionStorage.getItem(sessionPhoneKey(order.orderNumber)) || undefined,
       });
       setReturnMsg(t("order.returnSubmitted"));
       setShowReturn(false);
       setReturnReason("");
+      setReturnQuantities({});
+      setReturnReasonType("ChangeOfMind");
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { message?: string } } };
       setReturnError(e2.response?.data?.message || t("order.returnError"));
@@ -600,6 +627,53 @@ export default function OrderDetailPage() {
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-gray-800 mb-4">{t("order.returnTitle")}</h2>
             <form onSubmit={submitReturn} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t("order.returnSelectItemsLabel")}
+                </label>
+                <div className="space-y-2 border border-gray-200 rounded-md p-3">
+                  {order.items.map((item) => {
+                    const checked = returnQuantities[item.id] !== undefined;
+                    return (
+                      <div key={item.id} className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => toggleReturnItem(item.id, item.quantity, e.target.checked)}
+                          className="w-4 h-4"
+                        />
+                        <span className="flex-1 text-sm text-gray-700">{item.productNameSnapshot}</span>
+                        {checked && item.quantity > 1 && (
+                          <input
+                            type="number"
+                            min={1}
+                            max={item.quantity}
+                            value={returnQuantities[item.id]}
+                            onChange={(e) => setReturnItemQty(item.id, Number(e.target.value), item.quantity)}
+                            className="w-16 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                          />
+                        )}
+                        {checked && item.quantity === 1 && (
+                          <span className="text-sm text-gray-500">{item.quantity}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("order.returnReasonTypeLabel")}
+                </label>
+                <select
+                  value={returnReasonType}
+                  onChange={(e) => setReturnReasonType(e.target.value as "ChangeOfMind" | "DefectOrWarranty")}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[var(--theme)]"
+                >
+                  <option value="ChangeOfMind">{t("order.returnReasonChangeOfMind")}</option>
+                  <option value="DefectOrWarranty">{t("order.returnReasonDefectOrWarranty")}</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {t("order.returnReasonLabel")}

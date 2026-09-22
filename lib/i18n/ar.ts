@@ -1576,8 +1576,6 @@ const ar = {
   "product.costPrice": "سعر التكلفة",
   "product.hasWarranty": "المنتج عليه ضمان",
   "product.warrantyMonths": "مدة الضمان (بالشهور)",
-  "product.hasWarranty": "المنتج عليه ضمان",
-  "product.warrantyMonths": "مدة الضمان (بالشهور)",
   "product.weight": "الوزن (كجم)",
   "product.initialQuantity": "الكمية الابتدائية",
   "product.skuAutoGenerate": "يُولَّد تلقائيًا إذا تُرك فارغًا",

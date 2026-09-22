@@ -1546,6 +1546,8 @@ const en: Record<string, string> = {
   "product.barcode": "Barcode",
   "product.basePrice": "Base price",
   "product.costPrice": "Cost price",
+  "product.hasWarranty": "Product has warranty",
+  "product.warrantyMonths": "Warranty period (months)",
   "product.weight": "Weight (kg)",
   "product.initialQuantity": "Initial quantity",
   "product.skuAutoGenerate": "Auto-generated if left empty",

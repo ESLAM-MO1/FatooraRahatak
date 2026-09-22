@@ -1093,15 +1093,9 @@ public class OrderService : IOrderService
                     returnRequest.RefundStatus = "استرداد جزئي - يتم يدويًا من بوابة الدفع";
                     await NotifySuperAdminsManualRefundAsync(order, returnRequest);
 
-                    order.Status = OrderStatus.Returned;
+                    // إرجاع جزئي: لا تُغيَّر حالة الطلب بالكامل إلى "مرتجع"، فباقي المنتجات
+                    // في الطلب لسه سليمة ومتسلمة. حالة الإرجاع نفسها موجودة ومسجلة في ReturnRequest.
                     order.UpdatedAt = DateTime.UtcNow;
-                    _context.OrderStatusHistories.Add(new OrderStatusHistory
-                    {
-                        OrderId = order.Id,
-                        Status = OrderStatus.Returned,
-                        ChangedByUserId = changedByUserId,
-                        ChangedAt = DateTime.UtcNow
-                    });
                     await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
                 }
                 else if (paidPayment != null)
@@ -1143,18 +1137,21 @@ public class OrderService : IOrderService
                     if (order.PaymentStatus == PaymentStatus.Paid)
                         returnRequest.RefundStatus = "دفع عند الاستلام — الاسترداد يتم يدويًا";
 
-                    order.Status = OrderStatus.Returned;
-                    order.UpdatedAt = DateTime.UtcNow;
-                    _context.OrderStatusHistories.Add(new OrderStatusHistory
+                    if (isFullReturn)
                     {
-                        OrderId = order.Id,
-                        Status = OrderStatus.Returned,
-                        ChangedByUserId = changedByUserId,
-                        ChangedAt = DateTime.UtcNow
-                    });
+                        order.Status = OrderStatus.Returned;
+                        _context.OrderStatusHistories.Add(new OrderStatusHistory
+                        {
+                            OrderId = order.Id,
+                            Status = OrderStatus.Returned,
+                            ChangedByUserId = changedByUserId,
+                            ChangedAt = DateTime.UtcNow
+                        });
+                    }
+                    order.UpdatedAt = DateTime.UtcNow;
                     await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
 
-                    // ⚠️ إرجاع مدفوع/COD: عكس قيد البيع (ذمم مدينة/نقدية) لأن البضاعة عادت
+                    // ⚠️ إرجاع مدفوع/COD: عكس قيد البيع الجزء الخاص بالمنتجات المرتجعة فقط
                     await _accountingService.ReverseOrderSalesInvoiceAsync(storeId, order.Id);
                 }
 

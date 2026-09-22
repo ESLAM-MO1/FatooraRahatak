@@ -1085,6 +1085,7 @@ public class OrderService : IOrderService
                     // دايمًا (معندهاش باراميتر مبلغ)، فاستخدامها هنا هيرجّع فلوس أكتر من اللازم.
                     // الاسترداد الجزئي الفعلي يتم يدويًا من التاجر عبر بوابة الدفع حاليًا.
                     returnRequest.RefundStatus = "استرداد جزئي - يتم يدويًا من بوابة الدفع";
+                    await NotifySuperAdminsManualRefundAsync(order, returnRequest);
 
                     order.Status = OrderStatus.Returned;
                     order.UpdatedAt = DateTime.UtcNow;
@@ -1189,6 +1190,25 @@ public class OrderService : IOrderService
     }
 
     // إعادة كميات محددة فقط (إرجاع جزئي) بناءً على عناصر طلب الإرجاع الموافق عليه
+    private async Task NotifySuperAdminsManualRefundAsync(Order order, ReturnRequest returnRequest)
+    {
+        var superAdminIds = await _context.Users
+            .Where(u => u.UserType == Domain.Enums.UserType.SuperAdmin && u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        foreach (var adminId in superAdminIds)
+        {
+            await _notificationService.CreateAsync(
+                adminId,
+                "استرداد جزئي يحتاج تأكيد يدوي",
+                $"طلب إرجاع جزئي للطلب رقم {order.OrderNumber} بمبلغ {returnRequest.RefundAmount:N2} ريال يحتاج استرداد يدوي من بوابة الدفع.",
+                Domain.Enums.NotificationType.ManualRefundRequired,
+                "/dashboard/admin-return-refunds"
+            );
+        }
+    }
+
     private async Task RestockReturnRequestItemsAsync(long storeId, Order order, ICollection<Domain.Entities.Orders.ReturnRequestItem> returnItems, long? userId)
     {
         var items = new List<(OrderItem Item, int Quantity)>();

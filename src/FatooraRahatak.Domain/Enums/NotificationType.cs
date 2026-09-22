@@ -35,5 +35,6 @@ public enum NotificationType
     DesignRequestNew,
     VerificationSubmitted,
     DomainRequestSubmitted,
-    SupportTicketCreated
+    SupportTicketCreated,
+    ManualRefundRequired
 }

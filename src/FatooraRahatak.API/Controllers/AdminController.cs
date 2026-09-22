@@ -1468,6 +1468,20 @@ public class AdminController : ControllerBase
         return Ok(new { sent = true, to = dto.Email, type = dto.Type, note = "استخدمت بيانات حقيقية من قاعدة البيانات" });
     }
 
+    [HttpGet("return-refunds")]
+    public async Task<IActionResult> GetManualRefunds()
+    {
+        return Ok(await _adminService.GetManualRefundsAsync());
+    }
+
+    [HttpPost("return-refunds/{id}/confirm")]
+    public async Task<IActionResult> ConfirmManualRefund(long id)
+    {
+        var userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _adminService.ConfirmManualRefundAsync(id, userId);
+        return Ok(new { confirmed = true });
+    }
+
     public class TestEmailDto
     {
         public string Email { get; set; } = "";

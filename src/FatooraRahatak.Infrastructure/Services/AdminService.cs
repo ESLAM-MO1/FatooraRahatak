@@ -30,6 +30,43 @@ public class AdminService : IAdminService
         _pleskService = pleskService;
     }
 
+    public async Task<List<FatooraRahatak.Application.DTOs.Admin.ManualRefundDto>> GetManualRefundsAsync()
+    {
+        return await _context.Set<Domain.Entities.Orders.ReturnRequest>()
+            .Include(r => r.Order)
+            .Include(r => r.Store)
+            .Include(r => r.ManualRefundConfirmedByUser)
+            .Where(r => r.RefundStatus == "استرداد جزئي - يتم يدويًا من بوابة الدفع")
+            .OrderByDescending(r => r.DecidedAt)
+            .Select(r => new FatooraRahatak.Application.DTOs.Admin.ManualRefundDto
+            {
+                Id = r.Id,
+                OrderId = r.OrderId,
+                OrderNumber = r.Order.OrderNumber,
+                StoreName = r.Store.StoreName,
+                RefundAmount = r.RefundAmount,
+                RefundStatus = r.RefundStatus,
+                DecidedAt = r.DecidedAt,
+                ManualRefundConfirmedAt = r.ManualRefundConfirmedAt,
+                ManualRefundConfirmedByName = r.ManualRefundConfirmedByUser != null ? r.ManualRefundConfirmedByUser.FullName : null
+            })
+            .ToListAsync();
+    }
+
+    public async Task ConfirmManualRefundAsync(long returnRequestId, long confirmedByUserId)
+    {
+        var request = await _context.Set<Domain.Entities.Orders.ReturnRequest>()
+            .FirstOrDefaultAsync(r => r.Id == returnRequestId);
+        if (request == null)
+            throw new InvalidOperationException("طلب الإرجاع غير موجود");
+
+        request.RefundStatus = "تم الاسترداد يدويًا";
+        request.ManualRefundConfirmedAt = DateTime.UtcNow;
+        request.ManualRefundConfirmedByUserId = confirmedByUserId;
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<List<AdminStoreListDto>> GetAllStoresAsync()
     {
         const int Unlimited = -1;

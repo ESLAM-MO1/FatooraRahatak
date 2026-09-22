@@ -2,6 +2,8 @@ using FatooraRahatak.Application.DTOs.Admin;
 namespace FatooraRahatak.Application.Interfaces;
 public interface IAdminService
 {
+    Task<List<FatooraRahatak.Application.DTOs.Admin.ManualRefundDto>> GetManualRefundsAsync();
+    Task ConfirmManualRefundAsync(long returnRequestId, long confirmedByUserId);
     Task<List<AdminStoreListDto>> GetAllStoresAsync();
     Task<AdminStoreDetailDto?> GetStoreByIdAsync(long id);
     Task SuspendStoreAsync(long id);

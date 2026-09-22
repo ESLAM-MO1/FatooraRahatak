@@ -21,10 +21,13 @@ public class ReturnRequest : BaseEntity
     public DateTime? DecidedAt { get; set; }
     public decimal? RefundAmount { get; set; }
     public string? RefundStatus { get; set; }
+    public DateTime? ManualRefundConfirmedAt { get; set; }
+    public long? ManualRefundConfirmedByUserId { get; set; }
 
     public Store Store { get; set; } = null!;
     public Order Order { get; set; } = null!;
     public User? Customer { get; set; }
     public User? DecidedBy { get; set; }
+    public User? ManualRefundConfirmedByUser { get; set; }
     public ICollection<ReturnRequestItem> Items { get; set; } = new List<ReturnRequestItem>();
 }

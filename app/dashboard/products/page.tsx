@@ -43,6 +43,8 @@ interface Product {
   weight: number | null;
   status: string;
   availableQuantity: number;
+  hasWarranty: boolean;
+  warrantyMonths: number | null;
 }
 
 interface ProductForm {
@@ -58,6 +60,8 @@ interface ProductForm {
   costPrice: string;
   weight: string;
   initialQuantity: string;
+  hasWarranty: boolean;
+  warrantyMonths: string;
 }
 
 const emptyForm: ProductForm = {
@@ -73,6 +77,8 @@ const emptyForm: ProductForm = {
   costPrice: "0",
   weight: "",
   initialQuantity: "0",
+  hasWarranty: false,
+  warrantyMonths: "",
 };
 
 const statusStyles: Record<string, string> = {
@@ -200,6 +206,8 @@ export default function ProductsPage() {
       costPrice: product.costPrice.toString(),
       weight: product.weight?.toString() ?? "",
       initialQuantity: "0",
+      hasWarranty: product.hasWarranty ?? false,
+      warrantyMonths: product.warrantyMonths?.toString() ?? "",
     });
     setActionError("");
     setShowModal(true);
@@ -226,6 +234,8 @@ export default function ProductsPage() {
       costPrice: parseFloat(form.costPrice) || 0,
       weight: form.weight ? parseFloat(form.weight) : null,
       categoryId: form.categoryId ? Number(form.categoryId) : null,
+      hasWarranty: form.hasWarranty,
+      warrantyMonths: form.hasWarranty && form.warrantyMonths ? parseInt(form.warrantyMonths) : null,
     };
 
     if (!editingId) {
@@ -780,6 +790,27 @@ export default function ProductsPage() {
                   </div>
                 </div>
               </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 text-sm text-[var(--ink)]">
+                    <input
+                      type="checkbox"
+                      checked={form.hasWarranty}
+                      onChange={(e) => setForm({ ...form, hasWarranty: e.target.checked, warrantyMonths: e.target.checked ? form.warrantyMonths : "" })}
+                    />
+                    {t("product.hasWarranty")}
+                  </label>
+                  {form.hasWarranty && (
+                    <div className="field-shell flex-1">
+                      <input
+                        type="number"
+                        min={1}
+                        value={form.warrantyMonths}
+                        onChange={(e) => setForm({ ...form, warrantyMonths: e.target.value })}
+                        placeholder={t("product.warrantyMonths")}
+                      />
+                    </div>
+                  )}
+                </div>
                 {!editingId && (
                   <div>
                     <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">{t("product.initialQuantity")}</label>

@@ -26,6 +26,8 @@ const emptyForm = {
   discountPrice: "",
   costPrice: "",
   weight: "",
+  hasWarranty: false,
+  warrantyMonths: "",
 };
 
 export default function AddProductModal({ onClose, onSuccess }: Props) {
@@ -58,6 +60,8 @@ export default function AddProductModal({ onClose, onSuccess }: Props) {
       if (form.discountPrice) payload.discountPrice = parseFloat(form.discountPrice);
       if (form.costPrice) payload.costPrice = parseFloat(form.costPrice);
       if (form.weight) payload.weight = parseFloat(form.weight);
+      payload.hasWarranty = form.hasWarranty;
+      if (form.hasWarranty && form.warrantyMonths) payload.warrantyMonths = parseInt(form.warrantyMonths);
       const res = await api.post("/products", payload);
       const sku = res.data.data?.sku;
       onSuccess(sku ? `${t("product.createSuccess")} — ${t("product.skuLabel")}: ${sku}` : t("product.createSuccess"));
@@ -98,6 +102,15 @@ export default function AddProductModal({ onClose, onSuccess }: Props) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="field-shell"><input type="number" min={0} step="0.01" value={form.weight} onChange={set("weight")} placeholder={t("product.weight")} /></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-[var(--ink)]">
+              <input type="checkbox" checked={form.hasWarranty} onChange={e => setForm(f => ({ ...f, hasWarranty: e.target.checked, warrantyMonths: e.target.checked ? f.warrantyMonths : "" }))} />
+              {t("product.hasWarranty")}
+            </label>
+            {form.hasWarranty && (
+              <div className="field-shell flex-1"><input type="number" min={1} value={form.warrantyMonths} onChange={set("warrantyMonths")} placeholder={t("product.warrantyMonths")} /></div>
+            )}
           </div>
           <div className="flex gap-3 mt-4">
             <button type="submit" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">{submitting ? t("common.loading") : t("product.add")}</button>

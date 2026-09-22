@@ -7,11 +7,13 @@ public class CreateProductDto
     public string NameEn { get; set; } = string.Empty;
     public string? DescriptionAr { get; set; }
     public string? DescriptionEn { get; set; }
-    public string? Sku { get; set; } 
+    public string? Sku { get; set; }
     public string? Barcode { get; set; }
     public decimal BasePrice { get; set; }
     public decimal? DiscountPrice { get; set; }
     public decimal CostPrice { get; set; } = 0;
     public decimal? Weight { get; set; }
-    public int InitialQuantity { get; set; } = 0; 
+    public int InitialQuantity { get; set; } = 0;
+    public bool HasWarranty { get; set; } = false;
+    public int? WarrantyMonths { get; set; }
 }

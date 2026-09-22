@@ -17,4 +17,6 @@ public class ProductResponseDto
     public string Status { get; set; } = string.Empty;
     public int AvailableQuantity { get; set; }
     public string? PrimaryImageUrl { get; set; }
+    public bool HasWarranty { get; set; }
+    public int? WarrantyMonths { get; set; }
 }

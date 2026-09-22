@@ -66,6 +66,8 @@ public class ProductService : IProductService
             DiscountPrice = dto.DiscountPrice,
             CostPrice = dto.CostPrice,
             Weight = dto.Weight,
+            HasWarranty = dto.HasWarranty,
+            WarrantyMonths = dto.HasWarranty ? dto.WarrantyMonths : null,
             HasVariants = false,
             Status = ProductStatus.Active
         };
@@ -182,7 +184,10 @@ public class ProductService : IProductService
         product.Barcode = dto.Barcode;
         product.BasePrice = dto.BasePrice;
         product.DiscountPrice = dto.DiscountPrice;
+        product.CostPrice = dto.CostPrice;
         product.Weight = dto.Weight;
+        product.HasWarranty = dto.HasWarranty;
+        product.WarrantyMonths = dto.HasWarranty ? dto.WarrantyMonths : null;
         product.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -291,7 +296,9 @@ public class ProductService : IProductService
             Weight = p.Weight,
             Status = p.Status.ToString(),
             AvailableQuantity = totalQuantity,
-            PrimaryImageUrl = primaryImageUrl
+            PrimaryImageUrl = primaryImageUrl,
+            HasWarranty = p.HasWarranty,
+            WarrantyMonths = p.WarrantyMonths
         };
     }
 }

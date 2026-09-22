@@ -2409,6 +2409,7 @@ const ar = {
   "order.returnReasonChangeOfMind": "تغيير الرأي",
   "order.returnReasonDefectOrWarranty": "عيب في المنتج / ضمان",
   "order.returnTitle": "طلب إرجاع",
+  "order.orderNumber": "رقم الطلب",
   "order.returnReasonLabel": "سبب الإرجاع",
   "order.returnSubmit": "إرسال الطلب",
   "order.returnSubmitted": "تم إرسال طلب الإرجاع، وسيتم مراجعته من المتجر.",

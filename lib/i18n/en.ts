@@ -2382,6 +2382,7 @@ const en: Record<string, string> = {
   "order.returnReasonChangeOfMind": "Change of mind",
   "order.returnReasonDefectOrWarranty": "Defect / warranty issue",
   "order.returnTitle": "Request a Return",
+  "order.orderNumber": "Order Number",
   "order.returnReasonLabel": "Return reason",
   "order.returnSubmit": "Submit Request",
   "order.returnSubmitted": "Return request submitted. The store will review it shortly.",

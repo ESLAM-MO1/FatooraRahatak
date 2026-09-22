@@ -91,7 +91,7 @@ public class SubscriptionExpiryBackgroundService : BackgroundService
 
             if (sub.Store != null)
             {
-                var freePackage = await db.Packages.FirstOrDefaultAsync(p => string.Equals(p.PackageName, "المجانية", StringComparison.Ordinal))
+                var freePackage = await db.Packages.FirstOrDefaultAsync(p => p.PackageName == "المجانية")
                     ?? await db.Packages.OrderBy(p => p.MonthlyPrice).FirstOrDefaultAsync(ct);
 
                 // نزول المتجر للباقة المجانية: يبقى المتجر يعمل بمزايا المجانية

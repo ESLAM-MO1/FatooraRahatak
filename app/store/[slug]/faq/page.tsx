@@ -42,6 +42,7 @@ export default function FaqPage() {
     <div className="max-w-3xl mx-auto px-0">
       <nav className="mb-6" aria-label="breadcrumb">
         
+        <a
           href={`/store/${slug}`}
           className="text-[13px] font-bold hover:underline"
           style={{ color: "var(--blue, #2563eb)" }}

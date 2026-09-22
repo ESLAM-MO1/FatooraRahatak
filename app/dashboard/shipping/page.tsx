@@ -196,6 +196,21 @@ export default function ShippingPage() {
 
   const [providersState, setProvidersState] = useState<Record<string, ProviderDraft>>({});
 
+  function normalizeDigits(value: string): string {
+    const eastern = "٠١٢٣٤٥٦٧٨٩";
+    const persian = "۰۱۲۳۴۵۶۷۸۹";
+    return value
+      .split("")
+      .map((ch) => {
+        const e = eastern.indexOf(ch);
+        if (e !== -1) return String(e);
+        const p = persian.indexOf(ch);
+        if (p !== -1) return String(p);
+        return ch;
+      })
+      .join("");
+  }
+
   const [shipmentOpen, setShipmentOpen] = useState(false);
   const [addCompanyOpen, setAddCompanyOpen] = useState(false);
   const [addCompanyForm, setAddCompanyForm] = useState({ name: "", code: "Manual" });
@@ -585,12 +600,13 @@ export default function ShippingPage() {
                           <label className="text-[12px] font-bold text-[var(--sub)]">{t("shipping.baseRate")}</label>
                           <input
                             className="field-input mt-1"
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={draft.baseRate}
                             onChange={(e) =>
                               setProvidersState((s) => ({
                                 ...s,
-                                [p.code]: { ...s[p.code], baseRate: e.target.value },
+                                [p.code]: { ...s[p.code], baseRate: normalizeDigits(e.target.value) },
                               }))
                             }
                           />
@@ -599,12 +615,13 @@ export default function ShippingPage() {
                           <label className="text-[12px] font-bold text-[var(--sub)]">{t("shipping.perKg")}</label>
                           <input
                             className="field-input mt-1"
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={draft.perKg}
                             onChange={(e) =>
                               setProvidersState((s) => ({
                                 ...s,
-                                [p.code]: { ...s[p.code], perKg: e.target.value },
+                                [p.code]: { ...s[p.code], perKg: normalizeDigits(e.target.value) },
                               }))
                             }
                           />
@@ -613,12 +630,13 @@ export default function ShippingPage() {
                           <label className="text-[12px] font-bold text-[var(--sub)]">{t("shipping.codFeePercent")}</label>
                           <input
                             className="field-input mt-1"
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={draft.codFeePercent}
                             onChange={(e) =>
                               setProvidersState((s) => ({
                                 ...s,
-                                [p.code]: { ...s[p.code], codFeePercent: e.target.value },
+                                [p.code]: { ...s[p.code], codFeePercent: normalizeDigits(e.target.value) },
                               }))
                             }
                           />
@@ -627,12 +645,13 @@ export default function ShippingPage() {
                           <label className="text-[12px] font-bold text-[var(--sub)]">{t("shipping.estimatedDays")}</label>
                           <input
                             className="field-input mt-1"
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             value={draft.estimatedDeliveryDays}
                             onChange={(e) =>
                               setProvidersState((s) => ({
                                 ...s,
-                                [p.code]: { ...s[p.code], estimatedDeliveryDays: e.target.value },
+                                [p.code]: { ...s[p.code], estimatedDeliveryDays: normalizeDigits(e.target.value) },
                               }))
                             }
                           />

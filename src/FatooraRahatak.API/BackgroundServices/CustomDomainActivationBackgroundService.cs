@@ -6,21 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FatooraRahatak.API.BackgroundServices;
 
-/// <summary>
-/// تفعيل تلقائي بالكامل للدومينات المخصصة (مثل Shopify/Salla):
-/// العميل يكتب دومينه فقط، ويضبط DNS عنده (A/CNAME) حسب التعليمات الظاهرة له.
-/// هذه الخدمة تفحص كل الدومينات بحالة Pending كل عدة دقائق، وأول ما يتأكد
-/// توجيه الـ DNS فعليًا لسيرفرنا، تقوم تلقائيًا بـ:
-///   1) ربط alias في Plesk
-///   2) إصدار شهادة SSL (Let's Encrypt)
-///   3) تفعيل الحالة (Active) في قاعدة البيانات
-///   4) تفعيل CORS فورًا عبر CustomDomainCorsCache
-/// بدون أي تدخل يدوي من الأدمن أو العميل.
-/// </summary>
 public class CustomDomainActivationBackgroundService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<CustomDomainActivationBackgroundService> _logger;
+    private readonly Dictionary<string, (int Failures, DateTime NextTry)> _retry = new();
     private const string ServerIp = "50.6.196.176";
 
     public CustomDomainActivationBackgroundService(IServiceScopeFactory scopeFactory, ILogger<CustomDomainActivationBackgroundService> logger)
@@ -31,7 +21,6 @@ public class CustomDomainActivationBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        // تأخير بسيط عند الإقلاع حتى يكتمل تجهيز باقي الخدمات (seed الدومينات الحالية...)
         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -45,7 +34,7 @@ public class CustomDomainActivationBackgroundService : BackgroundService
                 _logger.LogError(ex, "فشلت دورة فحص وتفعيل الدومينات المخصصة");
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(3), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
     }
 
@@ -62,9 +51,11 @@ public class CustomDomainActivationBackgroundService : BackgroundService
 
         foreach (var store in pendingStores)
         {
-            var domain = store.CustomDomain!;
+            var domain = store.CustomDomain!.Trim().ToLowerInvariant();
 
-            // 1) فحص DNS فعليًا: هل الدومين يوجّه لسيرفرنا؟
+            if (_retry.TryGetValue(domain, out var state) && state.NextTry > DateTime.UtcNow)
+                continue;
+
             bool dnsOk;
             try
             {
@@ -77,35 +68,19 @@ public class CustomDomainActivationBackgroundService : BackgroundService
             }
 
             if (!dnsOk)
+                continue;
+
+            var (ok, output) = await pleskService.ProvisionCustomDomainAsync(domain);
+            if (!ok)
             {
-                // لم يضبط العميل DNS بعد — نتخطاه وننتظر الدورة القادمة، بلا أي إزعاج له.
+                var failures = (_retry.TryGetValue(domain, out var prev) ? prev.Failures : 0) + 1;
+                _retry[domain] = (failures, DateTime.UtcNow.AddMinutes(Math.Min(60, 5 * failures)));
+                _logger.LogWarning("فشل تفعيل الدومين {Domain} (محاولة {Attempt}): {Output}", domain, failures, output);
                 continue;
             }
 
-            // 2) ربط alias في Plesk
-            var (aliasOk, aliasOutput) = await pleskService.CreateDomainAliasAsync(domain);
-            if (!aliasOk)
-            {
-                _logger.LogWarning("فشل ربط alias للدومين {Domain}: {Output}", domain, aliasOutput);
-                continue; // سيُعاد المحاولة في الدورة القادمة تلقائيًا
-            }
+            _retry.Remove(domain);
 
-            // 3) إصدار شهادة SSL (Let's Encrypt) — شرط أساسي لاعتبار الدومين مفعّلاً فعليًا
-            var activeDomains = await db.Stores
-                .Where(s => s.CustomDomain != null && s.CustomDomain != "" && s.CustomDomainStatus == CustomDomainStatus.Active)
-                .Select(s => s.CustomDomain!)
-                .ToListAsync(ct);
-            var allAliasesToSecure = activeDomains.Append(domain).Distinct().ToList();
-            var (sslOk, sslOutput) = await pleskService.IssueSslAsync(allAliasesToSecure);
-            if (!sslOk)
-            {
-                _logger.LogWarning("فشل إصدار SSL للدومين {Domain}: {Output}", domain, sslOutput);
-                // الـ alias نجح لكن الشهادة لأ — لا نفعّل الحالة كـ Active حتى ينجح SSL أيضًا،
-                // لتفادي دومين "مفعّل" ظاهريًا بدون HTTPS يعمل فعليًا.
-                continue;
-            }
-
-            // 4) كل شيء نجح فعليًا: تفعيل الحالة + تفعيل CORS فورًا
             store.CustomDomainStatus = CustomDomainStatus.Active;
             store.UpdatedAt = DateTime.UtcNow;
             CustomDomainCorsCache.AddDomain(domain);

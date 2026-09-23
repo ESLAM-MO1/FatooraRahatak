@@ -198,16 +198,9 @@ public class DomainService : IDomainService
         if (string.IsNullOrWhiteSpace(store.CustomDomain))
             throw new InvalidOperationException("لا يوجد دومين مخصص لهذا المتجر");
 
-        var (aliasOk, aliasOutput) = await _pleskService.CreateDomainAliasAsync(store.CustomDomain);
-        if (!aliasOk)
-            throw new InvalidOperationException($"فشل ربط الدومين على السيرفر: {aliasOutput}");
-
-        var activeDomains5 = await _context.Stores
-            .Where(s => s.CustomDomain != null && s.CustomDomain != "" && s.CustomDomainStatus == CustomDomainStatus.Active)
-            .Select(s => s.CustomDomain!)
-            .ToListAsync();
-        var allAliasesToSecure5 = activeDomains5.Append(store.CustomDomain).Distinct().ToList();
-        await _pleskService.IssueSslAsync(allAliasesToSecure5);
+        var (provisionOk, provisionOutput) = await _pleskService.ProvisionCustomDomainAsync(store.CustomDomain);
+        if (!provisionOk)
+            throw new InvalidOperationException($"فشل ربط الدومين وإصدار الشهادة: {provisionOutput}");
 
         store.CustomDomainStatus = CustomDomainStatus.Active;
         await _context.SaveChangesAsync();

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using FatooraRahatak.Application.Interfaces;
 
 namespace FatooraRahatak.Infrastructure.Services;
@@ -9,23 +10,43 @@ public class PleskService : IPleskService
     private const string PleskBin = "/usr/sbin/plesk";
     private const string DomAliasBin = "/usr/local/psa/bin/domalias";
     private const string SudoBin = "/usr/bin/sudo";
+    private const string HelperBin = "/usr/local/sbin/rahtk-custom-domain";
+
+    private static readonly Regex SafeDomain = new(
+        @"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$",
+        RegexOptions.Compiled);
+
+    public async Task<(bool Success, string Output)> ProvisionCustomDomainAsync(string domain)
+    {
+        var d = (domain ?? string.Empty).Trim().ToLowerInvariant();
+        if (!SafeDomain.IsMatch(d))
+            return (false, "INVALID_DOMAIN");
+
+        return await RunCommandAsync(SudoBin, $"-n {HelperBin} provision {d}");
+    }
 
     public async Task<(bool Success, string Output)> CreateDomainAliasAsync(string domain)
     {
         var (success, output) = await RunCommandAsync(SudoBin,
             $"{DomAliasBin} --create {domain} -domain {ParentDomain} -web true -mail false -dns true -seo-redirect false");
 
-        // Idempotent: the alias may already exist from an earlier attempt whose next
-        // step (SSL issuance) failed. Without this, activation would retry alias
-        // creation forever every cycle and never reach the SSL step.
         if (!success && output.ToLowerInvariant().Contains("already exists"))
             return (true, output);
 
         return (success, output);
     }
 
-    public Task<(bool Success, string Output)> RemoveDomainAliasAsync(string domain) =>
-        RunCommandAsync(SudoBin, $"{DomAliasBin} --delete {domain}");
+    public async Task<(bool Success, string Output)> RemoveDomainAliasAsync(string domain)
+    {
+        var d = (domain ?? string.Empty).Trim().ToLowerInvariant();
+        var helperOk = false;
+        var helperOutput = string.Empty;
+        if (SafeDomain.IsMatch(d))
+            (helperOk, helperOutput) = await RunCommandAsync(SudoBin, $"-n {HelperBin} remove {d}");
+
+        var (aliasOk, aliasOutput) = await RunCommandAsync(SudoBin, $"{DomAliasBin} --delete {domain}");
+        return (helperOk || aliasOk, $"{helperOutput}\n{aliasOutput}".Trim());
+    }
 
     public async Task<(bool Success, string Output)> IssueSslAsync(IEnumerable<string> allDomains)
     {

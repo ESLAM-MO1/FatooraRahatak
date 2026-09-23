@@ -69,12 +69,14 @@ export const invoiceStatusLabels: Record<string, string> = {
   Paid: "invoice.statusPaid",
   Pending: "invoice.statusPending",
   Refunded: "invoice.statusRefunded",
+  PartiallyRefunded: "invoice.statusPartiallyRefunded",
 };
 
 export const invoiceStatusStyles: Record<string, string> = {
   Paid: "badge badge--green",
   Pending: "badge badge--yellow",
   Refunded: "badge badge--gray",
+  PartiallyRefunded: "badge badge--orange",
 };
 
 export const invoiceItemStatusLabels: Record<string, string> = {

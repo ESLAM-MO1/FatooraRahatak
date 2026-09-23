@@ -848,11 +848,15 @@ public class PublicStoreService : IPublicStoreService
         var store = await GetOnlineStoreBySlugAsync(slug);
         if (store == null) return new List<CustomerOrderListItemDto>();
 
-        var normalized = NormalizePhone(phone);
+        var isEmail = phone.Contains('@');
+        var emailKey = isEmail ? phone.Trim().ToLower() : string.Empty;
+        var normalized = isEmail ? string.Empty : NormalizePhone(phone);
         var users = await _context.Users.AsNoTracking()
-            .Where(u => u.Phone != null)
+            .Where(u => u.Phone != null || u.Email != null)
             .ToListAsync();
-        var userId = users.FirstOrDefault(u => NormalizePhone(u.Phone!) == normalized)?.Id;
+        var userId = isEmail
+            ? users.FirstOrDefault(u => u.Email != null && u.Email.ToLower() == emailKey)?.Id
+            : users.FirstOrDefault(u => u.Phone != null && NormalizePhone(u.Phone!) == normalized)?.Id;
 
         var orders = await _context.Orders
             .Include(o => o.Items)
@@ -863,7 +867,8 @@ public class PublicStoreService : IPublicStoreService
         var customerOrders = orders
             .Where(o =>
                 (userId != null && o.CustomerId == userId)
-                || (o.GuestPhone != null && NormalizePhone(o.GuestPhone) == normalized))
+                || (!isEmail && o.GuestPhone != null && NormalizePhone(o.GuestPhone) == normalized)
+                || (isEmail && o.GuestEmail != null && o.GuestEmail.ToLower() == emailKey))
             .Select(o => new CustomerOrderListItemDto
             {
                 Id = o.Id,

@@ -298,6 +298,18 @@ export default function InvoiceDetailPage() {
               <span className="text-[var(--sub)]">{t("invoice.paymentStatus")}</span>
               <span className="text-[var(--ink)]">{t(statusKey)}</span>
             </p>
+            {invoice.refundedAmount > 0 && (
+              <>
+                <p>
+                  <span className="text-[var(--sub)]">{t("invoice.refundedAmountLabel")}</span>
+                  <span className="text-[var(--ink)] font-medium">{fmt(invoice.refundedAmount)} {t("common.sar")}</span>
+                </p>
+                <p>
+                  <span className="text-[var(--sub)]">{t("invoice.remainingAmountLabel")}</span>
+                  <span className="text-[var(--ink)] font-medium">{fmt(invoice.totalAmount - invoice.refundedAmount)} {t("common.sar")}</span>
+                </p>
+              </>
+            )}
           </div>
         </div>
 

@@ -13,6 +13,7 @@ public class InvoiceDto
     public string? Notes { get; set; }
     public string PaymentMethod { get; set; } = string.Empty;
     public string PaymentStatus { get; set; } = string.Empty;
+    public decimal RefundedAmount { get; set; }
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TaxAmount { get; set; }

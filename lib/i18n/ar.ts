@@ -3207,6 +3207,8 @@ const ar = {
   "invoice.statusPending": "غير مدفوعة",
   "invoice.statusRefunded": "مسترجعة",
   "invoice.statusPartiallyRefunded": "مسترجعة جزئيًا",
+  "invoice.refundedAmountLabel": "المبلغ المسترجع",
+  "invoice.remainingAmountLabel": "المتبقي بعد الاسترجاع",
   "invoice.vatNumber": "الرقم الضريبي",
   "invoice.companyInfo": "بيانات الشركة",
   "invoice.phone": "الهاتف",

@@ -3180,6 +3180,8 @@ const en: Record<string, string> = {
   "invoice.statusPending": "Unpaid",
   "invoice.statusRefunded": "Refunded",
   "invoice.statusPartiallyRefunded": "Partially refunded",
+  "invoice.refundedAmountLabel": "Refunded amount",
+  "invoice.remainingAmountLabel": "Remaining after refund",
   "invoice.vatNumber": "VAT Number",
   "invoice.companyInfo": "Company Info",
   "invoice.phone": "Phone",

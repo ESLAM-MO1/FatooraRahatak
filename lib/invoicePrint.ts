@@ -24,6 +24,7 @@ export interface InvoiceDetail {
   notes?: string | null;
   paymentMethod: string;
   paymentStatus: string;
+  refundedAmount: number;
   shippingCost?: number | null;
   subTotal: number;
   discountAmount: number;

@@ -1205,6 +1205,7 @@ public class AccountingService : IAccountingService
         Notes = inv.Notes,
         PaymentMethod = inv.PaymentMethod.ToString(),
         PaymentStatus = inv.PaymentStatus.ToString(),
+        RefundedAmount = inv.RefundedAmount,
         SubTotal = inv.SubTotal,
         DiscountAmount = inv.DiscountAmount,
         TaxAmount = inv.TaxAmount,

@@ -1107,6 +1107,7 @@ public class OrderService : IOrderService
                     // في الطلب لسه سليمة ومتسلمة. حالة الإرجاع نفسها موجودة ومسجلة في ReturnRequest.
                     order.UpdatedAt = DateTime.UtcNow;
                     await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
+                    await _accountingService.ReverseOrderSalesInvoiceAsync(storeId, order.Id, returnRequest.Id);
                 }
                 else if (paidPayment != null)
                 {
@@ -1140,6 +1141,7 @@ public class OrderService : IOrderService
                             ChangedAt = DateTime.UtcNow
                         });
                         await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
+                        await _accountingService.ReverseOrderSalesInvoiceAsync(storeId, order.Id, returnRequest.Id);
                     }
                 }
                 else
@@ -1161,8 +1163,8 @@ public class OrderService : IOrderService
                     order.UpdatedAt = DateTime.UtcNow;
                     await RestockReturnRequestItemsAsync(storeId, order, returnRequest.Items, changedByUserId);
 
-                    // ⚠️ إرجاع مدفوع/COD: عكس قيد البيع الجزء الخاص بالمنتجات المرتجعة فقط
-                    await _accountingService.ReverseOrderSalesInvoiceAsync(storeId, order.Id);
+                    // ⚠️ إرجاع مدفوع/COD: عكس قيد البيع بما يخص المنتجات المرتجعة فقط (كامل أو جزئي)
+                    await _accountingService.ReverseOrderSalesInvoiceAsync(storeId, order.Id, returnRequest.Id);
                 }
 
                 returnRequest.Status = Domain.Enums.ReturnRequestStatus.Approved;

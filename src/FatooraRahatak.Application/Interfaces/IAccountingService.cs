@@ -27,7 +27,7 @@ public interface IAccountingService
     Task<InvoiceDto> GetInvoiceByIdAsync(long userId, long invoiceId);
     Task<InvoiceDto> CreatePosSaleAsync(long userId, CreatePosSaleDto dto);
     Task CreateSalesInvoiceForOrderAsync(long storeId, long orderId);
-    Task ReverseOrderSalesInvoiceAsync(long storeId, long orderId);
+    Task ReverseOrderSalesInvoiceAsync(long storeId, long orderId, long? returnRequestId = null);
     Task CreatePosShiftVarianceEntryAsync(long storeId, long userId, decimal variance);
     Task CreateSettlementPaymentEntryAsync(long storeId, string batchNumber, decimal netAmount, long createdByUserId);
     Task CreateDamageExpenseEntryAsync(long storeId, decimal amount, string description, long createdByUserId);

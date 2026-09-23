@@ -23,6 +23,8 @@ public class Invoice : BaseEntity
 
     public InvoicePaymentMethod PaymentMethod { get; set; }
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
+    // ⚠️ إجمالي المبلغ المسترجع فعليًا من الفاتورة (يدعم الاسترجاع الجزئي على أكثر من دفعة)
+    public decimal RefundedAmount { get; set; } = 0m;
 
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; } // إجمالي الخصم على الفاتورة

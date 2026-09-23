@@ -17,6 +17,7 @@ interface OrderListItem {
   totalAmount: number;
   status: string;
   itemsCount: number;
+  hasApprovedReturn: boolean;
   createdAt: string;
 }
 
@@ -144,6 +145,9 @@ export default function OrdersPage() {
                       <span className={statusStyles[order.status] ?? "badge badge--gray"}>
                         {statusLabel(order.status)}
                       </span>
+                      {order.hasApprovedReturn && (
+                        <span className="badge badge--orange ms-1">{t("order.hasApprovedReturnBadge")}</span>
+                      )}
                     </td>
                     <td className="p-4 text-[var(--sub)]">
                       {new Date(order.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}
@@ -182,6 +186,9 @@ export default function OrdersPage() {
                     <span className={statusStyles[order.status] ?? "badge badge--gray"}>
                       {statusLabel(order.status)}
                     </span>
+                    {order.hasApprovedReturn && (
+                      <span className="badge badge--orange block w-fit mt-1">{t("order.hasApprovedReturnBadge")}</span>
+                    )}
                   </div>
                   <div>
                     <p className="text-[11px] font-bold text-[var(--sub)]">{t("order.date")}</p>

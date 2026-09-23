@@ -2640,6 +2640,8 @@ const ar = {
   "returns.decisionNotePlaceholder": "ملاحظة اختيارية تظهر للعميل",
   "order.returnStatusTitle": "حالة طلب الإرجاع",
   "order.returnStatusPending": "قيد المراجعة",
+  "order.returnStatusApproved": "تم قبول الإرجاع",
+  "order.hasApprovedReturnBadge": "يوجد إرجاع جزئي",
   "order.returnStatusRejected": "تم رفض الطلب",
   "order.returnDecisionNoteLabel": "ملاحظة المتجر",
 

@@ -61,6 +61,7 @@ interface OrderDetail {
   shippingAddress: string;
   notes: string | null;
   status: string;
+  hasApprovedReturn: boolean;
   paymentMethod: string | null;
   paymentStatus: string | null;
   bankTransfer: BankTransferInfo | null;
@@ -236,6 +237,9 @@ export default function OrderDetailPage() {
         <span className={statusStyles[order.status] ?? "badge badge--gray"}>
           {statusLabel(order.status)}
         </span>
+        {order.hasApprovedReturn && (
+          <span className="badge badge--orange">{t("order.hasApprovedReturnBadge")}</span>
+        )}
         {(order.status === "New" || order.status === "Processing") && (
           <Can code="ShippingCompanies.Add">
             <Link

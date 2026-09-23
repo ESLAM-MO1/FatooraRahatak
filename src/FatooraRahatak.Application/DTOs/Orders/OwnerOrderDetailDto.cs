@@ -15,6 +15,7 @@ public class OwnerOrderDetailDto
     public string PaymentStatus { get; set; } = string.Empty;
     public FatooraRahatak.Application.DTOs.Payment.BankTransferInfoDto? BankTransfer { get; set; }
     public string Status { get; set; } = string.Empty;
+    public bool HasApprovedReturn { get; set; }
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal TotalAmount { get; set; }

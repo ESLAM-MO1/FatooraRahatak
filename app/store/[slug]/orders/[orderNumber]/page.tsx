@@ -446,7 +446,7 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {order.latestReturnRequest && (order.latestReturnRequest.status === "Pending" || order.latestReturnRequest.status === "Rejected") && (
+      {order.latestReturnRequest && (order.latestReturnRequest.status === "Pending" || order.latestReturnRequest.status === "Rejected" || order.latestReturnRequest.status === "Approved") && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
@@ -459,10 +459,16 @@ export default function OrderDetailPage() {
                 className={`px-3 py-1 rounded-full text-xs font-medium ${
                   order.latestReturnRequest.status === "Rejected"
                     ? "bg-red-100 text-red-700"
+                    : order.latestReturnRequest.status === "Approved"
+                    ? "bg-green-100 text-green-700"
                     : "bg-orange-100 text-orange-700"
                 }`}
               >
-                {order.latestReturnRequest.status === "Rejected" ? t("order.returnStatusRejected") : t("order.returnStatusPending")}
+                {order.latestReturnRequest.status === "Rejected"
+                  ? t("order.returnStatusRejected")
+                  : order.latestReturnRequest.status === "Approved"
+                  ? t("order.returnStatusApproved")
+                  : t("order.returnStatusPending")}
               </span>
             </div>
             <p className="text-sm text-gray-500">{t("order.returnReasonLabel")}</p>

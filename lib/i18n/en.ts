@@ -2613,6 +2613,8 @@ const en: Record<string, string> = {
   "returns.decisionNotePlaceholder": "Optional note shown to the customer",
   "order.returnStatusTitle": "Return request status",
   "order.returnStatusPending": "Under review",
+  "order.returnStatusApproved": "Return approved",
+  "order.hasApprovedReturnBadge": "Partial return",
   "order.returnStatusRejected": "Rejected",
   "order.returnDecisionNoteLabel": "Store note",
 

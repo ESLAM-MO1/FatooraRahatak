@@ -553,6 +553,13 @@ public class OrderService : IOrderService
             .Take(pageSize)
             .ToListAsync();
 
+        var orderIdsWithApprovedReturn = await _context.ReturnRequests
+            .Where(r => r.StoreId == storeId
+                && orders.Select(o => o.Id).Contains(r.OrderId)
+                && r.Status == Domain.Enums.ReturnRequestStatus.Approved)
+            .Select(r => r.OrderId)
+            .ToListAsync();
+
         var items = orders.Select(o => new OwnerOrderListDto
         {
             Id = o.Id,
@@ -561,6 +568,7 @@ public class OrderService : IOrderService
             TotalAmount = o.TotalAmount,
             Status = o.Status.ToString(),
             ItemsCount = o.Items.Count,
+            HasApprovedReturn = orderIdsWithApprovedReturn.Contains(o.Id),
             CreatedAt = o.CreatedAt
         }).ToList();
 
@@ -619,6 +627,8 @@ public class OrderService : IOrderService
                 }
                 : null,
             Status = order.Status.ToString(),
+            HasApprovedReturn = await _context.ReturnRequests.AnyAsync(r =>
+                r.OrderId == order.Id && r.Status == Domain.Enums.ReturnRequestStatus.Approved),
             SubTotal = order.SubTotal,
             DiscountAmount = order.DiscountAmount,
             TotalAmount = order.TotalAmount,

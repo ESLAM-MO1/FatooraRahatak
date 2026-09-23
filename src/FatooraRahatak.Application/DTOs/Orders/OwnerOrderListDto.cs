@@ -8,5 +8,6 @@ public class OwnerOrderListDto
     public decimal TotalAmount { get; set; }
     public string Status { get; set; } = string.Empty;
     public int ItemsCount { get; set; }
+    public bool HasApprovedReturn { get; set; }
     public DateTime CreatedAt { get; set; }
 }

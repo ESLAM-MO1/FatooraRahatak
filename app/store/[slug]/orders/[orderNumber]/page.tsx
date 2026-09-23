@@ -29,6 +29,7 @@ interface OrderDetail {
   subTotal: number;
   discountAmount: number;
   shippingCost: number;
+  taxAmount?: number;
   totalAmount: number;
   shippingAddress: string;
   notes: string | null;
@@ -618,6 +619,12 @@ export default function OrderDetailPage() {
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="text-gray-500">{t("order.shippingCostLabel")}</span>
             <span className="text-gray-500">{t("cart.priceSAR", { price: order.shippingCost.toFixed(2) })}</span>
+          </div>
+        )}
+        {(order.taxAmount ?? 0) > 0 && (
+          <div className="flex items-center justify-between mb-2 text-sm">
+            <span className="text-gray-500">{t("order.vatLabel")}</span>
+            <span className="text-gray-500">{t("cart.priceSAR", { price: (order.taxAmount ?? 0).toFixed(2) })}</span>
           </div>
         )}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">

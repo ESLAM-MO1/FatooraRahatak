@@ -1359,6 +1359,7 @@ const ar = {
   "order.paymentMethodLabel": "طريقة الدفع",
   "order.totalFinal": "الإجمالي",
   "order.shippingCostLabel": "تكلفة الشحن",
+  "order.vatLabel": "ضريبة القيمة المضافة",
   "order.shipmentTrackingTitle": "تتبع الشحنة",
   "order.noTrackingEvents": "لا توجد أحداث تتبع بعد",
   "order.shipmentStatus.Pending": "بانتظار الشحن",

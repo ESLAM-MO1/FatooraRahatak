@@ -1331,6 +1331,7 @@ const en: Record<string, string> = {
   "order.paymentMethodLabel": "Payment Method",
   "order.totalFinal": "Total",
   "order.shippingCostLabel": "Shipping Cost",
+  "order.vatLabel": "VAT",
   "order.shipmentTrackingTitle": "Shipment Tracking",
   "order.noTrackingEvents": "No tracking events yet",
   "order.shipmentStatus.Pending": "Pending",

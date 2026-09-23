@@ -543,6 +543,7 @@ public class PublicStoreService : IPublicStoreService
             DiscountAmount = order.DiscountAmount,
             ShippingCost = order.ShippingCost,
             TotalAmount = order.TotalAmount,
+            TaxAmount = Math.Max(0m, Math.Round(order.TotalAmount - (order.SubTotal - order.DiscountAmount + order.ShippingCost), 2)),
             ShippingAddress = order.ShippingAddress,
             Notes = order.Notes,
             ShippingMethod = order.ShippingMethodType?.ToString(),

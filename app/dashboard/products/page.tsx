@@ -12,6 +12,7 @@ import SuccessToast from "@/components/SuccessToast";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Can from "@/components/Can";
 import Pagination from "@/components/Pagination";
+import ProductImport from "@/components/ProductImport";
 
 interface Category {
   id: number;
@@ -118,8 +119,8 @@ export default function ProductsPage() {
     OutOfStock: t("product.statusOutOfStock"),
   };
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
     try {
       const [productsRes, categoriesRes] = await Promise.all([
@@ -356,6 +357,9 @@ export default function ProductsPage() {
   return (
     <div>
       <PageHeader icon="box" title={t("product.title")}>
+        <Can code="Products.Add">
+          <ProductImport basePath="/products" t={(k: string) => t(k)} onImported={() => fetchData(true)} />
+        </Can>
         <Can code="Products.Add">
           <button onClick={openAddModal} className="btn btn-primary">
             <Icon name="plus" />

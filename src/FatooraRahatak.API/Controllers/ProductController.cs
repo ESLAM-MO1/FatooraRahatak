@@ -16,12 +16,55 @@ public class ProductController : ControllerBase
     private readonly IProductService _productService;
     private readonly AppDbContext _context;
     private readonly IPermissionCheckService _permCheck;
+    private readonly IProductImportService _importService;
 
-    public ProductController(IProductService productService, AppDbContext context, IPermissionCheckService permCheck)
+    public ProductController(IProductService productService, AppDbContext context, IPermissionCheckService permCheck, IProductImportService importService)
     {
         _productService = productService;
         _context = context;
         _permCheck = permCheck;
+        _importService = importService;
+    }
+
+    [RequirePermission("Products.Add")]
+    [HttpGet("import/template")]
+    public IActionResult DownloadImportTemplate()
+    {
+        var bytes = _importService.BuildTemplate();
+        return File(bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "products-import-template.xlsx");
+    }
+
+    [RequirePermission("Products.Add")]
+    [HttpPost("import"), RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> ImportProducts(IFormFile file)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null)
+            return BadRequest(new { success = false, code = "NO_STORE" });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, code = "NO_FILE" });
+
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { success = false, code = "UNSUPPORTED_FORMAT" });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { success = false, code = "FILE_TOO_LARGE" });
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            ms.Position = 0;
+            var result = await _importService.ImportAsync(storeId.Value, GetUserId(), ms);
+            return Ok(new { success = true, data = result });
+        }
+        catch (ProductImportException ex)
+        {
+            return BadRequest(new { success = false, code = ex.Code, details = ex.Details });
+        }
     }
 
     private long GetUserId() =>

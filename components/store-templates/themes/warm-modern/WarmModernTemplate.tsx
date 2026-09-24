@@ -104,8 +104,8 @@ export default function WarmModernTemplate({
       <style>{`@keyframes wm-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }`}</style>
 
       <header className="sticky top-0 z-40 transition-all duration-300" style={{ background: scrolled ? "rgba(255,255,255,0.96)" : "transparent", backdropFilter: scrolled ? "blur(10px)" : "none", WebkitBackdropFilter: scrolled ? "blur(10px)" : "none", boxShadow: scrolled ? "0 1px 10px rgba(0,0,0,0.08)" : "none" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 h-16">
-          <button className="md:hidden p-1.5 -ml-1.5" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "#1C1917" }}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center gap-1.5 sm:gap-4 h-16">
+          <button className="md:hidden p-1 -ml-1" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "#1C1917" }}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           <a href={`/store/${slug}`} className="flex items-center gap-2.5 shrink-0 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-10 h-10 rounded-full object-cover" />}
             <span className="font-extrabold text-xl truncate" style={{ color: colors.headerColor }}>{storeName}</span>
@@ -116,9 +116,9 @@ export default function WarmModernTemplate({
               <span className="absolute inset-y-0 inline-flex items-center ps-3 pointer-events-none" style={{ color: "#A8A29E" }}><SearchIcon size={16} /></span>
               <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-44 lg:w-56 rounded-full outline-none text-[14px] ps-9 pe-3 py-2" style={{ background: "rgba(0,0,0,0.05)", color: "#1C1917" }} />
             </div></form>
-            <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2 rounded-full" style={{ color: "#1C1917" }} aria-label={t("storefront.wishlist")}><HeartIcon size={21} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
-            <a href={`/store/${slug}/cart`} className="relative p-2 rounded-full" style={{ color: "#1C1917" }} aria-label={t("storefront.cart")}><BagIcon size={21} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
+            <QuickLoginButton slug={slug} compact />
+            <a href={`/store/${slug}/wishlist`} className="relative p-1 sm:p-2 rounded-full" style={{ color: "#1C1917" }} aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
+            <a href={`/store/${slug}/cart`} className="relative p-1 sm:p-2 rounded-full" style={{ color: "#1C1917" }} aria-label={t("storefront.cart")}><BagIcon size={18} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
           </div>
         </div>
         {mobileOpen && <div className="md:hidden px-4 pb-3 border-t" style={{ borderColor: "#F5F0E8", background: "rgba(255,255,255,0.98)" }}><form onSubmit={handleSearchSubmit} className="mt-3"><div className="relative"><span className="absolute inset-y-0 inline-flex items-center ps-3" style={{ color: "#A8A29E" }}><SearchIcon size={16} /></span><input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-full rounded-full outline-none text-[14px] ps-9 pe-3 py-2" style={{ background: "#F5F0E8", color: "#1C1917" }} /></div></form><StoreMainMenu slug={slug} mobile containerClassName="mt-3 space-y-2 text-[15px] font-semibold" containerStyle={{ color: "#1C1917" }} linkClassName="block py-1.5" /></div>}

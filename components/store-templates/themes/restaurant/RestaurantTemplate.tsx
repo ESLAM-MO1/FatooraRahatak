@@ -48,17 +48,17 @@ export default function RestaurantTemplate({
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="font-serif" style={{ fontFamily: "'Georgia', 'Tajawal', serif", background: "#FBF6EF" }}>
       <header className="sticky top-0 z-40" style={{ background: colors.headerColor, boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 flex items-center justify-between h-16">
           <div className="flex items-center gap-3 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-10 h-10 rounded-full object-cover" />}
             <a href={`/store/${slug}`} className="font-bold text-xl text-white" style={{ letterSpacing: "0.5px" }}>{storeName}</a>
           </div>
           <StoreMainMenu slug={slug} containerClassName="hidden md:flex items-center gap-8 text-[15px] font-bold text-white" linkClassName="hover:opacity-75" />
-          <div className="flex items-center gap-2">
-            <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={20} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
-            <a href={`/store/${slug}/cart`} className="relative p-2 text-white" aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{cartCount}</span>}</a>
-            <button className="md:hidden p-2 text-white" onClick={() => setMobileOpen(!mobileOpen)} aria-label={t("storefront.menu")}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
+          <div className="flex items-center gap-0.5 sm:gap-2">
+            <QuickLoginButton slug={slug} compact />
+            <a href={`/store/${slug}/wishlist`} className="relative p-1 sm:p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
+            <a href={`/store/${slug}/cart`} className="relative p-1 sm:p-2 text-white" aria-label={t("storefront.cart")}><BagIcon size={18} />{cartCount > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{cartCount}</span>}</a>
+            <button className="md:hidden p-1 text-white" onClick={() => setMobileOpen(!mobileOpen)} aria-label={t("storefront.menu")}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           </div>
         </div>
         {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "rgba(255,255,255,0.15)", background: colors.headerColor }}><StoreMainMenu slug={slug} mobile containerClassName="px-4 py-3 space-y-2 text-white text-[15px] font-bold" linkClassName="block py-1.5" /></div>}

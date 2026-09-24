@@ -798,7 +798,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <img
               src="/footer-banner.png"
               alt={t("brand.name")}
-              className="block w-full sm:w-[480px] lg:w-[560px] max-w-full h-auto shrink-0"
+              className="block w-full sm:w-[620px] lg:w-[760px] max-w-full h-auto shrink-0"
             />
           </div>
 

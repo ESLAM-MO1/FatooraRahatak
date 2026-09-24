@@ -69,17 +69,17 @@ export default function B2bFormalTemplate({
       </div>
 
       <header className="sticky top-0 z-40" style={{ background: "#FFFFFF", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-          <button className="md:hidden p-1.5 -ml-1.5" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "#111827" }}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+          <button className="md:hidden p-1 -ml-1" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "#111827" }}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           <a href={`/store/${slug}`} className="flex items-center gap-2.5 shrink-0 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-8 h-8 object-contain" />}
             <span className="font-extrabold text-lg truncate" style={{ color: colors.headerColor }}>{storeName}</span>
           </a>
           <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-7 text-[14px] font-semibold" containerStyle={{ color: "#374151" }} linkClassName="hover:text-black" />
-          <div className="flex items-center gap-2">
-            <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2 rounded" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}><HeartIcon size={19} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
-            <a href={`/store/${slug}/cart`} className="relative p-2 rounded" style={{ color: "#374151" }} aria-label={t("storefront.cart")}><BagIcon size={19} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
+          <div className="flex items-center gap-0.5 sm:gap-2">
+            <QuickLoginButton slug={slug} compact />
+            <a href={`/store/${slug}/wishlist`} className="relative p-1 sm:p-2 rounded" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
+            <a href={`/store/${slug}/cart`} className="relative p-1 sm:p-2 rounded" style={{ color: "#374151" }} aria-label={t("storefront.cart")}><BagIcon size={18} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
             <a href={`/store/${slug}/contact`} className="hidden sm:inline-block px-5 py-2.5 text-[13px] font-bold rounded" style={{ background: colors.buttonColor, color: "#fff" }}>{t("storefront.requestQuote")}</a>
           </div>
         </div>

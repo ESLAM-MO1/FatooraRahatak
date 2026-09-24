@@ -752,15 +752,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <div className="mt-10 pt-8 border-t" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <img
-              src="/footer-banner.png"
-              alt={t("brand.name")}
-              className="block w-full h-auto mx-auto"
-              style={{ maxWidth: 1100, aspectRatio: "2172 / 340", objectFit: "cover" }}
-            />
-          </div>
-
           <div className="mt-10 pt-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <div className="flex items-center gap-3">
               {footer.social.facebook !== "#" && footer.social.facebook && (
@@ -804,6 +795,15 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
             </div>
+          </div>
+
+          <div className="mt-8">
+            <img
+              src="/footer-banner.png"
+              alt={t("brand.name")}
+              className="block w-full h-auto mx-auto"
+              style={{ maxWidth: 1100, aspectRatio: "2172 / 340", objectFit: "cover" }}
+            />
           </div>
 
           <div className="mt-6 text-center">

@@ -55,21 +55,21 @@ export default function RoyalPurpleTemplate({
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="font-serif" style={{ fontFamily: "'Palatino Linotype', Georgia, 'Tajawal', serif", background: "#1B1626" }}>
       <header className="z-40" style={{ background: colors.headerColor, borderBottom: `1px solid ${gold}33` }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between h-20">
           <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-10 text-[13px] font-semibold tracking-[0.22em] uppercase text-white/80" linkClassName="hover:text-white" />
-          <button className="md:hidden p-1.5 -ml-1.5 text-white" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
+          <button className="md:hidden p-1 -ml-1 text-white" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           <a href={`/store/${slug}`} className="flex flex-col items-center min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-11 h-11 rounded-full object-cover" />}
             <span className="mt-1 font-bold text-xl tracking-[0.18em] uppercase truncate text-white">{storeName}</span>
           </a>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 sm:gap-2">
             <form onSubmit={handleSearchSubmit} className="hidden lg:block"><div className="relative">
               <span className="absolute inset-y-0 inline-flex items-center ps-3 pointer-events-none" style={{ color: "rgba(255,255,255,0.4)" }}><SearchIcon size={15} /></span>
               <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-44 rounded-none outline-none text-[13px] tracking-wide ps-9 pe-3 py-2 bg-transparent text-white" style={{ border: `1px solid ${gold}44` }} />
             </div></form>
-            <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={20} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
-            <a href={`/store/${slug}/cart`} className="relative p-2 text-white" aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
+            <QuickLoginButton slug={slug} compact />
+            <a href={`/store/${slug}/wishlist`} className="relative p-1 sm:p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}</a>
+            <a href={`/store/${slug}/cart`} className="relative p-1 sm:p-2 text-white" aria-label={t("storefront.cart")}><BagIcon size={18} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}</a>
           </div>
         </div>
         {mobileOpen && <StoreMainMenu slug={slug} mobile containerClassName="md:hidden px-4 pb-4 space-y-2 text-[15px] font-semibold text-white" linkClassName="block py-1.5" />}

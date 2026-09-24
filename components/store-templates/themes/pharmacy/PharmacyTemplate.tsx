@@ -49,17 +49,17 @@ export default function PharmacyTemplate({
     <div dir={isRtl ? "rtl" : "ltr"} className="font-sans" style={{ fontFamily: "'Segoe UI', 'Tajawal', system-ui, sans-serif", background: "#F6FAFC" }}>
       <header className="sticky top-0 z-40" style={{ background: "#FFFFFF", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
-          <div className="flex items-center gap-3 min-w-0">
-            {logo ? <img src={logo} alt={storeName} className="w-10 h-10 object-contain" /> : <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: colors.buttonColor, color: "#fff" }}><CrossIcon size={22} /></div>}
-            <a href={`/store/${slug}`} className="font-bold text-xl" style={{ color: colors.headerColor }}>{storeName}</a>
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {logo ? <img src={logo} alt={storeName} className="w-10 h-10 object-contain shrink-0" /> : <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: colors.buttonColor, color: "#fff" }}><CrossIcon size={22} /></div>}
+            <a href={`/store/${slug}`} className="font-bold text-base sm:text-xl truncate max-w-[120px] sm:max-w-none" style={{ color: colors.headerColor }}>{storeName}</a>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-[15px] font-semibold">
             <StoreMainMenu slug={slug} mobile={false} containerClassName="flex items-center gap-8 text-[15px] font-semibold" linkClassName="hover:opacity-70" linkStyle={{ color: colors.headerColor }} />
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 sm:gap-2">
             <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.wishlist")}><HeartIcon size={20} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
-            <a href={`/store/${slug}/cart`} className="relative p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{cartCount}</span>}</a>
+            <a href={`/store/${slug}/wishlist`} className="relative p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.wishlist")}><HeartIcon size={20} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-0.5 text-[10px] font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
+            <a href={`/store/${slug}/cart`} className="relative p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[16px] h-4 px-0.5 text-[10px] font-bold text-white bg-red-500 rounded-full">{cartCount}</span>}</a>
             <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: colors.headerColor }} aria-label={t("storefront.menu")}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           </div>
         </div>
@@ -70,16 +70,16 @@ export default function PharmacyTemplate({
 
       {showHero && <StoreBanners slug={slug} position="HomeTop" />}
 
-      {!showHero && <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">{children}</main>}
+      {!showHero && <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>}
 
       {showHero && (
         <section className="w-full" style={{ background: `linear-gradient(120deg,${colors.heroFrom} 0%,${colors.heroTo} 100%)`, color: "#fff" }}>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 grid md:grid-cols-2 items-center" style={{ minHeight: "440px" }}>
-            <div className="py-16 text-center md:text-right">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 grid md:grid-cols-2 items-center md:min-h-[440px]">
+            <div className="py-10 sm:py-16 text-center md:text-right">
               <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[13px] font-bold mb-4" style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.35)" }}><CrossIcon size={14} />{t("storefront.discount")}</span>
-              <h1 className="font-bold leading-tight" style={{ fontSize: "clamp(36px,5vw,54px)" }}>{storeName}</h1>
+              <h1 className="font-bold leading-tight break-words" style={{ fontSize: "clamp(28px,5vw,54px)" }}>{storeName}</h1>
               <p className="mt-4 text-[15px]" style={{ color: "rgba(255,255,255,0.9)" }}>{t("storefront.heroWelcome")}</p>
-              <a href="#products" onClick={(e) => { e.preventDefault(); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} className="inline-block mt-8 px-10 py-3.5 rounded-full font-bold text-sm" style={{ background: "#FFFFFF", color: colors.headerColor }}>
+              <a href="#products" onClick={(e) => { e.preventDefault(); document.getElementById("products")?.scrollIntoView({ behavior: "smooth" }); }} className="inline-block mt-6 sm:mt-8 px-8 sm:px-10 py-3 sm:py-3.5 rounded-full font-bold text-sm" style={{ background: "#FFFFFF", color: colors.headerColor }}>
                 {t("storefront.shopNow")}
               </a>
             </div>
@@ -113,28 +113,28 @@ export default function PharmacyTemplate({
           </div>
           {productsLoading && <p className="text-center py-12" style={{ color: "#6B7280" }}>{t("storefront.loadingProducts")}</p>}
           {!productsLoading && displayProducts.length === 0 && <div className="flex flex-col items-center gap-3 py-16"><span style={{ color: "#D1D5DB" }}><PackageIcon size={48} /></span><p style={{ color: "#6B7280" }}>{t("storefront.noProducts")}</p></div>}
-          {!productsLoading && displayProducts.length > 0 && <div className="grid grid-cols-2 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {!productsLoading && displayProducts.length > 0 && <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {displayProducts.map(p => (
               <div key={p.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1" style={{ border: "1px solid #E3EDF3", boxShadow: "0 6px 20px rgba(3,105,161,0.08)" }}>
                 <div className="relative aspect-[4/3] bg-gray-50">
                   <a href={`/store/${slug}/products/${p.id}`} className="block w-full h-full">
                     {p.primaryImageUrl ? <img src={p.primaryImageUrl} alt={p.nameAr} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center w-full h-full" style={{ color: "#D1D5DB" }}><PackageIcon size={40} /></div>}
                   </a>
-                  {hasDiscount(p) && <span className="absolute top-3 right-3 px-2.5 py-1 text-xs font-bold rounded-full" style={{ background: colors.accentColor, color: "#fff" }}>{t("storefront.discount")}</span>}
-                  <button onClick={() => toggleWishlist(p.id)} className="absolute top-3 left-3 bg-white/90 rounded-full w-9 h-9 flex items-center justify-center transition-transform hover:scale-110" style={{ color: isWishlist(p.id) ? "#DC2626" : "#6B7280" }}>{isWishlist(p.id) ? <HeartFilledIcon size={17} /> : <HeartIcon size={17} />}</button>
+                  {hasDiscount(p) && <span className="absolute top-2 right-2 sm:top-3 sm:right-3 px-2 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold rounded-full" style={{ background: colors.accentColor, color: "#fff" }}>{t("storefront.discount")}</span>}
+                  <button onClick={() => toggleWishlist(p.id)} className="absolute top-2 left-2 sm:top-3 sm:left-3 bg-white/90 rounded-full w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition-transform hover:scale-110" style={{ color: isWishlist(p.id) ? "#DC2626" : "#6B7280" }}>{isWishlist(p.id) ? <HeartFilledIcon size={17} /> : <HeartIcon size={17} />}</button>
                 </div>
-                <div className="p-5">
-                  <h3 className="font-bold text-gray-900 text-[16px]">{p.nameAr}</h3>
+                <div className="p-3 sm:p-5">
+                  <h3 className="font-bold text-gray-900 text-[14px] sm:text-[16px] line-clamp-2">{p.nameAr}</h3>
                   {(p.ratingCount ?? 0) > 0 && (<div className="mt-1"><ProductRating rating={p.averageRating} count={p.ratingCount} size={12} /></div>)}
-                  <div className="mt-2 flex items-baseline gap-2">
-                    <span className="font-bold text-lg" style={{ color: colors.accentColor }}>{p.discountPrice || p.basePrice} {currencySymbol}</span>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-bold text-base sm:text-lg" style={{ color: colors.accentColor }}>{p.discountPrice || p.basePrice} {currencySymbol}</span>
                     {hasDiscount(p) && <span className="text-xs text-gray-400 line-through">{p.basePrice} {currencySymbol}</span>}
                   </div>
-                  <div className="mt-3 flex gap-2">
-                    <button onClick={() => handleAddToCart(p.id)} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold" style={{ background: colors.buttonColor, color: "#fff" }}>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <button onClick={() => handleAddToCart(p.id)} className="w-full sm:w-auto sm:flex-1 py-2 sm:py-2.5 rounded-xl text-[12px] sm:text-[13px] font-bold" style={{ background: colors.buttonColor, color: "#fff" }}>
                       {t("storefront.addToCart")}
                     </button>
-                    <button onClick={() => handleAddToCart(p.id)} className="flex-1 py-2.5 rounded-xl text-[13px] font-bold" style={{ background: "transparent", border: `1px solid ${colors.accentColor}`, color: colors.accentColor }}>
+                    <button onClick={() => handleAddToCart(p.id)} className="w-full sm:w-auto sm:flex-1 py-2 sm:py-2.5 rounded-xl text-[12px] sm:text-[13px] font-bold" style={{ background: "transparent", border: `1px solid ${colors.accentColor}`, color: colors.accentColor }}>
                       {t("storefront.orderNow")}
                     </button>
                   </div>
@@ -178,7 +178,7 @@ export default function PharmacyTemplate({
           </div>
           <div>
             <h4 className="text-white font-bold text-[14px]">{t("storefront.followUs")}</h4>
-            <div className="mt-3 flex gap-3">
+            <div className="mt-3 flex flex-wrap gap-3">
               <StoreSocialLinks
                 urls={{ facebook: fbUrl, instagram: igUrl, whatsapp: waUrl, snapchat: scUrl, tiktok: tkUrl, telegram: tgUrl, linkedin: liUrl, twitter: twUrl, youtube: ytUrl, pinterest: pinUrl }}
                 linkClassName="flex items-center justify-center w-9 h-9 rounded-full"

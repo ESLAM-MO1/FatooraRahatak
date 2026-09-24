@@ -3,6 +3,7 @@ import { useEffect, useState, FormEvent, useMemo} from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { useStoreCurrencySymbol } from "@/lib/hooks/useStoreCurrencySymbol";
 import { customerApi } from "@/lib/customerApi";
 import { isAuthenticated } from "@/lib/auth";
 import { getQuickCustomer, setQuickCustomer } from "@/lib/quickCustomer";
@@ -187,6 +188,7 @@ export default function CheckoutPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
+  const currencySymbol = useStoreCurrencySymbol(slug);
 
   const [cart, setCart] = useState<CartData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -607,7 +609,7 @@ export default function CheckoutPage() {
                 <span className="text-sm font-bold text-gray-800">
                   {quote.isFreeShipping
                     ? t("checkout.freeShipping")
-                    : t("cart.priceSAR", { price: quote.shippingCost.toFixed(2) })}
+                    : t("cart.priceCurrency", { currency: currencySymbol, price: quote.shippingCost.toFixed(2) })}
                 </span>
               ) : (
                 <span className="text-xs text-gray-400">{t("checkout.enterAddressForShipping")}</span>
@@ -665,7 +667,7 @@ export default function CheckoutPage() {
       {selectedPayment === "CashOnDelivery" && selectedShipping === "DeliveryToAddress" && quote?.available && (quote.codFee ?? 0) > 0 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6 flex items-center justify-between">
             <span className="text-sm text-gray-500">{t("shipping.codFee")}</span>
-            <span className="text-sm font-bold text-gray-800">{`${(quote.codFee ?? 0).toFixed(2)} ${quote.currency}`}</span>
+            <span className="text-sm font-bold text-gray-800">{t("cart.priceCurrency", { currency: currencySymbol, price: (quote.codFee ?? 0).toFixed(2) })}</span>
           </div>
         )}
 
@@ -871,10 +873,10 @@ export default function CheckoutPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-gray-800 text-sm font-medium truncate">{item.productNameAr}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {item.quantity} × {t("cart.priceSAR", { price: item.priceAtAdd.toFixed(2) })}
+                      {item.quantity} × {t("cart.priceCurrency", { currency: currencySymbol, price: item.priceAtAdd.toFixed(2) })}
                     </p>
                   </div>
-                  <p className="text-sm font-bold text-gray-800 shrink-0">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
+                  <p className="text-sm font-bold text-gray-800 shrink-0">{t("cart.priceCurrency", { currency: currencySymbol, price: item.lineTotal.toFixed(2) })}</p>
                 </div>
               ))}
             </div>
@@ -882,7 +884,7 @@ export default function CheckoutPage() {
               <div className="flex items-center justify-between">
                 <span className="text-gray-600 text-sm font-medium">{t("cart.subtotal")}</span>
                 <span className="text-sm font-bold text-gray-700">
-                  {t("cart.priceSAR", { price: cart.subtotal.toFixed(2) })}
+                  {t("cart.priceCurrency", { currency: currencySymbol, price: cart.subtotal.toFixed(2) })}
                 </span>
               </div>
               {selectedShipping === "DeliveryToAddress" && quote?.available ? (
@@ -891,7 +893,7 @@ export default function CheckoutPage() {
                   <span className="text-sm font-bold text-gray-700">
                     {quote.isFreeShipping
                       ? t("checkout.freeShipping")
-                      : t("cart.priceSAR", { price: quote.shippingCost.toFixed(2) })}
+                      : t("cart.priceCurrency", { currency: currencySymbol, price: quote.shippingCost.toFixed(2) })}
                   </span>
                 </div>
               ) : selectedShipping === "DeliveryToAddress" ? (
@@ -904,14 +906,14 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 text-sm">{t("shipping.codFee")}</span>
                   <span className="text-sm font-bold text-gray-700">
-                    {t("cart.priceSAR", { price: (quote.codFee ?? 0).toFixed(2) })}
+                    {t("cart.priceCurrency", { currency: currencySymbol, price: (quote.codFee ?? 0).toFixed(2) })}
                   </span>
                 </div>
               )}
               <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
                 <span className="text-gray-700 font-bold">{t("cart.total")}</span>
                 <span className="text-xl font-bold store-price">
-                  {t("cart.priceSAR", {
+                  {t("cart.priceCurrency", { currency: currencySymbol,
                     price: (
                       cart.subtotal +
                       (selectedShipping === "DeliveryToAddress" && quote?.available ? quote.shippingCost : 0) +

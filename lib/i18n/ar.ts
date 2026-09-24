@@ -2389,6 +2389,7 @@ const ar = {
   "cart.applyingCoupon": "جاري التطبيق...",
   "cart.discountValueLabel": "قيمة الخصم: {{amount}} ر.س",
   "cart.priceSAR": "{{price}} ر.س",
+  "cart.priceCurrency": "{{price}} {{currency}}",
 
   // ── Wishlist ──
   "wishlist.empty": "قائمة المفضلة فارغة حاليًا",

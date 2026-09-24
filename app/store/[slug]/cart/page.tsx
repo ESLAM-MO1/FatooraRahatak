@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { useStoreCurrencySymbol } from "@/lib/hooks/useStoreCurrencySymbol";
 import SuccessToast from "@/components/SuccessToast";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
@@ -32,6 +33,7 @@ export default function CartPage() {
   const { t } = useTranslation();
   const params = useParams();
   const slug = params.slug as string;
+  const currencySymbol = useStoreCurrencySymbol(slug);
 
   const [storeId, setStoreId] = useState<number | null>(null);
   const [cart, setCart] = useState<CartData | null>(null);
@@ -260,7 +262,7 @@ export default function CartPage() {
                 </div>
 
                 <p className="w-24 text-left font-bold text-gray-800">
-                  {t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}
+                  {t("cart.priceCurrency", { currency: currencySymbol, price: item.lineTotal.toFixed(2) })}
                 </p>
 
                 <button
@@ -319,20 +321,20 @@ export default function CartPage() {
             {discountAmount !== null && (
               <div className="flex items-center justify-between mb-2 text-sm">
                 <span className="text-gray-500">{t("cart.totalBeforeDiscount")}</span>
-                <span className="text-gray-500">{t("cart.priceSAR", { price: cart.subtotal.toFixed(2) })}</span>
+                <span className="text-gray-500">{t("cart.priceCurrency", { currency: currencySymbol, price: cart.subtotal.toFixed(2) })}</span>
               </div>
             )}
             {discountAmount !== null && (
               <div className="flex items-center justify-between mb-2 text-sm">
                 <span className="text-gray-500">{t("cart.discountValue")}</span>
-                <span className="text-green-600">− {t("cart.priceSAR", { price: discountAmount.toFixed(2) })}</span>
+                <span className="text-green-600">− {t("cart.priceCurrency", { currency: currencySymbol, price: discountAmount.toFixed(2) })}</span>
               </div>
             )}
             {vatRate > 0 && (
               <>
                 <div className="flex items-center justify-between mb-2 text-sm">
                   <span className="text-gray-500">{t("cart.vatAmount", { vatRate: Math.round(vatRate * 100) })}</span>
-                  <span className="text-gray-700">{t("cart.priceSAR", { price: vatAmount.toFixed(2) })}</span>
+                  <span className="text-gray-700">{t("cart.priceCurrency", { currency: currencySymbol, price: vatAmount.toFixed(2) })}</span>
                 </div>
                 <div className="flex items-center justify-between mb-2 text-sm">
                   <span className="text-gray-500">{t("cart.shipping")}</span>
@@ -345,7 +347,7 @@ export default function CartPage() {
                 {discountAmount !== null ? t("cart.totalAfterDiscount") : t("cart.total")}
               </span>
               <span className="text-xl font-bold store-price">
-                {t("cart.priceSAR", { price: grandTotal.toFixed(2) })}
+                {t("cart.priceCurrency", { currency: currencySymbol, price: grandTotal.toFixed(2) })}
               </span>
             </div>
 

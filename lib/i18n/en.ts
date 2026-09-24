@@ -2362,6 +2362,7 @@ const en: Record<string, string> = {
   "cart.applyingCoupon": "Applying...",
   "cart.discountValueLabel": "Discount value: {{amount}} SAR",
   "cart.priceSAR": "{{price}} SAR",
+  "cart.priceCurrency": "{{price}} {{currency}}",
 
   // ── Wishlist ──
   "wishlist.empty": "Your wishlist is currently empty",

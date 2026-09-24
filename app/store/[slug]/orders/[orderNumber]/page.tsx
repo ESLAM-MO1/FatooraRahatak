@@ -3,6 +3,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { useStoreCurrencySymbol } from "@/lib/hooks/useStoreCurrencySymbol";
 import { isAuthenticated } from "@/lib/auth";
 import { getQuickCustomer } from "@/lib/quickCustomer";
 import { customerApi } from "@/lib/customerApi";
@@ -83,6 +84,7 @@ export default function OrderDetailPage() {
   const { t } = useTranslation();
   const params = useParams();
   const slug = params.slug as string;
+  const currencySymbol = useStoreCurrencySymbol(slug);
   const orderNumber = params.orderNumber as string;
 
   const SHIPPING_LABEL_KEYS: Record<string, string> = {
@@ -596,10 +598,10 @@ export default function OrderDetailPage() {
             <div className="flex-1 min-w-0">
               <p className="text-gray-800 font-medium">{item.productNameSnapshot}</p>
               <p className="text-sm text-gray-500 mt-1">
-                {item.quantity} × {t("cart.priceSAR", { price: item.unitPriceSnapshot.toFixed(2) })}
+                {item.quantity} × {t("cart.priceCurrency", { currency: currencySymbol, price: item.unitPriceSnapshot.toFixed(2) })}
               </p>
             </div>
-            <p className="font-bold text-gray-800 shrink-0">{t("cart.priceSAR", { price: item.lineTotal.toFixed(2) })}</p>
+            <p className="font-bold text-gray-800 shrink-0">{t("cart.priceCurrency", { currency: currencySymbol, price: item.lineTotal.toFixed(2) })}</p>
           </div>
         ))}
       </div>
@@ -607,30 +609,30 @@ export default function OrderDetailPage() {
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-5">
         <div className="flex items-center justify-between mb-2 text-sm">
           <span className="text-gray-500">{t("cart.totalBeforeDiscount")}</span>
-          <span className="text-gray-500">{t("cart.priceSAR", { price: order.subTotal.toFixed(2) })}</span>
+          <span className="text-gray-500">{t("cart.priceCurrency", { currency: currencySymbol, price: order.subTotal.toFixed(2) })}</span>
         </div>
         {order.discountAmount > 0 && (
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="text-gray-500">{t("cart.discountValue")}</span>
-            <span className="text-green-600">− {t("cart.priceSAR", { price: order.discountAmount.toFixed(2) })}</span>
+            <span className="text-green-600">− {t("cart.priceCurrency", { currency: currencySymbol, price: order.discountAmount.toFixed(2) })}</span>
           </div>
         )}
         {order.shippingCost > 0 && (
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="text-gray-500">{t("order.shippingCostLabel")}</span>
-            <span className="text-gray-500">{t("cart.priceSAR", { price: order.shippingCost.toFixed(2) })}</span>
+            <span className="text-gray-500">{t("cart.priceCurrency", { currency: currencySymbol, price: order.shippingCost.toFixed(2) })}</span>
           </div>
         )}
         {(order.taxAmount ?? 0) > 0 && (
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="text-gray-500">{t("order.vatLabel")}</span>
-            <span className="text-gray-500">{t("cart.priceSAR", { price: (order.taxAmount ?? 0).toFixed(2) })}</span>
+            <span className="text-gray-500">{t("cart.priceCurrency", { currency: currencySymbol, price: (order.taxAmount ?? 0).toFixed(2) })}</span>
           </div>
         )}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <span className="text-gray-600 font-medium">{t("order.totalFinal")}</span>
           <span className="text-xl font-bold store-price">
-            {t("cart.priceSAR", { price: order.totalAmount.toFixed(2) })}
+            {t("cart.priceCurrency", { currency: currencySymbol, price: order.totalAmount.toFixed(2) })}
           </span>
         </div>
       </div>

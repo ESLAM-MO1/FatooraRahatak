@@ -135,17 +135,17 @@ export default function ProfessionalBlueTemplate({
               <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder={t("storefront.searchPlaceholder")} className="w-full rounded-full outline-none text-[14px] ps-10 pe-4 py-2.5" style={{ background: "#F3F4F6", color: "#111827", border: "1px solid transparent", transition: "border 0.15s" }} onFocus={e => (e.currentTarget.style.border = `1px solid ${colors.accentColor}`)} onBlur={e => (e.currentTarget.style.border = "1px solid transparent")} />
             </div>
           </form>
-          <div className="flex items-center gap-1 ms-auto shrink-0">
-            <button className="md:hidden p-2 rounded-full" onClick={() => setSearchOpen(!searchOpen)} style={{ color: "#374151" }}><SearchIcon size={20} /></button>
-            <a href={`/store/${slug}/track-order`} className="p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.trackOrder")}>
+          <div className="flex items-center gap-0.5 sm:gap-1 ms-auto shrink-0">
+            <button className="md:hidden p-1.5 sm:p-2 rounded-full" onClick={() => setSearchOpen(!searchOpen)} style={{ color: "#374151" }}><SearchIcon size={20} /></button>
+            <a href={`/store/${slug}/track-order`} className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.trackOrder")}>
               <TruckIcon size={20} />
             </a>
             <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}>
+            <a href={`/store/${slug}/wishlist`} className="relative p-1.5 sm:p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}>
               <HeartIcon size={20} />
               {wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}
             </a>
-            <a href={`/store/${slug}/cart`} className="relative p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.cart")}><BagIcon size={20} />
+            <a href={`/store/${slug}/cart`} className="relative p-1.5 sm:p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.cart")}><BagIcon size={20} />
               {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{cartCount}</span>}
             </a>
           </div>

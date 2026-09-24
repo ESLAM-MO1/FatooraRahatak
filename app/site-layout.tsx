@@ -795,14 +795,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
             </div>
-          </div>
-
-          <div className="mt-8">
             <img
               src="/footer-banner.png"
               alt={t("brand.name")}
-              className="block w-full h-auto mx-auto"
-              style={{ maxWidth: 1100, aspectRatio: "2172 / 340", objectFit: "cover" }}
+              className="block w-full sm:w-[480px] lg:w-[560px] max-w-full h-auto shrink-0"
             />
           </div>
 

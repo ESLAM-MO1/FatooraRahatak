@@ -51,15 +51,15 @@ export default function BlackMinimalTemplate({
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="font-sans" style={{ fontFamily: "'Segoe UI', 'Helvetica Neue', Arial, sans-serif", background: "#FFFFFF" }}>
       <header className="sticky top-0 z-40" style={{ background: colors.headerColor, borderBottom: "1px solid #262626" }}>
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
-          <button className="md:hidden p-1.5 -ml-1.5 text-white" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <CloseIcon size={20} /> : <MenuIcon size={20} />}</button>
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 flex items-center justify-between h-14">
+          <button className="md:hidden p-1 -ml-1 text-white" onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <CloseIcon size={20} /> : <MenuIcon size={20} />}</button>
           <a href={`/store/${slug}`} className="flex items-center gap-2.5 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-7 h-7 object-cover" />}
             <span className="font-thin text-lg tracking-[0.28em] uppercase truncate text-white" style={{ fontWeight: 300 }}>{storeName}</span>
           </a>
           <StoreMainMenu slug={slug} mobile={false} containerClassName="hidden md:flex items-center gap-8 text-[13px] font-medium tracking-wide text-white/70" linkClassName="hover:text-white" />
-          <div className="flex items-center gap-1">
-            <QuickLoginButton slug={slug} />
+          <div className="flex items-center gap-0.5 sm:gap-1">
+            <QuickLoginButton slug={slug} compact />
             <a href={`/store/${slug}/wishlist`} className="relative p-2 text-white" aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[9px] font-bold text-black rounded-full" style={{ width: 15, height: 15, background: "#fff" }}>{wishlist.length}</span>}</a>
             <a href={`/store/${slug}/cart`} className="relative p-2 text-white" aria-label={t("storefront.cart")}><BagIcon size={18} />{cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[9px] font-bold text-black rounded-full" style={{ width: 15, height: 15, background: "#fff" }}>{cartCount}</span>}</a>
           </div>

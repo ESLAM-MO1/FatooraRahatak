@@ -83,7 +83,18 @@ const PAYMENT_LABEL_KEYS: Record<string, string> = {
   Moyasar: "checkout.paymentMoyasar",
 };
 
+const PAYMENT_LOGOS: Record<string, string> = {
+  Mada: "/payment/mada.png",
+  PayPal: "/payment/paypal.png",
+  Tabby: "/payment/tabby.png",
+  Tamara: "/payment/tamara.png",
+};
+
 function paymentIcon(type: string) {
+  const logo = PAYMENT_LOGOS[type];
+  if (logo) {
+    return <img src={logo} alt="" className="max-w-full max-h-full object-contain" />;
+  }
   switch (type) {
     case "CashOnDelivery":
       return (
@@ -641,8 +652,8 @@ export default function CheckoutPage() {
                   }`}
                 >
                   <span
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                      active ? "bg-[var(--theme)]/[0.12] text-[var(--theme)]" : "bg-gray-100 text-gray-500"
+                    className={`${PAYMENT_LOGOS[m.type] ? "w-20" : "w-9"} h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      PAYMENT_LOGOS[m.type] ? "bg-white" : active ? "bg-[var(--theme)]/[0.12] text-[var(--theme)]" : "bg-gray-100 text-gray-500"
                     }`}
                   >
                     {paymentIcon(m.type)}

@@ -112,9 +112,9 @@ export default function ProfessionalBlueTemplate({
 
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="font-sans" style={{ fontFamily: "'Segoe UI', 'Tajawal', system-ui, sans-serif", background: "#FFFFFF" }}>
-      <div style={{ background: colors.headerColor, color: "#fff" }}>
+      <div className="hidden sm:block" style={{ background: colors.headerColor, color: "#fff" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-end h-9 text-[12px] font-semibold">
-  <div className="hidden sm:flex items-center gap-6">
+  <div className="flex items-center gap-6">
             <a href={`/store/${slug}/track-order`} className="inline-flex items-center gap-1.5 hover:opacity-75"><TruckIcon size={14} />{t("storefront.trackOrder")}</a>
             <span className="inline-flex items-center gap-1.5"><ShieldIcon size={14} />{t("storefront.warranty")}</span>
             <span className="inline-flex items-center gap-1.5"><HeadsetIcon size={14} />{t("storefront.support24h")}</span>
@@ -258,8 +258,8 @@ export default function ProfessionalBlueTemplate({
       {showHero && <StoreBanners slug={slug} position="HomeBottom" />}
 
       <footer style={{ background: colors.footerColor, paddingTop: "48px", paddingBottom: "48px" }}>
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="col-span-2 md:col-span-1"><h4 className="text-white font-extrabold" style={{ fontSize: "18px" }}>{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>{t("storefront.footerTagline")}</p></div>
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="sm:col-span-2 md:col-span-1"><h4 className="text-white font-extrabold" style={{ fontSize: "18px" }}>{storeName}</h4><p className="mt-2 text-[13px]" style={{ color: "rgba(255,255,255,0.6)" }}>{t("storefront.footerTagline")}</p></div>
           <div>
             <StorePolicyLinks slug={slug} title={t("storefront.storePolicies")} titleClassName="text-white font-extrabold" titleStyle={{ fontSize: "15px" }} listClassName="mt-3 space-y-2 text-[13px]" linkClassName="hover:text-white" linkStyle={{ color: "rgba(255,255,255,0.6)" }} />
           </div>

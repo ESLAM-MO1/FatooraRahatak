@@ -123,7 +123,7 @@ export default function ProfessionalBlueTemplate({
       </div>
 
       <header className="sticky top-0 z-40 bg-white" style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-4 h-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 sm:gap-4 h-16">
           <button className="md:hidden p-1.5 -ml-1.5" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: "#374151" }}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           <a href={`/store/${slug}`} className="flex items-center gap-2.5 shrink-0 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-9 h-9 rounded-full object-cover" />}
@@ -140,7 +140,7 @@ export default function ProfessionalBlueTemplate({
             <a href={`/store/${slug}/track-order`} className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.trackOrder")}>
               <TruckIcon size={20} />
             </a>
-            <QuickLoginButton slug={slug} />
+            <QuickLoginButton slug={slug} compact />
             <a href={`/store/${slug}/wishlist`} className="relative p-1.5 sm:p-2 rounded-full hover:bg-gray-100" style={{ color: "#374151" }} aria-label={t("storefront.wishlist")}>
               <HeartIcon size={20} />
               {wishlist.length > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center text-[10px] font-bold text-white rounded-full" style={{ width: 16, height: 16, background: "#DC2626" }}>{wishlist.length}</span>}

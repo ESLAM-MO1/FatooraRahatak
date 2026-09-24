@@ -652,7 +652,7 @@ export default function CheckoutPage() {
                   }`}
                 >
                   <span
-                    className={`${PAYMENT_LOGOS[m.type] ? "w-20" : "w-9"} h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    className={`w-20 h-9 rounded-lg flex items-center justify-center shrink-0 [&>svg]:w-6 [&>svg]:h-6 ${
                       PAYMENT_LOGOS[m.type] ? "bg-white" : active ? "bg-[var(--theme)]/[0.12] text-[var(--theme)]" : "bg-gray-100 text-gray-500"
                     }`}
                   >

@@ -97,5 +97,6 @@ public class PublicShippingQuoteResultDto
     public string CompanyName { get; set; } = string.Empty;
     public int EstimatedDeliveryDays { get; set; }
     public bool IsFreeShipping { get; set; }
+    public decimal CodFee { get; set; }
     public string? Message { get; set; }
 }

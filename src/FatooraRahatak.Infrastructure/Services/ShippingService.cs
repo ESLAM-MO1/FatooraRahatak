@@ -138,7 +138,7 @@ public class ShippingService : IShippingService
                 Code = Enum.Parse<ShippingCompanyCode>(code),
                 Enabled = false,
                 IsDefault = false,
-                RateConfigJson = "{\"baseRate\":0,\"perKg\":0,\"codFeePercent\":0,\"estimatedDeliveryDays\":0,\"cityRates\":{}}"
+                RateConfigJson = "{\"baseRate\":0,\"perKg\":0,\"codFee\":0,\"estimatedDeliveryDays\":0,\"cityRates\":{}}"
             });
             result.Added++;
             result.AddedCompanies.Add(name);

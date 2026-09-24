@@ -6,7 +6,8 @@ public class ShippingRateConfig
 {
     public decimal BaseRate { get; set; } = 15;
     public decimal PerKg { get; set; } = 2;
-    public decimal CodFeePercent { get; set; } = 0;
+    // رسوم الدفع عند الاستلام: مبلغ ثابت بعملة المتجر (وليس نسبة)
+    public decimal CodFee { get; set; } = 0;
     public Dictionary<string, decimal> CityRates { get; set; } = new();
     public int EstimatedDeliveryDays { get; set; } = 0;
 }
@@ -31,6 +32,7 @@ public static class ShippingCostCalculator
         }
     }
 
+    // codAmount: يُستخدم فقط كإشارة أن الطلب دفع عند الاستلام (أي قيمة > 0)، والرسوم مبلغ ثابت
     public static decimal Calculate(string? configJson, string city, decimal weight, decimal? codAmount)
     {
         var cfg = ParseConfig(configJson);
@@ -44,8 +46,8 @@ public static class ShippingCostCalculator
 
         cost += cfg.PerKg * Math.Max(0, weight - 1);
 
-        if (cfg.CodFeePercent > 0 && (codAmount ?? 0) > 0)
-            cost += (codAmount!.Value * cfg.CodFeePercent) / 100m;
+        if (cfg.CodFee > 0 && (codAmount ?? 0) > 0)
+            cost += cfg.CodFee;
 
         return Math.Round(cost, 2);
     }

@@ -191,6 +191,7 @@ public class OrderService : IOrderService
         // خطوة 5 (جزء ثانٍ): حساب تكلفة الشحن عند اختيار "توصيل للعنوان"
         // عبر شركة الشحن المفعّلة التابعة للمتجر (حسب إعدادات الأسعار لكل مدينة)
         decimal shippingCost = 0;
+        decimal codFee = 0;
         if (shippingMethod == ShippingMethodType.DeliveryToAddress)
         {
             // فرض ميزة الباقة: حساب تكلفة الشحن يتطلب ميزة "حاسبة الشحن"
@@ -215,7 +216,10 @@ public class OrderService : IOrderService
                 shippingCompany.RateConfigJson,
                 city,
                 weight,
-                paymentMethod == PaymentMethodType.CashOnDelivery ? totalAmount : null);
+                null);
+
+            if (paymentMethod == PaymentMethodType.CashOnDelivery)
+                codFee = Shipping.ShippingCostCalculator.ParseConfig(shippingCompany.RateConfigJson).CodFee;
 
             // فرض ميزة الباقة: "الشحن المجاني" (تكلفة شحن صفرية) يتطلب الميزة
             if (shippingCost <= 0 && !(package?.HasFreeShipping ?? false))
@@ -239,6 +243,8 @@ public class OrderService : IOrderService
         // السلة بينما الترحيل المحاسبي يضيف 15% → الفاتورة أكبر من المدفوع فعلاً.
         // الآن تُضاف الضريبة على نفس الإجمالي وبالطريقة نفسها في مكانَي الحساب (السلة + المحاسبة).
         var taxAmount = store.IsVatRegistered ? Math.Round((totalAmount) * VatRate, 2) : 0m;
+
+        shippingCost += codFee;
 
         var totalAmountWithShipping = totalAmount + shippingCost + taxAmount;
 

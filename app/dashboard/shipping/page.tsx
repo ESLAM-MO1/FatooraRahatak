@@ -83,7 +83,7 @@ interface ProviderDraft {
   isDefault: boolean;
   baseRate: string;
   perKg: string;
-  codFeePercent: string;
+  codFee: string;
   estimatedDeliveryDays: string;
   cityRates: string;
 }
@@ -242,7 +242,7 @@ export default function ShippingPage() {
           isDefault: comp.isDefault,
           baseRate: String(cfg.baseRate ?? 0),
           perKg: String(cfg.perKg ?? 0),
-          codFeePercent: String(cfg.codFeePercent ?? 0),
+          codFee: String(cfg.codFee ?? 0),
           estimatedDeliveryDays: String(cfg.estimatedDeliveryDays ?? 0),
           cityRates: Object.entries(cityRates)
             .map(([c, v]) => `${c}=${v}`)
@@ -254,7 +254,7 @@ export default function ShippingPage() {
           isDefault: false,
           baseRate: "0",
           perKg: "0",
-          codFeePercent: "0",
+          codFee: "0",
           estimatedDeliveryDays: "0",
           cityRates: "",
         };
@@ -321,7 +321,7 @@ export default function ShippingPage() {
       rateConfigJson: JSON.stringify({
         baseRate: Number(draft.baseRate) || 0,
         perKg: Number(draft.perKg) || 0,
-        codFeePercent: Number(draft.codFeePercent) || 0,
+        codFee: Number(draft.codFee) || 0,
         estimatedDeliveryDays: Number(draft.estimatedDeliveryDays) || 0,
         cityRates: parseCityRates(draft.cityRates),
       }),
@@ -390,7 +390,7 @@ export default function ShippingPage() {
         enabled: true,
         isDefault: false,
         rateConfigJson: JSON.stringify({
-          baseRate: 0, perKg: 0, codFeePercent: 0, estimatedDeliveryDays: 0, cityRates: {},
+          baseRate: 0, perKg: 0, codFee: 0, estimatedDeliveryDays: 0, cityRates: {},
         }),
       });
       setActionSuccess(t("shipping.companyCreated"));
@@ -627,16 +627,16 @@ export default function ShippingPage() {
                           />
                         </div>
                         <div>
-                          <label className="text-[12px] font-bold text-[var(--sub)]">{t("shipping.codFeePercent")}</label>
+                          <label className="text-[12px] font-bold text-[var(--sub)]">{t("shipping.codFee")}</label>
                           <input
                             className="field-input mt-1"
                             type="text"
                             inputMode="decimal"
-                            value={draft.codFeePercent}
+                            value={draft.codFee}
                             onChange={(e) =>
                               setProvidersState((s) => ({
                                 ...s,
-                                [p.code]: { ...s[p.code], codFeePercent: normalizeDigits(e.target.value) },
+                                [p.code]: { ...s[p.code], codFee: normalizeDigits(e.target.value) },
                               }))
                             }
                           />

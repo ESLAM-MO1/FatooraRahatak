@@ -935,10 +935,11 @@ public class PublicStoreService : IPublicStoreService
         {
             Available = true,
             ShippingCost = cost,
-            Currency = "SAR",
+            Currency = string.IsNullOrWhiteSpace(store.Currency) ? "SAR" : store.Currency,
             CompanyName = company.Name,
             EstimatedDeliveryDays = Shipping.ShippingCostCalculator.EstimatedDays(company.RateConfigJson, 0),
-            IsFreeShipping = isFree
+            IsFreeShipping = isFree,
+            CodFee = Shipping.ShippingCostCalculator.ParseConfig(company.RateConfigJson).CodFee
         };
     }
 

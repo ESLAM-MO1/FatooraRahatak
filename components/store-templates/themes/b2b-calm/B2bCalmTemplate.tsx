@@ -48,17 +48,17 @@ export default function B2bCalmTemplate({
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="font-sans" style={{ fontFamily: "'Segoe UI', 'Tajawal', system-ui, sans-serif", background: "#F7FAF9" }}>
       <header className="sticky top-0 z-40" style={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", borderBottom: "1px solid #E3EDEA" }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 flex items-center justify-between h-16">
           <div className="flex items-center gap-3 min-w-0">
             {logo && <img src={logo} alt={storeName} className="w-9 h-9 object-contain" />}
             <a href={`/store/${slug}`} className="font-bold text-lg" style={{ color: colors.headerColor }}>{storeName}</a>
           </div>
           <StoreMainMenu slug={slug} containerClassName="hidden md:flex items-center gap-7 text-[14px] font-semibold" linkClassName="hover:opacity-70" linkStyle={{ color: colors.headerColor }} />
-          <div className="flex items-center gap-2">
-            <QuickLoginButton slug={slug} />
-            <a href={`/store/${slug}/wishlist`} className="relative p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.wishlist")}><HeartIcon size={20} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
-            <a href={`/store/${slug}/cart`} className="relative p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.cart")}><BagIcon size={20} />{cartCount > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{cartCount}</span>}</a>
-            <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: colors.headerColor }} aria-label={t("storefront.menu")}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
+          <div className="flex items-center gap-0.5 sm:gap-2">
+            <QuickLoginButton slug={slug} compact />
+            <a href={`/store/${slug}/wishlist`} className="relative p-1 sm:p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.wishlist")}><HeartIcon size={18} />{wishlist.length > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{wishlist.length}</span>}</a>
+            <a href={`/store/${slug}/cart`} className="relative p-1 sm:p-2" style={{ color: colors.headerColor }} aria-label={t("storefront.cart")}><BagIcon size={18} />{cartCount > 0 && <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">{cartCount}</span>}</a>
+            <button className="md:hidden p-1" onClick={() => setMobileOpen(!mobileOpen)} style={{ color: colors.headerColor }} aria-label={t("storefront.menu")}>{mobileOpen ? <CloseIcon size={22} /> : <MenuIcon size={22} />}</button>
           </div>
         </div>
         {mobileOpen && <div className="md:hidden border-t" style={{ borderColor: "#E3EDEA", background: "#fff" }}><StoreMainMenu slug={slug} mobile containerClassName="px-4 py-3 space-y-2 text-[15px] font-semibold" containerStyle={{ color: colors.headerColor }} linkClassName="block py-1.5" /></div>}

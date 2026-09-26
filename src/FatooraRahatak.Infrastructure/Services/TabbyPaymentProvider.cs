@@ -20,7 +20,7 @@ public class TabbyPaymentProvider
     {
         _secretKey = configuration["Tabby:SecretKey"] ?? "";
         _publicKey = configuration["Tabby:PublicKey"] ?? "";
-        _baseUrl = configuration["Tabby:BaseUrl"] ?? "https://api.tabby.ai/api/v1";
+        _baseUrl = configuration["Tabby:BaseUrl"] ?? "https://api.tabby.ai/api/v2";
         _httpClient = httpClient;
     }
 
@@ -70,7 +70,7 @@ public class TabbyPaymentProvider
             };
             if (buyer.Count > 0) payload["buyer"] = buyer;
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/checkout/sessions")
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/checkout")
             {
                 Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
             };
@@ -85,15 +85,16 @@ public class TabbyPaymentProvider
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // الاستجابة قد تكون { "data": { "payment": { "id": ..., "url": ... } } } أو مسطحة
-            var data = root.TryGetProperty("data", out var d) ? d : root;
-            var paymentNode = data.TryGetProperty("payment", out var p) ? p : data;
+            // ⚠️ إصلاح: API v2 يُعيد رابط الدفع في الحقل الجذري "web_url" مباشرة،
+            // وليس في payment.url أو checkout_url كما كان مفترضًا سابقًا مع v1.
+            var status = root.TryGetProperty("status", out var st) ? st.GetString() : null;
+            var paymentNode = root.TryGetProperty("payment", out var p) ? p : root;
             var id = paymentNode.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
-            var url = paymentNode.TryGetProperty("url", out var urlProp) ? urlProp.GetString() : null;
-            var checkoutUrl = root.TryGetProperty("checkout_url", out var cu) ? cu.GetString() : null;
+            var url = root.TryGetProperty("web_url", out var wu) ? wu.GetString() : null;
 
-            if (string.IsNullOrWhiteSpace(url) && !string.IsNullOrWhiteSpace(checkoutUrl))
-                url = checkoutUrl;
+            // "rejected" ليس خطأ تقنيًا — تقييم تابي الداخلي رفض العميل/الطلب (pre-scoring)
+            if (string.Equals(status, "rejected", StringComparison.OrdinalIgnoreCase))
+                return new TabbyPaymentResult { Success = false, ErrorMessage = "تابي غير متاح حاليًا لهذا الطلب", RawResponse = json };
 
             if (string.IsNullOrWhiteSpace(url))
                 return new TabbyPaymentResult { Success = false, ErrorMessage = "استجابة تابي بلا رابط دفع", RawResponse = json };

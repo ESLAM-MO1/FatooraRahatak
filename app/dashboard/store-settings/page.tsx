@@ -133,7 +133,7 @@ const COLOR_FIELDS: { key: keyof StoreColors; labelKey: string }[] = [
 type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "pages" | "advanced" | "designChat" | "faq" | "blog" | "banners";
 
 const TABS: { id: TabId; labelKey: string; icon: string }[] = [
-  { id: "overview", labelKey: "storeSettings.tabOverview", icon: "hash" },
+  { id: "overview", labelKey: "storeSettings.tabOverview", icon: "chart" },
   { id: "design", labelKey: "storeSettings.tabDesign", icon: "settings" },
   { id: "designChat", labelKey: "storeSettings.tabDesignChat", icon: "palette" },
   { id: "domain", labelKey: "storeSettings.tabDomain", icon: "link" },
@@ -411,6 +411,7 @@ export default function StoreSettingsPage() {
 
   // ---- Active tab ----
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
 
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
@@ -1114,31 +1115,43 @@ export default function StoreSettingsPage() {
         </div>
       </div>
 
-      {/* Sidebar nav + content — replaces the old wall of stacked cards */}
-      <div className="ss-nav-wrap">
-        <nav className="ss-sidebar">
-          {TAB_GROUPS.map((group) => (
-            <div key={group.key} className="ss-nav-group">
-              <p className="ss-nav-group-label">{t(group.labelKey)}</p>
-              {group.items.map((tabId) => {
-                const tab = TABS.find((x) => x.id === tabId)!;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`ss-nav-item ${activeTab === tab.id ? "ss-nav-item--active" : ""}`}
-                  >
-                    <Icon name={tab.icon as any} size={16} />
-                    <span>{tabLabel(tab.id, tab.labelKey)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+      {/* Salla-style settings grid: category cards up top, the selected
+          section's existing panel (unchanged) renders right below it. */}
+      <div className="ss-settings-shell">
+        {!settingsPanelOpen && (
+          <div className="ss-settings-grid">
+            {TAB_GROUPS.map((group) => (
+              <div key={group.key} className="ss-settings-section">
+                <p className="ss-settings-section-label">{t(group.labelKey)}</p>
+                <div className="ss-settings-cards">
+                  {group.items.map((tabId) => {
+                    const tab = TABS.find((x) => x.id === tabId)!;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => { setActiveTab(tab.id); setSettingsPanelOpen(true); }}
+                        className={`ss-settings-card ${activeTab === tab.id ? "ss-settings-card--active" : ""}`}
+                      >
+                        <span className="ss-settings-card-icon">
+                          <Icon name={tab.icon as any} size={20} />
+                        </span>
+                        <span className="ss-settings-card-label">{tabLabel(tab.id, tab.labelKey)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
+        {settingsPanelOpen && (
         <div key={activeTab} className="ss-tab-panel">
+          <button type="button" onClick={() => setSettingsPanelOpen(false)} className="ss-back-btn">
+            <Icon name="arrowLeft" size={15} />
+            <span>{t("storeSettings.backToSettings")}</span>
+          </button>
           {activeTab === "overview" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <SettingCard icon="hash" title={t("storeSettings.storeAndTax")} accent="green">
@@ -1907,6 +1920,7 @@ export default function StoreSettingsPage() {
           </SettingCard>
         )}
         </div>
+        )}
         </div>
 
       <style jsx>{`
@@ -1934,76 +1948,86 @@ export default function StoreSettingsPage() {
           box-shadow: 0 0 0 3px rgba(34, 155, 108, 0.18);
         }
 
-        .ss-nav-wrap {
-          display: grid;
-          grid-template-columns: 250px 1fr;
-          gap: 20px;
-          align-items: start;
+        .ss-settings-shell {
+          display: flex;
+          flex-direction: column;
+          gap: 22px;
         }
-        @media (max-width: 900px) {
-          .ss-nav-wrap {
-            grid-template-columns: 1fr;
-          }
-          .ss-sidebar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 12px;
-          }
-          .ss-nav-group {
-            display: contents;
-          }
-          .ss-nav-group-label {
-            display: none;
-          }
-          .ss-nav-item {
-            width: auto;
-          }
+        .ss-settings-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
         }
-        .ss-sidebar {
-          position: sticky;
-          top: 16px;
-          border-radius: 16px;
-          border: 1px solid #eef0f3;
-          background: #fff;
-          padding: 10px;
-          overflow: hidden;
-        }
-        .ss-nav-group + .ss-nav-group {
-          margin-top: 10px;
-        }
-        .ss-nav-group-label {
-          font-size: 10.5px;
+        .ss-settings-section-label {
+          font-size: 13px;
           font-weight: 800;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          color: #9aa1ab;
-          padding: 4px 10px 6px;
+          color: var(--ink);
+          margin-bottom: 10px;
         }
-        .ss-nav-item {
+        .ss-settings-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 14px;
+        }
+        .ss-settings-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          text-align: center;
+          background: #fff;
+          border: 1px solid #eef0f3;
+          border-radius: 16px;
+          padding: 22px 14px;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+        }
+        .ss-settings-card:hover {
+          border-color: #d7dbe1;
+          box-shadow: 0 4px 14px rgba(16, 24, 40, 0.06);
+          transform: translateY(-2px);
+        }
+        .ss-settings-card--active {
+          border-color: var(--blue);
+          background: var(--blue-50, #eef4ff);
+          box-shadow: inset 0 0 0 1px var(--blue);
+        }
+        .ss-settings-card-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
-          gap: 10px;
-          width: 100%;
-          text-align: right;
-          padding: 9px 10px;
-          border-radius: 10px;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--sub);
-          background: transparent;
-          transition: background 0.13s ease, color 0.13s ease;
-        }
-        .ss-nav-item:hover {
-          background: #f6f7f9;
-          color: var(--ink);
-        }
-        .ss-nav-item--active {
+          justify-content: center;
           background: var(--blue-50, #eef4ff);
-          color: var(--blue-deep, #1e3a8a);
+          color: var(--blue);
+          flex-shrink: 0;
+        }
+        .ss-settings-card--active .ss-settings-card-icon {
+          background: #fff;
+        }
+        .ss-settings-card-label {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: var(--ink);
+          line-height: 1.35;
         }
 
         .ss-tab-panel {
           animation: ss-fade-in 0.22s ease both;
+        }
+        .ss-back-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: var(--blue);
+          margin-bottom: 14px;
+          padding: 6px 4px;
+        }
+        .ss-back-btn:hover {
+          color: var(--blue-deep, #1e3a8a);
         }
         @keyframes ss-fade-in {
           from {

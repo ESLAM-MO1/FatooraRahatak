@@ -85,6 +85,10 @@ public class ZatcaService : IZatcaService
             string.IsNullOrWhiteSpace(store.ContactAddress) ? "Saudi Arabia" : store.ContactAddress,
             string.IsNullOrWhiteSpace(_settings.Value.BusinessCategory) ? "Retail" : _settings.Value.BusinessCategory);
 
+        Console.WriteLine("ZATCA_DEBUG_CSR_BASE64_START");
+        Console.WriteLine(csrBase64);
+        Console.WriteLine("ZATCA_DEBUG_CSR_BASE64_END");
+
         ZatcaComplianceResponse complianceResponse;
         ZatcaComplianceResponse productionResponse;
         try

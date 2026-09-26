@@ -45,7 +45,30 @@ export default function NewPurchaseInvoicePage() {
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierCity, setSupplierCity] = useState("");
-  const [registeredSuppliers, setRegisteredSuppliers] = useState<{ id: number | null; name: string; phone: string | null; city: string | null }[]>([]);
+  const [registeredSuppliers, setRegisteredSuppliers] = useState<{
+    id: number | null;
+    name: string;
+    phone: string | null;
+    city: string | null;
+    companyName: string | null;
+    vatNumber: string | null;
+    country: string | null;
+    region: string | null;
+    street: string | null;
+    buildingNumber: string | null;
+    postalCode: string | null;
+    nationalAddress: string | null;
+  }[]>([]);
+  const [selectedSupplier, setSelectedSupplier] = useState<{
+    companyName: string | null;
+    vatNumber: string | null;
+    country: string | null;
+    region: string | null;
+    street: string | null;
+    buildingNumber: string | null;
+    postalCode: string | null;
+    nationalAddress: string | null;
+  } | null>(null);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([{ ...emptyLine }]);
   const [error, setError] = useState("");
@@ -225,8 +248,19 @@ export default function NewPurchaseInvoicePage() {
                     setSupplierId(match.id);
                     if (match.phone) setSupplierPhone(match.phone);
                     if (match.city) setSupplierCity(match.city);
+                    setSelectedSupplier({
+                      companyName: match.companyName,
+                      vatNumber: match.vatNumber,
+                      country: match.country,
+                      region: match.region,
+                      street: match.street,
+                      buildingNumber: match.buildingNumber,
+                      postalCode: match.postalCode,
+                      nationalAddress: match.nationalAddress,
+                    });
                   } else {
                     setSupplierId(null);
+                    setSelectedSupplier(null);
                   }
                 }}
                 placeholder={t("invoice.supplierNamePlaceholder")}
@@ -264,6 +298,38 @@ export default function NewPurchaseInvoicePage() {
               </div>
             </div>
           </div>
+
+          {selectedSupplier && (
+            <div className="mt-2 p-4 rounded-xl bg-[var(--blue-50)]/40 border border-[var(--border)]">
+              <p className="text-[12.5px] font-bold text-[var(--blue-deep)] mb-3">{t("suppliers.companyName")} / {t("customer.nationalAddress")}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[12.5px]">
+                {selectedSupplier.companyName && (
+                  <p><span className="text-[var(--sub)]">{t("suppliers.companyName")}: </span><span className="font-medium text-[var(--ink)]">{selectedSupplier.companyName}</span></p>
+                )}
+                {selectedSupplier.vatNumber && (
+                  <p><span className="text-[var(--sub)]">{t("customer.vatNumber")}: </span><span className="font-medium text-[var(--ink)]" dir="ltr">{selectedSupplier.vatNumber}</span></p>
+                )}
+                {selectedSupplier.country && (
+                  <p><span className="text-[var(--sub)]">{t("customer.country")}: </span><span className="font-medium text-[var(--ink)]">{selectedSupplier.country}</span></p>
+                )}
+                {selectedSupplier.region && (
+                  <p><span className="text-[var(--sub)]">{t("customer.region")}: </span><span className="font-medium text-[var(--ink)]">{selectedSupplier.region}</span></p>
+                )}
+                {selectedSupplier.street && (
+                  <p><span className="text-[var(--sub)]">{t("customer.street")}: </span><span className="font-medium text-[var(--ink)]">{selectedSupplier.street}</span></p>
+                )}
+                {selectedSupplier.buildingNumber && (
+                  <p><span className="text-[var(--sub)]">{t("customer.buildingNumber")}: </span><span className="font-medium text-[var(--ink)]" dir="ltr">{selectedSupplier.buildingNumber}</span></p>
+                )}
+                {selectedSupplier.postalCode && (
+                  <p><span className="text-[var(--sub)]">{t("customer.postalCode")}: </span><span className="font-medium text-[var(--ink)]" dir="ltr">{selectedSupplier.postalCode}</span></p>
+                )}
+                {selectedSupplier.nationalAddress && (
+                  <p><span className="text-[var(--sub)]">{t("customer.nationalAddress")}: </span><span className="font-medium text-[var(--ink)]">{selectedSupplier.nationalAddress}</span></p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="card overflow-hidden mb-4">

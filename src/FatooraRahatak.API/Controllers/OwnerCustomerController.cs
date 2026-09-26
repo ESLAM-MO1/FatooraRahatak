@@ -92,6 +92,15 @@ public class OwnerCustomerController : ControllerBase
                 name = s.FullName,
                 phone = s.Phone,
                 city = s.City,
+                notes = s.Notes,
+                companyName = s.CompanyName,
+                vatNumber = s.VatNumber,
+                country = s.Country,
+                region = s.Region,
+                street = s.Street,
+                postalCode = s.PostalCode,
+                buildingNumber = s.BuildingNumber,
+                nationalAddress = s.NationalAddress,
                 invoicesCount = stat?.invoicesCount ?? 0,
                 totalPurchases = stat?.totalPurchases ?? 0m
             };
@@ -106,6 +115,15 @@ public class OwnerCustomerController : ControllerBase
                 name = x.name,
                 phone = x.phone,
                 city = x.city,
+                notes = (string?)null,
+                companyName = (string?)null,
+                vatNumber = (string?)null,
+                country = (string?)null,
+                region = (string?)null,
+                street = (string?)null,
+                postalCode = (string?)null,
+                buildingNumber = (string?)null,
+                nationalAddress = (string?)null,
                 invoicesCount = x.invoicesCount,
                 totalPurchases = x.totalPurchases
             });
@@ -131,7 +149,15 @@ public class OwnerCustomerController : ControllerBase
             FullName = dto.FullName.Trim(),
             Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim(),
             City = string.IsNullOrWhiteSpace(dto.City) ? null : dto.City.Trim(),
-            Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim()
+            Notes = string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(),
+            CompanyName = string.IsNullOrWhiteSpace(dto.CompanyName) ? null : dto.CompanyName.Trim(),
+            VatNumber = string.IsNullOrWhiteSpace(dto.VatNumber) ? null : dto.VatNumber.Trim(),
+            Country = string.IsNullOrWhiteSpace(dto.Country) ? null : dto.Country.Trim(),
+            Region = string.IsNullOrWhiteSpace(dto.Region) ? null : dto.Region.Trim(),
+            Street = string.IsNullOrWhiteSpace(dto.Street) ? null : dto.Street.Trim(),
+            PostalCode = string.IsNullOrWhiteSpace(dto.PostalCode) ? null : dto.PostalCode.Trim(),
+            BuildingNumber = string.IsNullOrWhiteSpace(dto.BuildingNumber) ? null : dto.BuildingNumber.Trim(),
+            NationalAddress = string.IsNullOrWhiteSpace(dto.NationalAddress) ? null : dto.NationalAddress.Trim()
         };
 
         _context.Add(supplier);

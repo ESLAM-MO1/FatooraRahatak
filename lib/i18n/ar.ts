@@ -3988,6 +3988,7 @@ const ar = {
   "suppliers.add": "إضافة مورد",
   "suppliers.addTitle": "إضافة مورد جديد",
   "suppliers.fullName": "اسم المورد",
+  "suppliers.companyName": "اسم الشركة",
   "suppliers.notes": "ملاحظات",
   "suppliers.addSuccess": "تم إضافة المورد بنجاح",
   "suppliers.addError": "يرجى إدخال اسم المورد",

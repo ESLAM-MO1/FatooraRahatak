@@ -13,6 +13,8 @@ interface Supplier {
   name: string;
   phone: string | null;
   city: string | null;
+  companyName: string | null;
+  vatNumber: string | null;
   invoicesCount: number;
   totalPurchases: number;
 }
@@ -23,7 +25,7 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({ fullName: "", phone: "", city: "", notes: "" });
+  const [form, setForm] = useState({ fullName: "", phone: "", city: "", notes: "", companyName: "", vatNumber: "", country: "", region: "", street: "", postalCode: "", buildingNumber: "", nationalAddress: "" });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
 
@@ -55,7 +57,7 @@ export default function SuppliersPage() {
     try {
       await api.post("/owner/customers/suppliers", form);
       setAddOpen(false);
-      setForm({ fullName: "", phone: "", city: "", notes: "" });
+      setForm({ fullName: "", phone: "", city: "", notes: "", companyName: "", vatNumber: "", country: "", region: "", street: "", postalCode: "", buildingNumber: "", nationalAddress: "" });
       setSuccess(t("suppliers.addSuccess"));
       await fetchSuppliers();
     } catch (err: any) {
@@ -195,6 +197,86 @@ export default function SuppliersPage() {
                     type="text"
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("suppliers.companyName")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.companyName}
+                    onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.vatNumber")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.vatNumber}
+                    onChange={(e) => setForm({ ...form, vatNumber: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.country")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.country}
+                    onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.region")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.region}
+                    onChange={(e) => setForm({ ...form, region: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.street")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.street}
+                    onChange={(e) => setForm({ ...form, street: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.buildingNumber")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.buildingNumber}
+                    onChange={(e) => setForm({ ...form, buildingNumber: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.postalCode")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.postalCode}
+                    onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-[12px] font-bold text-[var(--sub)] mb-1.5">{t("customer.nationalAddress")}</p>
+                <div className="field-shell">
+                  <input
+                    type="text"
+                    value={form.nationalAddress}
+                    onChange={(e) => setForm({ ...form, nationalAddress: e.target.value })}
                   />
                 </div>
               </div>

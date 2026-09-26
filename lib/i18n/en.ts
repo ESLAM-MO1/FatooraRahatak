@@ -3950,6 +3950,7 @@ const en: Record<string, string> = {
   "suppliers.add": "Add Supplier",
   "suppliers.addTitle": "Add New Supplier",
   "suppliers.fullName": "Supplier Name",
+  "suppliers.companyName": "Company Name",
   "suppliers.notes": "Notes",
   "suppliers.addSuccess": "Supplier added successfully",
   "suppliers.addError": "Please enter the supplier name",

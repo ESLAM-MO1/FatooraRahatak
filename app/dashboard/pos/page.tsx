@@ -27,7 +27,9 @@ const VAT_RATE = 0.15;
 
 const PAYMENT_METHODS = [
   { value: "Cash", label: "pos.cash" },
+  { value: "CreditCard", label: "pos.creditcard" },
   { value: "Mada", label: "pos.mada" },
+  { value: "PayPal", label: "pos.paypal" },
   { value: "BankTransfer", label: "pos.bankTransfer" },
   { value: "Tabby", label: "pos.tabby" },
   { value: "Tamara", label: "pos.tamara" },
@@ -58,6 +60,10 @@ export default function CashierPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [showPaymentLink, setShowPaymentLink] = useState(false);
+  const [pendingBankTransfer, setPendingBankTransfer] = useState<{ reference: string; amount: number; bankName?: string; accountHolder?: string; iban?: string } | null>(null);
+  const [showBankTransferModal, setShowBankTransferModal] = useState(false);
+  const [confirmingTransfer, setConfirmingTransfer] = useState(false);
+  const [pendingTransfersList, setPendingTransfersList] = useState<{ paymentReference: string; amount: number; guestName?: string | null; createdAt: string }[]>([]);
 
   const [shift, setShift] = useState<PosShift | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
@@ -70,6 +76,11 @@ export default function CashierPage() {
     try { const r = await api.get("/pos/shifts/current"); setShift(r.data.data); }
     catch { }
     finally { setShiftLoading(false); }
+  };
+
+  const fetchPendingTransfers = async () => {
+    try { const r = await api.get("/pos/bank-transfer/pending"); setPendingTransfersList(r.data.data || []); }
+    catch { }
   };
 
   const fetchProducts = useCallback(async () => {
@@ -87,7 +98,7 @@ export default function CashierPage() {
     } finally { setLoading(false); }
   }, [t]);
 
-  useEffect(() => { fetchProducts(); fetchShift(); }, [fetchProducts]); // eslint-disable-line react-hooks/set-state-in-effect
+  useEffect(() => { fetchProducts(); fetchShift(); fetchPendingTransfers(); }, [fetchProducts]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const filtered = products.filter(p =>
     p.nameAr.includes(search) || p.sku.includes(search)
@@ -159,7 +170,22 @@ export default function CashierPage() {
         items: cart.map(c => ({ productId: c.productId, quantity: c.quantity })),
       });
 
-      // ✅ طريقة إلكترونية (شبكة/بطاقة/تابي/تمارا): البيع معلق — نفتح بوابة الدفع
+      // ✅ تحويل بنكي: البيع معلق — نعرض بيانات حساب المتجر البنكي وننتظر تأكيد الكاشير يدويًا
+      if (res.data?.data?.pending && res.data?.data?.bankTransfer) {
+        setPendingBankTransfer({
+          reference: res.data.data.paymentReference,
+          amount: total,
+          bankName: res.data.data.bankTransfer.bankName,
+          accountHolder: res.data.data.bankTransfer.accountHolder,
+          iban: res.data.data.bankTransfer.iban,
+        });
+        setShowBankTransferModal(true);
+        setSuccessMessage(res.data.message || t("pos.bankTransferPendingCreated"));
+        await fetchPendingTransfers();
+        return;
+      }
+
+      // ✅ طريقة إلكترونية (شبكة/بطاقة/باي بال/تابي/تمارا): البيع معلق — نفتح بوابة الدفع
       if (res.data?.data?.pending && res.data?.data?.paymentLinkUrl) {
         setPaymentLink(res.data.data.paymentLinkUrl);
         setShowPaymentLink(true);
@@ -177,6 +203,35 @@ export default function CashierPage() {
       const e = err as { response?: { data?: { message?: string } } };
       setError(e.response?.data?.message || t("pos.error"));
     } finally { setSubmitting(false); }
+  };
+
+  const handleConfirmBankTransfer = async () => {
+    if (!pendingBankTransfer) return;
+    setConfirmingTransfer(true);
+    try {
+      const r = await api.post(`/pos/bank-transfer/${pendingBankTransfer.reference}/confirm`);
+      setShowBankTransferModal(false);
+      setPendingBankTransfer(null);
+      setSuccessMessage(r.data.message || t("pos.bankTransferConfirmed"));
+      setCart([]); setGuestName(""); setReceivedAmount("");
+      await fetchShift();
+      await fetchPendingTransfers();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || t("pos.error"));
+    } finally { setConfirmingTransfer(false); }
+  };
+
+  const confirmTransferByRef = async (reference: string) => {
+    try {
+      const r = await api.post(`/pos/bank-transfer/${reference}/confirm`);
+      setSuccessMessage(r.data.message || t("pos.bankTransferConfirmed"));
+      await fetchShift();
+      await fetchPendingTransfers();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setError(e.response?.data?.message || t("pos.error"));
+    }
   };
 
   const handleOpenShift = async () => {
@@ -365,6 +420,20 @@ export default function CashierPage() {
             )}
           </div>
 
+          {pendingTransfersList.length > 0 && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-[12px] font-bold text-amber-800 mb-2">{t("pos.pendingTransfersTitle")} ({pendingTransfersList.length})</p>
+              <div className="space-y-2">
+                {pendingTransfersList.map(pt => (
+                  <div key={pt.paymentReference} className="flex items-center justify-between bg-white rounded-lg p-2 text-[12px] gap-2">
+                    <span className="truncate">{pt.guestName || t("pos.cashCustomer")} — {pt.amount.toFixed(2)} {t("common.sar")}</span>
+                    <button onClick={() => confirmTransferByRef(pt.paymentReference)} className="btn btn-outline btn-sm shrink-0">{t("pos.confirmTransferReceived")}</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mb-4">
             <span className="text-[var(--sub)] text-[12px] block mb-2">{t("pos.paymentMethod")}</span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -378,7 +447,7 @@ export default function CashierPage() {
                     disabled={!shift}
                     aria-pressed={isSelected}
                     title={t(pm.label)}
-                    className={`relative flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-[11.5px] font-bold transition-all ${isSelected ? "border-[var(--blue)] bg-[var(--blue-50)] text-[var(--blue-deep)] shadow-sm" : "border-gray-200 bg-white text-[var(--sub)] hover:border-gray-300 hover:bg-gray-50"} ${!shift ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                    className={`relative flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-1 py-3 text-[11.5px] font-bold transition-all overflow-hidden ${isSelected ? "border-[var(--blue)] bg-[var(--blue-50)] text-[var(--blue-deep)] shadow-sm" : "border-gray-200 bg-white text-[var(--sub)] hover:border-gray-300 hover:bg-gray-50"} ${!shift ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     {isSelected && (
                       <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[var(--blue)] flex items-center justify-center ring-2 ring-white">
@@ -387,7 +456,7 @@ export default function CashierPage() {
                         </svg>
                       </span>
                     )}
-                    <PaymentMethodLogo method={pm.value} size={34} />
+                    <PaymentMethodLogo method={pm.value} size={28} />
                     <span className="leading-tight text-center w-full">{t(pm.label)}</span>
                   </button>
                 );
@@ -474,6 +543,30 @@ export default function CashierPage() {
               <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="btn btn-primary flex-1 justify-center">
                 <Icon name="link" size={14} /> {t("pos.openGateway")}
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBankTransferModal && pendingBankTransfer && (
+        <div className="modal-overlay" onClick={() => setShowBankTransferModal(false)}>
+          <div className="modal-card max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-[18px] font-bold">{t("pos.bankTransferPendingTitle")}</h2>
+              <button onClick={() => setShowBankTransferModal(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+            </div>
+            <p className="text-[13px] text-[var(--sub)] mb-4">{t("pos.bankTransferPendingDesc")}</p>
+            <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1.5 mb-4">
+              <div className="flex justify-between"><span className="text-[var(--sub)]">{t("pos.bankName")}</span><span className="font-bold">{pendingBankTransfer.bankName || "-"}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--sub)]">{t("pos.accountHolder")}</span><span className="font-bold">{pendingBankTransfer.accountHolder || "-"}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--sub)]">{t("pos.iban")}</span><span className="font-bold" dir="ltr">{pendingBankTransfer.iban || "-"}</span></div>
+              <div className="flex justify-between pt-1.5 border-t"><span className="text-[var(--sub)]">{t("pos.totalDue")}</span><span className="font-bold" dir="ltr">{pendingBankTransfer.amount.toFixed(2)} {t("common.sar")}</span></div>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowBankTransferModal(false)} className="btn btn-outline flex-1">{t("pos.later")}</button>
+              <button onClick={handleConfirmBankTransfer} disabled={confirmingTransfer} className="btn btn-primary flex-1">
+                {confirmingTransfer ? t("common.loading") : t("pos.confirmTransferReceived")}
+              </button>
             </div>
           </div>
         </div>

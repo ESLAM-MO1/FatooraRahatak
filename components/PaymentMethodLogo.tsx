@@ -27,14 +27,10 @@ export default function PaymentMethodLogo({ method, size = 44 }: PaymentMethodLo
 
     case "Mada":
       return (
-        <svg width={s} height={s} viewBox="0 0 44 44" fill="none">
-          <rect width="44" height="44" rx="10" fill="#1A3B6C" />
-          <rect x="6" y="12" width="32" height="18" rx="3" fill="white" />
-          <rect x="6" y="16" width="32" height="5" fill="#F9A825" />
-          <circle cx="16" cy="23" r="3.5" fill="#F9A825" />
-          <path d="M24 21.5l2 2 3-3" stroke="#1A3B6C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <text x="22" y="38" textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">مدى</text>
-        </svg>
+        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/payment/mada.png" alt="مدى" className="w-full h-full object-contain" />
+        </div>
       );
 
     case "CreditCard":
@@ -62,22 +58,26 @@ export default function PaymentMethodLogo({ method, size = 44 }: PaymentMethodLo
 
     case "Tabby":
       return (
-        <svg width={s} height={s} viewBox="0 0 44 44" fill="none">
-          <rect width="44" height="44" rx="10" fill="#5A31F4" />
-          <rect x="8" y="10" width="28" height="20" rx="5" fill="white" />
-          <text x="22" y="24" textAnchor="middle" fill="#5A31F4" fontSize="14" fontWeight="bold" fontFamily="Arial">Tabby</text>
-          <text x="22" y="38" textAnchor="middle" fill="white" fontSize="6.5" fontWeight="bold">تابي</text>
-        </svg>
+        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/payment/tabby.png" alt="تابي" className="w-full h-full object-contain" />
+        </div>
       );
 
     case "Tamara":
       return (
-        <svg width={s} height={s} viewBox="0 0 44 44" fill="none">
-          <rect width="44" height="44" rx="10" fill="#FF6B9D" />
-          <rect x="8" y="10" width="28" height="20" rx="5" fill="white" />
-          <text x="22" y="24" textAnchor="middle" fill="#FF6B9D" fontSize="12" fontWeight="bold" fontFamily="Arial">Tamara</text>
-          <text x="22" y="38" textAnchor="middle" fill="white" fontSize="6.5" fontWeight="bold">تمارا</text>
-        </svg>
+        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/payment/tamara.png" alt="تمارا" className="w-full h-full object-contain" />
+        </div>
+      );
+
+    case "PayPal":
+      return (
+        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/payment/paypal.png" alt="PayPal" className="w-full h-full object-contain" />
+        </div>
       );
 
     default:

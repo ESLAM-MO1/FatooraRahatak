@@ -30,6 +30,7 @@ interface OrderDetail {
   subTotal: number;
   discountAmount: number;
   shippingCost: number;
+  codFee?: number;
   taxAmount?: number;
   totalAmount: number;
   shippingAddress: string;
@@ -615,6 +616,12 @@ export default function OrderDetailPage() {
           <div className="flex items-center justify-between mb-2 text-sm">
             <span className="text-gray-500">{t("cart.discountValue")}</span>
             <span className="text-green-600">− {t("cart.priceCurrency", { currency: currencySymbol, price: order.discountAmount.toFixed(2) })}</span>
+          </div>
+        )}
+        {(order.codFee ?? 0) > 0 && (
+          <div className="flex items-center justify-between mb-2 text-sm">
+            <span className="text-gray-500">{t("shipping.codFee")}</span>
+            <span className="text-gray-500">{t("cart.priceCurrency", { currency: currencySymbol, price: (order.codFee ?? 0).toFixed(2) })}</span>
           </div>
         )}
         {order.shippingCost > 0 && (

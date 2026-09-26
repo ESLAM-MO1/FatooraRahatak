@@ -244,7 +244,9 @@ public class OrderService : IOrderService
         // الآن تُضاف الضريبة على نفس الإجمالي وبالطريقة نفسها في مكانَي الحساب (السلة + المحاسبة).
         var taxAmount = store.IsVatRegistered ? Math.Round((totalAmount) * VatRate, 2) : 0m;
 
-        var totalAmountWithShipping = totalAmount + shippingCost + codFee + taxAmount;
+        shippingCost += codFee;
+
+        var totalAmountWithShipping = totalAmount + shippingCost + taxAmount;
 
         // ⚠️ فرض حد الطلبات الشهري من الباقة (MaxOrdersPerMonth)
         if (package?.MaxOrdersPerMonth is > 0)
@@ -293,7 +295,6 @@ public class OrderService : IOrderService
                 SubTotal = subTotal,
                 DiscountAmount = discountAmount,
                 ShippingCost = shippingCost,
-                CodFee = codFee,
                 TotalAmount = totalAmountWithShipping,
                 CouponId = appliedCoupon?.Id,
                 Notes = dto.Notes,
@@ -514,7 +515,6 @@ public class OrderService : IOrderService
                 SubTotal = order.SubTotal,
                 DiscountAmount = order.DiscountAmount,
                 ShippingCost = order.ShippingCost,
-                CodFee = order.CodFee,
                 TaxAmount = taxAmount,
                 TotalAmount = order.TotalAmount,
                 PaymentLinkUrl = paymentLinkUrl,

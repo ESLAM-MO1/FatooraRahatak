@@ -7,7 +7,6 @@ public class OrderConfirmationDto
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal ShippingCost { get; set; }
-    public decimal CodFee { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public string? PaymentLinkUrl { get; set; }

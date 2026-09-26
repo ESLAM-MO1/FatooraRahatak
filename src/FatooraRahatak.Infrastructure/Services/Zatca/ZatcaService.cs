@@ -95,6 +95,85 @@ public class ZatcaService : IZatcaService
             if (string.IsNullOrWhiteSpace(complianceResponse.RequestId))
                 throw new InvalidOperationException("زاتكا لم تُرجع معرّف طلب الالتزام (Request ID) في رد الخطوة الأولى");
 
+            // الخطوة 1.5 (إلزامية من زاتكا - BR-KSA وقواعد الـ Compliance Checks):
+            // لازم نبعت نماذج فواتير تجريبية (Standard/Simplified × Invoice/CreditNote/DebitNote حسب InvoiceType)
+            // وتتقبل من زاتكا الأول، قبل ما نطلب الشهادة النهائية - وإلا الطلب هيترفض بـ Missing-ComplianceSteps
+            const string complianceBuyerVat = "300000000000003"; // رقم ضريبي وهمي واضح إنه تجريبي، للنماذج Standard بس
+            foreach (var sample in GetRequiredComplianceSamples(_settings.Value.InvoiceType))
+            {
+                var sampleInvoice = new Invoice
+                {
+                    StoreId = storeId,
+                    InvoiceType = InvoiceType.Sales,
+                    InvoiceNumber = "COMPLIANCE-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
+                    InvoiceDate = DateOnly.FromDateTime(DateTime.UtcNow),
+                    PartyName = "عميل تجريبي - اختبار توافق",
+                    PartyCity = "الرياض",
+                    SubTotal = 100m,
+                    DiscountAmount = 0m,
+                    TaxAmount = 15m,
+                    TotalAmount = 115m,
+                    CreatedByUserId = userId,
+                    Items = new List<InvoiceItem>
+                    {
+                        new InvoiceItem
+                        {
+                            ProductId = 0,
+                            ProductNameSnapshot = "منتج اختبار التوافق",
+                            ProductCodeSnapshot = "TEST-001",
+                            Quantity = 1,
+                            UnitPrice = 100m,
+                            LineTotal = 100m,
+                            DiscountAmount = 0m,
+                            LineAfterDiscount = 100m
+                        }
+                    }
+                };
+
+                var sampleUuid = Guid.NewGuid().ToString();
+                var isCreditOrDebit = sample.DocumentTypeCode != "388";
+
+                var sampleXml = ZatcaXmlBuilder.BuildInvoiceXml(
+                    store,
+                    sampleInvoice,
+                    sampleUuid,
+                    icv: 1,
+                    previousInvoiceHash: ZatcaQrHelper.FirstInvoicePih,
+                    forceReporting: !sample.IsStandard,
+                    buyerVatNumber: sample.IsStandard ? complianceBuyerVat : null,
+                    documentTypeCode: sample.DocumentTypeCode,
+                    billingReferenceInvoiceId: isCreditOrDebit ? sampleInvoice.InvoiceNumber : null,
+                    issuanceReason: isCreditOrDebit ? "فاتورة اختبار توافق (Compliance Test) - لا تمثل معاملة تجارية حقيقية" : null);
+
+                var sampleSignature = ZatcaSigner.Sign(sampleXml, privateKeyPem, complianceResponse.BinarySecurityToken!);
+
+                var sampleQr = ZatcaQrHelper.BuildSignedQrTlvBase64(
+                    organizationName,
+                    vatNumber!,
+                    DateTime.UtcNow,
+                    sampleInvoice.TotalAmount,
+                    sampleInvoice.TaxAmount,
+                    sampleSignature.InvoiceHash,
+                    sampleSignature.SignatureValueBase64);
+
+                var sampleFinalXml = ZatcaXmlBuilder.InsertQrReference(sampleSignature.SignedXml, sampleQr);
+
+                try
+                {
+                    await _client.SubmitInvoiceAsync(
+                        "/compliance/invoices",
+                        Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(sampleFinalXml)),
+                        sampleSignature.InvoiceHash,
+                        sampleUuid,
+                        complianceResponse.BinarySecurityToken!,
+                        complianceResponse.Secret!);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"فشل اختبار التوافق (Compliance Check) لنوع '{sample.Description}': {ex.Message}");
+                }
+            }
+
             // الخطوة 2: نستخدم الشهادة التجريبية كبيانات دخول -> الشهادة النهائية (Production CSID)
             productionResponse = await _client.ProductionOnboardAsync(
                 complianceResponse.RequestId!,
@@ -376,6 +455,26 @@ public class ZatcaService : IZatcaService
         ErrorMessage = credential.ErrorMessage,
         ProductionCsid = credential.ProductionCsid
     };
+
+    private static IEnumerable<(string DocumentTypeCode, bool IsStandard, string Description)> GetRequiredComplianceSamples(string? invoiceType)
+    {
+        var type = string.IsNullOrWhiteSpace(invoiceType) ? "1100" : invoiceType.Trim();
+        var needsStandard = type is "1000" or "1100";
+        var needsSimplified = type is "0100" or "1100";
+
+        if (needsStandard)
+        {
+            yield return ("388", true, "Standard Tax Invoice");
+            yield return ("381", true, "Standard Credit Note");
+            yield return ("383", true, "Standard Debit Note");
+        }
+        if (needsSimplified)
+        {
+            yield return ("388", false, "Simplified Tax Invoice");
+            yield return ("381", false, "Simplified Credit Note");
+            yield return ("383", false, "Simplified Debit Note");
+        }
+    }
 
     private static string BuildEgsSerialNumber(long storeId) =>
         $"1-FatooraRahatak|2-1.0.0|3-{storeId}";

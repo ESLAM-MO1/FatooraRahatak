@@ -26,11 +26,14 @@ public static class ZatcaXmlBuilder
         long icv,
         string previousInvoiceHash,
         bool forceReporting = false,
-        string? buyerVatNumber = null)
+        string? buyerVatNumber = null,
+        string documentTypeCode = "388",
+        string? billingReferenceInvoiceId = null,
+        string? issuanceReason = null)
     {
         var isStandard = !forceReporting && !string.IsNullOrWhiteSpace(buyerVatNumber);
         var profileId = isStandard ? "clearance:1.0" : "reporting:1.0";
-        var invoiceTypeCode = isStandard ? "388" : "381";
+        var invoiceTypeCode = documentTypeCode;
         var invoiceTypeName = isStandard ? "0100000" : "0200000";
 
         var currency = "SAR";
@@ -63,6 +66,12 @@ public static class ZatcaXmlBuilder
             new XElement(Cbc + "TaxCurrencyCode", "SAR"),
             new XElement(Cbc + "BuyerReference", string.Empty),
 
+            billingReferenceInvoiceId != null
+                ? new XElement(Cac + "BillingReference",
+                    new XElement(Cac + "InvoiceDocumentReference",
+                        new XElement(Cbc + "ID", billingReferenceInvoiceId)))
+                : null,
+
             BuildAdditionalDocumentReference("ICV", icvValue: icv),
             BuildAdditionalDocumentReference("PIH", embeddedBase64: previousInvoiceHash),
 
@@ -71,6 +80,11 @@ public static class ZatcaXmlBuilder
             BuildSupplierParty(store),
             BuildCustomerParty(invoice, buyerVatNumber),
             BuildDelivery(issueDate),
+            issuanceReason != null
+                ? new XElement(Cac + "PaymentMeans",
+                    new XElement(Cbc + "PaymentMeansCode", "10"),
+                    new XElement(Cbc + "InstructionNote", issuanceReason))
+                : null,
             BuildTaxTotal(taxExclusive, taxAmount),
             BuildLegalMonetaryTotal(lineExtensionTotal, discountAmount, taxExclusive, taxAmount, taxInclusive, payable),
             invoice.Items.Select(item => BuildInvoiceLine(item, store)));

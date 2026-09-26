@@ -898,6 +898,14 @@ export default function CheckoutPage() {
                   {t("cart.priceCurrency", { currency: currencySymbol, price: cart.subtotal.toFixed(2) })}
                 </span>
               </div>
+              {selectedPayment === "CashOnDelivery" && selectedShipping === "DeliveryToAddress" && quote?.available && (quote.codFee ?? 0) > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500 text-sm">{t("shipping.codFee")}</span>
+                  <span className="text-sm font-bold text-gray-700">
+                    {t("cart.priceCurrency", { currency: currencySymbol, price: (quote.codFee ?? 0).toFixed(2) })}
+                  </span>
+                </div>
+              )}
               {selectedShipping === "DeliveryToAddress" && quote?.available ? (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500 text-sm">{t("checkout.shippingCostLabel")}</span>
@@ -913,14 +921,6 @@ export default function CheckoutPage() {
                   <span className="text-xs text-gray-400">{t("checkout.enterAddressForShipping")}</span>
                 </div>
               ) : null}
-              {selectedPayment === "CashOnDelivery" && selectedShipping === "DeliveryToAddress" && quote?.available && (quote.codFee ?? 0) > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 text-sm">{t("shipping.codFee")}</span>
-                  <span className="text-sm font-bold text-gray-700">
-                    {t("cart.priceCurrency", { currency: currencySymbol, price: (quote.codFee ?? 0).toFixed(2) })}
-                  </span>
-                </div>
-              )}
               <div className="flex items-center justify-between pt-2.5 border-t border-gray-100">
                 <span className="text-gray-700 font-bold">{t("cart.total")}</span>
                 <span className="text-xl font-bold store-price">

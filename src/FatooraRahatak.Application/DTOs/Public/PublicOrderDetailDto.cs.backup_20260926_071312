@@ -8,7 +8,6 @@ public class PublicOrderDetailDto
     public decimal SubTotal { get; set; }
     public decimal DiscountAmount { get; set; }
     public decimal ShippingCost { get; set; }
-    public decimal CodFee { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal TaxAmount { get; set; }
     public string ShippingAddress { get; set; } = string.Empty;

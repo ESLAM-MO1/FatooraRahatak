@@ -27,9 +27,9 @@ export default function PaymentMethodLogo({ method, size = 44 }: PaymentMethodLo
 
     case "Mada":
       return (
-        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+        <div className="w-14 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center overflow-hidden px-1 py-0.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/payment/mada.png" alt="مدى" className="w-full h-full object-contain" />
+          <img src="/payment/mada.png" alt="مدى" className="max-w-full max-h-full object-contain" />
         </div>
       );
 
@@ -58,25 +58,25 @@ export default function PaymentMethodLogo({ method, size = 44 }: PaymentMethodLo
 
     case "Tabby":
       return (
-        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+        <div className="w-14 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center overflow-hidden px-1 py-0.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/payment/tabby.png" alt="تابي" className="w-full h-full object-contain" />
+          <img src="/payment/tabby.png" alt="تابي" className="max-w-full max-h-full object-contain" />
         </div>
       );
 
     case "Tamara":
       return (
-        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+        <div className="w-14 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center overflow-hidden px-1 py-0.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/payment/tamara.png" alt="تمارا" className="w-full h-full object-contain" />
+          <img src="/payment/tamara.png" alt="تمارا" className="max-w-full max-h-full object-contain" />
         </div>
       );
 
     case "PayPal":
       return (
-        <div style={{ width: s, height: s }} className="rounded-[10px] bg-white border border-gray-200 flex items-center justify-center overflow-hidden p-1.5">
+        <div className="w-9 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center overflow-hidden px-1 py-0.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/payment/paypal.png" alt="PayPal" className="w-full h-full object-contain" />
+          <img src="/payment/paypal.png" alt="PayPal" className="max-w-full max-h-full object-contain" />
         </div>
       );
 

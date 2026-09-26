@@ -675,13 +675,6 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {selectedPayment === "CashOnDelivery" && selectedShipping === "DeliveryToAddress" && quote?.available && (quote.codFee ?? 0) > 0 && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6 flex items-center justify-between">
-            <span className="text-sm text-gray-500">{t("shipping.codFee")}</span>
-            <span className="text-sm font-bold text-gray-800">{t("cart.priceCurrency", { currency: currencySymbol, price: (quote.codFee ?? 0).toFixed(2) })}</span>
-          </div>
-        )}
-
         {/* Shipping form - always direct, no login/guest step */}
       <form
         id="checkout-form"

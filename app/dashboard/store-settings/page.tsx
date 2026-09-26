@@ -1970,47 +1970,67 @@ export default function StoreSettingsPage() {
           gap: 14px;
         }
         .ss-settings-card {
+          position: relative;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 10px;
+          gap: 12px;
           text-align: center;
           background: #fff;
-          border: 1px solid #eef0f3;
-          border-radius: 16px;
-          padding: 22px 14px;
-          transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+          border: 1px solid #e9ebef;
+          border-radius: 18px;
+          padding: 26px 16px;
+          box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+          transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.15s ease;
         }
         .ss-settings-card:hover {
-          border-color: #d7dbe1;
-          box-shadow: 0 4px 14px rgba(16, 24, 40, 0.06);
-          transform: translateY(-2px);
+          border-color: #d3d8e0;
+          box-shadow: 0 10px 24px -8px rgba(16, 24, 40, 0.14), 0 2px 6px rgba(16, 24, 40, 0.06);
+          transform: translateY(-3px);
         }
         .ss-settings-card--active {
           border-color: var(--blue);
-          background: var(--blue-50, #eef4ff);
-          box-shadow: inset 0 0 0 1px var(--blue);
+          background: linear-gradient(180deg, var(--blue-50, #eef4ff) 0%, #ffffff 100%);
+          box-shadow: 0 0 0 1.5px var(--blue), 0 10px 24px -10px rgba(37, 99, 235, 0.28);
+        }
+        .ss-settings-card--active::after {
+          content: "";
+          position: absolute;
+          top: 10px;
+          inset-inline-end: 10px;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--blue);
         }
         .ss-settings-card-icon {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: var(--blue-50, #eef4ff);
+          background: linear-gradient(150deg, var(--blue-50, #eef4ff) 0%, #e3ecfe 100%);
           color: var(--blue);
           flex-shrink: 0;
+          box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+          transition: transform 0.18s ease;
+        }
+        .ss-settings-card:hover .ss-settings-card-icon {
+          transform: scale(1.06);
         }
         .ss-settings-card--active .ss-settings-card-icon {
-          background: #fff;
+          background: var(--blue);
+          color: #fff;
+          box-shadow: 0 4px 10px -2px rgba(37, 99, 235, 0.45);
         }
         .ss-settings-card-label {
-          font-size: 12.5px;
+          font-size: 13px;
           font-weight: 700;
           color: var(--ink);
-          line-height: 1.35;
+          line-height: 1.4;
+          letter-spacing: -0.01em;
         }
 
         .ss-tab-panel {

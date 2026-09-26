@@ -13,6 +13,33 @@ namespace FatooraRahatak.Infrastructure.Services;
 // =====================================================================
 public static class ZatcaQrHelper
 {
+    // القيمة الرسمية اللي زاتكا بتطلبها كـ PIH لأول فاتورة في السلسلة (مفيش فاتورة سابقة)
+    // = base64(UTF8(hex(SHA256("0")))) - قيمة ثابتة معروفة ومؤكدة من زاتكا نفسها
+    public const string FirstInvoicePih = "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==";
+
+    // بيرجع base64 للبيانات الخام (TLV bytes) من غير أي رسم QR - ده اللي المفروض
+    // يترحط جوه XML الفاتورة (cac:AdditionalDocumentReference[ID=QR]), مش صورة PNG
+    public static string BuildSignedQrTlvBase64(
+        string sellerName,
+        string vatNumber,
+        DateTime timestamp,
+        decimal totalWithVat,
+        decimal vatAmount,
+        string invoiceHash,
+        string digitalSignature)
+    {
+        var tlv = new List<byte>();
+        AddTlv(tlv, 1, sellerName);
+        AddTlv(tlv, 2, vatNumber);
+        AddTlv(tlv, 3, timestamp.ToString("yyyy-MM-ddTHH:mm:ss"));
+        AddTlv(tlv, 4, totalWithVat.ToString("0.00", CultureInfo.InvariantCulture));
+        AddTlv(tlv, 5, vatAmount.ToString("0.00", CultureInfo.InvariantCulture));
+        AddTlv(tlv, 6, invoiceHash);
+        AddTlv(tlv, 7, digitalSignature);
+
+        return Convert.ToBase64String(tlv.ToArray());
+    }
+
     public static string BuildQrBase64(
         string sellerName,
         string vatNumber,

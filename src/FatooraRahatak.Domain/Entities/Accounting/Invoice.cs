@@ -46,6 +46,8 @@ public class Invoice : BaseEntity
     public string? ZatcaSignedXml { get; set; }
     public string? ZatcaQrBase64 { get; set; }
     public DateTime? ZatcaSubmissionDateTime { get; set; }
+    public long? ZatcaIcv { get; set; } // رقم عداد الفاتورة (Invoice Counter Value) وقت الإرسال
+    public string? ZatcaPreviousInvoiceHash { get; set; } // هاش الفاتورة السابقة (PIH) وقت الإرسال
 
     public Store Store { get; set; } = null!;
     public User? Customer { get; set; }

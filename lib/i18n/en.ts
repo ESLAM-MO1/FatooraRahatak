@@ -3910,7 +3910,7 @@ const en: Record<string, string> = {
   "helpCenter.email": "Email",
   "helpCenter.supportPhone": "+966531118224",
   "helpCenter.salesPhone": "+966531158477",
-  "helpCenter.emailAddress": "faturatrahatik@gmail.com",
+  "helpCenter.emailAddress": "info@rahtk.sa",
   "helpCenter.available247": "Available around the clock",
 
   // ── Subscription ──

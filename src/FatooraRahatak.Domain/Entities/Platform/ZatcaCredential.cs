@@ -23,6 +23,8 @@ public class ZatcaCredential : BaseEntity
     public string? SolutionName { get; set; }
     public string? ErrorMessage { get; set; }
     public DateTime? OnboardedAt { get; set; }
+    public long LastIcv { get; set; } = 0; // آخر رقم عداد فاتورة استُخدم لهذا المتجر
+    public string? LastInvoiceHash { get; set; } // هاش آخر فاتورة اتبعتت بنجاح لهذا المتجر
 
     public Store Store { get; set; } = null!;
 }

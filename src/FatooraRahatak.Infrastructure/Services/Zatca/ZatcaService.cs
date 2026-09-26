@@ -71,12 +71,19 @@ public class ZatcaService : IZatcaService
             _context.ZatcaCredentials.Add(credential);
         }
 
-        var serialNumber = BuildSerialNumber(vatNumber);
+        var organizationName = string.IsNullOrWhiteSpace(_settings.Value.OrganizationName) ? store.StoreName : _settings.Value.OrganizationName;
+        var egsSerialNumber = BuildEgsSerialNumber(storeId);
+        var certificateTemplateName = ResolveCertificateTemplateName(_settings.Value.Environment);
         var (csrBase64, privateKeyPem) = ZatcaCsrBuilder.GenerateCsr(
-            vatNumber,
-            string.IsNullOrWhiteSpace(_settings.Value.OrganizationName) ? store.StoreName : _settings.Value.OrganizationName,
+            certificateTemplateName,
+            organizationName,
+            organizationName,
             _settings.Value.OrganizationUnit,
-            serialNumber);
+            vatNumber,
+            egsSerialNumber,
+            string.IsNullOrWhiteSpace(_settings.Value.InvoiceType) ? "1100" : _settings.Value.InvoiceType,
+            string.IsNullOrWhiteSpace(store.ContactAddress) ? "Saudi Arabia" : store.ContactAddress,
+            string.IsNullOrWhiteSpace(_settings.Value.BusinessCategory) ? "Retail" : _settings.Value.BusinessCategory);
 
         ZatcaComplianceResponse complianceResponse;
         ZatcaComplianceResponse productionResponse;
@@ -157,10 +164,36 @@ public class ZatcaService : IZatcaService
             || string.IsNullOrWhiteSpace(credential.CsidPrivateKey))
             throw new InvalidOperationException("المتجر غير مسجّل لدى زاتكا بعد — نفّذ تسجيل الجهاز (Onboarding) أولًا");
 
-        var unsignedXml = ZatcaXmlBuilder.BuildInvoiceXml(store, invoice, forceReporting, buyerVatNumber);
+        var uuid = invoice.ZatcaUuid ?? Guid.NewGuid().ToString("N").ToUpperInvariant();
+
+        // ⚠️ ملحوظة تزامن: القراءة والتحديث دول مش جوه transaction بقفل صف حقيقي (pessimistic lock)،
+        // لأن جملة القفل بتختلف حسب نوع قاعدة البيانات (Postgres/SQL Server/MySQL) ومش عارف نوعها
+        // عندك بالظبط. لو فاتورتين اتبعتوا لنفس المتجر في نفس اللحظة بالظبط، ممكن يحصل تضارب
+        // في رقم الـ ICV. الحل الآمن دلوقتي: تتأكد إن إرسال الفواتير لكل متجر بيحصل واحدة ورا التانية
+        // (queue أو lock على مستوى التطبيق)، أو نضيف قفل حقيقي بعد ما تقولي نوع قاعدة البيانات بالظبط.
+        var lockedCredential = credential;
+
+        var icv = lockedCredential.LastIcv + 1;
+        var previousInvoiceHash = string.IsNullOrWhiteSpace(lockedCredential.LastInvoiceHash)
+            ? ZatcaQrHelper.FirstInvoicePih
+            : lockedCredential.LastInvoiceHash;
+
+        var unsignedXml = ZatcaXmlBuilder.BuildInvoiceXml(store, invoice, uuid, icv, previousInvoiceHash, forceReporting, buyerVatNumber);
         var signatureResult = ZatcaSigner.Sign(unsignedXml, credential.CsidPrivateKey, credential.ProductionCsid);
 
         var invoiceDate = invoice.InvoiceDate.ToDateTime(TimeOnly.MinValue);
+
+        var qrTlvBase64 = ZatcaQrHelper.BuildSignedQrTlvBase64(
+            store.StoreName,
+            store.VatNumber,
+            invoiceDate,
+            invoice.TotalAmount,
+            invoice.TaxAmount,
+            signatureResult.InvoiceHash,
+            signatureResult.SignatureValueBase64);
+
+        var finalSignedXml = ZatcaXmlBuilder.InsertQrReference(signatureResult.SignedXml, qrTlvBase64);
+
         var qrBase64 = ZatcaQrHelper.BuildSignedQrBase64(
             store.StoreName,
             store.VatNumber,
@@ -170,7 +203,6 @@ public class ZatcaService : IZatcaService
             signatureResult.InvoiceHash,
             signatureResult.SignatureValueBase64);
 
-        var uuid = invoice.ZatcaUuid ?? Guid.NewGuid().ToString("N").ToUpperInvariant();
         var endpointPath = forceReporting ? "/invoices/reporting/single" : "/invoices/clearance/single";
 
         ZatcaSubmissionResponse response;
@@ -178,7 +210,7 @@ public class ZatcaService : IZatcaService
         {
             response = await _client.SubmitInvoiceAsync(
                 endpointPath,
-                Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(signatureResult.SignedXml)),
+                Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(finalSignedXml)),
                 signatureResult.InvoiceHash,
                 uuid,
                 credential.ProductionCsid,
@@ -211,10 +243,18 @@ public class ZatcaService : IZatcaService
         invoice.ZatcaReportingStatus = reportingStatus;
         invoice.ZatcaValidationResults = BuildValidationText(response);
         invoice.ZatcaHash = signatureResult.InvoiceHash;
-        invoice.ZatcaSignedXml = signatureResult.SignedXml;
+        invoice.ZatcaSignedXml = finalSignedXml;
         invoice.ZatcaQrBase64 = !string.IsNullOrWhiteSpace(response.Qr) ? response.Qr : qrBase64;
         invoice.ZatcaSubmissionDateTime = DateTime.UtcNow;
+        invoice.ZatcaIcv = icv;
+        invoice.ZatcaPreviousInvoiceHash = previousInvoiceHash;
         invoice.UpdatedAt = DateTime.UtcNow;
+
+        if (success)
+        {
+            lockedCredential.LastIcv = icv;
+            lockedCredential.LastInvoiceHash = signatureResult.InvoiceHash;
+        }
 
         await _context.SaveChangesAsync();
 
@@ -337,8 +377,15 @@ public class ZatcaService : IZatcaService
         ProductionCsid = credential.ProductionCsid
     };
 
-    private static string BuildSerialNumber(string vatNumber) =>
-        $"+{new string(vatNumber.Where(char.IsDigit).ToArray())}-{DateTime.UtcNow:yyyyMMdd}-1";
+    private static string BuildEgsSerialNumber(long storeId) =>
+        $"1-FatooraRahatak|2-1.0.0|3-{storeId}";
+
+    private static string ResolveCertificateTemplateName(string? environment) => environment?.Trim().ToLowerInvariant() switch
+    {
+        "production" or "prod" => "ZATCA-Code-Signing",
+        "simulation" or "sim" => "PREZATCA-Code-Signing",
+        _ => "TSTZATCA-Code-Signing"
+    };
 
     private static string BuildValidationText(ZatcaSubmissionResponse response)
     {

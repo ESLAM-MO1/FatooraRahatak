@@ -50,7 +50,7 @@ public static class EmailTemplateRenderer
         sb.AppendLine("</div>");
         sb.AppendLine("<div class=\"footer\">");
         sb.AppendLine("<p>فاتورة راحتك - جميع الحقوق محفوظة &copy; " + DateTime.UtcNow.Year + "</p>");
-        sb.AppendLine("<p>للاستفسارات والدعم الفني: <a href=\"mailto:faturatrahatik@gmail.com\" style=\"color:" + BrandColor + ";text-decoration:none\">faturatrahatik@gmail.com</a></p>");
+        sb.AppendLine("<p>للاستفسارات والدعم الفني: <a href=\"mailto:info@rahtk.sa\" style=\"color:" + BrandColor + ";text-decoration:none\">info@rahtk.sa</a></p>");
         sb.AppendLine("</div>");
         sb.AppendLine("</div></body></html>");
         return sb.ToString();

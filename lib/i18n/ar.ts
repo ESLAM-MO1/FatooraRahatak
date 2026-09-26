@@ -3937,7 +3937,7 @@ const ar = {
   "helpCenter.email": "بريد إلكتروني",
   "helpCenter.supportPhone": "+966531118224",
   "helpCenter.salesPhone": "+966531158477",
-  "helpCenter.emailAddress": "faturatrahatik@gmail.com",
+  "helpCenter.emailAddress": "info@rahtk.sa",
   "helpCenter.available247": "متاح على مدار الساعة",
 
   // ── Subscription ──

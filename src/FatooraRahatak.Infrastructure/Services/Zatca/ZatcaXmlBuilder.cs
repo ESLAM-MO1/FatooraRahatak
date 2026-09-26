@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Xml;
 using System.Xml.Linq;
 using FatooraRahatak.Domain.Entities.Accounting;
 using FatooraRahatak.Domain.Entities.Stores;
@@ -21,12 +22,16 @@ public static class ZatcaXmlBuilder
     public static string BuildInvoiceXml(
         Store store,
         Invoice invoice,
+        string uuid,
+        long icv,
+        string previousInvoiceHash,
         bool forceReporting = false,
         string? buyerVatNumber = null)
     {
         var isStandard = !forceReporting && !string.IsNullOrWhiteSpace(buyerVatNumber);
-        var profileId = isStandard ? "clearance:1:0" : "reporting:1:0";
+        var profileId = isStandard ? "clearance:1.0" : "reporting:1.0";
         var invoiceTypeCode = isStandard ? "388" : "381";
+        var invoiceTypeName = isStandard ? "0100000" : "0200000";
 
         var currency = "SAR";
         var issueDate = invoice.InvoiceDate;
@@ -49,15 +54,23 @@ public static class ZatcaXmlBuilder
             new XElement(Cbc + "CustomizationID", "urn:cen.eu:en16931:2017#compliant#urn:fatie:1:0:2017:1"),
             new XElement(Cbc + "ProfileID", profileId),
             new XElement(Cbc + "ID", invoice.InvoiceNumber),
+            new XElement(Cbc + "UUID", uuid),
             new XElement(Cbc + "IssueDate", issueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
             new XElement(Cbc + "IssueTime", issueTime),
-            new XElement(Cbc + "InvoiceTypeCode", invoiceTypeCode),
+            new XElement(Cbc + "InvoiceTypeCode", new XAttribute("name", invoiceTypeName), invoiceTypeCode),
             new XElement(Cbc + "Note", string.IsNullOrWhiteSpace(invoice.Notes) ? string.Empty : invoice.Notes),
             new XElement(Cbc + "DocumentCurrencyCode", currency),
+            new XElement(Cbc + "TaxCurrencyCode", "SAR"),
             new XElement(Cbc + "BuyerReference", string.Empty),
+
+            BuildAdditionalDocumentReference("ICV", icvValue: icv),
+            BuildAdditionalDocumentReference("PIH", embeddedBase64: previousInvoiceHash),
+
+            BuildUblSignatureReference(),
 
             BuildSupplierParty(store),
             BuildCustomerParty(invoice, buyerVatNumber),
+            BuildDelivery(issueDate),
             BuildTaxTotal(taxExclusive, taxAmount),
             BuildLegalMonetaryTotal(lineExtensionTotal, discountAmount, taxExclusive, taxAmount, taxInclusive, payable),
             invoice.Items.Select(item => BuildInvoiceLine(item, store)));
@@ -66,27 +79,106 @@ public static class ZatcaXmlBuilder
         return document.ToString(SaveOptions.DisableFormatting);
     }
 
+    public static string InsertQrReference(string signedXml, string qrTlvBase64)
+    {
+        var doc = new XmlDocument { PreserveWhitespace = false };
+        doc.LoadXml(signedXml);
+        var root = doc.DocumentElement!;
+
+        var nsmgr = new XmlNamespaceManager(doc.NameTable);
+        nsmgr.AddNamespace("cac", CacNs);
+        nsmgr.AddNamespace("cbc", CbcNs);
+
+        var signatureNode = root.SelectSingleNode("cac:Signature", nsmgr)
+            ?? throw new InvalidOperationException("عنصر cac:Signature غير موجود - الفاتورة لازم تتوقّع الأول");
+
+        var qrElement = doc.CreateElement("cac", "AdditionalDocumentReference", CacNs);
+        var idElement = doc.CreateElement("cbc", "ID", CbcNs);
+        idElement.InnerText = "QR";
+        qrElement.AppendChild(idElement);
+
+        var attachment = doc.CreateElement("cac", "Attachment", CacNs);
+        var embedded = doc.CreateElement("cbc", "EmbeddedDocumentBinaryObject", CbcNs);
+        var mimeAttr = doc.CreateAttribute("mimeCode");
+        mimeAttr.Value = "text/plain";
+        embedded.Attributes.Append(mimeAttr);
+        embedded.InnerText = qrTlvBase64;
+        attachment.AppendChild(embedded);
+        qrElement.AppendChild(attachment);
+
+        root.InsertBefore(qrElement, signatureNode);
+
+        using var stream = new System.IO.MemoryStream();
+        using (var writer = XmlWriter.Create(stream, new XmlWriterSettings { Encoding = System.Text.Encoding.UTF8, OmitXmlDeclaration = false }))
+        {
+            doc.WriteTo(writer);
+        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static XElement BuildAdditionalDocumentReference(string id, long? icvValue = null, string? embeddedBase64 = null)
+    {
+        var element = new XElement(Cac + "AdditionalDocumentReference",
+            new XElement(Cbc + "ID", id));
+
+        if (icvValue.HasValue)
+        {
+            element.Add(new XElement(Cbc + "UUID", icvValue.Value.ToString(CultureInfo.InvariantCulture)));
+        }
+        else if (embeddedBase64 != null)
+        {
+            element.Add(new XElement(Cac + "Attachment",
+                new XElement(Cbc + "EmbeddedDocumentBinaryObject", embeddedBase64, new XAttribute("mimeCode", "text/plain"))));
+        }
+
+        return element;
+    }
+
+    private static XElement BuildUblSignatureReference()
+    {
+        return new XElement(Cac + "Signature",
+            new XElement(Cbc + "ID", "urn:oasis:names:specification:ubl:signature:Invoice"),
+            new XElement(Cbc + "SignatureMethod", "urn:oasis:names:specification:ubl:dsig:enveloped:xades"));
+    }
+
+    private static XElement BuildDelivery(DateOnly issueDate)
+    {
+        return new XElement(Cac + "Delivery",
+            new XElement(Cbc + "ActualDeliveryDate", issueDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+    }
+
     private static XElement BuildSupplierParty(Store store)
     {
         var vatNumber = store.VatNumber ?? string.Empty;
+        var partyElements = new List<object>();
+
+        if (!string.IsNullOrWhiteSpace(store.CommercialRegistrationNumber))
+        {
+            partyElements.Add(new XElement(Cac + "PartyIdentification",
+                new XElement(Cbc + "ID", store.CommercialRegistrationNumber, new XAttribute("schemeID", "CRN"))));
+        }
+
+        partyElements.Add(new XElement(Cac + "PostalAddress",
+            new XElement(Cbc + "StreetName", string.Empty),
+            new XElement(Cbc + "BuildingNumber", string.Empty),
+            new XElement(Cbc + "PlotIdentification", string.Empty),
+            new XElement(Cbc + "CitySubdivisionName", string.Empty),
+            new XElement(Cbc + "CityName", string.Empty),
+            new XElement(Cbc + "PostalZone", string.Empty),
+            new XElement(Cbc + "CountrySubentity", string.Empty),
+            new XElement(Cac + "Country",
+                new XElement(Cbc + "IdentificationCode", "SA"))));
+
+        partyElements.Add(new XElement(Cac + "PartyTaxScheme",
+            new XElement(Cbc + "CompanyID", vatNumber),
+            new XElement(Cac + "TaxScheme",
+                new XElement(Cbc + "ID", "VAT"))));
+
+        partyElements.Add(new XElement(Cac + "PartyLegalEntity",
+            new XElement(Cbc + "RegistrationName", store.StoreName ?? string.Empty)));
+
         return new XElement(Cac + "AccountingSupplierParty",
-            new XElement(Cac + "Party",
-                new XElement(Cac + "PartyName",
-                    new XElement(Cbc + "Name", store.StoreName ?? string.Empty)),
-                new XElement(Cac + "PostalAddress",
-                    new XElement(Cbc + "StreetName", string.Empty),
-                    new XElement(Cbc + "BuildingNumber", string.Empty),
-                    new XElement(Cbc + "PlotIdentification", string.Empty),
-                    new XElement(Cbc + "CitySubdivisionName", string.Empty),
-                    new XElement(Cbc + "CityName", string.Empty),
-                    new XElement(Cbc + "PostalZone", string.Empty),
-                    new XElement(Cbc + "CountrySubentity", string.Empty),
-                    new XElement(Cac + "Country",
-                        new XElement(Cbc + "IdentificationCode", "SA"))),
-                new XElement(Cac + "PartyTaxScheme",
-                    new XElement(Cbc + "CompanyID", vatNumber),
-                    new XElement(Cac + "TaxScheme",
-                        new XElement(Cbc + "ID", "VAT")))));
+            new XElement(Cac + "Party", partyElements));
     }
 
     private static XElement BuildCustomerParty(Invoice invoice, string? buyerVatNumber)
@@ -95,28 +187,33 @@ public static class ZatcaXmlBuilder
             ? invoice.PartyName
             : "عميل";
 
-        var customerElements = new List<XElement>
+        var partyElements = new List<object>
         {
-            new XElement(Cbc + "ID", "CU1"),
-            new XElement(Cac + "Party",
-                new XElement(Cac + "PartyName",
-                    new XElement(Cbc + "Name", partyName)),
-                new XElement(Cac + "PostalAddress",
-                    new XElement(Cbc + "StreetName", string.Empty),
-                    new XElement(Cbc + "BuildingNumber", string.Empty),
-                    new XElement(Cbc + "CityName", invoice.PartyCity ?? string.Empty),
-                    new XElement(Cbc + "PostalZone", string.Empty),
-                    new XElement(Cac + "Country",
-                        new XElement(Cbc + "IdentificationCode", "SA"))))
+            new XElement(Cac + "PostalAddress",
+                new XElement(Cbc + "StreetName", string.Empty),
+                new XElement(Cbc + "BuildingNumber", string.Empty),
+                new XElement(Cbc + "CityName", invoice.PartyCity ?? string.Empty),
+                new XElement(Cbc + "PostalZone", string.Empty),
+                new XElement(Cac + "Country",
+                    new XElement(Cbc + "IdentificationCode", "SA")))
         };
 
         if (!string.IsNullOrWhiteSpace(buyerVatNumber))
         {
-            customerElements.Add(new XElement(Cac + "PartyTaxScheme",
+            partyElements.Add(new XElement(Cac + "PartyTaxScheme",
                 new XElement(Cbc + "CompanyID", buyerVatNumber),
                 new XElement(Cac + "TaxScheme",
                     new XElement(Cbc + "ID", "VAT"))));
         }
+
+        partyElements.Add(new XElement(Cac + "PartyLegalEntity",
+            new XElement(Cbc + "RegistrationName", partyName)));
+
+        var customerElements = new List<XElement>
+        {
+            new XElement(Cbc + "ID", "CU1"),
+            new XElement(Cac + "Party", partyElements)
+        };
 
         return new XElement(Cac + "AccountingCustomerParty", customerElements);
     }

@@ -14,18 +14,20 @@ public static class ZatcaSigner
     private const string SacNs = "urn:oasis:names:specification:ubl:schema:xsd:SignatureAggregateComponents-2";
     private const string SbcNs = "urn:oasis:names:specification:ubl:schema:xsd:SignatureBasicComponents-2";
     private const string InvoiceNs = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2";
+    private const string CacNs = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
+    private const string CbcNs = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
 
-    private const string C14N = "http://www.w3.org/TR/2001/REC-xml-c14n-20010315";
+    private const string C14N11 = "http://www.w3.org/2006/12/xml-c14n11";
     private const string Sha256 = "http://www.w3.org/2001/04/xmlenc#sha256";
-    private const string RsaPss = "http://www.w3.org/2007/05/xmldsig-more#rsa-pss";
-    private const string Enveloped = "http://www.w3.org/2000/09/xmldsig#enveloped-signature";
+    private const string EcdsaSha256 = "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256";
+    private const string XPathAlgorithm = "http://www.w3.org/TR/1999/REC-xpath-19991116";
 
     public static ZatcaSignatureResult Sign(string unsignedXml, string privateKeyPem, string certificateDerBase64)
     {
         var doc = new XmlDocument { PreserveWhitespace = false };
         doc.LoadXml(unsignedXml);
 
-        using var rsa = LoadPrivateKey(privateKeyPem);
+        using var ecdsa = LoadPrivateKey(privateKeyPem);
         var certDer = Convert.FromBase64String(certificateDerBase64);
         var certDigest = Convert.ToBase64String(SHA256.HashData(certDer));
 
@@ -39,18 +41,23 @@ public static class ZatcaSigner
         var signedProperties = BuildSignedProperties(signedPropsId, signingTime, signingCertificate);
         var signedPropsDigest = CanonicalizeDigest(signedProperties);
 
-        var invoiceDigest = Convert.ToBase64String(CanonicalizeDigest(doc));
+        var invoiceHashBytes = CanonicalizeDigest(BuildFilteredCopyForDigest(doc));
+        var invoiceDigest = Convert.ToBase64String(invoiceHashBytes);
 
         var signedInfo = BuildSignedInfo(invoiceDigest, signedPropsId, signedPropsDigest);
         var signedInfoCanonical = CanonicalizeBytes(signedInfo);
-        var signatureValue = rsa.SignData(signedInfoCanonical, HashAlgorithmName.SHA256, RSASignaturePadding.Pss);
+
+        var signatureValue = ecdsa.SignData(signedInfoCanonical, HashAlgorithmName.SHA256);
 
         var fullSignature = BuildFullSignature(signedInfo, signatureValue, certDer, signedProperties);
 
         AddSignatureToDocument(doc, fullSignature);
 
         var signedXml = CanonicalizeToString(doc);
-        var invoiceHash = Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(signedXml)));
+        // زاتكا بتحسب "InvoiceHash" المُرسل للـ API/QR/كـ PIH للفاتورة الجاية بطريقة مختلفة
+        // عن DigestValue بتاع XML-DSIG: base64(UTF8(hex(hash))) مش base64(hash الخام)
+        var invoiceHashHex = Convert.ToHexString(invoiceHashBytes).ToLowerInvariant();
+        var invoiceHash = Convert.ToBase64String(Encoding.UTF8.GetBytes(invoiceHashHex));
 
         return new ZatcaSignatureResult
         {
@@ -58,6 +65,27 @@ public static class ZatcaSigner
             InvoiceHash = invoiceHash,
             SignatureValueBase64 = Convert.ToBase64String(signatureValue)
         };
+    }
+
+    private static XmlDocument BuildFilteredCopyForDigest(XmlDocument doc)
+    {
+        var copy = (XmlDocument)doc.CloneNode(true);
+        var root = copy.DocumentElement!;
+        var nsmgr = GetNsmgr(root);
+
+        RemoveIfExists(root, "ext:UBLExtensions", nsmgr);
+        RemoveIfExists(root, "cac:Signature", nsmgr);
+
+        var qrRef = root.SelectSingleNode("cac:AdditionalDocumentReference[cbc:ID='QR']", nsmgr);
+        qrRef?.ParentNode?.RemoveChild(qrRef);
+
+        return copy;
+    }
+
+    private static void RemoveIfExists(XmlElement root, string xpath, XmlNamespaceManager nsmgr)
+    {
+        var node = root.SelectSingleNode(xpath, nsmgr);
+        node?.ParentNode?.RemoveChild(node);
     }
 
     private static string BuildSigningCertificate(byte[] certDer, string certDigest)
@@ -86,7 +114,7 @@ public static class ZatcaSigner
                signingCertificate +
                "</xades:SignedSignatureProperties>" +
                "<xades:SignedDataObjectProperties>" +
-               "<xades:DataObjectFormat ObjectReference=\"#Invoice\">" +
+               "<xades:DataObjectFormat ObjectReference=\"#invoiceSignedData\">" +
                "<xades:Description>text/xml</xades:Description>" +
                "<xades:ObjectIdentifier>" +
                "<xades:Identifier Qualifier=\"OIDAsURN\">urn:oasis:names:specification:ubl:schema:xsd:Invoice-2</xades:Identifier>" +
@@ -99,21 +127,27 @@ public static class ZatcaSigner
     private static string BuildSignedInfo(string invoiceDigest, string signedPropsId, byte[] signedPropsDigest)
     {
         return "<ds:SignedInfo xmlns:ds=\"" + DsNs + "\">" +
-               "<ds:CanonicalizationMethod Algorithm=\"" + C14N + "\"/>" +
-               "<ds:SignatureMethod Algorithm=\"" + RsaPss + "\">" +
-               "<ds:DigestMethod Algorithm=\"" + Sha256 + "\"/>" +
-               "</ds:SignatureMethod>" +
-               "<ds:Reference Id=\"Invoice\" URI=\"\">" +
+               "<ds:CanonicalizationMethod Algorithm=\"" + C14N11 + "\"/>" +
+               "<ds:SignatureMethod Algorithm=\"" + EcdsaSha256 + "\"/>" +
+               "<ds:Reference Id=\"invoiceSignedData\" URI=\"\">" +
                "<ds:Transforms>" +
-               "<ds:Transform Algorithm=\"" + Enveloped + "\"/>" +
-               "<ds:Transform Algorithm=\"" + C14N + "\"/>" +
+               "<ds:Transform Algorithm=\"" + XPathAlgorithm + "\">" +
+               "<ds:XPath>not(//ancestor-or-self::ext:UBLExtensions)</ds:XPath>" +
+               "</ds:Transform>" +
+               "<ds:Transform Algorithm=\"" + XPathAlgorithm + "\">" +
+               "<ds:XPath>not(//ancestor-or-self::cac:Signature)</ds:XPath>" +
+               "</ds:Transform>" +
+               "<ds:Transform Algorithm=\"" + XPathAlgorithm + "\">" +
+               "<ds:XPath>not(//ancestor-or-self::cac:AdditionalDocumentReference[cbc:ID='QR'])</ds:XPath>" +
+               "</ds:Transform>" +
+               "<ds:Transform Algorithm=\"" + C14N11 + "\"/>" +
                "</ds:Transforms>" +
                "<ds:DigestMethod Algorithm=\"" + Sha256 + "\"/>" +
                "<ds:DigestValue>" + invoiceDigest + "</ds:DigestValue>" +
                "</ds:Reference>" +
                "<ds:Reference URI=\"#" + signedPropsId + "\">" +
                "<ds:Transforms>" +
-               "<ds:Transform Algorithm=\"" + C14N + "\"/>" +
+               "<ds:Transform Algorithm=\"" + C14N11 + "\"/>" +
                "</ds:Transforms>" +
                "<ds:DigestMethod Algorithm=\"" + Sha256 + "\"/>" +
                "<ds:DigestValue>" + Convert.ToBase64String(signedPropsDigest) + "</ds:DigestValue>" +
@@ -188,6 +222,8 @@ public static class ZatcaSigner
         nsmgr.AddNamespace("sig", SigNs);
         nsmgr.AddNamespace("sac", SacNs);
         nsmgr.AddNamespace("sbc", SbcNs);
+        nsmgr.AddNamespace("cac", CacNs);
+        nsmgr.AddNamespace("cbc", CbcNs);
         return nsmgr;
     }
 
@@ -226,37 +262,23 @@ public static class ZatcaSigner
         return reader.ReadToEnd();
     }
 
-    private static RSA LoadPrivateKey(string privateKeyPem)
+    private static ECDsa LoadPrivateKey(string privateKeyPem)
     {
         var key = privateKeyPem?.Trim() ?? string.Empty;
-        try
+        var ecdsa = ECDsa.Create();
+
+        if (key.StartsWith("-----BEGIN"))
         {
-            if (key.StartsWith("-----BEGIN"))
-            {
-                var rsa = RSA.Create();
-                rsa.ImportFromPem(key);
-                return rsa;
-            }
-        }
-        catch
-        {
+            ecdsa.ImportFromPem(key);
+            return ecdsa;
         }
 
         var der = key.Contains("-----")
             ? Convert.FromBase64String(string.Concat(key.Split('\n', '\r').Where(l => !l.Contains("BEGIN") && !l.Contains("END") && !string.IsNullOrWhiteSpace(l))))
             : Convert.FromBase64String(key);
-        try
-        {
-            var rsa = RSA.Create();
-            rsa.ImportPkcs8PrivateKey(der, out _);
-            return rsa;
-        }
-        catch
-        {
-            var rsa = RSA.Create();
-            rsa.ImportRSAPrivateKey(der, out _);
-            return rsa;
-        }
+
+        ecdsa.ImportPkcs8PrivateKey(der, out _);
+        return ecdsa;
     }
 
     private static string GetIssuerName(byte[] certDer)

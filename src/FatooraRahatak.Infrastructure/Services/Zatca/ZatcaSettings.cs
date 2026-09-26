@@ -7,5 +7,6 @@ public class ZatcaSettings
     public string OrganizationName { get; set; } = string.Empty;
     public string OrganizationUnit { get; set; } = string.Empty;
     public string BusinessCategory { get; set; } = string.Empty;
+    public string InvoiceType { get; set; } = "1100";
     public string SolutionName { get; set; } = "FatooraRahatak";
 }

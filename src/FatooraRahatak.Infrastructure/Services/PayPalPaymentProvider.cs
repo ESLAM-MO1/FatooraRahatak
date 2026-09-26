@@ -29,6 +29,35 @@ public class PayPalPaymentProvider
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_clientId) && !string.IsNullOrWhiteSpace(_clientSecret);
 
+    // الريال السعودي (SAR) غير مدعوم في PayPal — نحوّله لدولار أمريكي (USD) بسعر الربط الثابت
+    // (1 USD = 3.75 SAR، ثابت منذ 1986) قبل إرسال أي مبلغ لـ PayPal فقط. المبلغ الأصلي بالريال
+    // يبقى كما هو في سجلات الطلب/الدفعة الداخلية.
+    private const decimal SarToUsdPegRate = 3.75m;
+
+    private static (decimal amount, string currency) ToPayPalSupportedCurrency(decimal amount, string currency)
+    {
+        if (string.Equals(currency, "SAR", StringComparison.OrdinalIgnoreCase))
+        {
+            var usdAmount = Math.Round(amount / SarToUsdPegRate, 2, MidpointRounding.AwayFromZero);
+            return (usdAmount, "USD");
+        }
+        return (amount, currency);
+    }
+
+    // PayPal يرفض أي return_url/cancel_url مش رابط كامل (absolute) — بعض نداءات الفرونت إند
+    // بتبعت مسار نسبي زي "/store/slug/thank-you/..."، فنضمن هنا إنه دايمًا رابط كامل.
+    private const string DefaultPlatformDomain = "https://rahtk.sa";
+
+    private static string? EnsureAbsoluteUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return url;
+        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return url;
+        return DefaultPlatformDomain + (url.StartsWith("/") ? url : "/" + url);
+    }
+
     public async Task<PayPalPaymentResult> GetAccessTokenAsync()
     {
         if (!IsConfigured)
@@ -83,6 +112,9 @@ public class PayPalPaymentProvider
 
         try
         {
+            var (payPalAmount, payPalCurrency) = ToPayPalSupportedCurrency(amount, currency);
+            returnUrl = EnsureAbsoluteUrl(returnUrl);
+            cancelUrl = EnsureAbsoluteUrl(cancelUrl);
             var payload = new Dictionary<string, object>
             {
                 ["intent"] = "CAPTURE",
@@ -94,8 +126,8 @@ public class PayPalPaymentProvider
                         ["description"] = description,
                         ["amount"] = new Dictionary<string, object>
                         {
-                            ["currency_code"] = currency,
-                            ["value"] = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                            ["currency_code"] = payPalCurrency,
+                            ["value"] = payPalAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
                         }
                     }
                 },
@@ -279,10 +311,11 @@ public class PayPalPaymentProvider
             var payload = new Dictionary<string, object>();
             if (amount.HasValue)
             {
+                var (refundAmount, refundCurrency) = ToPayPalSupportedCurrency(amount.Value, currency);
                 payload["amount"] = new Dictionary<string, object>
                 {
-                    ["currency_code"] = currency,
-                    ["value"] = amount.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+                    ["currency_code"] = refundCurrency,
+                    ["value"] = refundAmount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
                 };
             }
 

@@ -278,8 +278,8 @@ public class PosController : ControllerBase
                     }).ToList()
                 });
 
-                var callbackUrl = "https://fatora.trillion-invest.tech/api/v1/payments/webhook";
-                var successUrl = "https://fatora.trillion-invest.tech/dashboard/pos";
+                var callbackUrl = "https://rahtk.sa/api/v1/payments/webhook";
+                var successUrl = "https://rahtk.sa/dashboard/pos";
 
                 // ⚠️ إصلاح: PaymentMethod ماكانتش بتتبعت للـ PaymentService خالص، فكانت كل
                 // طرق الدفع (تابي/تمارا) بتتحول افتراضيًا لموياسر بدل بوابتها الحقيقية.

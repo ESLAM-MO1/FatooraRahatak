@@ -41,10 +41,11 @@ export default function NewPurchaseInvoicePage() {
 
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentMethod, setPaymentMethod] = useState("Cash");
+  const [supplierId, setSupplierId] = useState<number | null>(null);
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierCity, setSupplierCity] = useState("");
-  const [registeredSuppliers, setRegisteredSuppliers] = useState<{ name: string; phone: string | null; city: string | null }[]>([]);
+  const [registeredSuppliers, setRegisteredSuppliers] = useState<{ id: number | null; name: string; phone: string | null; city: string | null }[]>([]);
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([{ ...emptyLine }]);
   const [error, setError] = useState("");
@@ -151,6 +152,7 @@ export default function NewPurchaseInvoicePage() {
     try {
       const payload = {
         invoiceDate,
+        supplierId,
         supplierName: supplierName.trim(),
         supplierPhone: supplierPhone || null,
         supplierCity: supplierCity || null,
@@ -220,8 +222,11 @@ export default function NewPurchaseInvoicePage() {
                   setSupplierName(value);
                   const match = registeredSuppliers.find((s) => s.name === value);
                   if (match) {
+                    setSupplierId(match.id);
                     if (match.phone) setSupplierPhone(match.phone);
                     if (match.city) setSupplierCity(match.city);
+                  } else {
+                    setSupplierId(null);
                   }
                 }}
                 placeholder={t("invoice.supplierNamePlaceholder")}

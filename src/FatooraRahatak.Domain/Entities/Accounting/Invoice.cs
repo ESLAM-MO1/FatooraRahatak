@@ -1,4 +1,5 @@
 using FatooraRahatak.Domain.Common;
+using FatooraRahatak.Domain.Entities.Customers;
 using FatooraRahatak.Domain.Entities.Payments;
 using FatooraRahatak.Domain.Entities.Stores;
 using FatooraRahatak.Domain.Entities.Users;
@@ -16,6 +17,7 @@ public class Invoice : BaseEntity
 
     // بيع: عميل مسجّل (اختياري) أو اسم ضيف نصي. شراء: اسم المورد نصيًا (لا يوجد كيان Supplier في المشروع بعد)
     public long? CustomerId { get; set; }
+    public long? SupplierId { get; set; } // مورد مسجّل (اختياري) لفواتير الشراء
     public string? PartyName { get; set; }
     public string? PartyPhone { get; set; } // رقم جوال/هاتف العميل (ضيف) أو المورد
     public string? PartyCity { get; set; } // مدينة العميل (ضيف)
@@ -51,6 +53,7 @@ public class Invoice : BaseEntity
 
     public Store Store { get; set; } = null!;
     public User? Customer { get; set; }
+    public Supplier? Supplier { get; set; }
     public User CreatedBy { get; set; } = null!;
     public JournalEntry? JournalEntry { get; set; }
     public ICollection<InvoiceItem> Items { get; set; } = new List<InvoiceItem>();

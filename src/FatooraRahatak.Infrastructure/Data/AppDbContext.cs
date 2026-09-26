@@ -803,6 +803,12 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Invoice>()
+            .HasOne(i => i.Supplier)
+            .WithMany()
+            .HasForeignKey(i => i.SupplierId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Invoice>()
             .HasOne(i => i.CreatedBy)
             .WithMany()
             .HasForeignKey(i => i.CreatedByUserId)

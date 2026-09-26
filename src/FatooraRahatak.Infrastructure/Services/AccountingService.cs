@@ -1070,6 +1070,7 @@ public class AccountingService : IAccountingService
                 InvoiceNumber = invoiceNumber,
                 InvoiceDate = dto.InvoiceDate,
                 CustomerId = null,
+                SupplierId = dto.SupplierId,
                 PartyName = dto.SupplierName.Trim(),
                 PaymentMethod = paymentMethod,
                 // ⚠️ إصلاح: الدفع النقدي يُعتبر مدفوعًا فورًا
@@ -1198,6 +1199,7 @@ public class AccountingService : IAccountingService
         InvoiceNumber = inv.InvoiceNumber,
         InvoiceDate = inv.InvoiceDate,
         CustomerId = inv.CustomerId,
+        SupplierId = inv.SupplierId,
         PartyName = inv.PartyName,
         // ??? ?????? ??????? ????? ?? ???? ??????? ??????/?????? ?? ??? ?????
         PartyPhone = string.IsNullOrWhiteSpace(inv.PartyPhone) ? inv.Customer?.Phone : inv.PartyPhone,

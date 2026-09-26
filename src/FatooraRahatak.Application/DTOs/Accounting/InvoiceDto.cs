@@ -7,6 +7,7 @@ public class InvoiceDto
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateOnly InvoiceDate { get; set; }
     public long? CustomerId { get; set; }
+    public long? SupplierId { get; set; }
     public string? PartyName { get; set; }
     public string? PartyPhone { get; set; }
     public string? PartyCity { get; set; }
@@ -84,6 +85,7 @@ public class CreateSalesInvoiceDto
 public class CreatePurchaseInvoiceDto
 {
     public DateOnly InvoiceDate { get; set; }
+    public long? SupplierId { get; set; }
     public string SupplierName { get; set; } = string.Empty;
     public string? SupplierPhone { get; set; }
     public string? SupplierCity { get; set; }

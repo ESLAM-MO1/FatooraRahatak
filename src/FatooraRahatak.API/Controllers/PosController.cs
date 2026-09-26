@@ -150,6 +150,53 @@ public class PosController : ControllerBase
         } });
     }
 
+    // ✅ إضافة: عرض التحويلات البنكية المعلّقة لنقطة البيع (بيوع اختار فيها العميل "تحويل بنكي"
+    // ولسه محدش أكّد استلام الفلوس) — عشان الكاشير يقدر يرجعلها ويأكدها لو قفل الشاشة قبلها.
+    [RequirePermission("POS.View")]
+    [HttpGet("bank-transfer/pending")]
+    public async Task<IActionResult> GetPendingBankTransfers()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return Ok(new { success = true, data = new List<object>() });
+
+        var pending = await _context.Payments
+            .Where(p => p.PosShiftStoreId == storeId
+                     && p.ProviderType == FatooraRahatak.Domain.Enums.PaymentProviderType.BankTransfer
+                     && p.Status == FatooraRahatak.Domain.Enums.PaymentStatus.Pending)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        var result = pending.Select(p =>
+        {
+            string? guestName = null;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(p.PendingPosPayloadJson ?? "{}");
+                if (doc.RootElement.TryGetProperty("guestName", out var g)) guestName = g.GetString();
+            }
+            catch { /* بيانات غير متاحة — نعرض بدون اسم */ }
+            return new { paymentReference = p.PaymentReference, amount = p.Amount, guestName, createdAt = p.CreatedAt };
+        }).ToList();
+
+        return Ok(new { success = true, data = result });
+    }
+
+    // ✅ إضافة: تأكيد الكاشير استلام التحويل البنكي فعليًا في حساب المتجر → يتم تسجيل
+    // البيع (فاتورة + خصم مخزون + تحديث الوردية) بنفس منطق أي دفعة إلكترونية مؤكدة.
+    [RequirePermission("POS.Add")]
+    [HttpPost("bank-transfer/{reference}/confirm")]
+    public async Task<IActionResult> ConfirmBankTransfer(string reference)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر" });
+
+        var result = await _paymentService.ConfirmPosBankTransferAsync(storeId.Value, reference);
+        if (result.Status != "Paid")
+            return BadRequest(new { success = false, message = result.Message });
+
+        return Ok(new { success = true, message = result.Message, data = result });
+    }
+
     [RequirePermission("POS.Add")]
     [HttpPost("sale")]
     public async Task<IActionResult> CreateSale([FromBody] CreatePosSaleDto dto)
@@ -165,19 +212,22 @@ public class PosController : ControllerBase
         try
         {
             // ⚠️ طرق الدفع الإلكترونية في نقطة البيع: لا يتم البيع فورًا.
-            // ننشئ رابط دفع (مويصر/تابي/تمارا) ويفتحه الكاشير/العميل للدفع،
+            // ننشئ رابط دفع (مويصر/تابي/تمارا/باي بال) ويفتحه الكاشير/العميل للدفع،
             // وبعد اكتمال الدفع يتأكد البيع. هذا يضمن أن البوابة المختارة تُفتح فعلاً.
+            // ⚠️ التحويل البنكي معاملته مختلفة: مفيش بوابة تُفتح، إحنا بس بنعرض بيانات
+            // حساب المتجر البنكي والبيع يفضل معلّق لحد ما الكاشير يأكد استلام الفلوس يدويًا.
             var method = string.IsNullOrWhiteSpace(dto.PaymentMethod) ? "Cash" : dto.PaymentMethod.Trim();
-            var isElectronic = method is "Mada" or "CreditCard" or "Tabby" or "Tamara";
+            var isElectronic = method is "Mada" or "CreditCard" or "Tabby" or "Tamara" or "PayPal";
+            var isBankTransfer = method == "BankTransfer";
 
-            if (isElectronic && storeId != null)
+            if ((isElectronic || isBankTransfer) && storeId != null)
             {
                 // ⚠️ إصلاح "مبلغ العملية غير صالح": الـ POS يرسل { productId, quantity } فقط
                 // دون UnitPrice/DiscountAmount، فكان الحساب من dto.Items يعطي صفرًا دائمًا.
                 // الآن نحسب المبلغ من قاعدة البيانات بنفس منطق CreateSalesInvoiceAsync
                 // (سعر الخصم إن وُجد وإلا السعر الأساسي) مع الضريبة — يطابق ما سيُسجَّل.
                 // البيع لا يتأكد إلا بعد نجاح الدفع: نخزّن بيانات البيع المعلقة في Payment
-                // وعند تأكيد البوابة (webhook) تُنشأ الفاتورة فعليًا.
+                // وعند تأكيد البوابة (webhook) أو تأكيد التحويل البنكي يدويًا تُنشأ الفاتورة فعليًا.
                 if (dto.Items == null || dto.Items.Count == 0)
                     return BadRequest(new { success = false, message = "مبلغ العملية غير صالح" });
 
@@ -212,7 +262,7 @@ public class PosController : ControllerBase
                 var itemsTotal = netTotal + taxAmount;
 
                 // نبني بيانات البيع المعلقة (JSON) — تُخزّن في سجل الدفع،
-                // وعند تأكيد البوابة تُستعمل لإنشاء الفاتورة عبر CreatePosSaleAsync.
+                // وعند التأكيد (ويب هوك البوابة أو تأكيد يدوي للتحويل) تُستعمل لإنشاء الفاتورة.
                 var pendingPayload = System.Text.Json.JsonSerializer.Serialize(new
                 {
                     userId,
@@ -231,6 +281,9 @@ public class PosController : ControllerBase
                 var callbackUrl = "https://fatora.trillion-invest.tech/api/v1/payments/webhook";
                 var successUrl = "https://fatora.trillion-invest.tech/dashboard/pos";
 
+                // ⚠️ إصلاح: PaymentMethod ماكانتش بتتبعت للـ PaymentService خالص، فكانت كل
+                // طرق الدفع (تابي/تمارا) بتتحول افتراضيًا لموياسر بدل بوابتها الحقيقية.
+                // وكمان لازم نبعت storeId عشان التحويل البنكي في POS يعرف حساب أنهي متجر.
                 var link = await _paymentService.CreatePaymentLinkAsync(new CreatePaymentDto
                 {
                     Amount = itemsTotal,
@@ -239,11 +292,28 @@ public class PosController : ControllerBase
                     CallbackUrl = callbackUrl,
                     SuccessUrl = successUrl,
                     PendingPosPayloadJson = pendingPayload,
-                    PosShiftStoreId = storeId
-                });
+                    PosShiftStoreId = storeId,
+                    PaymentMethod = method
+                }, storeId);
 
                 if (!link.Success)
                     return BadRequest(new { success = false, message = link.Message ?? "فشل إنشاء رابط الدفع" });
+
+                if (isBankTransfer)
+                {
+                    return Ok(new
+                    {
+                        success = true,
+                        data = new
+                        {
+                            pending = true,
+                            paymentMethod = method,
+                            paymentReference = link.PaymentReference,
+                            bankTransfer = link.BankTransfer
+                        },
+                        message = link.Message
+                    });
+                }
 
                 return Ok(new
                 {

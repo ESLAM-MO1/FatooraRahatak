@@ -260,24 +260,54 @@ public class PaymentService : IPaymentService
             }
             else
             {
-                var orderForBank = await _context.Orders
-                    .Include(o => o.Store)
-                    .FirstOrDefaultAsync(o => o.Id == dto.OrderId.Value);
-                var storeForBank = orderForBank?.Store;
-                bankTransferInfo = new BankTransferInfoDto
+                // ⚠️ إصلاح جوهري: النظام الفعلي لبيانات الحساب البنكي في المشروع هو
+                // MerchantBankDetails (نفس الحساب المُدار من صفحة "التسويات المالية" —
+                // dashboard/settlements) — حقول Store.PayoutIban/PayoutBankName القديمة
+                // لا توجد لها أي واجهة إدخال في المشروع وتبقى فارغة دائمًا. لذلك نقطة البيع
+                // (POS، بدون OrderId) تقرأ من MerchantBankDetails، بينما طلبات المتجر
+                // (لها OrderId) تستمر على منطقها الأصلي القائم على Store.PayoutIban.
+                if (dto.OrderId.HasValue)
                 {
-                    BankName = storeForBank?.PayoutBankName,
-                    AccountHolder = storeForBank?.PayoutAccountHolder,
-                    Iban = storeForBank?.PayoutIban
-                };
-
-                if (string.IsNullOrWhiteSpace(storeForBank?.PayoutIban))
-                {
-                    return new CreatePaymentResult
+                    var orderForBank = await _context.Orders
+                        .Include(o => o.Store)
+                        .FirstOrDefaultAsync(o => o.Id == dto.OrderId.Value);
+                    var storeForBank = orderForBank?.Store;
+                    bankTransferInfo = new BankTransferInfoDto
                     {
-                        Success = false,
-                        Message = "لم يُضبط حساب بنكي للاستقبال في إعدادات المتجر بعد — يرجى التواصل مع المتجر"
+                        BankName = storeForBank?.PayoutBankName,
+                        AccountHolder = storeForBank?.PayoutAccountHolder,
+                        Iban = storeForBank?.PayoutIban
                     };
+
+                    if (string.IsNullOrWhiteSpace(storeForBank?.PayoutIban))
+                    {
+                        return new CreatePaymentResult
+                        {
+                            Success = false,
+                            Message = "لم يُضبط حساب بنكي للاستقبال في إعدادات المتجر بعد — يرجى التواصل مع المتجر"
+                        };
+                    }
+                }
+                else if (storeId.HasValue)
+                {
+                    var merchantBank = await _context.Set<FatooraRahatak.Domain.Entities.Settlement.MerchantBankDetails>()
+                        .FirstOrDefaultAsync(m => m.StoreId == storeId.Value && m.IsActive);
+
+                    bankTransferInfo = new BankTransferInfoDto
+                    {
+                        BankName = merchantBank?.BankName,
+                        AccountHolder = merchantBank?.AccountHolderName,
+                        Iban = merchantBank?.Iban
+                    };
+
+                    if (merchantBank == null || string.IsNullOrWhiteSpace(merchantBank.Iban))
+                    {
+                        return new CreatePaymentResult
+                        {
+                            Success = false,
+                            Message = "لم يُضبط حساب بنكي للاستقبال بعد — أضفه من صفحة التسويات المالية أولاً"
+                        };
+                    }
                 }
             }
         }
@@ -1319,6 +1349,47 @@ public class PaymentService : IPaymentService
             Amount = payment.Amount,
             PaidAt = payment.PaidAt?.ToString("o"),
             Message = "تم تأكيد الحوالة البنكية واعتماد الطلب كمدفوع"
+        };
+    }
+
+    // ✅ تأكيد كاشير نقطة البيع لاستلام التحويل البنكي لبيع POS معلّق (بدون طلب/فاتورة مرجعية) —
+    // بيعتمد على نفس ApplyPaymentSideEffectsAsync المستخدمة لبقية طرق الدفع الإلكترونية في POS
+    // (بتنشئ الفاتورة الفعلية من PendingPosPayloadJson وتحدّث إجماليات الوردية).
+    public async Task<PaymentStatusResult> ConfirmPosBankTransferAsync(long storeId, string paymentReference)
+    {
+        var payment = await _context.Payments
+            .FirstOrDefaultAsync(p => p.PaymentReference == paymentReference
+                                   && p.PosShiftStoreId == storeId
+                                   && p.ProviderType == PaymentProviderType.BankTransfer);
+
+        if (payment == null)
+        {
+            return new PaymentStatusResult { PaymentReference = paymentReference, Status = "not_found", Message = "لم يتم العثور على عملية التحويل" };
+        }
+
+        if (payment.Status == PaymentStatus.Paid)
+        {
+            return new PaymentStatusResult { PaymentReference = paymentReference, Status = PaymentStatus.Paid.ToString(), Message = "تم تأكيد هذه العملية مسبقًا" };
+        }
+
+        if (string.IsNullOrWhiteSpace(payment.PendingPosPayloadJson))
+        {
+            return new PaymentStatusResult { PaymentReference = paymentReference, Status = payment.Status.ToString(), Message = "لا توجد بيانات بيع معلقة لهذه العملية" };
+        }
+
+        payment.Status = PaymentStatus.Paid;
+        payment.PaidAt = DateTime.UtcNow;
+        payment.UpdatedAt = DateTime.UtcNow;
+
+        await ApplyPaymentSideEffectsAsync(payment);
+
+        return new PaymentStatusResult
+        {
+            PaymentReference = payment.PaymentReference,
+            Status = PaymentStatus.Paid.ToString(),
+            Amount = payment.Amount,
+            PaidAt = payment.PaidAt?.ToString("o"),
+            Message = "تم تأكيد استلام التحويل وتسجيل عملية البيع"
         };
     }
 

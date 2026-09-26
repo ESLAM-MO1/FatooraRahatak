@@ -2233,6 +2233,17 @@ const ar = {
   "pos.qty": "كمية",
   "pos.price": "السعر",
   "pos.totalDue": "الإجمالي المستحق",
+  "pos.creditcard": "بطاقة ائتمان",
+  "pos.paypal": "باي بال",
+  "pos.bankTransferPendingTitle": "بانتظار تأكيد التحويل البنكي",
+  "pos.bankTransferPendingDesc": "تم تسجيل بيانات التحويل على حساب المتجر البنكي. بعد التأكد من وصول المبلغ فعليًا، اضغط تأكيد الاستلام لإتمام عملية البيع.",
+  "pos.bankName": "اسم البنك",
+  "pos.accountHolder": "اسم صاحب الحساب",
+  "pos.iban": "رقم الآيبان",
+  "pos.confirmTransferReceived": "تأكيد استلام التحويل",
+  "pos.bankTransferPendingCreated": "تم تسجيل بيانات التحويل — بانتظار التأكيد",
+  "pos.bankTransferConfirmed": "تم تأكيد التحويل وتسجيل عملية البيع",
+  "pos.pendingTransfersTitle": "تحويلات بنكية بانتظار التأكيد",
 
   // ── Packages Admin ──
   "packagesAdmin.title": "إدارة الباقات",

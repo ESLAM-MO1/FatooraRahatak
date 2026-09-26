@@ -153,15 +153,14 @@ public static class ZatcaCsrBuilder
         var w = new AsnWriter(AsnEncodingRules.DER);
         w.PushSequence();
 
-        w.PushSequence(new Asn1Tag(TagClass.ContextSpecific, 4, isConstructed: true));
-        w.PushSequence();
+        var directoryNameTag = new Asn1Tag(TagClass.ContextSpecific, 4, isConstructed: true);
+        w.PushSequence(directoryNameTag);
         WriteRdn(w, SnSurnameOid, egsSerialNumber);
         WriteRdn(w, UidOid, vatNumber);
         WriteRdn(w, TitleOid, invoiceType);
         WriteRdn(w, RegisteredAddressOid, address);
         WriteRdn(w, BusinessCategoryOid, businessCategory);
-        w.PopSequence();
-        w.PopSequence();
+        w.PopSequence(directoryNameTag);
 
         w.PopSequence();
         return w.Encode();

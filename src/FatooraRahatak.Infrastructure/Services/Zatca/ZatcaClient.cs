@@ -38,6 +38,7 @@ public class ZatcaClient
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.TryAddWithoutValidation("Accept-Version", "V2");
         request.Headers.TryAddWithoutValidation("Accept-Language", "en");
+        request.Headers.TryAddWithoutValidation("OTP", otp);
 
         using var response = await _httpClient.SendAsync(request, ct);
         var body = await response.Content.ReadAsStringAsync(ct);

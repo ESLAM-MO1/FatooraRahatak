@@ -242,7 +242,7 @@ export default function DashboardHome() {
                           : t("dashboard.lowStockLeft", { qty: p.quantityAvailable })}
                       </p>
                     </div>
-                    <Link href={`/dashboard/products/${p.productId}`} className="btn btn-primary shrink-0">
+                    <Link href={`/dashboard/products?edit=${p.productId}`} className="btn btn-primary shrink-0">
                       {t("dashboard.lowStockAction")}
                     </Link>
                   </div>

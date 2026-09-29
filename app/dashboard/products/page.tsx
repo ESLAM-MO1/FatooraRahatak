@@ -2,7 +2,7 @@
 
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import Icon from "@/components/Icon";
@@ -111,6 +111,10 @@ export default function ProductsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pageSize, setPageSize] = useState(20);
+  const [qtyInput, setQtyInput] = useState("");
+  const [savingQty, setSavingQty] = useState(false);
+  const [qtyMsg, setQtyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const editHandled = useRef(false);
 
   const statusLabels: Record<string, string> = {
     Active: t("product.statusActive"),
@@ -194,6 +198,8 @@ export default function ProductsPage() {
 
   const openEditModal = (product: Product) => {
     setEditingId(product.id);
+    setQtyInput(String(product.availableQuantity));
+    setQtyMsg(null);
     setForm({
       categoryId: product.categoryId?.toString() ?? "",
       nameAr: product.nameAr,
@@ -213,6 +219,15 @@ export default function ProductsPage() {
     setActionError("");
     setShowModal(true);
   };
+
+  useEffect(() => {
+    if (editHandled.current || products.length === 0) return;
+    editHandled.current = true;
+    const id = Number(new URLSearchParams(window.location.search).get("edit"));
+    if (!id) return;
+    const target = products.find((p) => p.id === id);
+    if (target) openEditModal(target);
+  }, [products]);
 
   const closeModal = () => {
     setShowModal(false);
@@ -245,6 +260,29 @@ export default function ProductsPage() {
     }
 
     return payload;
+  };
+
+  const handleSaveQty = async () => {
+    if (!editingId) return;
+    setQtyMsg(null);
+    const q = parseInt(qtyInput, 10);
+    if (isNaN(q) || q < 0) {
+      setQtyMsg({ type: "error", text: t("productDetail.qtyInvalid") });
+      return;
+    }
+    setSavingQty(true);
+    try {
+      await api.put(`/products/${editingId}/stock`, { quantity: q });
+      setQtyMsg({ type: "success", text: t("productDetail.qtySaved") });
+      await fetchData(true);
+    } catch (err: any) {
+      setQtyMsg({
+        type: "error",
+        text: err.response?.data?.message || t("productDetail.qtySaveError"),
+      });
+    } finally {
+      setSavingQty(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -829,7 +867,37 @@ export default function ProductsPage() {
                   </div>
                 )}
 
-                <div className="flex gap-3 pt-2">
+                {editingId && (
+                <div className="rounded-xl border border-[var(--border)] p-3 space-y-2">
+                  <label className="block text-[12.5px] font-bold text-[var(--ink)]">{t("productDetail.stockLabel")}</label>
+                  <p className="text-[12px] text-[var(--sub)]">{t("productDetail.stockHint")}</p>
+                  {qtyMsg && (
+                    <p className="text-[12.5px] font-bold" style={{ color: qtyMsg.type === "success" ? "#2F855A" : "#9B2C2C" }}>
+                      {qtyMsg.text}
+                    </p>
+                  )}
+                  <div className="flex gap-3">
+                    <div className="field-shell flex-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={qtyInput}
+                        onChange={(e) => setQtyInput(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveQty}
+                      disabled={savingQty}
+                      className="btn btn-secondary disabled:opacity-60"
+                    >
+                      {savingQty ? t("product.saving") : t("productDetail.stockSave")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">
                   {submitting ? t("product.saving") : t("common.save")}
                 </button>

@@ -91,8 +91,8 @@ public class CustomDomainActivationBackgroundService : BackgroundService
                     store.OwnerUserId,
                     "تم تفعيل نطاقك المخصص",
                     $"تم ربط النطاق {domain} بمتجرك بنجاح وأصبح جاهزًا للاستخدام.",
-                    NotificationType.DomainRequestSubmitted,
-                    "/dashboard/domains");
+                    NotificationType.DomainActivated,
+                    "/dashboard/store-settings");
             }
             catch { }
 

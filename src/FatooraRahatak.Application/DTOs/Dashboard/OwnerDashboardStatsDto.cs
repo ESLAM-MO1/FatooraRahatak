@@ -9,6 +9,7 @@ public class OwnerDashboardStatsDto
     public List<OrderStatusCountDto> OrdersCountByStatus { get; set; } = new();
     public List<TopSellingProductDto> TopSellingProducts { get; set; } = new();
     public List<TopBuyingCustomerDto> TopBuyingCustomers { get; set; } = new();
+    public List<LowStockProductDto> LowStockProducts { get; set; } = new();
 }
 
 public class OrderStatusCountDto
@@ -30,4 +31,12 @@ public class TopBuyingCustomerDto
     public string Phone { get; set; } = string.Empty;
     public decimal TotalSpent { get; set; }
     public int OrdersCount { get; set; }
+}
+
+public class LowStockProductDto
+{
+    public long ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public int QuantityAvailable { get; set; }
+    public int ReorderLevel { get; set; }
 }

@@ -264,6 +264,84 @@ public class ProductService : IProductService
         await _context.SaveChangesAsync();
     }
 
+    public async Task<ProductResponseDto> UpdateStockAsync(long storeId, long userId, long productId, int newQuantity)
+    {
+        if (newQuantity < 0)
+            throw new InvalidOperationException("الكمية لا يمكن أن تكون سالبة");
+
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p => p.Id == productId && p.StoreId == storeId);
+        if (product == null)
+            throw new InvalidOperationException("المنتج غير موجود");
+
+        var hasVariantStock = product.HasVariants || await _context.InventoryStocks
+            .AnyAsync(s => s.ProductId == productId && s.VariantId != null);
+        if (hasVariantStock)
+            throw new InvalidOperationException("هذا المنتج له متغيرات، عدّل كمية كل متغير على حدة");
+
+        var defaultWarehouse = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.StoreId == storeId && w.IsDefault);
+        if (defaultWarehouse == null)
+            throw new InvalidOperationException("لا يوجد مخزن افتراضي للمتجر");
+
+        var stocks = await _context.InventoryStocks
+            .Where(s => s.ProductId == productId && s.VariantId == null)
+            .ToListAsync();
+
+        var currentTotal = stocks.Sum(s => s.QuantityAvailable);
+        var delta = newQuantity - currentTotal;
+        if (delta == 0)
+            return await MapToDtoAsync(product);
+
+        var stock = stocks.FirstOrDefault(s => s.WarehouseId == defaultWarehouse.Id);
+        if (stock == null)
+        {
+            stock = new InventoryStock
+            {
+                WarehouseId = defaultWarehouse.Id,
+                ProductId = productId,
+                VariantId = null,
+                QuantityAvailable = 0,
+                QuantityReserved = 0,
+                ReorderLevel = 0
+            };
+            _context.InventoryStocks.Add(stock);
+        }
+
+        var newDefaultQty = stock.QuantityAvailable + delta;
+        if (newDefaultQty < 0)
+            throw new InvalidOperationException("الكمية المطلوبة أقل من المتوفر في المخازن الأخرى، عدّلها من صفحة المخزون");
+        if (newDefaultQty < stock.QuantityReserved)
+            throw new InvalidOperationException("الكمية المطلوبة أقل من الكمية المحجوزة لعمليات تحويل قيد التنفيذ");
+
+        stock.QuantityAvailable = newDefaultQty;
+
+        _context.InventoryTransactions.Add(new InventoryTransaction
+        {
+            WarehouseId = defaultWarehouse.Id,
+            ProductId = productId,
+            VariantId = null,
+            TransactionType = InventoryTransactionType.Adjustment,
+            Quantity = delta,
+            ReferenceType = "ManualAdjustment",
+            ReferenceId = null,
+            CreatedByUserId = userId
+        });
+
+        product.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("تم تعديل الكمية من عملية أخرى، أعد تحميل الصفحة وحاول مرة أخرى");
+        }
+
+        return await MapToDtoAsync(product);
+    }
+
     private async Task<ProductResponseDto> MapToDtoAsync(Product p, string? primaryImageUrl = null, bool imageLookedUp = false)
     {
         var totalQuantity = await _context.InventoryStocks

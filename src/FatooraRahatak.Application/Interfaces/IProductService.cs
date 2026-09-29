@@ -12,4 +12,5 @@ public interface IProductService
     Task DeleteAsync(long storeId, long productId);
     Task<ProductResponseDto> RestoreAsync(long storeId, long productId);
     Task DeletePermanentAsync(long storeId, long productId);
+    Task<ProductResponseDto> UpdateStockAsync(long storeId, long userId, long productId, int newQuantity);
 }

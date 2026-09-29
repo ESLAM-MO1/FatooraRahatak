@@ -77,6 +77,36 @@ public class OwnerDashboardService : IOwnerDashboardService
             .Take(5)
             .ToList();
 
+        // منتجات قاربت على النفاد (حد التنبيه = ReorderLevel للمنتج، أو 5 قطع افتراضيًا)
+        const int defaultLowStockThreshold = 5;
+        var stockRows = await _context.InventoryStocks
+            .Where(s => s.Product.StoreId == storeId
+                && s.Product.Status == ProductStatus.Active
+                && !s.Product.HasVariants
+                && s.VariantId == null)
+            .GroupBy(s => new { s.ProductId, s.Product.NameAr })
+            .Select(g => new
+            {
+                g.Key.ProductId,
+                g.Key.NameAr,
+                Qty = g.Sum(x => x.QuantityAvailable),
+                Reorder = g.Max(x => x.ReorderLevel)
+            })
+            .ToListAsync();
+
+        var lowStockProducts = stockRows
+            .Select(r => new LowStockProductDto
+            {
+                ProductId = r.ProductId,
+                ProductName = r.NameAr,
+                QuantityAvailable = r.Qty,
+                ReorderLevel = r.Reorder > 0 ? r.Reorder : defaultLowStockThreshold
+            })
+            .Where(x => x.QuantityAvailable <= x.ReorderLevel)
+            .OrderBy(x => x.QuantityAvailable)
+            .Take(10)
+            .ToList();
+
         return new OwnerDashboardStatsDto
         {
             TotalSales = totalSales,
@@ -85,7 +115,8 @@ public class OwnerDashboardService : IOwnerDashboardService
             NewOrdersCount = orders.Count(o => o.Status == OrderStatus.New),
             OrdersCountByStatus = ordersCountByStatus,
             TopSellingProducts = topSellingProducts,
-            TopBuyingCustomers = topBuyingCustomers
+            TopBuyingCustomers = topBuyingCustomers,
+            LowStockProducts = lowStockProducts
         };
     }
 

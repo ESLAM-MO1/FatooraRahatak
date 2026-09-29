@@ -137,6 +137,25 @@ public class ProductController : ControllerBase
         }
     }
 
+    [RequirePermission("Products.Edit")]
+    [HttpPut("{id}/stock")]
+    public async Task<IActionResult> UpdateStock(long id, [FromBody] UpdateProductStockDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _productService.UpdateStockAsync(storeId.Value, GetUserId(), id, dto.Quantity);
+            return Ok(new { success = true, data = result, message = "تم تحديث الكمية بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [RequirePermission("Products.Delete")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(long id)

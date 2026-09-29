@@ -85,6 +85,13 @@ export default function ProductDetailsPage() {
   const [submittingImage, setSubmittingImage] = useState(false);
   const [hideOfferVariantIds, setHideOfferVariantIds] = useState<number[]>([]);
   const [deactivatingVariantId, setDeactivatingVariantId] = useState<number | null>(null);
+  const [qtyInput, setQtyInput] = useState("");
+  const [savingQty, setSavingQty] = useState(false);
+  const [qtyMsg, setQtyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    if (product) setQtyInput(String(product.availableQuantity));
+  }, [product?.availableQuantity]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -236,6 +243,28 @@ export default function ProductDetailsPage() {
     }
   };
 
+  const handleSaveQty = async () => {
+    setQtyMsg(null);
+    const q = parseInt(qtyInput, 10);
+    if (isNaN(q) || q < 0) {
+      setQtyMsg({ type: "error", text: t("productDetail.qtyInvalid") });
+      return;
+    }
+    setSavingQty(true);
+    try {
+      const res = await api.put(`/products/${productId}/stock`, { quantity: q });
+      setProduct(res.data.data);
+      setQtyMsg({ type: "success", text: t("productDetail.qtySaved") });
+    } catch (err: any) {
+      setQtyMsg({
+        type: "error",
+        text: err.response?.data?.message || t("productDetail.qtySaveError"),
+      });
+    } finally {
+      setSavingQty(false);
+    }
+  };
+
   if (loading) {
     return <LoadingState />;
   }
@@ -303,6 +332,41 @@ export default function ProductDetailsPage() {
         {product.descriptionAr && (
           <p className="text-[var(--sub)] text-sm mt-4 leading-relaxed">{product.descriptionAr}</p>
         )}
+      </div>
+
+      <div className="card p-6 mb-6">
+        <h2 className="text-[16px] font-bold text-[var(--blue-deep)] mb-1">{t("productDetail.stockTitle")}</h2>
+        <p className="text-[12.5px] text-[var(--sub)] mb-4">
+          {variants.length > 0 ? t("productDetail.stockVariantsNote") : t("productDetail.stockHint")}
+        </p>
+        {qtyMsg && qtyMsg.type === "error" && <div className="alert alert--danger mb-4">{qtyMsg.text}</div>}
+        {qtyMsg && qtyMsg.type === "success" && (
+          <p className="text-[13px] font-bold mb-4" style={{ color: "#2F855A" }}>{qtyMsg.text}</p>
+        )}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 max-w-md">
+          <div className="flex-1">
+            <label className="block text-[12.5px] font-bold text-[var(--ink)] mb-1.5">
+              {t("productDetail.stockLabel")}
+            </label>
+            <div className="field-shell">
+              <input
+                type="number"
+                min={0}
+                value={qtyInput}
+                onChange={(e) => setQtyInput(e.target.value)}
+                disabled={variants.length > 0}
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveQty}
+            disabled={savingQty || variants.length > 0}
+            className="btn btn-primary disabled:opacity-60"
+          >
+            {savingQty ? t("common.saving") : t("productDetail.stockSave")}
+          </button>
+        </div>
       </div>
 
       <div className="card p-6 mb-6">

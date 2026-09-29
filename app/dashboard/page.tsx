@@ -214,6 +214,43 @@ export default function DashboardHome() {
             </div>
           )}
 
+          {!statsLoading && stats?.lowStockProducts?.length > 0 && (
+            <div className="rounded-2xl border p-5 mb-6" style={{ borderColor: "#E9D8A6", background: "#FFFBEB" }}>
+              <div className="flex items-start gap-3 mb-4">
+                <Icon name="alert" size={20} className="shrink-0 mt-0.5 text-[var(--gold)]" />
+                <div>
+                  <h2 className="text-[15px] font-bold text-[var(--ink)]">
+                    {t("dashboard.lowStockTitle", { count: stats.lowStockProducts.length })}
+                  </h2>
+                  <p className="text-[12.5px] text-[var(--sub)] mt-1">{t("dashboard.lowStockDesc")}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {stats.lowStockProducts.map((p: any) => (
+                  <div
+                    key={p.productId}
+                    className="flex items-center justify-between gap-3 bg-white rounded-xl px-4 py-3 border border-[var(--border)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[13.5px] font-bold text-[var(--ink)] truncate">{p.productName}</p>
+                      <p
+                        className="text-[12px] mt-0.5 font-medium"
+                        style={{ color: p.quantityAvailable <= 0 ? "#9B2C2C" : "var(--gold-deep)" }}
+                      >
+                        {p.quantityAvailable <= 0
+                          ? t("dashboard.lowStockOut")
+                          : t("dashboard.lowStockLeft", { qty: p.quantityAvailable })}
+                      </p>
+                    </div>
+                    <Link href={`/dashboard/products/${p.productId}`} className="btn btn-primary shrink-0">
+                      {t("dashboard.lowStockAction")}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {subscriptionStatus && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <div className="stat-card flex flex-col items-center justify-center text-center">

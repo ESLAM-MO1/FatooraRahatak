@@ -422,7 +422,16 @@ const handler = () => {
       pathname === "/dashboard/profile" ||
       [...staffAllowedHrefs].some((href) => href !== "/dashboard" && pathname?.startsWith(href))
     );
-  const routeDenied = deniedAsStaff || (isEmployee && routePerm ? !permissions.includes(routePerm) : false);
+  const ADMIN_ONLY_ROUTES = [
+    "stores", "packages", "themes", "users", "reports", "kpis", "domains",
+    "admin-referrals", "admin-verifications", "admin-merchant-accounts",
+    "admin-settlements", "admin-return-refunds", "settings", "site-content",
+    "dashboard-sections", "site-menus", "blog", "careers", "academy", "design-requests",
+  ];
+  const deniedAdminRoute =
+    userType !== null && !isSuperAdmin && !isSupportStaff &&
+    ADMIN_ONLY_ROUTES.some((r) => pathname === `/dashboard/${r}` || pathname?.startsWith(`/dashboard/${r}/`));
+  const routeDenied = deniedAsStaff || deniedAdminRoute || (isEmployee && routePerm ? !permissions.includes(routePerm) : false);
 
   useEffect(() => {
     if (!ready || !routeDenied) return;

@@ -6,5 +6,6 @@ public enum VerificationCodeType
     PhoneVerification,
     PasswordReset,
     ProfileUpdate,
-    PasswordChange
+    PasswordChange,
+    LoginVerification
 }

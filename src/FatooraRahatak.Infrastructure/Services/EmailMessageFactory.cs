@@ -29,6 +29,17 @@ public static class EmailMessageFactory
         return ("تفعيل حسابك في فاتورة راحتك", body.ToString());
     }
 
+    public static (string Subject, string Body) LoginVerification(string fullName, string code)
+    {
+        var body = new StringBuilder();
+        body.Append(Heading("رمز تسجيل الدخول"));
+        body.Append(Greeting(fullName));
+        body.Append(Paragraph("طُلب تسجيل الدخول إلى حسابك في فاتورة راحتك. أدخل رمز الأمان التالي لإتمام الدخول:"));
+        body.Append(EmailTemplateRenderer.CodeBox(code));
+        body.Append(Paragraph("هذا الرمز صالح لمدة 10 دقائق. إذا لم تكن أنت من حاول الدخول، غيّر كلمة المرور فورًا."));
+        return ("رمز تسجيل الدخول - فاتورة راحتك", body.ToString());
+    }
+
     public static (string Subject, string Body) Welcome(string fullName)
     {
         var body = new StringBuilder();

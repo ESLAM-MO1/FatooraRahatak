@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { login, googleAuth } from "@/lib/auth";
+import { login, googleAuth, verifyLoginOtp, resendLoginOtp } from "@/lib/auth";
 import LangSwitch from "@/components/LangSwitch";
 import { FieldError, FieldErrors, validateFields, required, email as emailRule } from "@/lib/formValidation";
 import "@/lib/i18n/config";
@@ -15,12 +15,26 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<"credentials" | "otp">("credentials");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+
+  const goToOtp = (targetEmail: string) => {
+    setOtpEmail(targetEmail);
+    setOtp("");
+    setInfo("");
+    setCooldown(60);
+    setStep("otp");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setFieldErrors({});
 
     const errs = validateFields(
@@ -38,8 +52,12 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await login({ email, password });
-      router.push("/dashboard");
+      const result = await login({ email, password });
+      if (result.requiresOtp) {
+        goToOtp(result.email || email);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || t("error.serverError"));
     } finally {
@@ -49,9 +67,35 @@ export default function LoginPage() {
 
   const handleGoogleResponse = async (response: any) => {
     setError("");
+    setInfo("");
     setLoading(true);
     try {
-      await googleAuth(response.credential);
+      const result = await googleAuth(response.credential);
+      if (result.requiresOtp) {
+        goToOtp(result.email);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || t("error.serverError"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+
+    if (!/^\d{6}$/.test(otp)) {
+      setError(t("auth.loginOtpRequired"));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await verifyLoginOtp(otpEmail, otp);
       router.push("/dashboard");
     } catch (err: any) {
       setError(err?.response?.data?.message || t("error.serverError"));
@@ -60,37 +104,71 @@ export default function LoginPage() {
     }
   };
 
+  const handleResend = async () => {
+    if (cooldown > 0) return;
+    setError("");
+    setInfo("");
+    try {
+      await resendLoginOtp(otpEmail);
+      setCooldown(60);
+      setInfo(t("auth.loginOtpResent"));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || t("error.serverError"));
+    }
+  };
+
+  const handleBack = () => {
+    setError("");
+    setInfo("");
+    setOtp("");
+    setPassword("");
+    setStep("credentials");
+  };
+
   useEffect(() => {
+    const otpParam = new URLSearchParams(window.location.search).get("otp");
+    if (otpParam) {
+      setOtpEmail(otpParam);
+      setOtp("");
+      setCooldown(60);
+      setStep("otp");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  useEffect(() => {
+    if (step !== "credentials") return;
+
+    const renderGoogleButton = () => {
+      const g = (window as any).google?.accounts?.id;
+      if (!g) return;
+      g.initialize({
+        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+        callback: handleGoogleResponse,
+      });
+      g.renderButton(
+        document.getElementById("googleBtn"),
+        { theme: "outline", size: "large", text: "signin_with", width: 400 }
+      );
+    };
+
     const existing = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
     if (existing) {
-      if ((window as any).google?.accounts?.id) {
-        (window as any).google.accounts.id.initialize({
-          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
-          callback: handleGoogleResponse,
-        });
-        (window as any).google.accounts.id.renderButton(
-          document.getElementById("googleBtn"),
-          { theme: "outline", size: "large", text: "signin_with", width: 400 }
-        );
-      }
+      renderGoogleButton();
       return;
     }
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.async = true;
     script.defer = true;
-    script.onload = () => {
-      (window as any).google?.accounts?.id?.initialize({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
-        callback: handleGoogleResponse,
-      });
-      (window as any).google?.accounts?.id?.renderButton(
-        document.getElementById("googleBtn"),
-        { theme: "outline", size: "large", text: "signin_with", width: 400 }
-      );
-    };
+    script.onload = renderGoogleButton;
     document.body.appendChild(script);
-  }, []);
+  }, [step]);
 
   return (
     <div className="auth-layout">
@@ -98,141 +176,216 @@ export default function LoginPage() {
 
       <div className="auth-form-panel">
         <div className="w-full max-w-[400px]">
-          <div className="mb-9">
-            <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">{t("auth.loginTitle")}</span>
-            <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">{t("auth.login")}</h1>
-            <p className="text-[14.5px] text-[var(--sub)]">{t("auth.loginSubtitle")}</p>
-          </div>
-
-          {error && (
-            <div className="alert alert--danger mb-4">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="mb-5">
-              <label htmlFor="email" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                {t("auth.email")}
-              </label>
-              <div className={`field-shell ${fieldErrors.email ? "field-error" : ""}`}>
-                <span className="text-[#9AA4AC]">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M3 6.5C3 5.67 3.67 5 4.5 5h15c.83 0 1.5.67 1.5 1.5v11c0 .83-.67 1.5-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11Z"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    />
-                    <path d="M4 6.5 12 13l8-6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-                <input
-                  id="email"
-                  type="email"
-                  placeholder="example@domain.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+          {step === "credentials" ? (
+            <>
+              <div className="mb-9">
+                <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">{t("auth.loginTitle")}</span>
+                <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">{t("auth.login")}</h1>
+                <p className="text-[14.5px] text-[var(--sub)]">{t("auth.loginSubtitle")}</p>
               </div>
-              <FieldError message={fieldErrors.email} />
-            </div>
 
-            <div className="mb-5">
-              <label htmlFor="password" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
-                {t("auth.password")}
-              </label>
-              <div className={`field-shell ${fieldErrors.password ? "field-error" : ""}`}>
-                <span className="text-[#9AA4AC]">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                    <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M8 11V7.5a4 4 0 0 1 8 0V11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </span>
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+              {error && (
+                <div className="alert alert--danger mb-4">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} noValidate>
+                <div className="mb-5">
+                  <label htmlFor="email" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
+                    {t("auth.email")}
+                  </label>
+                  <div className={`field-shell ${fieldErrors.email ? "field-error" : ""}`}>
+                    <span className="text-[#9AA4AC]">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                        <path
+                          d="M3 6.5C3 5.67 3.67 5 4.5 5h15c.83 0 1.5.67 1.5 1.5v11c0 .83-.67 1.5-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11Z"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                        />
+                        <path d="M4 6.5 12 13l8-6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                    <input
+                      id="email"
+                      type="email"
+                      placeholder="example@domain.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                  <FieldError message={fieldErrors.email} />
+                </div>
+
+                <div className="mb-5">
+                  <label htmlFor="password" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
+                    {t("auth.password")}
+                  </label>
+                  <div className={`field-shell ${fieldErrors.password ? "field-error" : ""}`}>
+                    <span className="text-[#9AA4AC]">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                        <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                        <path d="M8 11V7.5a4 4 0 0 1 8 0V11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      </svg>
+                    </span>
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="text-[#9AA4AC] hover:text-[var(--blue)]"
+                      onClick={() => setShowPassword((s) => !s)}
+                      aria-label={showPassword ? t("auth.password") : t("auth.password")}
+                    >
+                      {showPassword ? (
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                          <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                          <path
+                            d="M10.6 5.2A10.9 10.9 0 0 1 12 5c5.5 0 9 5 9 7-.4.7-1.4 2.1-2.9 3.4M6.6 6.6C4.5 8 3.3 9.9 3 12c0 2 3.5 7 9 7 1.4 0 2.6-.3 3.7-.8"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            strokeLinecap="round"
+                          />
+                          <path d="M9.9 10a3 3 0 0 0 4.2 4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                        </svg>
+                      ) : (
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                          <path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7Z" stroke="currentColor" strokeWidth="1.6" />
+                          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                  <FieldError message={fieldErrors.password} />
+                </div>
+
+                <div className="flex items-center justify-between mb-6">
+                  <label className="flex items-center gap-2 text-[13.5px] text-[var(--sub)]">
+                    <input type="checkbox" style={{ accentColor: "var(--green)" }} className="w-[15px] h-[15px]" />
+                    {t("common.remember")}
+                  </label>
+                  <a href="/forgot-password" className="text-[13.5px] font-bold text-[var(--blue)] hover:underline">
+                    {t("auth.forgotPassword")}
+                  </a>
+                </div>
+
+                <button type="submit" className="btn-primary w-full py-3.5 text-[15px]" disabled={loading}>
+                  {loading && (
+                    <span className="w-[15px] h-[15px] rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  )}
+                  {loading ? t("common.loading") : t("auth.submitButton")}
+                </button>
+              </form>
+
+              <div className="flex items-center gap-3 my-6 text-[#A6AFB6] text-[12.5px]">
+                <span className="flex-1 h-px bg-[var(--border)]" />
+                {t("common.or")}
+                <span className="flex-1 h-px bg-[var(--border)]" />
+              </div>
+
+              <div className="relative w-full mb-4 overflow-hidden isolate">
                 <button
                   type="button"
-                  className="text-[#9AA4AC] hover:text-[var(--blue)]"
-                  onClick={() => setShowPassword((s) => !s)}
-                  aria-label={showPassword ? t("auth.password") : t("auth.password")}
+                  tabIndex={-1}
+                  className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl border border-[var(--border)] bg-white shadow-sm text-[14.5px] font-bold text-[var(--ink)] pointer-events-none"
                 >
-                  {showPassword ? (
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                      <path
-                        d="M10.6 5.2A10.9 10.9 0 0 1 12 5c5.5 0 9 5 9 7-.4.7-1.4 2.1-2.9 3.4M6.6 6.6C4.5 8 3.3 9.9 3 12c0 2 3.5 7 9 7 1.4 0 2.6-.3 3.7-.8"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                      />
-                      <path d="M9.9 10a3 3 0 0 0 4.2 4.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    </svg>
-                  ) : (
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7Z" stroke="currentColor" strokeWidth="1.6" />
-                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-                    </svg>
+                  <svg width="19" height="19" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+                    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                    <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6c-2 1.5-4.6 2.4-7.7 2.4-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.6 39.6 16.2 44 24 44z"/>
+                    <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4 5.6l6.6 5.6C41.9 35.9 44 30.4 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+                  </svg>
+                  {t("auth.googleSignIn") || "الدخول باستخدام جوجل"}
+                </button>
+                <div
+                  id="googleBtn"
+                  className="absolute inset-0 w-full h-full opacity-0 overflow-hidden [&_iframe]:!w-full [&_iframe]:!h-full"
+                />
+              </div>
+
+              <p className="relative z-10 text-center text-[13.5px] text-[var(--sub)]">
+                {t("auth.noAccount")}{" "}
+                <a href="/register" className="text-[var(--green)] font-bold hover:underline">
+                  {t("auth.register")}
+                </a>
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="mb-9">
+                <span className="block text-[13px] font-bold text-[var(--gold)] mb-2.5">{t("auth.loginOtpTitle")}</span>
+                <h1 className="text-[29px] font-extrabold text-[var(--blue-deep)] mb-2">{t("auth.loginOtpVerify")}</h1>
+                <p className="text-[14.5px] text-[var(--sub)]">{t("auth.loginOtpSubtitle")}</p>
+                <p className="text-[13.5px] font-bold text-[var(--ink)] mt-2" dir="ltr">{otpEmail}</p>
+              </div>
+
+              {error && (
+                <div className="alert alert--danger mb-4">
+                  {error}
+                </div>
+              )}
+
+              {info && (
+                <div className="mb-4 text-[13.5px] font-bold text-[var(--green)]">
+                  {info}
+                </div>
+              )}
+
+              <form onSubmit={handleVerify} noValidate>
+                <div className="mb-5">
+                  <label htmlFor="otp" className="block text-[13.5px] font-bold text-[var(--ink)] mb-2">
+                    {t("auth.loginOtpLabel")}
+                  </label>
+                  <div className="field-shell">
+                    <input
+                      id="otp"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      dir="ltr"
+                      placeholder="••••••"
+                      className="text-center text-[22px] font-extrabold tracking-[8px]"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn-primary w-full py-3.5 text-[15px]" disabled={loading}>
+                  {loading && (
+                    <span className="w-[15px] h-[15px] rounded-full border-2 border-white/40 border-t-white animate-spin" />
                   )}
+                  {loading ? t("common.loading") : t("auth.loginOtpVerify")}
+                </button>
+              </form>
+
+              <div className="flex items-center justify-between mt-6">
+                <button
+                  type="button"
+                  className="text-[13.5px] font-bold text-[var(--sub)] hover:underline"
+                  onClick={handleBack}
+                >
+                  {t("auth.loginOtpBack")}
+                </button>
+                <button
+                  type="button"
+                  className="text-[13.5px] font-bold text-[var(--blue)] hover:underline disabled:opacity-50 disabled:no-underline"
+                  onClick={handleResend}
+                  disabled={cooldown > 0}
+                >
+                  {cooldown > 0
+                    ? `${t("auth.loginOtpResendIn")} ${cooldown} ${t("auth.loginOtpSeconds")}`
+                    : t("auth.loginOtpResend")}
                 </button>
               </div>
-              <FieldError message={fieldErrors.password} />
-            </div>
-
-            <div className="flex items-center justify-between mb-6">
-              <label className="flex items-center gap-2 text-[13.5px] text-[var(--sub)]">
-                <input type="checkbox" style={{ accentColor: "var(--green)" }} className="w-[15px] h-[15px]" />
-                {t("common.remember")}
-              </label>
-              <a href="/forgot-password" className="text-[13.5px] font-bold text-[var(--blue)] hover:underline">
-                {t("auth.forgotPassword")}
-              </a>
-            </div>
-
-            <button type="submit" className="btn-primary w-full py-3.5 text-[15px]" disabled={loading}>
-              {loading && (
-                <span className="w-[15px] h-[15px] rounded-full border-2 border-white/40 border-t-white animate-spin" />
-              )}
-              {loading ? t("common.loading") : t("auth.submitButton")}
-            </button>
-          </form>
-
-          <div className="flex items-center gap-3 my-6 text-[#A6AFB6] text-[12.5px]">
-            <span className="flex-1 h-px bg-[var(--border)]" />
-            {t("common.or")}
-            <span className="flex-1 h-px bg-[var(--border)]" />
-          </div>
-
-          <div className="relative w-full mb-4 overflow-hidden isolate">
-            <button
-              type="button"
-              tabIndex={-1}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl border border-[var(--border)] bg-white shadow-sm text-[14.5px] font-bold text-[var(--ink)] pointer-events-none"
-            >
-              <svg width="19" height="19" viewBox="0 0 48 48">
-                <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.6-6 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
-                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
-                <path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6c-2 1.5-4.6 2.4-7.7 2.4-5.3 0-9.7-3.4-11.3-8.1l-6.6 5.1C9.6 39.6 16.2 44 24 44z"/>
-                <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4 5.6l6.6 5.6C41.9 35.9 44 30.4 44 24c0-1.3-.1-2.7-.4-3.5z"/>
-              </svg>
-              {t("auth.googleSignIn") || "الدخول باستخدام جوجل"}
-            </button>
-            <div
-              id="googleBtn"
-              className="absolute inset-0 w-full h-full opacity-0 overflow-hidden [&_iframe]:!w-full [&_iframe]:!h-full"
-            />
-          </div>
-
-          <p className="relative z-10 text-center text-[13.5px] text-[var(--sub)]">
-            {t("auth.noAccount")}{" "}
-            <a href="/register" className="text-[var(--green)] font-bold hover:underline">
-              {t("auth.register")}
-            </a>
-          </p>
+            </>
+          )}
         </div>
       </div>
 

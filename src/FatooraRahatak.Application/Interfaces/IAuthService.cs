@@ -7,6 +7,8 @@ public interface IAuthService
     Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
     Task<AuthResponseDto> LoginAsync(LoginDto dto);
     Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthDto dto);
+    Task<AuthResponseDto> VerifyLoginAsync(LoginVerifyDto dto);
+    Task ResendLoginCodeAsync(string email);
     Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
     Task<string?> SendVerificationCodeAsync(string email);
     Task VerifyAccountAsync(VerifyAccountDto dto);

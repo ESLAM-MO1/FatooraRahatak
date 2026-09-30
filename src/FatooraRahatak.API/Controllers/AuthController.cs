@@ -47,11 +47,67 @@ public class AuthController : ControllerBase
         try
         {
             var result = await _authService.LoginAsync(dto);
+            var message = result.RequiresOtp ? "تم إرسال رمز التحقق إلى بريدك الإلكتروني" : "تم تسجيل الدخول بنجاح";
+            return Ok(new { success = true, data = result, message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { success = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("google")]
+    public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthDto dto)
+    {
+        try
+        {
+            var result = await _authService.GoogleAuthAsync(dto);
+            var message = result.RequiresOtp ? "تم إرسال رمز التحقق إلى بريدك الإلكتروني" : "تم تسجيل الدخول بنجاح";
+            return Ok(new { success = true, data = result, message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { success = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("login-verify")]
+    public async Task<IActionResult> LoginVerify([FromBody] LoginVerifyDto dto)
+    {
+        try
+        {
+            var result = await _authService.VerifyLoginAsync(dto);
             return Ok(new { success = true, data = result, message = "تم تسجيل الدخول بنجاح" });
         }
         catch (UnauthorizedAccessException ex)
         {
             return Unauthorized(new { success = false, message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("login-resend")]
+    public async Task<IActionResult> LoginResend([FromBody] LoginResendDto dto)
+    {
+        try
+        {
+            await _authService.ResendLoginCodeAsync(dto.Email);
+            return Ok(new { success = true, message = "تم إرسال رمز التحقق إلى بريدك الإلكتروني" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
         }
     }
 
@@ -131,19 +187,6 @@ public class AuthController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { success = false, message = ex.Message });
-        }
-    }
-[HttpPost("google")]
-    public async Task<IActionResult> GoogleAuth([FromBody] GoogleAuthDto dto)
-    {
-        try
-        {
-            var result = await _authService.GoogleAuthAsync(dto);
-            return Ok(new { success = true, data = result, message = "تم تسجيل الدخول بنجاح" });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(new { success = false, message = ex.Message });
         }
     }
 

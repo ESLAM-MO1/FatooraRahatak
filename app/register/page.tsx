@@ -81,8 +81,12 @@ function RegisterForm() {
     setError("");
     setLoading(true);
     try {
-      await googleAuth(response.credential);
-      router.push("/dashboard");
+      const result = await googleAuth(response.credential);
+      if (result?.requiresOtp) {
+        router.push(`/login?otp=${encodeURIComponent(result.email)}`);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || t("error.serverError"));
     } finally {

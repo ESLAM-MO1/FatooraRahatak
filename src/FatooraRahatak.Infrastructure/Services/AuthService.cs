@@ -94,10 +94,6 @@ public class AuthService : IAuthService
 
             await transaction.CommitAsync();
 
-            // ⚠️ إصلاح جذري: إرسال البريد خارج المعاملة. كان الإرسال داخل المعاملة
-            // فيسبب خطأ "SqlTransaction has completed" عند أي تعارض مع اتصال DB،
-            // ويفشل التسجيل كاملاً أو يظهر server error. الآن نلتزم أولاً (المستخدم
-            // بيتسجل)، ثم نرسل الإيميل — فشل الإيميل لا يمنع التسجيل، والرسالة توصل فعلاً.
             if (emailConfigured)
             {
                 var (subject, body) = EmailMessageFactory.AccountVerification(user.FullName, code);
@@ -149,10 +145,9 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
 
-        user.LastLoginAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync();
+        await TrySendLoginOtpAsync(user);
 
-        return await GenerateAuthResponseAsync(user);
+        return new AuthResponseDto { RequiresOtp = true, Email = user.Email };
     }
 
     public async Task<AuthResponseDto> GoogleAuthAsync(GoogleAuthDto dto)
@@ -189,7 +184,6 @@ public class AuthService : IAuthService
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // رسالة ترحيب لأول تسجيل دخول عبر جوجل (قالب موحد عربي)
             if (_emailService.IsConfigured() && !string.IsNullOrWhiteSpace(user.Email))
             {
                 try
@@ -213,10 +207,36 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
 
+        await TrySendLoginOtpAsync(user);
+
+        return new AuthResponseDto { RequiresOtp = true, Email = user.Email };
+    }
+
+    public async Task<AuthResponseDto> VerifyLoginAsync(LoginVerifyDto dto)
+    {
+        var email = (dto.Email ?? string.Empty).Trim();
+        var code = (dto.Code ?? string.Empty).Trim();
+
+        await VerifyOtpInternalAsync(email, code, VerificationCodeType.LoginVerification);
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null || !user.IsActive)
+            throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
+
         user.LastLoginAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return await GenerateAuthResponseAsync(user);
+    }
+
+    public async Task ResendLoginCodeAsync(string email)
+    {
+        var normalized = (email ?? string.Empty).Trim();
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == normalized);
+        if (user == null || !user.IsActive)
+            return;
+
+        await SendOtpAsync(user, VerificationCodeType.LoginVerification);
     }
 
     public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
@@ -392,9 +412,31 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
     }
 
+    private async Task TrySendLoginOtpAsync(User user)
+    {
+        var now = DateTime.UtcNow;
+
+        var recent = await _context.VerificationCodes
+            .Where(v => v.UserId == user.Id
+                && v.Type == VerificationCodeType.LoginVerification
+                && !v.IsUsed
+                && v.Attempts < 5
+                && v.ExpiresAt > now)
+            .OrderByDescending(v => v.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        if (recent != null && (now - recent.CreatedAt).TotalSeconds < 60)
+            return;
+
+        await SendOtpAsync(user, VerificationCodeType.LoginVerification);
+    }
+
     private async Task<string?> SendOtpAsync(User user, VerificationCodeType type)
     {
         var now = DateTime.UtcNow;
+
+        if (type == VerificationCodeType.LoginVerification && !_emailService.IsConfigured())
+            throw new InvalidOperationException("خدمة البريد الإلكتروني غير مفعّلة، تواصل مع الدعم الفني");
 
         var requestsInLastHour = await _context.VerificationCodes
             .CountAsync(v => v.UserId == user.Id && v.Type == type && v.CreatedAt > now.AddHours(-1));
@@ -443,6 +485,10 @@ public class AuthService : IAuthService
         else if (type == VerificationCodeType.PasswordChange)
         {
             (subject, body) = EmailMessageFactory.PasswordChangeVerification(user.FullName, code);
+        }
+        else if (type == VerificationCodeType.LoginVerification)
+        {
+            (subject, body) = EmailMessageFactory.LoginVerification(user.FullName, code);
         }
         else
         {
@@ -567,9 +613,6 @@ public class AuthService : IAuthService
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        // Platform staff (UserType.SupportStaff) carry their specific staff role
-        // (Admin/Support/Finance/Technical) so the API can enforce module-scoped
-        // permissions instead of treating every staff member as a super admin.
         if (user.UserType == UserType.SupportStaff && !string.IsNullOrEmpty(user.StaffRole))
         {
             claims.Add(new Claim("StaffRole", user.StaffRole));

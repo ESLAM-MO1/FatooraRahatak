@@ -15,9 +15,8 @@ export interface RegisterData {
   referralCode?: string;
 }
 
-export async function login(data: LoginData) {
-  const response = await api.post("/auth/login", data);
-  const { accessToken, refreshToken, userType, staffRole, fullName, email, userId } = response.data.data;
+function saveSession(data: any) {
+  const { accessToken, refreshToken, userType, staffRole, fullName, email, userId } = data;
 
   localStorage.setItem("accessToken", accessToken);
   localStorage.setItem("refreshToken", refreshToken);
@@ -27,8 +26,33 @@ export async function login(data: LoginData) {
   localStorage.setItem("fullName", fullName);
   localStorage.setItem("email", email);
   if (userId) localStorage.setItem("userId", String(userId));
+}
 
-  return response.data.data;
+export async function login(data: LoginData) {
+  const response = await api.post("/auth/login", data);
+  const result = response.data.data;
+  if (result.requiresOtp) return result;
+  saveSession(result);
+  return result;
+}
+
+export async function googleAuth(idToken: string) {
+  const response = await api.post("/auth/google", { idToken });
+  const result = response.data.data;
+  if (result.requiresOtp) return result;
+  saveSession(result);
+  return result;
+}
+
+export async function verifyLoginOtp(email: string, code: string) {
+  const response = await api.post("/auth/login-verify", { email, code });
+  const result = response.data.data;
+  saveSession(result);
+  return result;
+}
+
+export async function resendLoginOtp(email: string) {
+  await api.post("/auth/login-resend", { email });
 }
 
 export async function register(data: RegisterData) {
@@ -70,25 +94,7 @@ export function getUserType(): string | null {
   return localStorage.getItem("userType");
 }
 
-// Only meaningful when getUserType() === "SupportStaff": one of
-// "Admin" | "Support" | "Finance" | "Technical". Determines which
-// platform modules the staff member can see and use.
 export function getStaffRole(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("staffRole");
-}
-export async function googleAuth(idToken: string) {
-  const response = await api.post("/auth/google", { idToken });
-  const { accessToken, refreshToken, userType, staffRole, fullName, email, userId } = response.data.data;
-
-  localStorage.setItem("accessToken", accessToken);
-  localStorage.setItem("refreshToken", refreshToken);
-  localStorage.setItem("userType", userType);
-  if (staffRole) localStorage.setItem("staffRole", staffRole);
-  else localStorage.removeItem("staffRole");
-  localStorage.setItem("fullName", fullName);
-  localStorage.setItem("email", email);
-  if (userId) localStorage.setItem("userId", String(userId));
-
-  return response.data.data;
 }

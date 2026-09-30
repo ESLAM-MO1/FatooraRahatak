@@ -11,4 +11,5 @@ public class AuthResponseDto
     public string RefreshToken { get; set; } = string.Empty;
     public DateTime AccessTokenExpiry { get; set; }
     public string? VerificationCode { get; set; }
+    public bool RequiresOtp { get; set; }
 }

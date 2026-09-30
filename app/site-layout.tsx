@@ -752,27 +752,24 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <div className="mt-10 pt-8 border-t flex flex-col items-center gap-6" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <div className="flex flex-col items-center gap-5 shrink-0 max-w-full w-full">
-              <img
-                src="/footer-banner.png"
-                alt={t("brand.name")}
-                className="block w-full sm:w-[620px] lg:w-[760px] max-w-full h-auto shrink-0"
-              />
-            </div>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 w-full">
-              <div className="flex items-center justify-center gap-4 rounded-2xl px-6 py-5 w-full max-w-md sm:w-auto" style={{ backgroundColor: "#fff" }}>
-                <img src="/tawtheeq-logo.jpeg" alt={isAr ? "شعار التوثيق" : "Verification logo"} className="h-20 sm:h-16 w-auto shrink-0" />
-                <div className="text-start">
-                  <div className="text-[14px] sm:text-[12px] font-bold" style={{ color: "var(--sub)" }}>
-                    {isAr ? "رقم شهادة التوثيق" : "Verification Certificate No."}
-                  </div>
-                  <div className="text-[26px] sm:text-[20px] font-extrabold tracking-wider" dir="ltr" style={{ color: "var(--blue-deep)" }}>
-                    0000330212
-                  </div>
+          <div className="mt-10 pt-8 border-t flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-8" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+            <img
+              src="/footer-banner.png"
+              alt={t("brand.name")}
+              className="block w-full max-w-[560px] lg:max-w-[760px] lg:flex-1 lg:min-w-0 h-auto"
+            />
+            <div className="flex items-center justify-center gap-4 rounded-2xl px-6 py-5 w-full max-w-md lg:w-auto lg:max-w-none shrink-0" style={{ backgroundColor: "#fff" }}>
+              <img src="/tawtheeq-logo.jpeg" alt={isAr ? "شعار التوثيق" : "Verification logo"} className="h-20 lg:h-14 w-auto shrink-0" />
+              <div className="text-start">
+                <div className="text-[14px] lg:text-[12px] font-bold" style={{ color: "var(--sub)" }}>
+                  {isAr ? "رقم شهادة التوثيق" : "Verification Certificate No."}
+                </div>
+                <div className="text-[26px] lg:text-[18px] font-extrabold tracking-wider" dir="ltr" style={{ color: "var(--blue-deep)" }}>
+                  0000330212
                 </div>
               </div>
-            <div className="flex items-center justify-center flex-wrap gap-4">
+            </div>
+            <div className="flex items-center justify-center flex-wrap gap-5 shrink-0">
               {footer.social.facebook !== "#" && footer.social.facebook && (
                 <Link href={footer.social.facebook} aria-label="Facebook" target="_blank" rel="noopener noreferrer">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="#BFE6F3"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
@@ -813,7 +810,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="1.8"><path d="M4 4l7.2 9.6L4.4 20H7l5.6-5 4.4 5H20l-7.5-9.9L19.4 4h-2.6l-5.1 4.6L7.6 4H4Z" /></svg>
                 </Link>
               )}
-            </div>
             </div>
           </div>
 

@@ -10,6 +10,15 @@ interface ScriptIntegration {
   additionalCode?: string | null;
 }
 
+const isValidId = (v: unknown): v is string =>
+  typeof v === "string" && /^[A-Za-z0-9_-]{5,64}$/.test(v.trim());
+
+const safe = (fn: () => void) => {
+  try {
+    fn();
+  } catch {}
+};
+
 export default function MarketingScripts({ slug }: { slug: string }) {
   const [integrations, setIntegrations] = useState<ScriptIntegration[]>([]);
   const [whatsappNumber, setWhatsappNumber] = useState("");
@@ -40,59 +49,107 @@ export default function MarketingScripts({ slug }: { slug: string }) {
     };
 
     const facebook = integrations.find((i) => i.channel === "FacebookPixel");
-    if (facebook?.code) {
-      loadScript("https://connect.facebook.net/en_US/fbevents.js", "fb-pixel-sdk");
-      const w = window as any;
-      w.fbq = w.fbq || function (...args: unknown[]) { (w.fbq.q = w.fbq.q || []).push(args); };
-      w.fbq("init", facebook.code);
-      w.fbq("track", "PageView");
+    const facebookId = facebook?.code?.trim();
+    if (isValidId(facebookId)) {
+      safe(() => {
+        loadScript("https://connect.facebook.net/en_US/fbevents.js", "fb-pixel-sdk");
+        const w = window as any;
+        w.fbq = w.fbq || function (...args: unknown[]) { (w.fbq.q = w.fbq.q || []).push(args); };
+        w.fbq("init", facebookId);
+        w.fbq("track", "PageView");
+      });
     }
 
     const instagram = integrations.find((i) => i.channel === "InstagramBusiness");
-    if (instagram?.code) {
-      loadScript("https://connect.facebook.net/en_US/fbevents.js", "ig-pixel-sdk");
-      const w = window as any;
-      w.fbq = w.fbq || function (...args: unknown[]) { (w.fbq.q = w.fbq.q || []).push(args); };
-      w.fbq("init", instagram.code);
-      w.fbq("track", "PageView");
+    const instagramId = instagram?.code?.trim();
+    if (isValidId(instagramId)) {
+      safe(() => {
+        loadScript("https://connect.facebook.net/en_US/fbevents.js", "ig-pixel-sdk");
+        const w = window as any;
+        w.fbq = w.fbq || function (...args: unknown[]) { (w.fbq.q = w.fbq.q || []).push(args); };
+        w.fbq("init", instagramId);
+        w.fbq("track", "PageView");
+      });
     }
 
     const ga = integrations.find((i) => i.channel === "GoogleAnalytics");
     const googleAds = integrations.find((i) => i.channel === "GoogleAds");
     const landingPages = integrations.find((i) => i.channel === "LandingPages");
     const searchPages = integrations.find((i) => i.channel === "SearchPages");
-    const googleCodes = [ga?.code, googleAds?.code, landingPages?.code, searchPages?.code].filter(Boolean) as string[];
+    const googleCodes = [ga?.code, googleAds?.code, landingPages?.code, searchPages?.code]
+      .map((c) => (typeof c === "string" ? c.trim() : c))
+      .filter(isValidId) as string[];
     if (googleCodes.length > 0) {
-      loadScript(`https://www.googletagmanager.com/gtag/js?id=${googleCodes[0]}`, "ga-script");
-      const w = window as any;
-      w.dataLayer = w.dataLayer || [];
-      w.gtag = function (...args: unknown[]) { w.dataLayer.push(args); };
-      w.gtag("js", new Date());
-      googleCodes.forEach((id) => {
-        w.gtag("config", id);
-        if (id.startsWith("AW-")) {
-          w.gtag("config", id, { send_page_view: true });
-        }
+      safe(() => {
+        loadScript(`https://www.googletagmanager.com/gtag/js?id=${googleCodes[0]}`, "ga-script");
+        const w = window as any;
+        w.dataLayer = w.dataLayer || [];
+        w.gtag = function (...args: unknown[]) { w.dataLayer.push(args); };
+        w.gtag("js", new Date());
+        googleCodes.forEach((id) => {
+          w.gtag("config", id);
+          if (id.startsWith("AW-")) {
+            w.gtag("config", id, { send_page_view: true });
+          }
+        });
+        w.gtag("set", "linker", { domains: ["googlesyndication.com"] });
       });
-      w.gtag("set", "linker", { domains: ["googlesyndication.com"] });
     }
 
     const tiktok = integrations.find((i) => i.channel === "TikTokPixel");
-    if (tiktok?.code) {
-      loadScript("https://analytics.tiktok.com/i18n/pixel/events.js", "tt-pixel-sdk");
-      const w = window as any;
-      w.ttq = w.ttq || [];
-      w.ttq.load(tiktok.code);
-      w.ttq.page();
+    const tiktokId = tiktok?.code?.trim();
+    if (isValidId(tiktokId)) {
+      safe(() => {
+        const win = window as any;
+        if (win.ttq && win.ttq._i && win.ttq._i[tiktokId]) return;
+        (function (w: any, d: Document, t: string) {
+          w.TiktokAnalyticsObject = t;
+          const ttq: any = (w[t] = w[t] || []);
+          ttq.methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie", "holdConsent", "revokeConsent", "grantConsent"];
+          ttq.setAndDefer = function (target: any, method: string) {
+            target[method] = function () {
+              target.push([method].concat(Array.prototype.slice.call(arguments, 0)));
+            };
+          };
+          for (let i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
+          ttq.instance = function (id: string) {
+            const inst = (ttq._i && ttq._i[id]) || [];
+            for (let n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(inst, ttq.methods[n]);
+            return inst;
+          };
+          ttq.load = function (id: string, opts?: any) {
+            const src = "https://analytics.tiktok.com/i18n/pixel/events.js";
+            ttq._i = ttq._i || {};
+            ttq._i[id] = [];
+            ttq._i[id]._u = src;
+            ttq._t = ttq._t || {};
+            ttq._t[id] = +new Date();
+            ttq._o = ttq._o || {};
+            ttq._o[id] = opts || {};
+            const el = d.createElement("script");
+            el.type = "text/javascript";
+            el.async = true;
+            el.src = src + "?sdkid=" + id + "&lib=" + t;
+            const first = d.getElementsByTagName("script")[0];
+            if (first && first.parentNode) first.parentNode.insertBefore(el, first);
+            else d.head.appendChild(el);
+          };
+          ttq.load(tiktokId);
+          ttq.page();
+        })(win, document, "ttq");
+      });
     }
 
     const snapchat = integrations.find((i) => i.channel === "SnapchatPixel");
-    if (snapchat?.code) {
-      loadScript("https://tr.snapchat.com/si.js", "snap-pixel-sdk");
-      const w = window as any;
-      w.snaptr = w.snaptr || function (...args: unknown[]) { (w.snaptr.q = w.snaptr.q || []).push(args); };
-      w.snaptr("init", snapchat.code);
-      w.snaptr("track", "PAGE_VIEW");
+    const snapchatId = snapchat?.code?.trim();
+    if (isValidId(snapchatId)) {
+      safe(() => {
+        loadScript("https://tr.snapchat.com/si.js", "snap-pixel-sdk");
+        const w = window as any;
+        w.snaptr = w.snaptr || function (...args: unknown[]) { (w.snaptr.q = w.snaptr.q || []).push(args); };
+        w.snaptr("init", snapchatId);
+        w.snaptr("track", "PAGE_VIEW");
+      });
     }
   }, [integrations]);
 

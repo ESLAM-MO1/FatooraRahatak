@@ -759,7 +759,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 alt={t("brand.name")}
                 className="block w-full sm:w-[620px] lg:w-[760px] max-w-full h-auto shrink-0"
               />
-              <div className="flex items-center justify-center gap-4 rounded-2xl px-6 py-5 w-full max-w-md sm:max-w-none sm:w-auto" style={{ backgroundColor: "#fff" }}>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 w-full">
+              <div className="flex items-center justify-center gap-4 rounded-2xl px-6 py-5 w-full max-w-md sm:w-auto" style={{ backgroundColor: "#fff" }}>
                 <img src="/tawtheeq-logo.jpeg" alt={isAr ? "شعار التوثيق" : "Verification logo"} className="h-20 sm:h-16 w-auto shrink-0" />
                 <div className="text-start">
                   <div className="text-[14px] sm:text-[12px] font-bold" style={{ color: "var(--sub)" }}>
@@ -770,7 +772,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
               </div>
-            </div>
             <div className="flex items-center justify-center flex-wrap gap-4">
               {footer.social.facebook !== "#" && footer.social.facebook && (
                 <Link href={footer.social.facebook} aria-label="Facebook" target="_blank" rel="noopener noreferrer">
@@ -812,6 +813,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#BFE6F3" strokeWidth="1.8"><path d="M4 4l7.2 9.6L4.4 20H7l5.6-5 4.4 5H20l-7.5-9.9L19.4 4h-2.6l-5.1 4.6L7.6 4H4Z" /></svg>
                 </Link>
               )}
+            </div>
             </div>
           </div>
 

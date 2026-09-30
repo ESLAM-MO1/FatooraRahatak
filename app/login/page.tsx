@@ -207,7 +207,7 @@ export default function LoginPage() {
             <span className="flex-1 h-px bg-[var(--border)]" />
           </div>
 
-          <div className="relative w-full mb-4">
+          <div className="relative w-full mb-4 overflow-hidden isolate">
             <button
               type="button"
               tabIndex={-1}
@@ -227,7 +227,7 @@ export default function LoginPage() {
             />
           </div>
 
-          <p className="text-center text-[13.5px] text-[var(--sub)]">
+          <p className="relative z-10 text-center text-[13.5px] text-[var(--sub)]">
             {t("auth.noAccount")}{" "}
             <a href="/register" className="text-[var(--green)] font-bold hover:underline">
               {t("auth.register")}

@@ -2,7 +2,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import Script from "next/script";
 import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import Icon from "@/components/Icon";
@@ -796,14 +795,23 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0 max-w-full">
+            <div className="flex flex-col items-center gap-4 shrink-0 max-w-full">
               <img
                 src="/footer-banner.png"
                 alt={t("brand.name")}
                 className="block w-full sm:w-[620px] lg:w-[760px] max-w-full h-auto shrink-0"
               />
-              <div className="sbc-verify-seal" data-token="c2VFNWlBSnJsOUpXYjlxZ0IrWkthQT09"></div>
-              <Script src="https://eauthenticate.saudibusiness.gov.sa/EAuthSealApi/seal.js" strategy="afterInteractive" />
+              <div className="flex items-center justify-center gap-3 rounded-xl px-4 py-3 w-full sm:w-auto" style={{ backgroundColor: "#fff" }}>
+                <img src="/tawtheeq-logo.jpeg" alt={isAr ? "شعار التوثيق" : "Verification logo"} className="h-14 w-auto shrink-0" />
+                <div className="text-start">
+                  <div className="text-[12px] font-bold" style={{ color: "var(--sub)" }}>
+                    {isAr ? "رقم شهادة التوثيق" : "Verification Certificate No."}
+                  </div>
+                  <div className="text-[18px] font-extrabold tracking-wider" dir="ltr" style={{ color: "var(--blue-deep)" }}>
+                    0000330212
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

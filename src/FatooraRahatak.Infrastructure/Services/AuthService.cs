@@ -145,6 +145,13 @@ public class AuthService : IAuthService
         if (!user.IsActive)
             throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
 
+        if (user.UserType == UserType.SuperAdmin)
+        {
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return await GenerateAuthResponseAsync(user);
+        }
+
         await TrySendLoginOtpAsync(user);
 
         return new AuthResponseDto { RequiresOtp = true, Email = user.Email };
@@ -206,6 +213,13 @@ public class AuthService : IAuthService
 
         if (!user.IsActive)
             throw new UnauthorizedAccessException("الحساب معطّل، تواصل مع الدعم الفني");
+
+        if (user.UserType == UserType.SuperAdmin)
+        {
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return await GenerateAuthResponseAsync(user);
+        }
 
         await TrySendLoginOtpAsync(user);
 

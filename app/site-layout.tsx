@@ -802,7 +802,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 alt={t("brand.name")}
                 className="block w-full sm:w-[620px] lg:w-[760px] max-w-full h-auto shrink-0"
               />
-              <div className="sbc-verify-seal" data-token="c2VFNWlBSnJsOUpXYjlxZ0IrWkthQT09" data-position="bottom-left"></div>
+              <div className="sbc-verify-seal" data-token="c2VFNWlBSnJsOUpXYjlxZ0IrWkthQT09"></div>
               <Script src="https://eauthenticate.saudibusiness.gov.sa/EAuthSealApi/seal.js" strategy="afterInteractive" />
             </div>
           </div>

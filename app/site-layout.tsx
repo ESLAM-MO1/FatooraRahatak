@@ -657,7 +657,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2.5 mb-4">
                 <div className="brand-logo-frame" style={{ width: 54, height: 54 }}>
-                  <img src="/footer-logo.png" alt={t("brand.name")} className="brand-logo" />
+                  <img src="/logo.png" alt={t("brand.name")} className="brand-logo" />
                 </div>
                 <span className="text-[18px] font-bold text-white">{t("brand.name")}</span>
               </div>

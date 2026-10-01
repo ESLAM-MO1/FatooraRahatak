@@ -754,21 +754,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
 
           <div className="mt-10 pt-8 border-t flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-8" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <img
-              src="/footer-banner.png"
+              src="/footer-new.png"
               alt={t("brand.name")}
-              className="block w-full max-w-[560px] lg:max-w-[760px] lg:flex-1 lg:min-w-0 h-auto"
+              className="block w-full max-w-[560px] lg:max-w-[900px] lg:flex-1 lg:min-w-0 h-auto"
             />
-            <div className="flex items-center justify-center gap-4 rounded-2xl px-6 py-5 w-full max-w-md lg:w-auto lg:max-w-none shrink-0" style={{ backgroundColor: "#fff" }}>
-              <img src="/tawtheeq-logo.jpeg" alt={isAr ? "شعار التوثيق" : "Verification logo"} className="h-20 lg:h-14 w-auto shrink-0" />
-              <div className="text-start">
-                <div className="text-[14px] lg:text-[12px] font-bold" style={{ color: "var(--sub)" }}>
-                  {isAr ? "رقم شهادة التوثيق" : "Verification Certificate No."}
-                </div>
-                <div className="text-[26px] lg:text-[18px] font-extrabold tracking-wider" dir="ltr" style={{ color: "var(--blue-deep)" }}>
-                  0000330212
-                </div>
-              </div>
-            </div>
             <div className="flex items-center justify-center flex-wrap gap-5 shrink-0">
               {footer.social.facebook !== "#" && footer.social.facebook && (
                 <Link href={footer.social.facebook} aria-label="Facebook" target="_blank" rel="noopener noreferrer">

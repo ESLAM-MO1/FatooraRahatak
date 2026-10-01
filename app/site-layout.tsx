@@ -752,12 +752,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          <div className="mt-10 pt-8 border-t flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-8" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
-            <img
-              src="/footer-new.png"
-              alt={t("brand.name")}
-              className="block w-full max-w-[560px] lg:max-w-[900px] lg:flex-1 lg:min-w-0 h-auto"
-            />
+          <div className="mt-10 pt-8 border-t flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-8" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
             <div className="flex items-center justify-center flex-wrap gap-5 shrink-0">
               {footer.social.facebook !== "#" && footer.social.facebook && (
                 <Link href={footer.social.facebook} aria-label="Facebook" target="_blank" rel="noopener noreferrer">
@@ -800,6 +795,11 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
             </div>
+            <img
+              src="/footer-v2.png"
+              alt={t("brand.name")}
+              className="block w-full max-w-[560px] lg:max-w-[900px] lg:flex-1 lg:min-w-0 h-auto"
+            />
           </div>
 
           <div className="mt-6 text-center">

@@ -18,7 +18,6 @@ import { PAGE_DEFS, parseStorePages } from "@/lib/storePages";
 import StoreFaqManager from "@/components/store-managers/StoreFaqManager";
 import StoreBlogManager from "@/components/store-managers/StoreBlogManager";
 import StoreBannersManager from "@/components/store-managers/StoreBannersManager";
-import StorePaymentCredentialsManager from "@/components/store-managers/StorePaymentCredentialsManager";
 
 type DomainStatus = "None" | "Pending" | "Active";
 
@@ -1571,7 +1570,7 @@ export default function StoreSettingsPage() {
             <SettingCard icon="card" title={t("storeSettings.paymentOptions")} accent="green">
               <SuccessToast message={paymentSuccess} fixed className="mb-4" />
               <div className="space-y-1">
-                {store?.paymentMethods.filter((method) => method.type !== "Tabby" && method.type !== "Tamara").map((method) => (
+                {store?.paymentMethods.map((method) => (
                   <ToggleRow
                     key={method.type}
                     label={paymentLabels[method.type] ? t(paymentLabels[method.type]) : method.type}
@@ -1581,14 +1580,6 @@ export default function StoreSettingsPage() {
                   />
                 ))}
               </div>
-            </SettingCard>
-          </div>
-        )}
-
-        {activeTab === "commerce" && (
-          <div className="mt-6">
-            <SettingCard icon="card" title={t("storeSettings.bnplTitle")} accent="gold">
-              <StorePaymentCredentialsManager storeId={store?.id} />
             </SettingCard>
           </div>
         )}

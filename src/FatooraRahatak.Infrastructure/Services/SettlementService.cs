@@ -140,6 +140,9 @@ public class SettlementService : ISettlementService
             if (deliveredAt.AddDays(returnPolicyDays) > periodEnd)
                 continue;
 
+            if (order.PaymentMethodType is PaymentMethodType.Tabby or PaymentMethodType.Tamara)
+                continue;
+
             if (order.PaymentStatus != PaymentStatus.Paid && order.PaymentMethodType != PaymentMethodType.CashOnDelivery)
                 continue;
 

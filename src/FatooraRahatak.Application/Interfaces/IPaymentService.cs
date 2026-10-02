@@ -1,5 +1,6 @@
 using FatooraRahatak.Application.DTOs;
 using FatooraRahatak.Application.DTOs.Payment;
+using FatooraRahatak.Domain.Enums;
 
 namespace FatooraRahatak.Application.Interfaces;
 
@@ -17,4 +18,5 @@ public interface IPaymentService
     Task<PaymentStatusResult> ConfirmBankTransferAsync(long storeId, long orderId);
     Task<PaymentStatusResult> ConfirmPosBankTransferAsync(long storeId, string paymentReference);
     Task<PaymentStatusResult> HandlePayPalWebhookAsync(PayPalWebhookPayload payload);
+    Task<PaymentStatusResult> HandleBnplWebhookAsync(long storeId, PaymentProviderType provider, string providerPaymentId);
 }

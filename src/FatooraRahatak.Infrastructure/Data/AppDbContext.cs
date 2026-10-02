@@ -140,6 +140,7 @@ public class AppDbContext : DbContext
     public DbSet<ZatcaCredential> ZatcaCredentials => Set<ZatcaCredential>();
     public DbSet<PlatformIntegration> PlatformIntegrations => Set<PlatformIntegration>();
     public DbSet<EmailNotificationLog> EmailNotificationLogs => Set<EmailNotificationLog>();
+    public DbSet<StorePaymentCredential> StorePaymentCredentials => Set<StorePaymentCredential>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -1265,6 +1266,24 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(m => m.ReviewedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StorePaymentCredential>()
+            .HasOne(c => c.Store)
+            .WithMany()
+            .HasForeignKey(c => c.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StorePaymentCredential>()
+            .HasIndex(c => new { c.StoreId, c.Provider })
+            .IsUnique();
+
+        modelBuilder.Entity<StorePaymentCredential>()
+            .Property(c => c.PublicKey).HasMaxLength(512);
+        modelBuilder.Entity<StorePaymentCredential>()
+            .Property(c => c.MerchantCode).HasMaxLength(128);
+        modelBuilder.Entity<StorePaymentCredential>()
+            .Property(c => c.SecretKeyEncrypted).HasMaxLength(2048);
+        modelBuilder.Entity<StorePaymentCredential>()
+            .Property(c => c.NotificationTokenEncrypted).HasMaxLength(2048);
     }
     public override int SaveChanges()
     {

@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using FatooraRahatak.Application.DTOs.Payment;
 using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,20 +18,32 @@ public class PaymentController : ControllerBase
     private readonly IPaymentService _paymentService;
     private readonly MoyasarPaymentProvider _provider;
     private readonly PayPalPaymentProvider _payPalProvider;
+    private readonly TamaraPaymentProvider _tamaraProvider;
+    private readonly IStorePaymentCredentialService _credentialService;
     private readonly IPermissionCheckService _permCheck;
+    private readonly ILogger<PaymentController> _logger;
 
-    public PaymentController(IPaymentService paymentService, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, IPermissionCheckService permCheck)
+    public PaymentController(IPaymentService paymentService, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TamaraPaymentProvider tamaraProvider, IStorePaymentCredentialService credentialService, IPermissionCheckService permCheck, ILogger<PaymentController> logger)
     {
         _paymentService = paymentService;
         _provider = provider;
         _payPalProvider = payPalProvider;
+        _tamaraProvider = tamaraProvider;
+        _credentialService = credentialService;
         _permCheck = permCheck;
+        _logger = logger;
     }
 
     private long GetUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
+
+    private async Task<string> ReadBodyAsync()
+    {
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        return await reader.ReadToEndAsync();
+    }
 
     [HttpPost("create-link")]
     public async Task<IActionResult> CreatePaymentLink([FromBody] CreatePaymentDto dto)
@@ -54,17 +68,11 @@ public class PaymentController : ControllerBase
         return Ok(new { success = true, data = result });
     }
 
-    // 🔒 Webhook محمي بالتوقيع (HMAC-SHA256) — بدون توقيع صحيح يُرفض الطلب
-    // لا يتطلب توكن مستخدم لأن بوابة الدفع لا تملك واحدًا؛ الحماية عبر التوقيع فقط.
     [HttpPost("webhook")]
     [AllowAnonymous]
     public async Task<IActionResult> HandleWebhook()
     {
-        string rawBody;
-        using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
-        {
-            rawBody = await reader.ReadToEndAsync();
-        }
+        var rawBody = await ReadBodyAsync();
 
         if (string.IsNullOrWhiteSpace(rawBody))
             return BadRequest(new { success = false, message = "Empty webhook body" });
@@ -98,17 +106,11 @@ public class PaymentController : ControllerBase
         return Ok(new { success = true });
     }
 
-    // 🔒 Webhook PayPal: مُتحقَّق بالتوقيع (RSA على PAYPAL-TRANSMISSION-* headers) —
-    // بدون توقيع صحيح يُرفض. لا يتطلب توكن مستخدم؛ الحماية عبر التوقيع فقط.
     [HttpPost("webhook/paypal")]
     [AllowAnonymous]
     public async Task<IActionResult> HandlePayPalWebhook()
     {
-        string rawBody;
-        using (var reader = new StreamReader(Request.Body, Encoding.UTF8))
-        {
-            rawBody = await reader.ReadToEndAsync();
-        }
+        var rawBody = await ReadBodyAsync();
 
         if (string.IsNullOrWhiteSpace(rawBody))
             return BadRequest(new { success = false, message = "Empty webhook body" });
@@ -151,6 +153,94 @@ public class PaymentController : ControllerBase
             Amount = parsed.Amount,
             Currency = parsed.Currency
         });
+
+        return Ok(new { success = true });
+    }
+
+    [HttpPost("webhook/tabby/{storeId:long}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> HandleTabbyWebhook(long storeId)
+    {
+        var rawBody = await ReadBodyAsync();
+        if (string.IsNullOrWhiteSpace(rawBody))
+            return BadRequest(new { success = false, message = "Empty webhook body" });
+
+        string? paymentId = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(rawBody);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("id", out var idEl) && idEl.ValueKind == JsonValueKind.String)
+                paymentId = idEl.GetString();
+            else if (root.TryGetProperty("payment", out var pEl) && pEl.TryGetProperty("id", out var pid))
+                paymentId = pid.GetString();
+        }
+        catch
+        {
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+        }
+
+        if (string.IsNullOrWhiteSpace(paymentId))
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+
+        try
+        {
+            await _paymentService.HandleBnplWebhookAsync(storeId, PaymentProviderType.Tabby, paymentId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tabby webhook فشل. Store={Store} Payment={Payment}", storeId, paymentId);
+        }
+
+        return Ok(new { success = true });
+    }
+
+    [HttpPost("webhook/tamara/{storeId:long}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> HandleTamaraWebhook(long storeId)
+    {
+        var rawBody = await ReadBodyAsync();
+        if (string.IsNullOrWhiteSpace(rawBody))
+            return BadRequest(new { success = false, message = "Empty webhook body" });
+
+        var secrets = await _credentialService.GetSecretsAsync(storeId, PaymentProviderType.Tamara);
+        if (secrets == null || string.IsNullOrWhiteSpace(secrets.NotificationToken))
+            return Unauthorized(new { success = false, message = "تمارا غير مفعّلة لهذا المتجر" });
+
+        var token = Request.Query["tamaraToken"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            var auth = Request.Headers["Authorization"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(auth) && auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                token = auth.Substring(7).Trim();
+        }
+
+        if (!_tamaraProvider.VerifyNotificationToken(token ?? string.Empty, secrets.NotificationToken))
+            return Unauthorized(new { success = false, message = "توكن الإشعار غير صالح" });
+
+        string? orderId = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(rawBody);
+            if (doc.RootElement.TryGetProperty("order_id", out var oid) && oid.ValueKind == JsonValueKind.String)
+                orderId = oid.GetString();
+        }
+        catch
+        {
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+        }
+
+        if (string.IsNullOrWhiteSpace(orderId))
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+
+        try
+        {
+            await _paymentService.HandleBnplWebhookAsync(storeId, PaymentProviderType.Tamara, orderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tamara webhook فشل. Store={Store} Order={Order}", storeId, orderId);
+        }
 
         return Ok(new { success = true });
     }

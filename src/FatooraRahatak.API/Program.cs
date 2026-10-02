@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -101,6 +102,10 @@ builder.Services.AddHttpClient<PayPalPaymentProvider>(c => c.Timeout = TimeSpan.
 builder.Services.AddHttpClient<TabbyPaymentProvider>(c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddHttpClient<TamaraPaymentProvider>(c => c.Timeout = TimeSpan.FromSeconds(15));
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddDataProtection()
+    .SetApplicationName("FatooraRahatak")
+    .PersistKeysToFileSystem(new DirectoryInfo(builder.Configuration["DataProtection:KeysPath"] ?? "/var/www/vhosts/rahtk.sa/fatoora/dp-keys"));
+builder.Services.AddScoped<IStorePaymentCredentialService, StorePaymentCredentialService>();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ICustomerSessionService, CustomerSessionService>();

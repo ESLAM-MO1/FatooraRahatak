@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using FatooraRahatak.Application.DTOs.Stores;
@@ -18,14 +19,16 @@ public class StoreController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ICustomerNotificationService _customerNotificationService;
     private readonly IStoreDesignService _designService;
+    private readonly IStorePaymentCredentialService _credentialService;
 
-    public StoreController(IStoreService storeService, IPermissionCheckService permCheck, AppDbContext context, ICustomerNotificationService customerNotificationService, IStoreDesignService designService)
+    public StoreController(IStoreService storeService, IPermissionCheckService permCheck, AppDbContext context, ICustomerNotificationService customerNotificationService, IStoreDesignService designService, IStorePaymentCredentialService credentialService)
     {
         _storeService = storeService;
         _permCheck = permCheck;
         _context = context;
         _customerNotificationService = customerNotificationService;
         _designService = designService;
+        _credentialService = credentialService;
     }
 
     private long GetUserId() =>
@@ -203,6 +206,49 @@ public class StoreController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+    [RequirePermission("StoreSettings.Edit")]
+    [HttpGet("payment-credentials")]
+    public async Task<IActionResult> GetPaymentCredentials()
+    {
+        var storeId = await _permCheck.GetUserStoreIdAsync(GetUserId());
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك بعد" });
+
+        var result = await _credentialService.GetStatusesAsync(storeId.Value);
+        return Ok(new { success = true, data = result });
+    }
+
+    [RequirePermission("StoreSettings.Edit")]
+    [HttpPut("payment-credentials")]
+    public async Task<IActionResult> SavePaymentCredentials([FromBody] FatooraRahatak.Application.DTOs.Payment.SaveStorePaymentCredentialDto dto)
+    {
+        var storeId = await _permCheck.GetUserStoreIdAsync(GetUserId());
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك بعد" });
+
+        try
+        {
+            var result = await _credentialService.SaveAsync(storeId.Value, dto);
+
+            if (Enum.TryParse<FatooraRahatak.Domain.Enums.PaymentMethodType>(dto.Provider, true, out var methodType))
+            {
+                var method = await _context.StorePaymentMethods
+                    .FirstOrDefaultAsync(m => m.StoreId == storeId.Value && m.Type == methodType);
+                if (method != null)
+                {
+                    method.IsEnabled = result.IsEnabled;
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return Ok(new { success = true, data = result, message = "تم حفظ بيانات بوابة الدفع بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [RequirePermission("StoreSettings.Edit")]
     [HttpPut("social")]
     public async Task<IActionResult> UpdateSocial([FromBody] UpdateStoreSocialDto dto)

@@ -1,49 +1,43 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
-/// <summary>
-/// بوابة تابي (الدفع لاحقًا / قسّطها) — BNPL سعودية.
-/// يُنشئ جلسة دفع (Checkout Session) ويُعيد رابط الاستضافة حيث يُكمل العميل الدفع على صفحة تابي.
-/// </summary>
 public class TabbyPaymentProvider
 {
-    private readonly string _secretKey;
-    private readonly string _baseUrl;
-    private readonly string _publicKey;
+    private const string BaseUrl = "https://api.tabby.ai/api/v2";
     private readonly HttpClient _httpClient;
+    private readonly ILogger<TabbyPaymentProvider> _logger;
 
-    public TabbyPaymentProvider(IConfiguration configuration, HttpClient httpClient)
+    public TabbyPaymentProvider(HttpClient httpClient, ILogger<TabbyPaymentProvider> logger)
     {
-        _secretKey = configuration["Tabby:SecretKey"] ?? "";
-        _publicKey = configuration["Tabby:PublicKey"] ?? "";
-        _baseUrl = configuration["Tabby:BaseUrl"] ?? "https://api.tabby.ai/api/v2";
         _httpClient = httpClient;
+        _logger = logger;
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_secretKey);
-
     public async Task<TabbyPaymentResult> CreateCheckoutSessionAsync(
+        string secretKey,
+        string merchantCode,
         decimal amount,
         string currency,
         string description,
+        string referenceId,
         string? successUrl,
         string? cancelUrl,
         string? customerEmail = null,
         string? customerName = null,
         string? customerPhone = null)
     {
-        if (!IsConfigured)
-            return new TabbyPaymentResult { Success = false, ErrorMessage = "إعدادات تابي غير مكتملة — لتفعيل الدفع عبر تابي يجب ضبط مفتاح API في إعدادات المنصة" };
+        if (string.IsNullOrWhiteSpace(secretKey) || string.IsNullOrWhiteSpace(merchantCode))
+            return new TabbyPaymentResult { Success = false, ErrorMessage = "التاجر لم يضبط بيانات تابي" };
 
         try
         {
             var order = new Dictionary<string, object>
             {
-                ["reference_id"] = Guid.NewGuid().ToString("N")[..20],
+                ["reference_id"] = referenceId,
                 ["description"] = description,
                 ["currency"] = currency,
                 ["amount"] = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
@@ -64,40 +58,54 @@ public class TabbyPaymentProvider
             var payload = new Dictionary<string, object>
             {
                 ["payment"] = order,
-                ["merchant_code"] = _publicKey,
+                ["merchant_code"] = merchantCode,
                 ["merchant_urls"] = merchantUrls,
                 ["lang"] = "ar"
             };
             if (buyer.Count > 0) payload["buyer"] = buyer;
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/checkout")
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/checkout")
             {
                 Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
             };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _secretKey);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
 
             var response = await _httpClient.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Tabby checkout فشل. Status={Status} Response={Json}", (int)response.StatusCode, json);
                 return new TabbyPaymentResult { Success = false, ErrorMessage = $"فشل إنشاء جلسة تابي ({(int)response.StatusCode})", RawResponse = json };
+            }
 
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // ⚠️ إصلاح: API v2 يُعيد رابط الدفع في الحقل الجذري "web_url" مباشرة،
-            // وليس في payment.url أو checkout_url كما كان مفترضًا سابقًا مع v1.
             var status = root.TryGetProperty("status", out var st) ? st.GetString() : null;
             var paymentNode = root.TryGetProperty("payment", out var p) ? p : root;
             var id = paymentNode.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
-            var url = root.TryGetProperty("web_url", out var wu) ? wu.GetString() : null;
+            string? url = null;
+            if (root.TryGetProperty("configuration", out var cfg)
+                && cfg.TryGetProperty("available_products", out var prods)
+                && prods.TryGetProperty("installments", out var inst)
+                && inst.ValueKind == JsonValueKind.Array && inst.GetArrayLength() > 0
+                && inst[0].TryGetProperty("web_url", out var iwu))
+                url = iwu.GetString();
+            if (string.IsNullOrWhiteSpace(url))
+                url = root.TryGetProperty("web_url", out var wu) ? wu.GetString() : null;
 
-            // "rejected" ليس خطأ تقنيًا — تقييم تابي الداخلي رفض العميل/الطلب (pre-scoring)
             if (string.Equals(status, "rejected", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Tabby رفض الطلب. Response={Json}", json);
                 return new TabbyPaymentResult { Success = false, ErrorMessage = "تابي غير متاح حاليًا لهذا الطلب", RawResponse = json };
+            }
 
             if (string.IsNullOrWhiteSpace(url))
+            {
+                _logger.LogError("Tabby بلا رابط دفع. Response={Json}", json);
                 return new TabbyPaymentResult { Success = false, ErrorMessage = "استجابة تابي بلا رابط دفع", RawResponse = json };
+            }
 
             return new TabbyPaymentResult
             {
@@ -106,13 +114,127 @@ public class TabbyPaymentProvider
                 PaymentUrl = url,
                 Amount = amount,
                 Currency = currency,
-                Status = "Pending"
+                Status = "Pending",
+                RawResponse = json
             };
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Tabby checkout exception");
             return new TabbyPaymentResult { Success = false, ErrorMessage = ex.Message };
         }
+    }
+
+    public async Task<TabbyPaymentResult> GetPaymentStatusAsync(string secretKey, string paymentId)
+    {
+        try
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{BaseUrl}/payments/{paymentId}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
+            var response = await _httpClient.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Tabby status فشل. Id={Id} Status={Status} Response={Json}", paymentId, (int)response.StatusCode, json);
+                return new TabbyPaymentResult { Success = false, ErrorMessage = $"Tabby API error ({(int)response.StatusCode})", RawResponse = json };
+            }
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var raw = root.TryGetProperty("status", out var st) ? st.GetString() : null;
+            var amount = 0m;
+            if (root.TryGetProperty("amount", out var am))
+                decimal.TryParse(am.GetString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out amount);
+
+            return new TabbyPaymentResult
+            {
+                Success = true,
+                ProviderPaymentId = paymentId,
+                Amount = amount,
+                Status = MapStatus(raw),
+                RawResponse = json
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tabby status exception. Id={Id}", paymentId);
+            return new TabbyPaymentResult { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<TabbyPaymentResult> CapturePaymentAsync(string secretKey, string paymentId, decimal amount)
+    {
+        try
+        {
+            var payload = new Dictionary<string, object>
+            {
+                ["amount"] = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+            };
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/payments/{paymentId}/captures")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
+            var response = await _httpClient.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Tabby capture فشل. Id={Id} Status={Status} Response={Json}", paymentId, (int)response.StatusCode, json);
+                return new TabbyPaymentResult { Success = false, ErrorMessage = $"Tabby capture error ({(int)response.StatusCode})", RawResponse = json };
+            }
+
+            return new TabbyPaymentResult { Success = true, ProviderPaymentId = paymentId, Status = "Paid", RawResponse = json };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tabby capture exception. Id={Id}", paymentId);
+            return new TabbyPaymentResult { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<TabbyPaymentResult> RefundPaymentAsync(string secretKey, string paymentId, decimal amount)
+    {
+        try
+        {
+            var payload = new Dictionary<string, object>
+            {
+                ["amount"] = amount.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+            };
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/payments/{paymentId}/refunds")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
+            var response = await _httpClient.SendAsync(request);
+            var json = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Tabby refund فشل. Id={Id} Status={Status} Response={Json}", paymentId, (int)response.StatusCode, json);
+                return new TabbyPaymentResult { Success = false, ErrorMessage = $"Tabby refund error ({(int)response.StatusCode}): {json}", RawResponse = json };
+            }
+
+            return new TabbyPaymentResult { Success = true, ProviderPaymentId = paymentId, Status = "Refunded", RawResponse = json };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tabby refund exception. Id={Id}", paymentId);
+            return new TabbyPaymentResult { Success = false, ErrorMessage = ex.Message };
+        }
+    }
+
+    public static string MapStatus(string? status)
+    {
+        return status?.ToUpperInvariant() switch
+        {
+            "AUTHORIZED" or "CLOSED" => "Paid",
+            "CREATED" or "NEW" => "Pending",
+            "REJECTED" or "EXPIRED" or "CANCELED" or "CANCELLED" => "Failed",
+            "REFUNDED" => "Refunded",
+            _ => "Pending"
+        };
     }
 }
 

@@ -57,6 +57,21 @@ public class PublicStoreService : IPublicStoreService
             .Select(m => new PublicPaymentMethodDto { Type = m.Type.ToString() })
             .ToListAsync();
 
+        var bnplRows = await _context.StorePaymentCredentials
+            .AsNoTracking()
+            .Where(cr => cr.StoreId == store.Id && cr.IsEnabled)
+            .ToListAsync();
+        var bnplReady = bnplRows
+            .Where(cr => !string.IsNullOrWhiteSpace(cr.SecretKeyEncrypted)
+                && (cr.Provider == PaymentProviderType.Tabby
+                    ? !string.IsNullOrWhiteSpace(cr.PublicKey) && !string.IsNullOrWhiteSpace(cr.MerchantCode)
+                    : cr.Provider == PaymentProviderType.Tamara && !string.IsNullOrWhiteSpace(cr.NotificationTokenEncrypted)))
+            .Select(cr => cr.Provider.ToString())
+            .ToHashSet();
+        paymentMethods = paymentMethods
+            .Where(m => (m.Type != "Tabby" && m.Type != "Tamara") || bnplReady.Contains(m.Type))
+            .ToList();
+
         var package = await _context.Packages.FindAsync(store.PackageId);
 
         var shippingCompanies = await _context.ShippingCompanies

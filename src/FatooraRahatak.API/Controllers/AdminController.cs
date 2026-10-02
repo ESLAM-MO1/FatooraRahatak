@@ -448,6 +448,15 @@ public class AdminController : ControllerBase
         }
     }
 
+    [HttpGet("notifications/history")]
+    public async Task<IActionResult> GetNotificationHistory()
+    {
+        var forbidden = CheckAccess("Notifications");
+        if (forbidden != null) return forbidden;
+        var history = await _adminService.GetNotificationHistoryAsync();
+        return Ok(new { success = true, data = history });
+    }
+
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()
     {

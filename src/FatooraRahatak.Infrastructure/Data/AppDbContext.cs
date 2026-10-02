@@ -105,6 +105,7 @@ public class AppDbContext : DbContext
     public DbSet<TicketReply> TicketReplies => Set<TicketReply>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog> PlatformNotificationLogs => Set<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog>();
     public DbSet<ManagedDomain> ManagedDomains => Set<ManagedDomain>();
     public DbSet<SslCertificate> SslCertificates => Set<SslCertificate>();
     public DbSet<DnsRecord> DnsRecords => Set<DnsRecord>();

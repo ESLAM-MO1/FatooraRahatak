@@ -426,8 +426,41 @@ public class AdminService : IAdminService
             await _notificationService.CreateAsync(uid, dto.Title, dto.Message, notifType);
         }
 
+        _context.Set<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog>().Add(new FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog
+        {
+            AdminUserId = adminUserId,
+            AdminName = admin.FullName,
+            RecipientType = dto.RecipientType,
+            StoreId = dto.RecipientType == "Specific" ? dto.StoreId : null,
+            Type = dto.Type,
+            Title = dto.Title,
+            Message = dto.Message,
+            RecipientsCount = targetUserIds.Count
+        });
+        await _context.SaveChangesAsync();
+
         await LogAuditActionAsync(adminUserId, admin.FullName, "SendNotification", "Platform", null,
             $"إرسال إشعار {(dto.RecipientType == "All" ? "للجميع" : $"للمتجر {dto.StoreId}")}: {dto.Title}", null);
+    }
+
+    public async Task<List<NotificationHistoryDto>> GetNotificationHistoryAsync()
+    {
+        return await _context.Set<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog>()
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(200)
+            .Select(l => new NotificationHistoryDto
+            {
+                Id = l.Id,
+                AdminName = l.AdminName,
+                RecipientType = l.RecipientType,
+                StoreId = l.StoreId,
+                Type = l.Type,
+                Title = l.Title,
+                Message = l.Message,
+                RecipientsCount = l.RecipientsCount,
+                CreatedAt = l.CreatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task ActivateCustomDomainAsync(long storeId)

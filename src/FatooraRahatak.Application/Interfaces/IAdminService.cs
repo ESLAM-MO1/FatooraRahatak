@@ -38,6 +38,8 @@ public interface IAdminService
     // --- الإشعارات المركزية ---
     Task SendPlatformNotificationAsync(SendNotificationDto dto, long adminUserId);
     Task<List<NotificationHistoryDto>> GetNotificationHistoryAsync();
+    Task ResendNotificationAsync(long logId, long adminUserId);
+    Task DeleteNotificationLogAsync(long logId, long adminUserId);
 
     // --- إدارة الثيمات ---
     Task<List<AdminThemeDto>> GetThemesAsync();

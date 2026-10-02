@@ -457,6 +457,38 @@ public class AdminController : ControllerBase
         return Ok(new { success = true, data = history });
     }
 
+    [HttpPost("notifications/history/{id}/resend")]
+    public async Task<IActionResult> ResendNotification(long id)
+    {
+        var forbidden = CheckAccess("Notifications");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.ResendNotificationAsync(id, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم إعادة إرسال الإشعار بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpDelete("notifications/history/{id}")]
+    public async Task<IActionResult> DeleteNotificationLog(long id)
+    {
+        var forbidden = CheckAccess("Notifications");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.DeleteNotificationLogAsync(id, GetCurrentUserId());
+            return Ok(new { success = true, message = "تم حذف السجل" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()
     {

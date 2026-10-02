@@ -463,6 +463,36 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
+    public async Task ResendNotificationAsync(long logId, long adminUserId)
+    {
+        var log = await _context.Set<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog>().FirstOrDefaultAsync(l => l.Id == logId)
+            ?? throw new InvalidOperationException("السجل غير موجود");
+
+        await SendPlatformNotificationAsync(new SendNotificationDto
+        {
+            RecipientType = log.RecipientType,
+            StoreId = log.StoreId,
+            Type = log.Type,
+            Title = log.Title,
+            Message = log.Message
+        }, adminUserId);
+    }
+
+    public async Task DeleteNotificationLogAsync(long logId, long adminUserId)
+    {
+        var log = await _context.Set<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog>().FirstOrDefaultAsync(l => l.Id == logId)
+            ?? throw new InvalidOperationException("السجل غير موجود");
+
+        var admin = await _context.Users.FirstOrDefaultAsync(u => u.Id == adminUserId)
+            ?? throw new InvalidOperationException("المدير غير موجود");
+
+        _context.Set<FatooraRahatak.Domain.Entities.Notifications.PlatformNotificationLog>().Remove(log);
+        await _context.SaveChangesAsync();
+
+        await LogAuditActionAsync(adminUserId, admin.FullName, "DeleteNotificationLog", "Platform", null,
+            $"حذف سجل إشعار: {log.Title}", null);
+    }
+
     public async Task ActivateCustomDomainAsync(long storeId)
     {
         var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);

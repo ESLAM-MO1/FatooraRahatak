@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
+import CentralNotifications from "@/components/CentralNotifications";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { getUserType } from "@/lib/auth";
 
@@ -70,11 +71,6 @@ export default function UsersManagementPage() {
   const [staffForm, setStaffForm] = useState({ fullName: "", email: "", password: "", roleType: "Support" });
   const [staffError, setStaffError] = useState("");
   const [staffSuccess, setStaffSuccess] = useState("");
-
-  const [notifForm, setNotifForm] = useState({ recipientType: "All", storeId: "", type: "Update", title: "", message: "" });
-  const [notifError, setNotifError] = useState("");
-  const [notifSuccess, setNotifSuccess] = useState("");
-  const [sending, setSending] = useState(false);
 
   const userTypeLabels: Record<string, string> = {
     Owner: t("users.storeOwners"),
@@ -148,25 +144,6 @@ export default function UsersManagementPage() {
       loadStaff();
     } catch (err: any) {
       setStaffError(err.response?.data?.message || t("users.staffAddError"));
-    }
-  };
-
-  const handleSendNotification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSending(true);
-    setNotifError("");
-    setNotifSuccess("");
-    try {
-      await api.post("/admin/notifications/send", {
-        ...notifForm,
-        storeId: notifForm.storeId ? parseInt(notifForm.storeId) : null,
-      });
-      setNotifSuccess(t("users.notifSent"));
-      setNotifForm({ recipientType: "All", storeId: "", type: "Update", title: "", message: "" });
-    } catch (err: any) {
-      setNotifError(err.response?.data?.message || t("users.notifSendError"));
-    } finally {
-      setSending(false);
     }
   };
 
@@ -666,88 +643,7 @@ export default function UsersManagementPage() {
         </div>
       )}
 
-      {activeTab === "notifications" && (
-        <div className="max-w-xl">
-          <div className="card p-5">
-            <h3 className="text-[15px] font-bold text-[var(--ink)] mb-4">{t("users.sendNotification")}</h3>
-
-            {notifError && <div className="alert alert--danger mb-3">{notifError}</div>}
-            <SuccessToast message={notifSuccess} fixed className="mb-3" />
-
-            <form onSubmit={handleSendNotification} className="space-y-4">
-              <div>
-                <label>{t("users.notifRecipient")}</label>
-                <div className="field-shell">
-                  <select
-                    value={notifForm.recipientType}
-                    onChange={(e) => setNotifForm({ ...notifForm, recipientType: e.target.value })}
-                  >
-                    <option value="All">{t("users.notifAll")}</option>
-                    <option value="Specific">{t("users.notifSpecific")}</option>
-                  </select>
-                </div>
-              </div>
-
-              {notifForm.recipientType === "Specific" && (
-                <div>
-                  <label>{t("users.notifStoreId")}</label>
-                  <div className="field-shell">
-                    <input
-                      type="number"
-                      value={notifForm.storeId}
-                      onChange={(e) => setNotifForm({ ...notifForm, storeId: e.target.value })}
-                      placeholder="Store ID"
-                      required
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label>{t("users.notifType")}</label>
-                <div className="field-shell">
-                  <select
-                    value={notifForm.type}
-                    onChange={(e) => setNotifForm({ ...notifForm, type: e.target.value })}
-                  >
-                    <option value="Update">{t("users.notifUpdate")}</option>
-                    <option value="Maintenance">{t("users.notifMaintenance")}</option>
-                    <option value="Offer">{t("users.notifOffer")}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label>{t("users.notifTitle")}</label>
-                <div className="field-shell">
-                  <input
-                    type="text"
-                    value={notifForm.title}
-                    onChange={(e) => setNotifForm({ ...notifForm, title: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label>{t("users.notifMessage")}</label>
-                <div className="field-shell">
-                  <textarea
-                    value={notifForm.message}
-                    onChange={(e) => setNotifForm({ ...notifForm, message: e.target.value })}
-                    rows={4}
-                    required
-                  />
-                </div>
-              </div>
-
-              <button type="submit" disabled={sending} className="btn-primary w-full">
-                {sending ? t("users.sending") : t("users.send")}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      {activeTab === "notifications" && <CentralNotifications />}
 
       {/* Edit User Modal (All / Owners tabs) */}
       {editingUser && (

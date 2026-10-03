@@ -464,7 +464,7 @@ export default function SubscriptionPage() {
               </div>
               <div>
                 <p className="text-[var(--sub)]">{t("subscription.currentCycle")}</p>
-                <p className="font-medium text-[var(--ink)]">{status.billingCycle}</p>
+                <p className="font-medium text-[var(--ink)]">{status.billingCycle === "Monthly" ? t("subscription.billingMonthly") : status.billingCycle === "Yearly" ? t("subscription.billingYearly") : status.billingCycle}</p>
               </div>
               <div>
                 <p className="text-[var(--sub)]">{t("subscription.subscriptionEndDate")}</p>

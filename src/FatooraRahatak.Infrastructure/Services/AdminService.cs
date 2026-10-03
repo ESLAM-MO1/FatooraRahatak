@@ -208,6 +208,7 @@ public class AdminService : IAdminService
             subscription.PackageId = newPackageId;
             subscription.Status = SubscriptionStatus.Active;
             subscription.PaymentStatus = "Paid";
+            subscription.BillingCycle = BillingCycle.Yearly;
             subscription.DueAmount = 0;
             subscription.StartDate = DateTime.UtcNow;
             subscription.EndDate = DateTime.UtcNow.AddYears(1);
@@ -221,7 +222,7 @@ public class AdminService : IAdminService
                 PackageId = newPackageId,
                 StartDate = DateTime.UtcNow,
                 EndDate = DateTime.UtcNow.AddYears(1),
-                BillingCycle = BillingCycle.Monthly,
+                BillingCycle = BillingCycle.Yearly,
                 Status = SubscriptionStatus.Active,
                 PaymentStatus = "Paid",
                 AutoRenew = false,

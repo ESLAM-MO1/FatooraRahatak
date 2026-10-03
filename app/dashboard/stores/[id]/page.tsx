@@ -25,6 +25,8 @@ interface StoreDetail {
   employeesCount: number;
   customDomain: string | null;
   customDomainStatus: string;
+  subscriptionEndDate: string | null;
+  subscriptionStatus: string | null;
 }
 
 const statusBadgeClass = (status: string) => {
@@ -64,6 +66,8 @@ export default function StoreDetailPage() {
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [endDateInput, setEndDateInput] = useState("");
+  const [savingEndDate, setSavingEndDate] = useState(false);
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -101,6 +105,7 @@ export default function StoreDetailPage() {
     try {
       const res = await api.get(`/admin/stores/${storeId}`);
       setStore(res.data.data);
+      setEndDateInput(res.data.data.subscriptionEndDate ? String(res.data.data.subscriptionEndDate).slice(0, 10) : "");
     } catch (err: any) {
       if (err.response?.status === 403) {
         setError(t("storeDetail.forbidden"));
@@ -165,6 +170,33 @@ export default function StoreDetailPage() {
       setActionError(err.response?.data?.message || t("storeDetail.activateDomainError"));
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const subscriptionStatusLabel = (status: string | null) => {
+    switch (status) {
+      case "Active": return t("storeDetail.subStatusActive");
+      case "GracePeriod": return t("storeDetail.subStatusGracePeriod");
+      case "Expired": return t("storeDetail.subStatusExpired");
+      case "Cancelled": return t("storeDetail.subStatusCancelled");
+      default: return status || "—";
+    }
+  };
+
+  const handleSaveEndDate = async () => {
+    if (!store || !endDateInput) return;
+
+    setActionError("");
+    setActionSuccess("");
+    setSavingEndDate(true);
+    try {
+      await api.put(`/admin/stores/${store.id}/subscription-end-date`, { endDate: endDateInput });
+      setActionSuccess(t("storeDetail.endDateSuccess"));
+      await fetchStore();
+    } catch (err: any) {
+      setActionError(err.response?.data?.message || t("storeDetail.endDateError"));
+    } finally {
+      setSavingEndDate(false);
     }
   };
 
@@ -249,6 +281,40 @@ export default function StoreDetailPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="card p-5 mb-6">
+        <h2 className="text-lg font-bold text-[var(--ink)] mb-5 pb-3 border-b" style={{ borderColor: "var(--border)" }}>{t("storeDetail.subscription")}</h2>
+        {store.subscriptionEndDate ? (
+          <div className="grid grid-cols-1 md:grid-cols-2">
+            <div className="p-4 border-b md:border-b-0 md:border-l border-[var(--border)]">
+              <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.subscriptionStatus")}</p>
+              <p className="text-[15px] font-bold text-[var(--ink)]">{subscriptionStatusLabel(store.subscriptionStatus)}</p>
+            </div>
+            <div className="p-4">
+              <p className="text-[11px] font-bold text-[var(--sub)] uppercase tracking-wide mb-1.5">{t("storeDetail.endDate")}</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  dir="ltr"
+                  value={endDateInput}
+                  onChange={(e) => setEndDateInput(e.target.value)}
+                  className="rounded-lg border px-3 py-2 text-[13px] outline-none"
+                  style={{ borderColor: "var(--border)" }}
+                />
+                <button
+                  onClick={handleSaveEndDate}
+                  disabled={savingEndDate || !endDateInput}
+                  className="btn btn-primary btn-sm"
+                >
+                  {savingEndDate ? t("storeDetail.savingEndDate") : t("storeDetail.saveEndDate")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="p-4 text-[13px] text-[var(--sub)]">{t("storeDetail.noSubscription")}</p>
+        )}
       </div>
 
       <div className="card p-5 mb-6">

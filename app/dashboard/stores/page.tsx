@@ -23,6 +23,8 @@ interface Store {
   packageConsumptionPercent: number;
   customDomain?: string | null;
   customDomainStatus?: string;
+  subscriptionEndDate?: string | null;
+  subscriptionStatus?: string | null;
 }
 
 interface PackageOption {
@@ -59,6 +61,11 @@ const statusBadgeClass = (status: string) => {
       return "badge badge--gray";
   }
 };
+
+const formatEndDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString("ar-SA-u-nu-latn") : "—";
+
+const isEndDatePassed = (value?: string | null) => !!value && new Date(value) < new Date();
 
 export default function StoresPage() {
   const { t } = useTranslation();
@@ -261,6 +268,7 @@ export default function StoresPage() {
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.owner")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.email")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.package")}</th>
+                  <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.endDate")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.consumption")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.status")}</th>
                   <th className="text-right p-3 font-medium text-[var(--sub)]">{t("store.registrationDate")}</th>
@@ -298,6 +306,9 @@ export default function StoresPage() {
                       {store.ownerEmail}
                     </td>
                     <td className="p-3 text-[var(--sub)]">{store.packageName}</td>
+                    <td className="p-3" dir="ltr" style={{ color: isEndDatePassed(store.subscriptionEndDate) ? "#ef4444" : "var(--sub)" }}>
+                      {formatEndDate(store.subscriptionEndDate)}
+                    </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
@@ -416,6 +427,12 @@ export default function StoresPage() {
                     <div>
                       <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.package")}</p>
                       <p className="text-[12px] text-[var(--sub)]">{store.packageName}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.endDate")}</p>
+                      <p className="text-[12px]" dir="ltr" style={{ color: isEndDatePassed(store.subscriptionEndDate) ? "#ef4444" : "var(--sub)" }}>
+                        {formatEndDate(store.subscriptionEndDate)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-[11px] font-bold text-[var(--sub)]">{t("store.consumption")}</p>

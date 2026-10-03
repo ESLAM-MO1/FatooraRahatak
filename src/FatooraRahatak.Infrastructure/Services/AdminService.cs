@@ -93,6 +93,8 @@ public class AdminService : IAdminService
                 EmployeesCount = s.Employees.Count(e => e.Status == "Active"),
                 WarehousesCount = s.Warehouses.Count,
                 OrdersCount = _context.Orders.Count(o => o.StoreId == s.Id),
+                SubscriptionEndDate = _context.Subscriptions.Where(x => x.Id == s.ActiveSubscriptionId).Select(x => (DateTime?)x.EndDate).FirstOrDefault(),
+                SubscriptionStatus = _context.Subscriptions.Where(x => x.Id == s.ActiveSubscriptionId).Select(x => x.Status.ToString()).FirstOrDefault(),
                 s.CustomDomain,
                 CustomDomainStatus = s.CustomDomainStatus.ToString()
             })
@@ -122,6 +124,8 @@ public class AdminService : IAdminService
                 Status = s.Status,
                 CreatedAt = s.CreatedAt,
                 PackageConsumptionPercent = ratios.Count > 0 ? Math.Round(ratios.Max(), 1) : 0,
+                SubscriptionEndDate = s.SubscriptionEndDate,
+                SubscriptionStatus = s.SubscriptionStatus,
                 CustomDomain = s.CustomDomain,
                 CustomDomainStatus = s.CustomDomainStatus
             };
@@ -139,6 +143,10 @@ public class AdminService : IAdminService
 
         if (store == null) return null;
 
+        var subscription = store.ActiveSubscriptionId.HasValue
+            ? await _context.Subscriptions.FirstOrDefaultAsync(x => x.Id == store.ActiveSubscriptionId.Value)
+            : null;
+
         return new AdminStoreDetailDto
         {
             Id = store.Id,
@@ -151,6 +159,8 @@ public class AdminService : IAdminService
             CreatedAt = store.CreatedAt,
             ProductsCount = store.Products.Count,
             EmployeesCount = store.Employees.Count(e => e.Status == "Active"),
+            SubscriptionEndDate = subscription?.EndDate,
+            SubscriptionStatus = subscription?.Status.ToString(),
             CustomDomain = store.CustomDomain,
             CustomDomainStatus = store.CustomDomainStatus.ToString()
         };
@@ -220,6 +230,32 @@ public class AdminService : IAdminService
             _context.Subscriptions.Add(subscription);
             await _context.SaveChangesAsync();
             store.ActiveSubscriptionId = subscription.Id;
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateStoreSubscriptionEndDateAsync(long storeId, DateTime endDate)
+    {
+        var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
+        if (store == null)
+            throw new InvalidOperationException("المتجر غير موجود");
+
+        var subscription = store.ActiveSubscriptionId.HasValue
+            ? await _context.Subscriptions.FirstOrDefaultAsync(s => s.Id == store.ActiveSubscriptionId.Value)
+            : null;
+
+        if (subscription == null)
+            throw new InvalidOperationException("لا يوجد اشتراك لهذا المتجر");
+
+        var newEnd = endDate.Date.Add(subscription.EndDate.TimeOfDay);
+        subscription.EndDate = newEnd;
+
+        if (newEnd > DateTime.UtcNow &&
+            (subscription.Status == SubscriptionStatus.Expired || subscription.Status == SubscriptionStatus.GracePeriod))
+        {
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.GracePeriodEnd = null;
         }
 
         await _context.SaveChangesAsync();

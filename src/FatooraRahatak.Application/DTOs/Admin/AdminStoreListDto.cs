@@ -13,4 +13,6 @@ public class AdminStoreListDto
     public double PackageConsumptionPercent { get; set; }
     public string? CustomDomain { get; set; }
     public string CustomDomainStatus { get; set; } = string.Empty;
+    public DateTime? SubscriptionEndDate { get; set; }
+    public string? SubscriptionStatus { get; set; }
 }

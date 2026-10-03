@@ -202,6 +202,21 @@ public class AdminController : ControllerBase
             return BadRequest(new { success = false, message = ex.Message });
         }
     }
+    [HttpPut("stores/{id}/subscription-end-date")]
+    public async Task<IActionResult> UpdateStoreSubscriptionEndDate(long id, [FromBody] UpdateSubscriptionEndDateDto dto)
+    {
+        var forbidden = CheckAccess("Stores");
+        if (forbidden != null) return forbidden;
+        try
+        {
+            await _adminService.UpdateStoreSubscriptionEndDateAsync(id, dto.EndDate);
+            return Ok(new { success = true, message = "تم تحديث تاريخ انتهاء الاشتراك بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
     [HttpPut("stores/{id}/custom-domain/activate")]
     public async Task<IActionResult> ActivateCustomDomain(long id)
     {

@@ -2752,6 +2752,10 @@ const en: Record<string, string> = {
 
   // ── Store Detail ──
   "storeDetail.unauthorized": "Unauthorized",
+  "store.cycleLabel": "Subscription Duration",
+  "store.cycleMonthly": "Monthly",
+  "store.cycleYearly": "Yearly",
+  "store.cycleTwoYears": "Two Years",
   "store.endDate": "Expiry Date",
   "storeDetail.subscription": "Subscription",
   "storeDetail.subscriptionStatus": "Subscription Status",

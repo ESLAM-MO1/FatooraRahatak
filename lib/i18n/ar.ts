@@ -2790,6 +2790,10 @@ const ar = {
 
   // ── Store Detail ──
   "storeDetail.unauthorized": "غير مصرح",
+  "store.cycleLabel": "مدة الاشتراك",
+  "store.cycleMonthly": "شهري",
+  "store.cycleYearly": "سنوي",
+  "store.cycleTwoYears": "سنتين",
   "store.endDate": "تاريخ الانتهاء",
   "storeDetail.subscription": "الاشتراك",
   "storeDetail.subscriptionStatus": "حالة الاشتراك",

@@ -194,7 +194,7 @@ public class AdminController : ControllerBase
         if (forbidden != null) return forbidden;
         try
         {
-            await _adminService.ChangeStorePackageAsync(id, dto.PackageId);
+            await _adminService.ChangeStorePackageAsync(id, dto.PackageId, dto.BillingCycle);
             return Ok(new { success = true, message = "تم تغيير باقة المتجر بنجاح" });
         }
         catch (InvalidOperationException ex)

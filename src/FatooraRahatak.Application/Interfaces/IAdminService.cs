@@ -8,7 +8,7 @@ public interface IAdminService
     Task<AdminStoreDetailDto?> GetStoreByIdAsync(long id);
     Task SuspendStoreAsync(long id);
     Task ActivateStoreAsync(long id);
-    Task ChangeStorePackageAsync(long storeId, long newPackageId);
+    Task ChangeStorePackageAsync(long storeId, long newPackageId, FatooraRahatak.Domain.Enums.BillingCycle billingCycle = FatooraRahatak.Domain.Enums.BillingCycle.Yearly);
     Task UpdateStoreSubscriptionEndDateAsync(long storeId, DateTime endDate);
     Task ActivateCustomDomainAsync(long storeId);
     Task<List<AdminPackageDto>> GetAllPackagesAsync();

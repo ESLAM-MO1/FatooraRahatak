@@ -83,6 +83,7 @@ export default function StoresPage() {
   const [packageModalStore, setPackageModalStore] = useState<Store | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<string>("");
   const [changingPackage, setChangingPackage] = useState(false);
+  const [selectedBillingCycle, setSelectedBillingCycle] = useState("Yearly");
 
   const userType = getUserType();
 
@@ -159,6 +160,7 @@ export default function StoresPage() {
   const openPackageModal = (store: Store) => {
     setPackageModalStore(store);
     setSelectedPackageId("");
+    setSelectedBillingCycle("Yearly");
     setActionError("");
   };
 
@@ -170,7 +172,7 @@ export default function StoresPage() {
     setActionSuccess("");
     setChangingPackage(true);
     try {
-      await api.put(`/admin/stores/${packageModalStore.id}/change-package`, { packageId: Number(selectedPackageId) });
+      await api.put(`/admin/stores/${packageModalStore.id}/change-package`, { packageId: Number(selectedPackageId), billingCycle: selectedBillingCycle });
       setActionSuccess(t("store.changePackageSuccess", { name: packageModalStore.storeName }));
       setPackageModalStore(null);
       await fetchStores();
@@ -527,6 +529,19 @@ export default function StoresPage() {
                 <option key={p.id} value={p.id}>{p.packageName}</option>
               ))}
             </select>
+            <div>
+              <p className="text-[12px] font-bold text-[var(--sub)] mb-1">{t("store.cycleLabel")}</p>
+              <select
+                className="w-full rounded-lg border px-3 py-2 text-[13px] outline-none"
+                style={{ borderColor: "var(--border)" }}
+                value={selectedBillingCycle}
+                onChange={(e) => setSelectedBillingCycle(e.target.value)}
+              >
+                <option value="Monthly">{t("store.cycleMonthly")}</option>
+                <option value="Yearly">{t("store.cycleYearly")}</option>
+                <option value="TwoYears">{t("store.cycleTwoYears")}</option>
+              </select>
+            </div>
             {actionError && <div className="alert alert--danger text-[12px]">{actionError}</div>}
             <div className="flex justify-end gap-2">
               <button

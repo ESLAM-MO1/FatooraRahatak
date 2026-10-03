@@ -187,7 +187,7 @@ public class AdminService : IAdminService
     }
 
     // ترقية/تغيير باقة متجر مجانًا من قبل الأدمن (بدون دفع فعلي)
-    public async Task ChangeStorePackageAsync(long storeId, long newPackageId)
+    public async Task ChangeStorePackageAsync(long storeId, long newPackageId, BillingCycle billingCycle = BillingCycle.Yearly)
     {
         var store = await _context.Stores.FirstOrDefaultAsync(s => s.Id == storeId);
         if (store == null)
@@ -208,10 +208,10 @@ public class AdminService : IAdminService
             subscription.PackageId = newPackageId;
             subscription.Status = SubscriptionStatus.Active;
             subscription.PaymentStatus = "Paid";
-            subscription.BillingCycle = BillingCycle.Yearly;
+            subscription.BillingCycle = billingCycle;
             subscription.DueAmount = 0;
             subscription.StartDate = DateTime.UtcNow;
-            subscription.EndDate = DateTime.UtcNow.AddYears(1);
+            subscription.EndDate = DateTime.UtcNow.AddMonths((int)billingCycle);
             subscription.GracePeriodEnd = null;
         }
         else
@@ -221,8 +221,8 @@ public class AdminService : IAdminService
                 StoreId = storeId,
                 PackageId = newPackageId,
                 StartDate = DateTime.UtcNow,
-                EndDate = DateTime.UtcNow.AddYears(1),
-                BillingCycle = BillingCycle.Yearly,
+                EndDate = DateTime.UtcNow.AddMonths((int)billingCycle),
+                BillingCycle = billingCycle,
                 Status = SubscriptionStatus.Active,
                 PaymentStatus = "Paid",
                 AutoRenew = false,

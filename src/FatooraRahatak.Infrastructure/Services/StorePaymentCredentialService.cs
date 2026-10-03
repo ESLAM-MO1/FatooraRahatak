@@ -58,9 +58,9 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
         if (!string.IsNullOrWhiteSpace(dto.MerchantCode))
             row.MerchantCode = dto.MerchantCode.Trim();
         if (!string.IsNullOrWhiteSpace(dto.SecretKey))
-            row.SecretKeyEncrypted = _protector.Protect(dto.SecretKey.Trim());
+            row.SecretKeyEncrypted = _protector.Protect(System.Text.RegularExpressions.Regex.Replace(dto.SecretKey, "\\s+", ""));
         if (!string.IsNullOrWhiteSpace(dto.NotificationToken))
-            row.NotificationTokenEncrypted = _protector.Protect(dto.NotificationToken.Trim());
+            row.NotificationTokenEncrypted = _protector.Protect(System.Text.RegularExpressions.Regex.Replace(dto.NotificationToken, "\\s+", ""));
 
         row.IsTestMode = dto.IsTestMode;
         row.IsEnabled = dto.IsEnabled;

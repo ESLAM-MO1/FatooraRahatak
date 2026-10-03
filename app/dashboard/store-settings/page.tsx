@@ -416,7 +416,10 @@ export default function StoreSettingsPage() {
 
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab === "designChat") setActiveTab("designChat");
+    if (tab && TABS.some((x) => x.id === tab)) {
+      setActiveTab(tab as TabId);
+      setSettingsPanelOpen(true);
+    }
   }, []);
 
   // ---- Custom design chat ----
@@ -1131,7 +1134,7 @@ export default function StoreSettingsPage() {
                       <button
                         key={tab.id}
                         type="button"
-                        onClick={() => { setActiveTab(tab.id); setSettingsPanelOpen(true); }}
+                        onClick={() => { setActiveTab(tab.id); setSettingsPanelOpen(true); window.history.replaceState(null, "", `?tab=${tab.id}`); }}
                         className={`ss-settings-card ${activeTab === tab.id ? "ss-settings-card--active" : ""}`}
                       >
                         <span className="ss-settings-card-icon">
@@ -1149,7 +1152,7 @@ export default function StoreSettingsPage() {
 
         {settingsPanelOpen && (
         <div key={activeTab} className="ss-tab-panel">
-          <button type="button" onClick={() => setSettingsPanelOpen(false)} className="ss-back-btn">
+          <button type="button" onClick={() => { setSettingsPanelOpen(false); window.history.replaceState(null, "", window.location.pathname); }} className="ss-back-btn">
             <Icon name="arrowLeft" size={15} />
             <span>{t("storeSettings.backToSettings")}</span>
           </button>

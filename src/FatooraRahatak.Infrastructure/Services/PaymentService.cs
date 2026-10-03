@@ -100,7 +100,7 @@ public class PaymentService : IPaymentService
     private async Task<long?> ResolveStoreIdAsync(Payment payment)
     {
         if (payment.Order != null) return payment.Order.StoreId;
-        if (!payment.OrderId.HasValue) return null;
+        if (!payment.OrderId.HasValue) return payment.PosShiftStoreId;
         return await _context.Orders
             .Where(o => o.Id == payment.OrderId.Value)
             .Select(o => (long?)o.StoreId)
@@ -302,8 +302,12 @@ public class PaymentService : IPaymentService
             };
         }
 
-        if ((providerType == PaymentProviderType.Tabby || providerType == PaymentProviderType.Tamara) && order == null)
-            return new CreatePaymentResult { Success = false, Message = "تابي وتمارا متاحان لطلبات المتجر فقط" };
+        var isBnpl = providerType == PaymentProviderType.Tabby || providerType == PaymentProviderType.Tamara;
+        long? bnplStoreId = order?.StoreId ?? storeId ?? dto.PosShiftStoreId;
+        if (isBnpl && (dto.SubscriptionId.HasValue || dto.InvoiceId.HasValue || bnplStoreId == null))
+            return new CreatePaymentResult { Success = false, Message = "تابي وتمارا متاحان لطلبات المتجر ونقطة البيع فقط" };
+        var bnplReferenceId = order != null ? order.OrderNumber : "POS-" + Guid.NewGuid().ToString("N").Substring(0, 12);
+        var bnplReturnUrl = string.IsNullOrWhiteSpace(dto.SuccessUrl) ? ToAbsoluteStoreUrl("/dashboard") : ToAbsoluteStoreUrl(dto.SuccessUrl);
 
         if (providerType == PaymentProviderType.PayPal)
         {
@@ -325,20 +329,20 @@ public class PaymentService : IPaymentService
         }
         else if (providerType == PaymentProviderType.Tabby)
         {
-            var secrets = await _credentialService.GetSecretsAsync(order!.StoreId, PaymentProviderType.Tabby);
+            var secrets = await _credentialService.GetSecretsAsync(bnplStoreId!.Value, PaymentProviderType.Tabby);
             if (secrets == null || !secrets.IsEnabled
                 || string.IsNullOrWhiteSpace(secrets.SecretKey)
                 || string.IsNullOrWhiteSpace(secrets.MerchantCode))
                 return new CreatePaymentResult { Success = false, Message = "التاجر لم يفعّل الدفع عبر تابي" };
 
-            var returnUrl = ToAbsoluteStoreUrl(dto.SuccessUrl);
+            var returnUrl = bnplReturnUrl;
             tabbyResult = await _tabbyProvider.CreateCheckoutSessionAsync(
                 secrets.SecretKey,
                 secrets.MerchantCode,
                 dto.Amount,
                 dto.Currency,
                 description,
-                order.OrderNumber,
+                bnplReferenceId,
                 returnUrl,
                 returnUrl,
                 dto.CustomerEmail,
@@ -356,19 +360,19 @@ public class PaymentService : IPaymentService
         }
         else if (providerType == PaymentProviderType.Tamara)
         {
-            var secrets = await _credentialService.GetSecretsAsync(order!.StoreId, PaymentProviderType.Tamara);
+            var secrets = await _credentialService.GetSecretsAsync(bnplStoreId!.Value, PaymentProviderType.Tamara);
             if (secrets == null || !secrets.IsEnabled || string.IsNullOrWhiteSpace(secrets.SecretKey))
                 return new CreatePaymentResult { Success = false, Message = "التاجر لم يفعّل الدفع عبر تمارا" };
 
-            var returnUrl = ToAbsoluteStoreUrl(dto.SuccessUrl);
-            var notificationUrl = $"{baseUrl}/api/v1/payments/webhook/tamara/{order.StoreId}";
+            var returnUrl = bnplReturnUrl;
+            var notificationUrl = $"{baseUrl}/api/v1/payments/webhook/tamara/{bnplStoreId}";
             tamaraResult = await _tamaraProvider.CreateCheckoutSessionAsync(
                 secrets.SecretKey,
                 secrets.IsTestMode,
                 dto.Amount,
                 dto.Currency,
                 description,
-                order.OrderNumber,
+                bnplReferenceId,
                 returnUrl,
                 returnUrl,
                 notificationUrl,
@@ -503,6 +507,7 @@ public class PaymentService : IPaymentService
             : providerType == PaymentProviderType.Tamara ? tamaraResult!.PaymentUrl
             : null;
 
+        var effectivePosShiftStoreId = dto.PosShiftStoreId ?? (isBnpl && order == null ? bnplStoreId : null);
         Payment payment;
         Payment? existingPayment = null;
         if (dto.SubscriptionId.HasValue)
@@ -525,7 +530,7 @@ public class PaymentService : IPaymentService
             existingPayment.Currency = dto.Currency;
             existingPayment.Status = PaymentStatus.Pending;
             existingPayment.PendingPosPayloadJson = dto.PendingPosPayloadJson;
-            existingPayment.PosShiftStoreId = dto.PosShiftStoreId;
+            existingPayment.PosShiftStoreId = effectivePosShiftStoreId;
             existingPayment.UpdatedAt = DateTime.UtcNow;
             payment = existingPayment;
         }
@@ -545,7 +550,7 @@ public class PaymentService : IPaymentService
                 CallbackUrl = dto.CallbackUrl,
                 GatewayResponse = gatewayResponse,
                 PendingPosPayloadJson = dto.PendingPosPayloadJson,
-                PosShiftStoreId = dto.PosShiftStoreId,
+                PosShiftStoreId = effectivePosShiftStoreId,
                 CreatedAt = DateTime.UtcNow
             };
             _context.Payments.Add(payment);
@@ -782,13 +787,13 @@ public class PaymentService : IPaymentService
             .Include(p => p.Order)
             .FirstOrDefaultAsync(p => p.ProviderType == provider
                                    && p.ProviderPaymentId == providerPaymentId
-                                   && p.Order != null
-                                   && p.Order.StoreId == storeId);
+                                   && ((p.Order != null && p.Order.StoreId == storeId)
+                                       || p.PosShiftStoreId == storeId));
 
         if (payment == null)
             return new PaymentStatusResult { Status = "not_found", Message = "الدفعة غير موجودة" };
 
-        return await CheckPaymentStatusAsync(payment.PaymentReference, storeId);
+        return await CheckPaymentStatusAsync(payment.PaymentReference);
     }
 
     public async Task HandleWebhookAsync(WebhookPayload payload)

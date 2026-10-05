@@ -1,5 +1,5 @@
-import StoreFooterBanner from "@/components/store-templates/StoreFooterBanner";
 ﻿"use client";
+import StoreFooterBanner from "@/components/store-templates/StoreFooterBanner";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useStorefront } from "@/lib/hooks/useStorefront";

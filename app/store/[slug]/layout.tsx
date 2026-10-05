@@ -215,7 +215,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
         </ThemeRouter>
       </Suspense>
       {showFooterBanner && (
-        <div style={{ backgroundColor: "var(--blue-deep)" }}>
+        <div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 flex justify-center">
             <img src="https://rahtk.sa/uploads/footer-banner.png" alt="" className="block w-full max-w-[560px] lg:max-w-[900px] h-auto" />
           </div>

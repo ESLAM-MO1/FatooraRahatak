@@ -18,7 +18,7 @@ export default function StoreFooterBanner() {
 
   return (
     <div className="flex justify-center px-4 pb-6">
-      <img src="https://rahtk.sa/uploads/footer-banner.png" alt="" className="block w-full max-w-[560px] lg:max-w-[900px] h-auto" />
+      <img src="https://rahtk.sa/uploads/footer-banner.png" alt="" className="block w-full max-w-full lg:max-w-[1400px] h-auto" />
     </div>
   );
 }

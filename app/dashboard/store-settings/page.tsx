@@ -19,6 +19,7 @@ import StoreFaqManager from "@/components/store-managers/StoreFaqManager";
 import StoreBlogManager from "@/components/store-managers/StoreBlogManager";
 import StoreBannersManager from "@/components/store-managers/StoreBannersManager";
 import StorePaymentCredentialsManager from "@/components/store-managers/StorePaymentCredentialsManager";
+import DomainPurchaseRequestCard from "@/components/DomainPurchaseRequestCard";
 
 type DomainStatus = "None" | "Pending" | "Active";
 
@@ -1381,6 +1382,8 @@ export default function StoreSettingsPage() {
                 </Can>
               </div>
             </form>
+
+            {!store?.customDomain && <DomainPurchaseRequestCard />}
           </div>
         )}
 

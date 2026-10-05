@@ -113,6 +113,7 @@ public class AppDbContext : DbContext
     public DbSet<ProfessionalEmailSetup> ProfessionalEmailSetups => Set<ProfessionalEmailSetup>();
     public DbSet<DomainRegistrationRequest> DomainRegistrationRequests => Set<DomainRegistrationRequest>();
     public DbSet<DomainBlacklistEntry> DomainBlacklistEntries => Set<DomainBlacklistEntry>();
+    public DbSet<DomainPurchaseRequest> DomainPurchaseRequests => Set<DomainPurchaseRequest>();
     public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<SiteMenu> SiteMenus => Set<SiteMenu>();
     public DbSet<DashboardSection> DashboardSections => Set<DashboardSection>();

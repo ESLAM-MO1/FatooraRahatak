@@ -139,6 +139,7 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAccountingServ
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.INotificationService, FatooraRahatak.Infrastructure.Services.NotificationService>();
 builder.Services.AddScoped<IKpiService, KpiService>();
 builder.Services.AddScoped<IDomainService, DomainService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IDomainPurchaseService, FatooraRahatak.Infrastructure.Services.DomainPurchaseService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();

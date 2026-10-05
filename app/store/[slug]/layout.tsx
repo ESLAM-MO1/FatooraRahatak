@@ -11,6 +11,9 @@ import { parseMenuConfig, parseStorePages } from "@/lib/storePages";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
 
+const BANNER_SLUGS = ["zahbe", "lmsah", "ramzrahatk"];
+const BANNER_DOMAINS = ["rahtkm.sa", "rrahtkm.com", "rahatk.sa", "thqah.net", "wudrahatk.com", "ruknrahatk.com", "rafahrahatak.com"];
+
 export interface StoreTemplateProps {
   children: React.ReactNode;
   storeName: string;
@@ -164,6 +167,9 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
 
   if (!store || storeId === null) return null;
 
+  const currentHost = typeof window !== "undefined" ? window.location.hostname.toLowerCase().replace(/^www\./, "") : "";
+  const showFooterBanner = BANNER_SLUGS.includes(slug.toLowerCase()) || BANNER_DOMAINS.includes(currentHost);
+
   const themeMeta = resolveThemeConfig(store.themeName);
   const colors = parseStoreColors(themeMeta.id, store.colorsJson);
 
@@ -208,6 +214,13 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           {children}
         </ThemeRouter>
       </Suspense>
+      {showFooterBanner && (
+        <div style={{ backgroundColor: "var(--blue-deep)" }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-10 flex justify-center">
+            <img src="https://rahtk.sa/uploads/footer-banner.png" alt="" className="block w-full max-w-[560px] lg:max-w-[900px] h-auto" />
+          </div>
+        </div>
+      )}
       <MarketingScripts slug={slug} />
     </StoreProvider>
   );

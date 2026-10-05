@@ -1,3 +1,4 @@
+import StoreFooterBanner from "@/components/store-templates/StoreFooterBanner";
 ﻿"use client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -194,6 +195,7 @@ export default function RoyalPurpleTemplate({
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+          <StoreFooterBanner />
           <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.5)" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>

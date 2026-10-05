@@ -1,3 +1,4 @@
+import StoreFooterBanner from "@/components/store-templates/StoreFooterBanner";
 ﻿"use client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -164,6 +165,7 @@ export default function BlackMinimalTemplate({
               iconSize={16}
             />
           </div>
+          <StoreFooterBanner />
           <p className="mt-6 pt-5 border-t text-[11px]" style={{ borderColor: "#262626", color: "#737373" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>

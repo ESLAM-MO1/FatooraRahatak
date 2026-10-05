@@ -1,3 +1,4 @@
+import StoreFooterBanner from "@/components/store-templates/StoreFooterBanner";
 ﻿"use client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -191,6 +192,7 @@ export default function B2bFormalTemplate({
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-5 border-t text-center" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+          <StoreFooterBanner />
           <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.6)" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>

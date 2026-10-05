@@ -1,3 +1,4 @@
+import StoreFooterBanner from "@/components/store-templates/StoreFooterBanner";
 ﻿"use client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -232,6 +233,7 @@ export default function PinkElegantTemplate({
           </div>
         </div>
         <div className="max-w-6xl mx-auto px-4 mt-8 pt-5 border-t text-center" style={{ borderColor: "#E4D3CB" }}>
+          <StoreFooterBanner />
           <p className="text-[12px]" style={{ color: "#6F5A55" }}>© {new Date().getFullYear()} {storeName}. {!hidePlatformBranding && t("storefront.footerBy")}</p>
         </div>
       </footer>

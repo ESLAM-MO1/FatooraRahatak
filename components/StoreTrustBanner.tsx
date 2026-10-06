@@ -9,7 +9,7 @@ const STORE_HOSTS = [
 const MAIN_HOST = "rahtk.sa";
 const MAIN_HOST_STORE_PATHS = ["/store/zahbe"];
 
-const B = "/store-trust";
+const B = "https://rahtk.sa/store-trust";
 const BADGES = [
   { f: "vat", alt: "ضريبة القيمة المضافة" },
   { f: "tm", alt: "علامة تجارية مسجلة" },
@@ -30,6 +30,7 @@ const PAYMENTS = [
 export default function StoreTrustBanner() {
   const pathname = usePathname() || "";
   const [show, setShow] = useState(false);
+  const [bg, setBg] = useState<string | null>(null);
 
   useEffect(() => {
     const host = window.location.hostname.toLowerCase().replace(/^www\./, "");
@@ -38,12 +39,22 @@ export default function StoreTrustBanner() {
     } else {
       setShow(STORE_HOSTS.includes(host));
     }
+    const sync = () => {
+      const f = document.querySelector("footer");
+      if (!f) return;
+      const c = getComputedStyle(f).backgroundColor;
+      if (c && c !== "rgba(0, 0, 0, 0)" && c !== "transparent") setBg(c);
+    };
+    sync();
+    const t1 = setTimeout(sync, 300);
+    const t2 = setTimeout(sync, 1200);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [pathname]);
 
   if (!show) return null;
 
   return (
-    <section className="stb" dir="rtl" aria-label="الثقة وطرق الدفع">
+    <section className="stb" dir="rtl" aria-label="الثقة وطرق الدفع" style={bg ? { background: bg } : undefined}>
       <div className="stb-in">
         <div className="stb-main">
           <div className="stb-badges">

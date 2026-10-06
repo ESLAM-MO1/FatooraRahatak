@@ -80,13 +80,14 @@ export default function StoreTrustBanner() {
         .stb-pay img{flex:1 1 0;min-width:0;max-width:100%;height:clamp(22px,3.4vw,52px);object-fit:contain}
         .stb-logo{flex:0 0 auto;height:clamp(90px,16vw,230px);width:auto;max-width:30%;object-fit:contain}
         @media(max-width:700px){
-          .stb{padding:16px 10px}
-          .stb-in{flex-direction:row;gap:8px}
-          .stb-logo{order:0;height:auto;width:30%;max-width:30%}
-          .stb-main{gap:8px}
-          .stb-badges{display:grid;grid-template-columns:1fr 1fr;gap:6px 4px;justify-items:center}
-          .stb-badges img{max-width:100%;height:clamp(28px,8vw,40px);width:auto}
-          .stb-pay img{height:clamp(14px,4.2vw,22px)}
+          .stb{padding:16px 8px}
+          .stb-in{flex-direction:row;gap:6px;align-items:center}
+          .stb-logo{order:0;height:auto;width:34%;max-width:34%;flex:0 0 34%}
+          .stb-main{gap:10px;flex:1 1 0;min-width:0}
+          .stb-badges{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:2px}
+          .stb-badges img{flex:1 1 0;min-width:0;max-width:33.33%;width:auto;height:clamp(34px,10vw,54px);object-fit:contain}
+          .stb-pay{flex-wrap:wrap;justify-content:center;gap:8px 6px}
+          .stb-pay img{flex:0 0 auto;width:auto;max-width:none;height:clamp(18px,5.4vw,28px)}
         }
       `}</style>
     </section>

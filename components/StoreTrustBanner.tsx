@@ -71,16 +71,23 @@ export default function StoreTrustBanner() {
         <img className="stb-logo" src={`${B}/logo.png`} alt="فاتورة راحتك" loading="lazy" decoding="async" />
       </div>
       <style>{`
-        .stb{background:linear-gradient(135deg,#0b5a73,#12708b);padding:24px 16px;width:100%;box-sizing:border-box}
-        .stb-in{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:center;gap:clamp(16px,4vw,48px);flex-wrap:wrap}
-        .stb-main{display:flex;flex-direction:column;align-items:center;gap:16px;min-width:0;max-width:100%}
-        .stb-badges,.stb-pay{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;max-width:100%}
-        .stb-badges{gap:12px clamp(16px,3vw,40px)}
-        .stb-pay{gap:10px clamp(8px,1.5vw,16px)}
-        .stb-badges img{height:clamp(30px,5vw,56px);width:auto;max-width:100%;object-fit:contain}
-        .stb-pay img{height:clamp(26px,3.6vw,44px);width:auto;max-width:100%;object-fit:contain}
-        .stb-logo{height:clamp(80px,14vw,150px);width:auto;max-width:100%;object-fit:contain}
-        @media(max-width:600px){.stb-in{flex-direction:column}.stb-pay img{height:28px}}
+        .stb{background:linear-gradient(135deg,#0b5a73,#12708b);padding:clamp(24px,5vw,64px) 16px;width:100%;box-sizing:border-box;overflow:hidden}
+        .stb-in{max-width:1300px;margin:0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:clamp(20px,5vw,70px)}
+        .stb-main{display:flex;flex-direction:column;align-items:center;gap:clamp(14px,2.2vw,28px);min-width:0}
+        .stb-badges{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:clamp(16px,4vw,56px)}
+        .stb-pay{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:clamp(6px,1.3vw,18px)}
+        .stb-badges img{height:clamp(22px,3.6vw,48px);width:auto;max-width:none;object-fit:contain}
+        .stb-pay img{height:clamp(20px,3.2vw,42px);width:auto;max-width:none;object-fit:contain}
+        .stb-logo{height:clamp(110px,17vw,220px);width:auto;object-fit:contain;flex-shrink:0}
+        @media(max-width:700px){
+          .stb-in{flex-direction:column;gap:20px}
+          .stb-logo{order:-1;height:120px}
+          .stb-main{gap:16px;width:100%}
+          .stb-badges{flex-wrap:wrap;gap:12px 22px}
+          .stb-badges img{height:30px}
+          .stb-pay{flex-wrap:wrap;gap:10px 12px}
+          .stb-pay img{height:28px}
+        }
       `}</style>
     </section>
   );

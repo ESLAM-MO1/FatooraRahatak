@@ -89,10 +89,13 @@ const statusStyles: Record<string, string> = {
   OutOfStock: "badge badge--red",
 };
 
+const LOW_STOCK = 5;
+const COLS_KEY = "products.hiddenCols";
+
 const L = {
   ar: {
     allCats: "كل التصنيفات", noCat: "بدون تصنيف", uncategorized: "بدون تصنيف",
-    chipAll: "الكل", chipActive: "نشط", chipDraft: "مسودة", chipOut: "نفد المخزون",
+    chipAll: "الكل", chipActive: "نشط", chipDraft: "مسودة", chipOut: "نفد المخزون", chipLow: "مخزون منخفض",
     sortNew: "الأحدث", sortName: "الاسم", sortPriceAsc: "السعر: الأقل أولًا",
     sortPriceDesc: "السعر: الأعلى أولًا", sortQty: "الكمية: الأقل أولًا",
     clear: "مسح التصفية", perPage: "في الصفحة",
@@ -111,10 +114,24 @@ const L = {
     saved: "تم الحفظ",
     showing: (a: number, b: number) => `عرض ${a} من ${b}`,
     price: "السعر", discount: "المخفض", qty: "الكمية",
+    dup: "نسخ",
+    askDuplicate: (n: string) => `إنشاء نسخة من "${n}"؟ سيتم نسخ البيانات والصورة الأساسية بكمية صفر.`,
+    doneDuplicate: "تم إنشاء النسخة", copyAr: "(نسخة)", copyEn: "(copy)",
+    exportCsv: "تصدير", columns: "الأعمدة",
+    bulkCategory: "تغيير التصنيف", chooseCat: "اختر التصنيف", applyCat: "تطبيق",
+    askCat: (n: number) => `تغيير تصنيف ${n} منتج؟`,
+    doneCat: (n: number) => `تم تغيير تصنيف ${n} منتج`,
+    bulkPrice: "تعديل الأسعار", priceTitle: "تعديل أسعار المحدد",
+    modeInc: "زيادة بنسبة %", modeDec: "تخفيض بنسبة %", modeSet: "سعر موحد",
+    value: "القيمة", apply: "تطبيق", cancel: "إلغاء",
+    priceHint: "الزيادة والتخفيض يُطبَّقان على السعر والسعر المخفض. في السعر الموحد يُحذف السعر المخفض إن لم يكن أقل من السعر الجديد.",
+    errValue: "أدخل قيمة صحيحة",
+    donePrice: (n: number) => `تم تعديل أسعار ${n} منتج`,
+    csvHead: ["رمز المنتج", "الاسم (عربي)", "الاسم (إنجليزي)", "التصنيف", "السعر", "السعر المخفض", "سعر التكلفة", "الكمية", "الحالة", "الباركود"],
   },
   en: {
     allCats: "All categories", noCat: "No category", uncategorized: "Uncategorized",
-    chipAll: "All", chipActive: "Active", chipDraft: "Draft", chipOut: "Out of stock",
+    chipAll: "All", chipActive: "Active", chipDraft: "Draft", chipOut: "Out of stock", chipLow: "Low stock",
     sortNew: "Newest", sortName: "Name", sortPriceAsc: "Price: low to high",
     sortPriceDesc: "Price: high to low", sortQty: "Quantity: low to high",
     clear: "Clear filters", perPage: "per page",
@@ -133,6 +150,20 @@ const L = {
     saved: "Saved",
     showing: (a: number, b: number) => `Showing ${a} of ${b}`,
     price: "Price", discount: "Discounted", qty: "Quantity",
+    dup: "Duplicate",
+    askDuplicate: (n: string) => `Create a copy of "${n}"? Data and the primary image are copied with zero quantity.`,
+    doneDuplicate: "Copy created", copyAr: "(نسخة)", copyEn: "(copy)",
+    exportCsv: "Export", columns: "Columns",
+    bulkCategory: "Change category", chooseCat: "Choose category", applyCat: "Apply",
+    askCat: (n: number) => `Change the category of ${n} product(s)?`,
+    doneCat: (n: number) => `Category changed for ${n} product(s)`,
+    bulkPrice: "Edit prices", priceTitle: "Edit prices of selected",
+    modeInc: "Increase by %", modeDec: "Decrease by %", modeSet: "Set one price",
+    value: "Value", apply: "Apply", cancel: "Cancel",
+    priceHint: "Increase and decrease apply to both price and discounted price. With one price, the discounted price is cleared unless it stays lower than the new price.",
+    errValue: "Enter a valid value",
+    donePrice: (n: number) => `Prices updated for ${n} product(s)`,
+    csvHead: ["SKU", "Name (Arabic)", "Name (English)", "Category", "Price", "Discounted price", "Cost price", "Quantity", "Status", "Barcode"],
   },
 };
 
@@ -140,8 +171,10 @@ const errMsg = (e: unknown, fb: string) =>
   (e as { response?: { data?: { message?: string } } }).response?.data?.message || fb;
 
 const money = (n: number) => n.toLocaleString("ar-SA-u-nu-latn");
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 const isOut = (p: Product) => p.status === "OutOfStock" || p.availableQuantity <= 0;
+const isLow = (p: Product) => !isOut(p) && p.availableQuantity <= LOW_STOCK;
 
 const lbl = "block text-[12.5px] font-bold text-[var(--ink)] mb-1.5";
 
@@ -263,6 +296,12 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("new");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [bulkCat, setBulkCat] = useState("");
+  const [showPrice, setShowPrice] = useState(false);
+  const [priceMode, setPriceMode] = useState<"inc" | "dec" | "set">("inc");
+  const [priceVal, setPriceVal] = useState("");
+  const [priceErr, setPriceErr] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
@@ -284,6 +323,26 @@ export default function ProductsPage() {
     Archived: t("product.statusArchived"),
     OutOfStock: t("product.statusOutOfStock"),
   };
+
+  const show = (k: string) => !hidden.includes(k);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) setHidden(parsed.filter((x) => typeof x === "string"));
+    } catch {}
+  }, []);
+
+  const toggleCol = (k: string) =>
+    setHidden((prev) => {
+      const next = prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k];
+      try {
+        localStorage.setItem(COLS_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
 
   const fetchData = useCallback(
     async (silent = false) => {
@@ -361,6 +420,7 @@ export default function ProductsPage() {
       Active: tabBase.filter((p) => p.status === "Active").length,
       Draft: tabBase.filter((p) => p.status === "Draft").length,
       out: tabBase.filter(isOut).length,
+      low: tabBase.filter(isLow).length,
     }),
     [tabBase]
   );
@@ -384,6 +444,7 @@ export default function ProductsPage() {
         if (statusFilter === "Active" && p.status !== "Active") return false;
         if (statusFilter === "Draft" && p.status !== "Draft") return false;
         if (statusFilter === "out" && !isOut(p)) return false;
+        if (statusFilter === "low" && !isLow(p)) return false;
       }
       return true;
     });
@@ -608,21 +669,54 @@ export default function ProductsPage() {
       t("product.deletePermanentError")
     );
 
+  const handleDuplicate = async (p: Product) => {
+    if (!(await confirm(s.askDuplicate(p.nameAr)))) return;
+    setActionError("");
+    setSuccessMessage("");
+    try {
+      const res = await api.post("/products", {
+        nameAr: `${p.nameAr} ${s.copyAr}`,
+        nameEn: `${p.nameEn} ${s.copyEn}`,
+        descriptionAr: p.descriptionAr,
+        descriptionEn: p.descriptionEn,
+        barcode: null,
+        basePrice: p.basePrice,
+        discountPrice: p.discountPrice,
+        costPrice: p.costPrice,
+        weight: p.weight,
+        categoryId: p.categoryId,
+        hasWarranty: p.hasWarranty,
+        warrantyMonths: p.hasWarranty ? p.warrantyMonths : null,
+        initialQuantity: 0,
+      });
+      const newId = res.data?.data?.id;
+      if (newId && p.primaryImageUrl) {
+        try {
+          await api.post(`/products/${newId}/images`, { imageUrl: p.primaryImageUrl, isPrimary: true, sortOrder: 0 });
+        } catch {}
+      }
+      setSuccessMessage(s.doneDuplicate);
+      await fetchData(true);
+    } catch (err: unknown) {
+      setActionError(errMsg(err, t("product.saveError")));
+    }
+  };
+
   const runBulk = async (
-    ask: (n: number) => string,
+    ask: ((n: number) => string) | null,
     done: (n: number) => string,
-    call: (id: number) => Promise<unknown>
+    call: (p: Product) => Promise<unknown>
   ) => {
-    const ids = Array.from(selected);
-    if (ids.length === 0) return;
-    if (!(await confirm(ask(ids.length)))) return;
+    const list = products.filter((p) => selected.has(p.id));
+    if (list.length === 0) return;
+    if (ask && !(await confirm(ask(list.length)))) return;
     setActionError("");
     setSuccessMessage("");
     let ok = 0;
     let fail = 0;
-    for (const id of ids) {
+    for (const p of list) {
       try {
-        await call(id);
+        await call(p);
         ok++;
       } catch {
         fail++;
@@ -632,6 +726,65 @@ export default function ProductsPage() {
     await fetchData(true);
     if (ok) setSuccessMessage(done(ok));
     if (fail) setActionError(s.partialFail(fail));
+  };
+
+  const applyBulkCat = async () => {
+    if (bulkCat === "") return;
+    const target = bulkCat === "none" ? null : Number(bulkCat);
+    await runBulk(s.askCat, s.doneCat, (p) => api.put(`/products/${p.id}`, basePayload(p, { categoryId: target })));
+    setBulkCat("");
+  };
+
+  const applyBulkPrice = async () => {
+    const v = parseFloat(priceVal);
+    if (isNaN(v) || v <= 0 || (priceMode === "dec" && v >= 100)) {
+      setPriceErr(s.errValue);
+      return;
+    }
+    setShowPrice(false);
+    await runBulk(null, s.donePrice, (p) => {
+      let base: number;
+      let disc: number | null = p.discountPrice || null;
+      if (priceMode === "set") {
+        base = r2(v);
+        if (disc !== null && disc >= base) disc = null;
+      } else {
+        const f = priceMode === "inc" ? 1 + v / 100 : 1 - v / 100;
+        base = r2(p.basePrice * f);
+        disc = disc !== null ? r2(disc * f) : null;
+        if (disc !== null && disc >= base) disc = null;
+      }
+      return api.put(`/products/${p.id}`, basePayload(p, { basePrice: base, discountPrice: disc }));
+    });
+    setPriceVal("");
+  };
+
+  const exportCsv = () => {
+    const list = selected.size > 0 ? products.filter((p) => selected.has(p.id)) : filtered;
+    const esc = (v: unknown) => {
+      let x = String(v ?? "");
+      if (/^[=+\-@\t\r]/.test(x)) x = "'" + x;
+      return `"${x.replace(/"/g, '""')}"`;
+    };
+    const rows = list.map((p) => [
+      p.sku,
+      p.nameAr,
+      p.nameEn,
+      p.categoryId != null ? catMap.get(p.categoryId) ?? "" : "",
+      p.basePrice,
+      p.discountPrice ?? "",
+      p.costPrice,
+      p.availableQuantity,
+      statusLabels[p.status] ?? p.status,
+      p.barcode ?? "",
+    ]);
+    const csv = "\uFEFF" + [s.csvHead, ...rows].map((r) => r.map(esc).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `products-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const renderActions = (p: Product, size: string) =>
@@ -658,6 +811,11 @@ export default function ProductsPage() {
         <Link href={`/dashboard/products/${p.id}`} className={`text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium ${size}`}>
           {t("product.variants")}
         </Link>
+        <Can code="Products.Add">
+          <button onClick={() => handleDuplicate(p)} className={`text-[var(--blue)] hover:text-[var(--blue-deep)] font-medium ${size}`}>
+            {s.dup}
+          </button>
+        </Can>
         <Can code="Products.Delete">
           <button onClick={() => handleArchive(p)} className={`text-[var(--danger)] hover:opacity-80 font-medium ${size}`}>
             {t("product.archive")}
@@ -694,6 +852,8 @@ export default function ProductsPage() {
     />
   );
 
+  const qtyColor = (p: Product) => (isOut(p) ? "text-[var(--danger)]" : isLow(p) ? "text-[#B7791F]" : "");
+
   if (loading) {
     return <LoadingState />;
   }
@@ -702,8 +862,18 @@ export default function ProductsPage() {
     { key: "all", label: s.chipAll, count: counts.all },
     { key: "Active", label: s.chipActive, count: counts.Active },
     { key: "Draft", label: s.chipDraft, count: counts.Draft },
+    { key: "low", label: s.chipLow, count: counts.low },
     { key: "out", label: s.chipOut, count: counts.out },
   ];
+
+  const colOptions = [
+    { key: "sku", label: t("product.skuLabel") },
+    { key: "discount", label: t("product.discountPrice") },
+    { key: "qty", label: t("product.availableQuantity") },
+    { key: "status", label: t("product.status") },
+  ];
+
+  const th = "text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]";
 
   const tabBtn = (key: "products" | "archive" | "reviews", text: string) => (
     <button
@@ -817,6 +987,20 @@ export default function ProductsPage() {
                 {s.clear}
               </button>
             )}
+            <button type="button" onClick={exportCsv} className="btn btn-secondary">
+              {s.exportCsv}
+            </button>
+            <details className="relative hidden lg:block">
+              <summary className="btn btn-secondary cursor-pointer list-none">{s.columns}</summary>
+              <div className="card absolute end-0 mt-2 w-52 p-3 z-20 shadow-lg space-y-2">
+                {colOptions.map((c) => (
+                  <label key={c.key} className="flex items-center gap-2 text-[13px] text-[var(--ink)] cursor-pointer">
+                    <input type="checkbox" checked={show(c.key)} onChange={() => toggleCol(c.key)} />
+                    {c.label}
+                  </label>
+                ))}
+              </div>
+            </details>
           </div>
 
           {activeTab === "products" && (
@@ -843,7 +1027,7 @@ export default function ProductsPage() {
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={() => runBulk(s.askRestore, s.doneRestore, (id) => api.post(`/products/${id}/restore`))}
+                      onClick={() => runBulk(s.askRestore, s.doneRestore, (p) => api.post(`/products/${p.id}/restore`))}
                     >
                       {s.bulkRestore}
                     </button>
@@ -852,22 +1036,50 @@ export default function ProductsPage() {
                     <button
                       type="button"
                       className="btn btn-secondary text-[var(--danger)]"
-                      onClick={() => runBulk(s.askDelete, s.doneDelete, (id) => api.delete(`/products/${id}/permanent`))}
+                      onClick={() => runBulk(s.askDelete, s.doneDelete, (p) => api.delete(`/products/${p.id}/permanent`))}
                     >
                       {s.bulkDelete}
                     </button>
                   </Can>
                 </>
               ) : (
-                <Can code="Products.Delete">
-                  <button
-                    type="button"
-                    className="btn btn-secondary text-[var(--danger)]"
-                    onClick={() => runBulk(s.askArchive, s.doneArchive, (id) => api.delete(`/products/${id}`))}
-                  >
-                    {s.bulkArchive}
-                  </button>
-                </Can>
+                <>
+                  <Can code="Products.Edit">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="field-shell w-44">
+                        <select value={bulkCat} onChange={(e) => setBulkCat(e.target.value)}>
+                          <option value="">{s.chooseCat}</option>
+                          <option value="none">{s.noCat}</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>{c.nameAr}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button type="button" className="btn btn-secondary disabled:opacity-60" disabled={bulkCat === ""} onClick={applyBulkCat}>
+                        {s.applyCat}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => {
+                          setPriceErr("");
+                          setShowPrice(true);
+                        }}
+                      >
+                        {s.bulkPrice}
+                      </button>
+                    </div>
+                  </Can>
+                  <Can code="Products.Delete">
+                    <button
+                      type="button"
+                      className="btn btn-secondary text-[var(--danger)]"
+                      onClick={() => runBulk(s.askArchive, s.doneArchive, (p) => api.delete(`/products/${p.id}`))}
+                    >
+                      {s.bulkArchive}
+                    </button>
+                  </Can>
+                </>
               )}
               <button type="button" className="text-[12.5px] text-[var(--sub)] hover:text-[var(--ink)]" onClick={() => setSelected(new Set())}>
                 {s.cancelSel}
@@ -900,13 +1112,13 @@ export default function ProductsPage() {
                         <th className="p-3 w-10">
                           <input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} aria-label={s.selectAll} />
                         </th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.name")}</th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.skuLabel")}</th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.basePrice")}</th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.discountPrice")}</th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.availableQuantity")}</th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.status")}</th>
-                        <th className="text-start p-3 font-bold text-[var(--gold-deep)] text-[12.5px]">{t("product.actions")}</th>
+                        <th className={th}>{t("product.name")}</th>
+                        {show("sku") && <th className={th}>{t("product.skuLabel")}</th>}
+                        <th className={th}>{t("product.basePrice")}</th>
+                        {show("discount") && <th className={th}>{t("product.discountPrice")}</th>}
+                        {show("qty") && <th className={th}>{t("product.availableQuantity")}</th>}
+                        {show("status") && <th className={th}>{t("product.status")}</th>}
+                        <th className={th}>{t("product.actions")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -927,17 +1139,21 @@ export default function ProductsPage() {
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 text-[var(--sub)]" dir="ltr">{p.sku}</td>
+                          {show("sku") && <td className="p-3 text-[var(--sub)]" dir="ltr">{p.sku}</td>}
                           <td className="p-2">{priceCell(p)}</td>
-                          <td className="p-2">{discCell(p)}</td>
-                          <td className="p-2">
-                            <span className={isOut(p) ? "text-[var(--danger)]" : ""}>{qtyCell(p)}</span>
-                          </td>
-                          <td className="p-3">
-                            <span className={statusStyles[p.status] ?? "badge badge--gray"}>
-                              {statusLabels[p.status] ?? p.status}
-                            </span>
-                          </td>
+                          {show("discount") && <td className="p-2">{discCell(p)}</td>}
+                          {show("qty") && (
+                            <td className="p-2">
+                              <span className={qtyColor(p)}>{qtyCell(p)}</span>
+                            </td>
+                          )}
+                          {show("status") && (
+                            <td className="p-3">
+                              <span className={statusStyles[p.status] ?? "badge badge--gray"}>
+                                {statusLabels[p.status] ?? p.status}
+                              </span>
+                            </td>
+                          )}
                           <td className="p-3">{renderActions(p, "text-[13px]")}</td>
                         </tr>
                       ))}
@@ -974,7 +1190,7 @@ export default function ProductsPage() {
                         </div>
                         <div>
                           <p className="text-[11px] font-bold text-[var(--sub)]">{s.qty}</p>
-                          {qtyCell(p)}
+                          <span className={qtyColor(p)}>{qtyCell(p)}</span>
                         </div>
                       </div>
                       <div className="pt-2 border-t border-gray-100">{renderActions(p, "text-[12px]")}</div>
@@ -1003,6 +1219,54 @@ export default function ProductsPage() {
             />
           </div>
         </>
+      )}
+
+      {showPrice && (
+        <div className="modal-overlay" onClick={() => setShowPrice(false)}>
+          <div className="card p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[17px] font-bold text-[var(--blue-deep)]">{s.priceTitle}</h2>
+              <button onClick={() => setShowPrice(false)} className="text-[var(--sub)] hover:text-[var(--ink)]" aria-label={t("common.close")}>
+                ✕
+              </button>
+            </div>
+            <p className="text-[12.5px] text-[var(--sub)] mb-3">{s.selected(selected.size)}</p>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["inc", s.modeInc],
+                  ["dec", s.modeDec],
+                  ["set", s.modeSet],
+                ] as const).map(([k, text]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setPriceMode(k)}
+                    className={`px-2 py-2 rounded-lg text-[12px] font-bold border transition-colors ${priceMode === k ? "bg-[var(--blue-deep)] text-white border-transparent" : "bg-white text-[var(--sub)] border-[var(--border)]"}`}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className={lbl}>{s.value}</label>
+                <div className="field-shell">
+                  <input type="number" min={0} step="0.01" value={priceVal} onChange={(e) => setPriceVal(e.target.value)} />
+                </div>
+                {priceErr && <p className="text-[11.5px] text-[var(--danger)] mt-1">{priceErr}</p>}
+              </div>
+              <p className="text-[11.5px] text-[var(--sub)] leading-relaxed">{s.priceHint}</p>
+              <div className="flex gap-3 pt-1">
+                <button type="button" className="btn btn-primary flex-1" onClick={applyBulkPrice}>
+                  {s.apply}
+                </button>
+                <button type="button" className="btn btn-secondary flex-1" onClick={() => setShowPrice(false)}>
+                  {s.cancel}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showModal && activeTab === "products" && (

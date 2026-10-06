@@ -6,6 +6,7 @@ import i18n from "@/lib/i18n/config";
 import { StoreProvider, StoreData, StoreMethodInfo } from "@/components/StoreContext";
 import ThemeRouter from "@/components/store-templates/ThemeRouter";
 import MarketingScripts from "@/components/store-templates/MarketingScripts";
+import StoreTrustBanner from "@/components/StoreTrustBanner";
 import { resolveThemeConfig, parseStoreColors } from "@/components/store-templates/configs";
 import { parseMenuConfig, parseStorePages } from "@/lib/storePages";
 
@@ -209,6 +210,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
           {children}
         </ThemeRouter>
       </Suspense>
+      <StoreTrustBanner />
       <MarketingScripts slug={slug} />
     </StoreProvider>
   );

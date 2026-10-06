@@ -9,7 +9,22 @@ const STORE_HOSTS = [
 const MAIN_HOST = "rahtk.sa";
 const MAIN_HOST_STORE_PATHS = ["/store/zahbe"];
 
-const B = "https://rahtk.sa/store-trust";
+const CDN = "https://res.cloudinary.com/dshkk2l2h/image/upload/f_auto,q_auto";
+const IMG: Record<string, string> = {
+  vat: `${CDN}/v1791306848/White_VAT_Number_with_Saudi_Badge_rujvfk.png`,
+  logo: `${CDN}/v1791306855/3D_Arabic_Delivery_Services_Logo_shjnvt.png`,
+  tm: `${CDN}/v1791306860/TM-01-00-38510-26_Logo_mc6u9f.png`,
+  moc: `${CDN}/v1791306861/Saudi_Ministry_of_Commerce_Logo_and_Number_xfbfib.png`,
+  paypal: `${CDN}/v1791306865/PayPal_Logo_on_Transparent_Background_vbeswl.png`,
+  gpay: `${CDN}/v1791306865/Google_Pay_Rounded_Badge_jy6qek.png`,
+  applepay: `${CDN}/v1791306866/Apple_Pay_Button_on_Transparent_Background_lbj6al.png`,
+  tamara: `${CDN}/v1791306868/Pastel_Gradient_%D8%AA%D9%85%D8%A7%D8%B1%D8%A7_Badge_mq42xb.png`,
+  tabby: `${CDN}/v1791306869/Mint_Tabby_Logo_Badge_rw92qg.png`,
+  visa: `${CDN}/v1791306870/Classic_Blue_and_Gold_Visa_Wordmark_qjav80.png`,
+  mada: `${CDN}/v1791306871/Mada_Logo_Badge_on_Transparent_Canvas_wroh8j.png`,
+  bank: `${CDN}/v1791306873/Arabic_Bank_Transfer_Badge_hapnos.png`,
+  mastercard: `${CDN}/v1791306877/Classic_MasterCard_Logo_on_Transparent_Background_lr1tlu.png`,
+};
 const BADGES = [
   { f: "vat", alt: "ضريبة القيمة المضافة" },
   { f: "tm", alt: "علامة تجارية مسجلة" },
@@ -59,16 +74,16 @@ export default function StoreTrustBanner() {
         <div className="stb-main">
           <div className="stb-badges">
             {BADGES.map((b) => (
-              <img key={b.f} src={`${B}/${b.f}.png`} alt={b.alt} loading="lazy" decoding="async" />
+              <img key={b.f} src={IMG[b.f]} alt={b.alt} loading="lazy" decoding="async" />
             ))}
           </div>
           <div className="stb-pay">
             {PAYMENTS.map((p) => (
-              <img key={p.f} src={`${B}/${p.f}.png`} alt={p.alt} loading="lazy" decoding="async" />
+              <img key={p.f} src={IMG[p.f]} alt={p.alt} loading="lazy" decoding="async" />
             ))}
           </div>
         </div>
-        <img className="stb-logo" src={`${B}/logo.png`} alt="فاتورة راحتك" loading="lazy" decoding="async" />
+        <img className="stb-logo" src={IMG.logo} alt="فاتورة راحتك" loading="lazy" decoding="async" />
       </div>
       <style>{`
         .stb{background:linear-gradient(135deg,#0b5a73,#12708b);padding:clamp(20px,4vw,56px) clamp(12px,3vw,40px);width:100%;box-sizing:border-box}

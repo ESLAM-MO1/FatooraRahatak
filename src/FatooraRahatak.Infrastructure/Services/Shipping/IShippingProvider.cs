@@ -20,6 +20,9 @@ public class ShippingProviderContext
 
     public HttpClient HttpClient { get; set; } = null!;
 
+    // المحاكاة مسموحة فقط في الوضع التجريبي الصريح (شركة يدوية أو Shipping:SandboxMode)
+    public bool AllowSimulation { get; set; }
+
     public bool HasCredentials => !string.IsNullOrWhiteSpace(ApiKey);
 }
 
@@ -55,6 +58,7 @@ public interface IShippingProvider
     ShippingCompanyCode Code { get; }
     string DisplayName { get; }
     int EstimatedDeliveryDays { get; }
+    bool IsReady { get; }
     Task<CreateShipmentProviderResult> CreateShipmentAsync(ShippingProviderContext ctx, CancellationToken ct = default);
     Task<TrackingProviderResult> GetTrackingAsync(ShippingProviderContext ctx, string awb, CancellationToken ct = default);
 }

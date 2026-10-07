@@ -12,6 +12,7 @@ public class SmsaShippingProvider : ShippingProviderBase
     public override ShippingCompanyCode Code => ShippingCompanyCode.Smsa;
     public override string DisplayName => "سمسا إكسبرس";
     public override int EstimatedDeliveryDays => 2;
+    public override bool IsReady => false; // لم يُتحقق من التكامل مع الشركة بعد (توثيق رسمي + تجربة فعلية)
 
     protected override async Task<CreateShipmentProviderResult> CreateShipmentWithApiAsync(ShippingProviderContext ctx, CancellationToken ct)
     {
@@ -123,13 +124,5 @@ public class SmsaShippingProvider : ShippingProviderBase
         };
     }
 
-    private static string MapStatus(string raw)
-    {
-        var s = raw.ToLowerInvariant();
-        if (s.Contains("deliver")) return "Delivered";
-        if (s.Contains("out for delivery")) return "OutForDelivery";
-        if (s.Contains("transit") || s.Contains("pickup")) return "InTransit";
-        if (s.Contains("fail") || s.Contains("return")) return "Failed";
-        return "InTransit";
-    }
+    private static string MapStatus(string raw) => NormalizeStatus(raw);
 }

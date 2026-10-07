@@ -11,6 +11,7 @@ public class NaqelShippingProvider : ShippingProviderBase
     public override ShippingCompanyCode Code => ShippingCompanyCode.Naqel;
     public override string DisplayName => "ناقل إكسبرس";
     public override int EstimatedDeliveryDays => 4;
+    public override bool IsReady => false; // لم يُتحقق من التكامل مع الشركة بعد (توثيق رسمي + تجربة فعلية)
 
     protected override async Task<CreateShipmentProviderResult> CreateShipmentWithApiAsync(ShippingProviderContext ctx, CancellationToken ct)
     {
@@ -99,13 +100,5 @@ public class NaqelShippingProvider : ShippingProviderBase
         };
     }
 
-    private static string MapStatus(string raw)
-    {
-        var s = raw.ToLowerInvariant();
-        if (s.Contains("deliver")) return "Delivered";
-        if (s.Contains("out for delivery")) return "OutForDelivery";
-        if (s.Contains("transit") || s.Contains("pickup") || s.Contains("shipped")) return "InTransit";
-        if (s.Contains("fail") || s.Contains("return")) return "Failed";
-        return "InTransit";
-    }
+    private static string MapStatus(string raw) => NormalizeStatus(raw);
 }

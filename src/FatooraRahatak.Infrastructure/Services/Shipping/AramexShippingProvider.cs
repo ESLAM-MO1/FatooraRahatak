@@ -12,6 +12,7 @@ public class AramexShippingProvider : ShippingProviderBase
     public override ShippingCompanyCode Code => ShippingCompanyCode.Aramex;
     public override string DisplayName => "أرامكس";
     public override int EstimatedDeliveryDays => 3;
+    public override bool IsReady => false; // لم يُتحقق من التكامل مع الشركة بعد (توثيق رسمي + تجربة فعلية)
 
     protected override async Task<CreateShipmentProviderResult> CreateShipmentWithApiAsync(ShippingProviderContext ctx, CancellationToken ct)
     {
@@ -167,14 +168,5 @@ public class AramexShippingProvider : ShippingProviderBase
         };
     }
 
-    private static string MapStatus(string raw)
-    {
-        var s = raw.ToLowerInvariant();
-        if (s.Contains("deliver")) return "Delivered";
-        if (s.Contains("out for delivery")) return "OutForDelivery";
-        if (s.Contains("transit") || s.Contains("pickup") || s.Contains("shipped")) return "InTransit";
-        if (s.Contains("fail") || s.Contains("exception")) return "Failed";
-        if (s.Contains("return")) return "Returned";
-        return "InTransit";
-    }
+    private static string MapStatus(string raw) => NormalizeStatus(raw);
 }

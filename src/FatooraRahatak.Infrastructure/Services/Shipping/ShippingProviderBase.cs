@@ -13,35 +13,62 @@ public abstract class ShippingProviderBase : IShippingProvider
 
     protected virtual string AwbPrefix => Code.ToString().ToUpperInvariant();
 
+    // لا يُفعَّل التكامل مع شركة شحن إلا بعد مطابقته للتوثيق الرسمي وتجربته بشحنة حقيقية.
+    public virtual bool IsReady => true;
+
     public async Task<CreateShipmentProviderResult> CreateShipmentAsync(ShippingProviderContext ctx, CancellationToken ct = default)
     {
         if (!ctx.HasCredentials)
-            return SimulateCreate(ctx);
+        {
+            if (ctx.AllowSimulation)
+                return SimulateCreate(ctx);
+
+            return new CreateShipmentProviderResult
+            {
+                Success = false,
+                Message = $"مفاتيح الربط مع {DisplayName} غير مضبوطة في إعدادات المنصة"
+            };
+        }
 
         try
         {
-            var result = await CreateShipmentWithApiAsync(ctx, ct);
-            return result.Success ? result : SimulateCreate(ctx, result.Message);
+            return await CreateShipmentWithApiAsync(ctx, ct);
         }
         catch (Exception ex)
         {
-            return SimulateCreate(ctx, ex.Message);
+            return new CreateShipmentProviderResult
+            {
+                Success = false,
+                Message = $"تعذر الاتصال بـ {DisplayName}: {ex.Message}"
+            };
         }
     }
 
     public async Task<TrackingProviderResult> GetTrackingAsync(ShippingProviderContext ctx, string awb, CancellationToken ct = default)
     {
         if (!ctx.HasCredentials)
-            return SimulateTracking(awb);
+        {
+            if (ctx.AllowSimulation)
+                return SimulateTracking(awb);
+
+            return new TrackingProviderResult
+            {
+                Success = false,
+                Message = $"مفاتيح الربط مع {DisplayName} غير مضبوطة في إعدادات المنصة"
+            };
+        }
 
         try
         {
-            var result = await GetTrackingWithApiAsync(ctx, awb, ct);
-            return result.Success ? result : SimulateTracking(awb, result.Message);
+            return await GetTrackingWithApiAsync(ctx, awb, ct);
         }
         catch (Exception ex)
         {
-            return SimulateTracking(awb, ex.Message);
+            return new TrackingProviderResult
+            {
+                Success = false,
+                Message = $"تعذر جلب التتبع من {DisplayName}: {ex.Message}"
+            };
         }
     }
 
@@ -62,7 +89,7 @@ public abstract class ShippingProviderBase : IShippingProvider
                 : "وضع تجريبي: لم تُضبط مفاتيح API بعد — تم إنشاء رقم تتبع افتراضي",
             Events = new List<TrackingEventItem>
             {
-                new() { EventCode = "CREATED", Description = "تم إنشاء الشحنة واستلامها من شركة الشحن", EventAt = DateTime.UtcNow }
+                new() { EventCode = "CREATED", Description = "(تجريبي) شحنة افتراضية — لم تُسجَّل لدى أي شركة شحن", EventAt = DateTime.UtcNow }
             }
         };
     }
@@ -122,6 +149,23 @@ public abstract class ShippingProviderBase : IShippingProvider
 
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
+    }
+
+    // تحويل نص الحالة القادم من الشركة إلى حالة المنصة. الحالة غير المعروفة تعود Unknown فلا تُغيّر حالة الشحنة.
+    // ملاحظة: المطابقة بالكلمات المفتاحية مؤقتة، وتُستبدل بأكواد الحالات الرسمية لكل شركة عند اعتماد توثيقها.
+    protected static string NormalizeStatus(string? raw)
+    {
+        var s = (raw ?? string.Empty).Trim().ToLowerInvariant();
+        if (s.Length == 0) return "Unknown";
+        if (s.Contains("cancel")) return "Cancelled";
+        if (s.Contains("undeliver") || s.Contains("not deliver") || s.Contains("delivery fail") || s.Contains("failed") || s.Contains("attempt") || s.Contains("exception")) return "Failed";
+        if (s.Contains("out for delivery")) return "OutForDelivery";
+        if (s.Contains("return")) return "Returned";
+        if (s.Contains("deliver")) return "Delivered";
+        if (s.Contains("pick")) return "PickedUp";
+        if (s.Contains("transit") || s.Contains("shipped") || s.Contains("dispatch") || s.Contains("arrived") || s.Contains("departed")) return "InTransit";
+        if (s.Contains("creat") || s.Contains("regist") || s.Contains("book")) return "Registered";
+        return "Unknown";
     }
 
     protected static bool TryGetString(JsonElement el, string name, out string value)

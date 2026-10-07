@@ -252,6 +252,13 @@ public class ShippingService : IShippingService
             HttpClient = _httpClient
         };
 
+        // المحاكاة مسموحة فقط للشركة اليدوية أو لو الوضع التجريبي مفعّل صراحةً في إعدادات المنصة.
+        ctx.AllowSimulation = company.Code == ShippingCompanyCode.Manual
+            || (bool.TryParse(_config["Shipping:SandboxMode"], out var sandboxMode) && sandboxMode);
+
+        if (!provider.IsReady && (ctx.HasCredentials || !ctx.AllowSimulation))
+            throw new InvalidOperationException($"التكامل مع {provider.DisplayName} قيد الإعداد ولم يُفعَّل بعد، لذلك لا يمكن إنشاء شحنة حقيقية معها حاليًا.");
+
         var result = await provider.CreateShipmentAsync(ctx);
 
         var shipment = new Shipment
@@ -382,7 +389,19 @@ public class ShippingService : IShippingService
             HttpClient = _httpClient
         };
 
+        ctx.AllowSimulation = shipment.IsSimulation;
+
+        // شحنة تجريبية/يدوية: لا نولّد حالات أو أحداثًا وهمية، والحالة تُحدَّث يدويًا.
+        if (shipment.IsSimulation)
+            return await SyncSkippedAsync(storeId, shipment, "شحنة تجريبية/يدوية — لا يوجد تتبع تلقائي، حدّث الحالة يدويًا");
+
+        if (!provider.IsReady)
+            return await SyncSkippedAsync(storeId, shipment, $"التكامل مع {provider.DisplayName} قيد الإعداد");
+
         var result = await provider.GetTrackingAsync(ctx, shipment.Awb);
+
+        if (!result.Success || result.IsSimulation)
+            return await SyncSkippedAsync(storeId, shipment, result.Message ?? "تعذر جلب التتبع من الشركة");
 
         if (result.Success && Enum.TryParse<ShipmentStatus>(result.Status, true, out var mappedStatus))
             shipment.Status = mappedStatus;
@@ -421,6 +440,20 @@ public class ShippingService : IShippingService
             Status = shipment.Status.ToString(),
             Synced = true,
             Message = result.Message,
+            Events = dto?.Events ?? new()
+        };
+    }
+
+    private async Task<SyncShipmentResultDto> SyncSkippedAsync(long storeId, Shipment shipment, string message)
+    {
+        var dto = await LoadShipmentDtoAsync(storeId, shipment.Id);
+        return new SyncShipmentResultDto
+        {
+            ShipmentId = shipment.Id,
+            Awb = shipment.Awb,
+            Status = shipment.Status.ToString(),
+            Synced = false,
+            Message = message,
             Events = dto?.Events ?? new()
         };
     }

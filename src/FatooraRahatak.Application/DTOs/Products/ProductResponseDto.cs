@@ -21,4 +21,6 @@ public class ProductResponseDto
     public int? WarrantyMonths { get; set; }
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
+    public System.DateTime? DiscountStartsAt { get; set; }
+    public System.DateTime? DiscountEndsAt { get; set; }
 }

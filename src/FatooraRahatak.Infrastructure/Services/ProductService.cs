@@ -64,6 +64,8 @@ public class ProductService : IProductService
             Barcode = dto.Barcode,
             BasePrice = dto.BasePrice,
             DiscountPrice = dto.DiscountPrice,
+            DiscountStartsAt = dto.DiscountPrice.HasValue ? dto.DiscountStartsAt : null,
+            DiscountEndsAt = dto.DiscountPrice.HasValue ? dto.DiscountEndsAt : null,
             CostPrice = dto.CostPrice,
             Weight = dto.Weight,
             HasWarranty = dto.HasWarranty,
@@ -186,6 +188,8 @@ public class ProductService : IProductService
         product.Barcode = dto.Barcode;
         product.BasePrice = dto.BasePrice;
         product.DiscountPrice = dto.DiscountPrice;
+        product.DiscountStartsAt = dto.DiscountPrice.HasValue ? dto.DiscountStartsAt : null;
+        product.DiscountEndsAt = dto.DiscountPrice.HasValue ? dto.DiscountEndsAt : null;
         product.CostPrice = dto.CostPrice;
         product.Weight = dto.Weight;
         product.HasWarranty = dto.HasWarranty;
@@ -394,6 +398,8 @@ public class ProductService : IProductService
             Barcode = p.Barcode,
             BasePrice = p.BasePrice,
             DiscountPrice = p.DiscountPrice,
+            DiscountStartsAt = p.DiscountStartsAt,
+            DiscountEndsAt = p.DiscountEndsAt,
             CostPrice = p.CostPrice,
             Weight = p.Weight,
             Status = p.Status.ToString(),

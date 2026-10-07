@@ -50,6 +50,8 @@ interface Product {
   primaryImageUrl?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  discountStartsAt?: string | null;
+  discountEndsAt?: string | null;
 }
 
 interface ProductForm {
@@ -69,6 +71,8 @@ interface ProductForm {
   status: string;
   seoTitle: string;
   seoDescription: string;
+  discountStartsAt: string;
+  discountEndsAt: string;
 }
 
 const emptyForm: ProductForm = {
@@ -88,6 +92,8 @@ const emptyForm: ProductForm = {
   status: "",
   seoTitle: "",
   seoDescription: "",
+  discountStartsAt: "",
+  discountEndsAt: "",
 };
 
 const statusStyles: Record<string, string> = {
@@ -180,6 +186,17 @@ const errMsg = (e: unknown, fb: string) =>
 
 const money = (n: number) => n.toLocaleString("ar-SA-u-nu-latn");
 const r2 = (n: number) => Math.round(n * 100) / 100;
+
+const parseUtc = (v?: string | null) => (v ? new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(v) ? v : v + "Z") : null);
+
+const toLocalInput = (v?: string | null) => {
+  const d = parseUtc(v);
+  if (!d || isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const toIso = (v: string) => (v ? new Date(v).toISOString() : null);
 
 const isOut = (p: Product) => p.status === "OutOfStock" || p.availableQuantity <= 0;
 const isLow = (p: Product) => !isOut(p) && p.availableQuantity <= LOW_STOCK;
@@ -509,6 +526,8 @@ export default function ProductsPage() {
     categoryId: p.categoryId,
     hasWarranty: p.hasWarranty,
     warrantyMonths: p.hasWarranty ? p.warrantyMonths : null,
+    discountStartsAt: p.discountStartsAt ?? null,
+    discountEndsAt: p.discountEndsAt ?? null,
     ...over,
   });
 
@@ -570,6 +589,8 @@ export default function ProductsPage() {
       status: product.status,
       seoTitle: product.seoTitle ?? "",
       seoDescription: product.seoDescription ?? "",
+      discountStartsAt: toLocalInput(product.discountStartsAt),
+      discountEndsAt: toLocalInput(product.discountEndsAt),
     });
     setActionError("");
     setShowModal(true);
@@ -616,6 +637,15 @@ export default function ProductsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
+    if (
+      form.discountPrice &&
+      form.discountStartsAt &&
+      form.discountEndsAt &&
+      new Date(form.discountEndsAt) <= new Date(form.discountStartsAt)
+    ) {
+      setActionError(en ? "Discount end must be after its start." : "نهاية الخصم يجب أن تكون بعد البداية.");
+      return;
+    }
     setActionError("");
     setSubmitting(true);
     try {
@@ -635,6 +665,8 @@ export default function ProductsPage() {
         status: form.status === "Active" || form.status === "Draft" ? form.status : undefined,
         seoTitle: form.seoTitle,
         seoDescription: form.seoDescription,
+        discountStartsAt: form.discountPrice ? toIso(form.discountStartsAt) : null,
+        discountEndsAt: form.discountPrice ? toIso(form.discountEndsAt) : null,
       });
       setSuccessMessage(t("product.updateSuccess"));
       closeModal();
@@ -1371,6 +1403,23 @@ export default function ProductsPage() {
                   </div>
                 </div>
               </div>
+
+              {form.discountPrice !== "" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className={lbl}>{en ? "Discount starts" : "بداية الخصم"}</label>
+                    <div className="field-shell">
+                      <input type="datetime-local" value={form.discountStartsAt} onChange={(e) => setF("discountStartsAt", e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className={lbl}>{en ? "Discount ends" : "نهاية الخصم"}</label>
+                    <div className="field-shell">
+                      <input type="datetime-local" value={form.discountEndsAt} onChange={(e) => setF("discountEndsAt", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>

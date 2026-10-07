@@ -249,7 +249,7 @@ public class PosController : ControllerBase
                     var product = products.First(p => p.Id == item.ProductId);
                     var unitPrice = item.UnitPrice > 0
                         ? item.UnitPrice
-                        : (product.DiscountPrice is > 0 ? product.DiscountPrice.Value : product.BasePrice);
+                        : global::FatooraRahatak.Domain.Entities.Products.ProductPricing.Effective(product.BasePrice, product.DiscountPrice, product.DiscountStartsAt, product.DiscountEndsAt);
                     var lineTotal = unitPrice * item.Quantity;
                     if (item.DiscountAmount < 0 || item.DiscountAmount > lineTotal)
                         return BadRequest(new { success = false, message = "خصم البند غير صالح" });

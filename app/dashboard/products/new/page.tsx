@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,13 @@ import PageHeader from "@/components/PageHeader";
 type Img = { id: string; file: File; url: string };
 type Cat = { id: number; nameAr: string; nameEn?: string };
 type Kind = "Active" | "Draft";
+type Opt = { id: string; name: string; values: string[]; input: string };
+type Attr = { attributeName: string; attributeValue: string };
+type Combo = { key: string; name: string; attrs: Attr[] };
+type Row = { price: string; qty: string };
+
+const MAX_OPTS = 3;
+const MAX_COMBOS = 100;
 
 const L = {
   ar: {
@@ -34,8 +41,22 @@ const L = {
     errName: "اسم المنتج بالعربي مطلوب.", errPrice: "أدخل سعرًا صحيحًا.",
     errDisc: "السعر المخفض يجب أن يكون أقل من السعر.",
     saveErr: "تعذر حفظ المنتج. حاول مرة أخرى.",
-    partial: (n: number) => `تم إنشاء المنتج، لكن تعذر رفع ${n} صورة. اضغط الحفظ لإعادة المحاولة أو أضفها لاحقًا من صفحة المنتج.`,
     openProduct: "فتح صفحة المنتج", upgrade: "ترقية الباقة", badFile: "تم تجاهل ملفات غير مدعومة أو أكبر من 5 ميجا.",
+    variants: "الخيارات والمتغيرات", variantsHint: "أضف خيارات مثل اللون والمقاس وستتولد المتغيرات تلقائيًا.",
+    optColor: "اللون", optSize: "المقاس", optOther: "خيار آخر",
+    optName: "اسم الخيار", optValues: "القيم", optValuesPh: "اكتب قيمة واضغط Enter",
+    variantCol: "المتغير", priceAdj: "فرق السعر", qtyCol: "الكمية", totalQty: "إجمالي الكمية",
+    qtyPerVariant: "الكمية تُحدد لكل متغير في جدول المتغيرات.",
+    tooMany: `عدد المتغيرات يتجاوز ${MAX_COMBOS}. قلل القيم.`,
+    errOpts: "أدخل اسمًا لكل خيار بدون تكرار.",
+    errRows: "فرق السعر أو الكمية في المتغيرات غير صحيح.",
+    createdBut: "تم إنشاء المنتج، لكن",
+    failImgs: (n: number) => `تعذر رفع ${n} صورة.`,
+    failVars: (n: number) => `تعذر إنشاء ${n} متغير.`,
+    retryHint: "اضغط الحفظ لإعادة المحاولة أو أكملها لاحقًا من صفحة المنتج.",
+    discStart: "بداية الخصم", discEnd: "نهاية الخصم",
+    errDates: "نهاية الخصم يجب أن تكون بعد البداية.",
+    discHint: "اتركهما فارغين ليبقى الخصم قائمًا دائمًا.",
   },
   en: {
     title: "New physical product", back: "Back to products",
@@ -58,14 +79,58 @@ const L = {
     errName: "Arabic product name is required.", errPrice: "Enter a valid price.",
     errDisc: "Discounted price must be lower than the price.",
     saveErr: "Could not save the product. Please try again.",
-    partial: (n: number) => `Product created, but ${n} image(s) failed to upload. Press save to retry or add them later from the product page.`,
     openProduct: "Open product page", upgrade: "Upgrade plan", badFile: "Unsupported or oversized files were skipped.",
+    variants: "Options and variants", variantsHint: "Add options like color and size and the variants are generated automatically.",
+    optColor: "Color", optSize: "Size", optOther: "Other option",
+    optName: "Option name", optValues: "Values", optValuesPh: "Type a value and press Enter",
+    variantCol: "Variant", priceAdj: "Price difference", qtyCol: "Quantity", totalQty: "Total quantity",
+    qtyPerVariant: "Quantity is set per variant in the variants table.",
+    tooMany: `Variants exceed ${MAX_COMBOS}. Reduce the values.`,
+    errOpts: "Enter a unique name for every option.",
+    errRows: "Price difference or quantity of a variant is invalid.",
+    createdBut: "Product created, but",
+    failImgs: (n: number) => `${n} image(s) failed to upload.`,
+    failVars: (n: number) => `${n} variant(s) failed to create.`,
+    retryHint: "Press save to retry or finish them later from the product page.",
+    discStart: "Discount starts", discEnd: "Discount ends",
+    errDates: "Discount end must be after its start.",
+    discHint: "Leave both empty to keep the discount always on.",
   },
 };
 
 const OK_EXT = ["jpg", "jpeg", "png", "webp", "gif"];
 const label = "block text-[12.5px] font-bold text-[var(--ink)] mb-1.5";
 const fmt = (n: number) => n.toLocaleString("ar-SA-u-nu-latn", { maximumFractionDigits: 2 });
+
+const usableOpts = (opts: Opt[]) => opts.filter((o) => o.name.trim() && o.values.length > 0);
+
+const countCombos = (opts: Opt[]) => {
+  const u = usableOpts(opts);
+  return u.length ? u.reduce((n, o) => n * o.values.length, 1) : 0;
+};
+
+const buildCombos = (opts: Opt[]): Combo[] => {
+  const u = usableOpts(opts);
+  if (!u.length || countCombos(opts) > MAX_COMBOS) return [];
+  let acc: { label: string[]; attrs: Attr[] }[] = [{ label: [], attrs: [] }];
+  for (const o of u) {
+    const next: { label: string[]; attrs: Attr[] }[] = [];
+    for (const a of acc) {
+      for (const v of o.values) {
+        next.push({
+          label: [...a.label, v],
+          attrs: [...a.attrs, { attributeName: o.name.trim(), attributeValue: v }],
+        });
+      }
+    }
+    acc = next;
+  }
+  return acc.map((a) => ({
+    key: a.attrs.map((x) => `${x.attributeName}:${x.attributeValue}`).join("|"),
+    name: a.label.join(" / "),
+    attrs: a.attrs,
+  }));
+};
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -75,12 +140,15 @@ export default function NewProductPage() {
 
   const [f, setF] = useState({
     nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", categoryId: "",
-    basePrice: "", discountPrice: "", costPrice: "", sku: "", barcode: "", weight: "",
+    basePrice: "", discountPrice: "", discountStartsAt: "", discountEndsAt: "",
+    costPrice: "", sku: "", barcode: "", weight: "",
     initialQuantity: "0", warrantyMonths: "", seoTitle: "", seoDescription: "",
   });
   const [warranty, setWarranty] = useState(false);
   const [imgs, setImgs] = useState<Img[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
+  const [opts, setOpts] = useState<Opt[]>([]);
+  const [rows, setRows] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState<Kind | null>(null);
   const [attempt, setAttempt] = useState<Kind>("Active");
   const [err, setErr] = useState("");
@@ -88,6 +156,7 @@ export default function NewProductPage() {
   const [touched, setTouched] = useState(false);
   const createdId = useRef<number | null>(null);
   const uploaded = useRef(0);
+  const doneVariants = useRef<Set<string>>(new Set());
   const done = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const imgsRef = useRef<Img[]>([]);
@@ -101,7 +170,7 @@ export default function NewProductPage() {
     return () => imgsRef.current.forEach((i) => URL.revokeObjectURL(i.url));
   }, []);
 
-  const dirty = !!(f.nameAr || f.nameEn || f.basePrice || imgs.length);
+  const dirty = !!(f.nameAr || f.nameEn || f.basePrice || imgs.length || opts.length);
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
       if (dirty && !done.current) { e.preventDefault(); e.returnValue = ""; }
@@ -125,6 +194,49 @@ export default function NewProductPage() {
   const removeImg = (id: string) => setImgs((p) => p.filter((i) => i.id !== id));
   const makePrimary = (idx: number) => setImgs((p) => [p[idx], ...p.filter((_, i) => i !== idx)]);
 
+  const addOpt = (name: string) =>
+    setOpts((p) =>
+      p.length >= MAX_OPTS
+        ? p
+        : [...p, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name, values: [], input: "" }]
+    );
+  const updOpt = (id: string, patch: Partial<Opt>) =>
+    setOpts((p) => p.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+  const delOpt = (id: string) => setOpts((p) => p.filter((o) => o.id !== id));
+  const commitValue = (id: string, raw: string) => {
+    const parts = raw.split(/[,،]/).map((x) => x.trim()).filter(Boolean);
+    setOpts((p) =>
+      p.map((o) => {
+        if (o.id !== id) return o;
+        const next = [...o.values];
+        parts.forEach((v) => {
+          if (!next.some((x) => x.toLowerCase() === v.toLowerCase())) next.push(v);
+        });
+        return { ...o, values: next, input: "" };
+      })
+    );
+  };
+  const delValue = (id: string, v: string) =>
+    setOpts((p) => p.map((o) => (o.id === id ? { ...o, values: o.values.filter((x) => x !== v) } : o)));
+
+  const combos = useMemo(() => buildCombos(opts), [opts]);
+  const comboCount = countCombos(opts);
+  const tooMany = comboCount > MAX_COMBOS;
+  const hasVariants = combos.length > 0;
+  const usableNames = usableOpts(opts).map((o) => o.name.trim().toLowerCase());
+  const optsInvalid =
+    opts.some((o) => o.values.length > 0 && !o.name.trim()) || new Set(usableNames).size !== usableNames.length;
+
+  const rowOf = (k: string): Row => rows[k] ?? { price: "0", qty: "0" };
+  const setRow = (k: string, patch: Partial<Row>) =>
+    setRows((p) => ({ ...p, [k]: { ...(p[k] ?? { price: "0", qty: "0" }), ...patch } }));
+  const rowsBad = combos.some((c) => {
+    const r = rowOf(c.key);
+    const q = Number(r.qty);
+    return isNaN(parseFloat(r.price)) || r.qty.trim() === "" || !Number.isInteger(q) || q < 0;
+  });
+  const totalQty = combos.reduce((n, c) => n + (parseInt(rowOf(c.key).qty) || 0), 0);
+
   const price = parseFloat(f.basePrice);
   const disc = parseFloat(f.discountPrice);
   const cost = parseFloat(f.costPrice);
@@ -132,6 +244,11 @@ export default function NewProductPage() {
     name: !f.nameAr.trim(),
     price: isNaN(price) || price < 0,
     disc: f.discountPrice !== "" && (isNaN(disc) || disc < 0 || isNaN(price) || disc >= price),
+    dates:
+      f.discountPrice !== "" &&
+      !!f.discountStartsAt &&
+      !!f.discountEndsAt &&
+      new Date(f.discountEndsAt) <= new Date(f.discountStartsAt),
   };
   const hasDisc = !isNaN(disc) && !isNaN(price) && disc > 0 && disc < price;
   const shown = en ? f.nameEn.trim() || f.nameAr.trim() : f.nameAr.trim() || f.nameEn.trim();
@@ -143,7 +260,7 @@ export default function NewProductPage() {
   const submit = async (kind: Kind) => {
     setTouched(true); setAttempt(kind); setErr("");
     const draft = kind === "Draft";
-    if (errors.name || (!draft && errors.price) || errors.disc) return;
+    if (errors.name || (!draft && errors.price) || errors.disc || errors.dates || optsInvalid || tooMany || rowsBad) return;
     setBusy(kind);
     try {
       if (!createdId.current) {
@@ -152,7 +269,7 @@ export default function NewProductPage() {
           nameEn: f.nameEn.trim() || f.nameAr.trim(),
           basePrice: isNaN(price) ? 0 : price,
           costPrice: isNaN(cost) ? 0 : cost,
-          initialQuantity: parseInt(f.initialQuantity) || 0,
+          initialQuantity: hasVariants ? 0 : parseInt(f.initialQuantity) || 0,
           hasWarranty: warranty,
           status: kind,
         };
@@ -162,7 +279,11 @@ export default function NewProductPage() {
         if (f.sku.trim()) payload.sku = f.sku.trim();
         if (f.barcode.trim()) payload.barcode = f.barcode.trim();
         if (f.weight) payload.weight = parseFloat(f.weight);
-        if (f.discountPrice) payload.discountPrice = disc;
+        if (f.discountPrice) {
+          payload.discountPrice = disc;
+          if (f.discountStartsAt) payload.discountStartsAt = new Date(f.discountStartsAt).toISOString();
+          if (f.discountEndsAt) payload.discountEndsAt = new Date(f.discountEndsAt).toISOString();
+        }
         if (warranty && f.warrantyMonths) payload.warrantyMonths = parseInt(f.warrantyMonths);
         if (f.seoTitle.trim()) payload.seoTitle = f.seoTitle.trim();
         if (f.seoDescription.trim()) payload.seoDescription = f.seoDescription.trim();
@@ -182,7 +303,28 @@ export default function NewProductPage() {
           uploaded.current += 1;
         } catch { failed.push(im); }
       }
-      if (failed.length) { setImgs(failed); setErr(s.partial(failed.length)); setBusy(null); return; }
+      let failedVars = 0;
+      for (const c of combos) {
+        if (doneVariants.current.has(c.key)) continue;
+        const r = rowOf(c.key);
+        try {
+          await api.post(`/products/${id}/variants`, {
+            variantName: c.name,
+            priceAdjustment: parseFloat(r.price) || 0,
+            initialQuantity: parseInt(r.qty) || 0,
+            attributes: c.attrs,
+          });
+          doneVariants.current.add(c.key);
+        } catch { failedVars += 1; }
+      }
+      const msgs: string[] = [];
+      if (failed.length) { setImgs(failed); msgs.push(s.failImgs(failed.length)); }
+      if (failedVars) msgs.push(s.failVars(failedVars));
+      if (msgs.length) {
+        setErr(`${s.createdBut} ${msgs.join(" ")} ${s.retryHint}`);
+        setBusy(null);
+        return;
+      }
       done.current = true;
       router.push("/dashboard/products");
     } catch (e: unknown) {
@@ -274,6 +416,20 @@ export default function NewProductPage() {
                 {margin !== null && <p className="text-[11.5px] text-[var(--sub)] mt-1">{s.margin}: {margin}%</p>}
               </div>
             </div>
+            {f.discountPrice !== "" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={label}>{s.discStart}</label>
+                  <div className="field-shell"><input type="datetime-local" value={f.discountStartsAt} onChange={set("discountStartsAt")} /></div>
+                </div>
+                <div>
+                  <label className={label}>{s.discEnd}</label>
+                  <div className={"field-shell" + inv(errors.dates)}><input type="datetime-local" value={f.discountEndsAt} onChange={set("discountEndsAt")} /></div>
+                  {touched && errors.dates && <p className="text-[11.5px] text-[var(--danger)] mt-1">{s.errDates}</p>}
+                </div>
+                <p className="sm:col-span-2 text-[11.5px] text-[var(--sub)]">{s.discHint}</p>
+              </div>
+            )}
             <div>
               <label className={label}>{s.category}</label>
               <div className="field-shell">
@@ -291,6 +447,102 @@ export default function NewProductPage() {
               <label className={label}>{s.descEn}</label>
               <div className="field-shell items-start"><textarea rows={3} dir="ltr" value={f.descriptionEn} onChange={set("descriptionEn")} /></div>
             </div>
+          </section>
+
+          <section className="card p-5 space-y-3">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-[15px] font-bold text-[var(--blue-deep)]">{s.variants}</h2>
+                <p className="text-[11.5px] text-[var(--sub)] mt-0.5">{s.variantsHint}</p>
+              </div>
+              {opts.length < MAX_OPTS && (
+                <div className="flex gap-2 flex-wrap">
+                  <button type="button" className="btn btn-secondary" onClick={() => addOpt(s.optColor)}>+ {s.optColor}</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => addOpt(s.optSize)}>+ {s.optSize}</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => addOpt("")}>+ {s.optOther}</button>
+                </div>
+              )}
+            </div>
+
+            {opts.map((o) => (
+              <div key={o.id} className="rounded-xl border border-[var(--border)] p-3 space-y-2">
+                <div className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className={label}>{s.optName}</label>
+                    <div className="field-shell">
+                      <input type="text" value={o.name} onChange={(e) => updOpt(o.id, { name: e.target.value })} />
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => delOpt(o.id)} aria-label={s.remove}
+                    className="w-9 h-9 rounded-lg border border-[var(--border)] text-[var(--danger)] text-[13px] shrink-0">✕</button>
+                </div>
+                <div>
+                  <label className={label}>{s.optValues}</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {o.values.map((v) => (
+                      <span key={v} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--blue-50)] text-[12.5px] text-[var(--ink)]">
+                        {v}
+                        <button type="button" onClick={() => delValue(o.id, v)} aria-label={s.remove} className="text-[var(--sub)] text-[11px] leading-none">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="field-shell">
+                    <input
+                      type="text"
+                      value={o.input}
+                      placeholder={s.optValuesPh}
+                      onChange={(e) => updOpt(o.id, { input: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === "," || e.key === "،") {
+                          e.preventDefault();
+                          commitValue(o.id, o.input);
+                        }
+                      }}
+                      onBlur={() => commitValue(o.id, o.input)}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {tooMany && <p className="text-[12px] text-[var(--danger)]">{s.tooMany}</p>}
+            {touched && optsInvalid && <p className="text-[12px] text-[var(--danger)]">{s.errOpts}</p>}
+            {touched && rowsBad && <p className="text-[12px] text-[var(--danger)]">{s.errRows}</p>}
+
+            {combos.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.variantCol}</th>
+                      <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.priceAdj}</th>
+                      <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.qtyCol}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {combos.map((c) => {
+                      const r = rowOf(c.key);
+                      return (
+                        <tr key={c.key} className="border-t border-[var(--border)]">
+                          <td className="p-2 font-medium text-[var(--ink)]">{c.name}</td>
+                          <td className="p-2">
+                            <div className="field-shell w-28">
+                              <input type="number" step="0.01" value={r.price} onChange={(e) => setRow(c.key, { price: e.target.value })} />
+                            </div>
+                          </td>
+                          <td className="p-2">
+                            <div className="field-shell w-24">
+                              <input type="number" min={0} step={1} value={r.qty} onChange={(e) => setRow(c.key, { qty: e.target.value })} />
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="text-[12px] text-[var(--sub)] mt-2">{s.totalQty}: {totalQty}</p>
+              </div>
+            )}
           </section>
 
           <details className="card p-5">
@@ -314,8 +566,14 @@ export default function NewProductPage() {
           <details className="card p-5">
             <summary className="cursor-pointer text-[15px] font-bold text-[var(--blue-deep)]">{s.stock}</summary>
             <div className="mt-3 max-w-xs">
-              <label className={label}>{s.qty}</label>
-              <div className="field-shell"><input type="number" min={0} value={f.initialQuantity} onChange={set("initialQuantity")} /></div>
+              {hasVariants ? (
+                <p className="text-[12.5px] text-[var(--sub)]">{s.qtyPerVariant}</p>
+              ) : (
+                <>
+                  <label className={label}>{s.qty}</label>
+                  <div className="field-shell"><input type="number" min={0} value={f.initialQuantity} onChange={set("initialQuantity")} /></div>
+                </>
+              )}
             </div>
           </details>
 
@@ -368,6 +626,13 @@ export default function NewProductPage() {
               <span className="text-[17px] font-extrabold text-[var(--blue-deep)]">{isNaN(eff) ? "—" : `${fmt(eff)} ${t("common.sar")}`}</span>
               {hasDisc && <span className="text-[12.5px] text-[var(--sub)] line-through">{fmt(price)}</span>}
             </div>
+            {hasVariants && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {usableOpts(opts).flatMap((o) => o.values).slice(0, 8).map((v) => (
+                  <span key={v} className="px-2 py-0.5 rounded-md border border-[var(--border)] text-[11.5px] text-[var(--sub)]">{v}</span>
+                ))}
+              </div>
+            )}
             <div className="mt-3 flex gap-2">
               <span className="btn btn-secondary flex-1 justify-center pointer-events-none opacity-80">{s.addToCart}</span>
               <span className="btn btn-secondary pointer-events-none opacity-80" aria-hidden>♡</span>

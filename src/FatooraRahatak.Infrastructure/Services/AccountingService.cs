@@ -763,7 +763,7 @@ public class AccountingService : IAccountingService
                 // (سعر الخصم إن وُجد وإلا السعر الأساسي) — السعر مصدره الخادم وليس العميل.
                 var unitPrice = item.UnitPrice > 0
                     ? item.UnitPrice
-                    : (product.DiscountPrice is > 0 ? product.DiscountPrice.Value : product.BasePrice);
+                    : global::FatooraRahatak.Domain.Entities.Products.ProductPricing.Effective(product.BasePrice, product.DiscountPrice, product.DiscountStartsAt, product.DiscountEndsAt);
                 var lineTotal = unitPrice * item.Quantity;
                 if (item.DiscountAmount < 0 || item.DiscountAmount > lineTotal)
                     throw new InvalidOperationException($"خصم بند '{product.NameAr}' غير صالح (يجب أن يكون بين 0 والإجمالي)");

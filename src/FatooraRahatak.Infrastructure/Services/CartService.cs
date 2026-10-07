@@ -42,7 +42,7 @@ public class CartService : ICartService
 
         // ⚠️ إصلاح سعر المتغيرات: كان يُتجاهل سعر المتغير (PriceAdjustment) ويُستخدم سعر المنتج
         // الأساسي فقط، فتدفع السلة سعرًا أقل/أعلى من الفعلي للمنتجات ذات المتغيرات.
-        var effectivePrice = product.DiscountPrice ?? product.BasePrice;
+        var effectivePrice = global::FatooraRahatak.Domain.Entities.Products.ProductPricing.Effective(product.BasePrice, product.DiscountPrice, product.DiscountStartsAt, product.DiscountEndsAt);
 
         if (product.HasVariants)
         {

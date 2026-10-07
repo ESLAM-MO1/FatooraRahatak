@@ -34,6 +34,8 @@ public class PublicProductVariantDto
 
 public class PublicProductDetailDto
 {
+    public string? SeoTitle { get; set; }
+    public string? SeoDescription { get; set; }
     public long Id { get; set; }
     public long? CategoryId { get; set; }
     public string NameAr { get; set; } = string.Empty;

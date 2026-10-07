@@ -69,7 +69,9 @@ public class ProductService : IProductService
             HasWarranty = dto.HasWarranty,
             WarrantyMonths = dto.HasWarranty ? dto.WarrantyMonths : null,
             HasVariants = false,
-            Status = ProductStatus.Active
+            Status = ParseStatus(dto.Status),
+            SeoTitle = Clean(dto.SeoTitle, 70),
+            SeoDescription = Clean(dto.SeoDescription, 160)
         };
 
         _context.Products.Add(product);
@@ -188,6 +190,10 @@ public class ProductService : IProductService
         product.Weight = dto.Weight;
         product.HasWarranty = dto.HasWarranty;
         product.WarrantyMonths = dto.HasWarranty ? dto.WarrantyMonths : null;
+        if (dto.SeoTitle != null) product.SeoTitle = Clean(dto.SeoTitle, 70);
+        if (dto.SeoDescription != null) product.SeoDescription = Clean(dto.SeoDescription, 160);
+        if ((product.Status == ProductStatus.Active || product.Status == ProductStatus.Draft) && TryParseStatus(dto.Status, out var newStatus))
+            product.Status = newStatus;
         product.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -342,6 +348,24 @@ public class ProductService : IProductService
         return await MapToDtoAsync(product);
     }
 
+    private static bool TryParseStatus(string? value, out ProductStatus status)
+    {
+        status = ProductStatus.Active;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        return Enum.TryParse<ProductStatus>(value, true, out status)
+            && (status == ProductStatus.Active || status == ProductStatus.Draft);
+    }
+
+    private static ProductStatus ParseStatus(string? value) =>
+        TryParseStatus(value, out var parsed) ? parsed : ProductStatus.Active;
+
+    private static string? Clean(string? value, int max)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var v = value.Trim();
+        return v.Length > max ? v[..max] : v;
+    }
+
     private async Task<ProductResponseDto> MapToDtoAsync(Product p, string? primaryImageUrl = null, bool imageLookedUp = false)
     {
         var totalQuantity = await _context.InventoryStocks
@@ -376,7 +400,9 @@ public class ProductService : IProductService
             AvailableQuantity = totalQuantity,
             PrimaryImageUrl = primaryImageUrl,
             HasWarranty = p.HasWarranty,
-            WarrantyMonths = p.WarrantyMonths
+            WarrantyMonths = p.WarrantyMonths,
+            SeoTitle = p.SeoTitle,
+            SeoDescription = p.SeoDescription
         };
     }
 }

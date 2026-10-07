@@ -19,4 +19,6 @@ public class ProductResponseDto
     public string? PrimaryImageUrl { get; set; }
     public bool HasWarranty { get; set; }
     public int? WarrantyMonths { get; set; }
+    public string? SeoTitle { get; set; }
+    public string? SeoDescription { get; set; }
 }

@@ -10,6 +10,7 @@ import PageHeader from "@/components/PageHeader";
 
 type Img = { id: string; file: File; url: string };
 type Cat = { id: number; nameAr: string; nameEn?: string };
+type Kind = "Active" | "Draft";
 
 const L = {
   ar: {
@@ -25,13 +26,15 @@ const L = {
     barcode: "الباركود", weight: "الوزن",
     stock: "الكميات", qty: "الكمية المتوفرة",
     warranty: "الضمان", hasWarranty: "المنتج عليه ضمان", months: "مدة الضمان بالأشهر",
-    create: "إنشاء المنتج", creating: "جارٍ الإنشاء...", cancel: "إلغاء",
+    seo: "تحسين محركات البحث (SEO)", seoTitle: "عنوان الصفحة في جوجل", seoDesc: "الوصف في جوجل",
+    seoPreview: "معاينة في نتائج البحث",
+    create: "إنشاء المنتج", saveDraft: "حفظ كمسودة", creating: "جارٍ الحفظ...", cancel: "إلغاء",
     preview: "معاينة في المتجر", previewEmpty: "أضف الصورة والاسم والسعر لتظهر المعاينة هنا.",
     namePh: "اسم المنتج", addToCart: "أضف للسلة",
     errName: "اسم المنتج بالعربي مطلوب.", errPrice: "أدخل سعرًا صحيحًا.",
     errDisc: "السعر المخفض يجب أن يكون أقل من السعر.",
     saveErr: "تعذر حفظ المنتج. حاول مرة أخرى.",
-    partial: (n: number) => `تم إنشاء المنتج، لكن تعذر رفع ${n} صورة. اضغط "إنشاء المنتج" لإعادة المحاولة أو أضفها لاحقًا من صفحة المنتج.`,
+    partial: (n: number) => `تم إنشاء المنتج، لكن تعذر رفع ${n} صورة. اضغط الحفظ لإعادة المحاولة أو أضفها لاحقًا من صفحة المنتج.`,
     openProduct: "فتح صفحة المنتج", upgrade: "ترقية الباقة", badFile: "تم تجاهل ملفات غير مدعومة أو أكبر من 5 ميجا.",
   },
   en: {
@@ -47,13 +50,15 @@ const L = {
     barcode: "Barcode", weight: "Weight",
     stock: "Stock", qty: "Available quantity",
     warranty: "Warranty", hasWarranty: "This product has a warranty", months: "Warranty (months)",
-    create: "Create product", creating: "Creating...", cancel: "Cancel",
+    seo: "Search engine optimization (SEO)", seoTitle: "Google page title", seoDesc: "Google description",
+    seoPreview: "Search result preview",
+    create: "Create product", saveDraft: "Save as draft", creating: "Saving...", cancel: "Cancel",
     preview: "Storefront preview", previewEmpty: "Add an image, name and price to see the preview here.",
     namePh: "Product name", addToCart: "Add to cart",
     errName: "Arabic product name is required.", errPrice: "Enter a valid price.",
     errDisc: "Discounted price must be lower than the price.",
     saveErr: "Could not save the product. Please try again.",
-    partial: (n: number) => `Product created, but ${n} image(s) failed to upload. Press "Create product" to retry or add them later from the product page.`,
+    partial: (n: number) => `Product created, but ${n} image(s) failed to upload. Press save to retry or add them later from the product page.`,
     openProduct: "Open product page", upgrade: "Upgrade plan", badFile: "Unsupported or oversized files were skipped.",
   },
 };
@@ -71,12 +76,13 @@ export default function NewProductPage() {
   const [f, setF] = useState({
     nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", categoryId: "",
     basePrice: "", discountPrice: "", costPrice: "", sku: "", barcode: "", weight: "",
-    initialQuantity: "0", warrantyMonths: "",
+    initialQuantity: "0", warrantyMonths: "", seoTitle: "", seoDescription: "",
   });
   const [warranty, setWarranty] = useState(false);
   const [imgs, setImgs] = useState<Img[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<Kind | null>(null);
+  const [attempt, setAttempt] = useState<Kind>("Active");
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
   const [touched, setTouched] = useState(false);
@@ -125,7 +131,7 @@ export default function NewProductPage() {
   const errors = {
     name: !f.nameAr.trim(),
     price: isNaN(price) || price < 0,
-    disc: f.discountPrice !== "" && (isNaN(disc) || disc < 0 || (!isNaN(price) && disc >= price)),
+    disc: f.discountPrice !== "" && (isNaN(disc) || disc < 0 || isNaN(price) || disc >= price),
   };
   const hasDisc = !isNaN(disc) && !isNaN(price) && disc > 0 && disc < price;
   const shown = en ? f.nameEn.trim() || f.nameAr.trim() : f.nameAr.trim() || f.nameEn.trim();
@@ -134,19 +140,21 @@ export default function NewProductPage() {
   const margin = !isNaN(cost) && cost > 0 && !isNaN(eff) && eff > 0
     ? Math.round(((eff - cost) / eff) * 100) : null;
 
-  const submit = async () => {
-    setTouched(true); setErr("");
-    if (errors.name || errors.price || errors.disc) return;
-    setBusy(true);
+  const submit = async (kind: Kind) => {
+    setTouched(true); setAttempt(kind); setErr("");
+    const draft = kind === "Draft";
+    if (errors.name || (!draft && errors.price) || errors.disc) return;
+    setBusy(kind);
     try {
       if (!createdId.current) {
         const payload: Record<string, unknown> = {
           nameAr: f.nameAr.trim(),
           nameEn: f.nameEn.trim() || f.nameAr.trim(),
-          basePrice: price,
+          basePrice: isNaN(price) ? 0 : price,
           costPrice: isNaN(cost) ? 0 : cost,
           initialQuantity: parseInt(f.initialQuantity) || 0,
           hasWarranty: warranty,
+          status: kind,
         };
         if (f.categoryId) payload.categoryId = Number(f.categoryId);
         if (f.descriptionAr) payload.descriptionAr = f.descriptionAr;
@@ -156,6 +164,8 @@ export default function NewProductPage() {
         if (f.weight) payload.weight = parseFloat(f.weight);
         if (f.discountPrice) payload.discountPrice = disc;
         if (warranty && f.warrantyMonths) payload.warrantyMonths = parseInt(f.warrantyMonths);
+        if (f.seoTitle.trim()) payload.seoTitle = f.seoTitle.trim();
+        if (f.seoDescription.trim()) payload.seoDescription = f.seoDescription.trim();
         const res = await api.post("/products", payload);
         createdId.current = res.data.data.id;
       }
@@ -172,18 +182,20 @@ export default function NewProductPage() {
           uploaded.current += 1;
         } catch { failed.push(im); }
       }
-      if (failed.length) { setImgs(failed); setErr(s.partial(failed.length)); setBusy(false); return; }
+      if (failed.length) { setImgs(failed); setErr(s.partial(failed.length)); setBusy(null); return; }
       done.current = true;
       router.push("/dashboard/products");
     } catch (e: unknown) {
       const m = (e as { response?: { data?: { message?: string } } }).response?.data?.message;
       setErr(m || s.saveErr);
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   const limitErr = /limit|upgrade/i.test(err);
   const inv = (bad: boolean) => (touched && bad ? " !border-[var(--danger)]" : "");
+  const priceBad = errors.price && attempt === "Active";
+  const working = busy !== null;
 
   return (
     <div>
@@ -248,8 +260,8 @@ export default function NewProductPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className={label}>{s.price} *</label>
-                <div className={"field-shell" + inv(errors.price)}><input type="number" min={0} step="0.01" value={f.basePrice} onChange={set("basePrice")} /></div>
-                {touched && errors.price && <p className="text-[11.5px] text-[var(--danger)] mt-1">{s.errPrice}</p>}
+                <div className={"field-shell" + inv(priceBad)}><input type="number" min={0} step="0.01" value={f.basePrice} onChange={set("basePrice")} /></div>
+                {touched && priceBad && <p className="text-[11.5px] text-[var(--danger)] mt-1">{s.errPrice}</p>}
               </div>
               <div>
                 <label className={label}>{s.discount}</label>
@@ -319,6 +331,27 @@ export default function NewProductPage() {
               )}
             </div>
           </details>
+
+          <details className="card p-5">
+            <summary className="cursor-pointer text-[15px] font-bold text-[var(--blue-deep)]">{s.seo}</summary>
+            <div className="mt-3 space-y-3">
+              <div>
+                <label className={label}>{s.seoTitle}</label>
+                <div className="field-shell"><input type="text" maxLength={70} value={f.seoTitle} onChange={set("seoTitle")} /></div>
+                <p className="text-[11.5px] text-[var(--sub)] mt-1">{f.seoTitle.length}/70</p>
+              </div>
+              <div>
+                <label className={label}>{s.seoDesc}</label>
+                <div className="field-shell items-start"><textarea rows={3} maxLength={160} value={f.seoDescription} onChange={set("seoDescription")} /></div>
+                <p className="text-[11.5px] text-[var(--sub)] mt-1">{f.seoDescription.length}/160</p>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] p-3 bg-[#FAFBFC]">
+                <p className="text-[11px] text-[var(--sub)] mb-1">{s.seoPreview}</p>
+                <p className="text-[15px] text-[#1a0dab] truncate">{f.seoTitle || shown || s.namePh}</p>
+                <p className="text-[12.5px] text-[var(--sub)] line-clamp-2">{f.seoDescription || f.descriptionAr}</p>
+              </div>
+            </div>
+          </details>
         </div>
 
         <aside className="order-1 lg:order-none lg:sticky lg:top-4">
@@ -348,8 +381,11 @@ export default function NewProductPage() {
 
       <div className="fixed bottom-0 inset-x-0 z-20 bg-white border-t border-[var(--border)] px-4 py-3 flex gap-3 justify-end">
         <Link href="/dashboard/products" className="btn btn-secondary">{s.cancel}</Link>
-        <button type="button" onClick={submit} disabled={busy} className="btn btn-primary disabled:opacity-60">
-          {busy ? s.creating : s.create}
+        <button type="button" onClick={() => submit("Draft")} disabled={working} className="btn btn-secondary disabled:opacity-60">
+          {busy === "Draft" ? s.creating : s.saveDraft}
+        </button>
+        <button type="button" onClick={() => submit("Active")} disabled={working} className="btn btn-primary disabled:opacity-60">
+          {busy === "Active" ? s.creating : s.create}
         </button>
       </div>
     </div>

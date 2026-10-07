@@ -48,6 +48,8 @@ interface Product {
   hasWarranty: boolean;
   warrantyMonths: number | null;
   primaryImageUrl?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
 }
 
 interface ProductForm {
@@ -64,6 +66,9 @@ interface ProductForm {
   weight: string;
   hasWarranty: boolean;
   warrantyMonths: string;
+  status: string;
+  seoTitle: string;
+  seoDescription: string;
 }
 
 const emptyForm: ProductForm = {
@@ -80,6 +85,9 @@ const emptyForm: ProductForm = {
   weight: "",
   hasWarranty: false,
   warrantyMonths: "",
+  status: "",
+  seoTitle: "",
+  seoDescription: "",
 };
 
 const statusStyles: Record<string, string> = {
@@ -559,6 +567,9 @@ export default function ProductsPage() {
       weight: product.weight?.toString() ?? "",
       hasWarranty: product.hasWarranty ?? false,
       warrantyMonths: product.warrantyMonths?.toString() ?? "",
+      status: product.status,
+      seoTitle: product.seoTitle ?? "",
+      seoDescription: product.seoDescription ?? "",
     });
     setActionError("");
     setShowModal(true);
@@ -621,6 +632,9 @@ export default function ProductsPage() {
         categoryId: form.categoryId ? Number(form.categoryId) : null,
         hasWarranty: form.hasWarranty,
         warrantyMonths: form.hasWarranty && form.warrantyMonths ? parseInt(form.warrantyMonths) : null,
+        status: form.status === "Active" || form.status === "Draft" ? form.status : undefined,
+        seoTitle: form.seoTitle,
+        seoDescription: form.seoDescription,
       });
       setSuccessMessage(t("product.updateSuccess"));
       closeModal();
@@ -1393,6 +1407,32 @@ export default function ProductsPage() {
                     />
                   </div>
                 )}
+              </div>
+
+              {(form.status === "Active" || form.status === "Draft") && (
+                <div>
+                  <label className={lbl}>{en ? "Product status" : "حالة المنتج"}</label>
+                  <div className="field-shell">
+                    <select value={form.status} onChange={(e) => setF("status", e.target.value)}>
+                      <option value="Active">{statusLabels.Active}</option>
+                      <option value="Draft">{statusLabels.Draft}</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className={lbl}>{en ? "SEO title" : "عنوان الصفحة في جوجل"}</label>
+                <div className="field-shell">
+                  <input type="text" maxLength={70} value={form.seoTitle} onChange={(e) => setF("seoTitle", e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <label className={lbl}>{en ? "SEO description" : "الوصف في جوجل"}</label>
+                <div className="field-shell items-start">
+                  <textarea rows={2} maxLength={160} value={form.seoDescription} onChange={(e) => setF("seoDescription", e.target.value)} />
+                </div>
               </div>
 
               <div className="rounded-xl border border-[var(--border)] p-3 space-y-2">

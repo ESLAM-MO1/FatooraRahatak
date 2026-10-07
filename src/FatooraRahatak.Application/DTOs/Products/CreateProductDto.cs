@@ -16,4 +16,7 @@ public class CreateProductDto
     public int InitialQuantity { get; set; } = 0;
     public bool HasWarranty { get; set; } = false;
     public int? WarrantyMonths { get; set; }
+    public string? Status { get; set; }
+    public string? SeoTitle { get; set; }
+    public string? SeoDescription { get; set; }
 }

@@ -11,13 +11,25 @@ import PageHeader from "@/components/PageHeader";
 type Img = { id: string; file: File; url: string };
 type Cat = { id: number; nameAr: string; nameEn?: string };
 type Kind = "Active" | "Draft";
-type Opt = { id: string; name: string; values: string[]; input: string };
+type OptKind = "color" | "size" | "other";
+type Opt = { id: string; kind: OptKind; name: string; values: string[]; input: string };
 type Attr = { attributeName: string; attributeValue: string };
 type Combo = { key: string; name: string; attrs: Attr[] };
 type Row = { price: string; qty: string };
 
 const MAX_OPTS = 3;
 const MAX_COMBOS = 100;
+
+const SUG = {
+  ar: {
+    color: ["أحمر", "أزرق", "أسود", "أبيض", "أخضر", "أصفر", "رمادي", "وردي", "بنفسجي", "برتقالي", "بني", "بيج"],
+    size: ["S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+  en: {
+    color: ["Red", "Blue", "Black", "White", "Green", "Yellow", "Gray", "Pink", "Purple", "Orange", "Brown", "Beige"],
+    size: ["S", "M", "L", "XL", "XXL", "XXXL"],
+  },
+};
 
 const L = {
   ar: {
@@ -42,13 +54,25 @@ const L = {
     errDisc: "السعر المخفض يجب أن يكون أقل من السعر.",
     saveErr: "تعذر حفظ المنتج. حاول مرة أخرى.",
     openProduct: "فتح صفحة المنتج", upgrade: "ترقية الباقة", badFile: "تم تجاهل ملفات غير مدعومة أو أكبر من 5 ميجا.",
-    variants: "الخيارات والمتغيرات", variantsHint: "أضف خيارات مثل اللون والمقاس وستتولد المتغيرات تلقائيًا.",
+    variants: "الخيارات والمتغيرات",
+    variantsToggle: "هذا المنتج له أكثر من شكل (مثل اللون أو المقاس)",
+    variantsHint: "فعّلها لو المنتج بيتباع بألوان أو مقاسات مختلفة. كل تركيبة تتحسب كمتغير له كمية خاصة.",
+    example: "مثال: تيشيرت بلونين (أحمر، أزرق) ومقاسين (M، L) يتولد منه 4 متغيرات تلقائيًا.",
+    addOptionTitle: "أضف خيارًا:",
     optColor: "اللون", optSize: "المقاس", optOther: "خيار آخر",
-    optName: "اسم الخيار", optValues: "القيم", optValuesPh: "اكتب قيمة واضغط Enter",
-    variantCol: "المتغير", priceAdj: "فرق السعر", qtyCol: "الكمية", totalQty: "إجمالي الكمية",
+    otherName: "اسم الخيار", otherNamePh: "مثال: الخامة",
+    pickCommon: "اختر من القيم الشائعة", addCustom: "أو اكتب قيمة أخرى", addBtn: "إضافة",
+    chosen: "القيم المختارة", noneChosen: "لم تختر أي قيمة بعد",
+    phColor: "مثال: بيج", phSize: "مثال: XXXL", phOther: "مثال: قطن",
+    maxOpts: `الحد الأقصى ${MAX_OPTS} خيارات.`,
+    tableTitle: "المتغيرات",
+    tableHint: "حدد الكمية المتوفرة لكل متغير. وفرق السعر هو الزيادة أو النقص عن سعر المنتج، اتركه 0 لو نفس السعر.",
+    variantCol: "المتغير", priceAdj: "فرق السعر", finalPrice: "السعر النهائي", qtyCol: "الكمية",
+    totalQty: "إجمالي الكمية",
     qtyPerVariant: "الكمية تُحدد لكل متغير في جدول المتغيرات.",
     tooMany: `عدد المتغيرات يتجاوز ${MAX_COMBOS}. قلل القيم.`,
-    errOpts: "أدخل اسمًا لكل خيار بدون تكرار.",
+    errNames: "اكتب اسمًا لكل خيار بدون تكرار.",
+    errNoValues: "اختر قيمة واحدة على الأقل لكل خيار، أو احذف الخيار الفارغ.",
     errRows: "فرق السعر أو الكمية في المتغيرات غير صحيح.",
     createdBut: "تم إنشاء المنتج، لكن",
     failImgs: (n: number) => `تعذر رفع ${n} صورة.`,
@@ -80,13 +104,25 @@ const L = {
     errDisc: "Discounted price must be lower than the price.",
     saveErr: "Could not save the product. Please try again.",
     openProduct: "Open product page", upgrade: "Upgrade plan", badFile: "Unsupported or oversized files were skipped.",
-    variants: "Options and variants", variantsHint: "Add options like color and size and the variants are generated automatically.",
+    variants: "Options and variants",
+    variantsToggle: "This product comes in more than one form (such as color or size)",
+    variantsHint: "Turn it on if the product is sold in different colors or sizes. Each combination becomes a variant with its own quantity.",
+    example: "Example: a T-shirt in two colors (Red, Blue) and two sizes (M, L) creates 4 variants automatically.",
+    addOptionTitle: "Add an option:",
     optColor: "Color", optSize: "Size", optOther: "Other option",
-    optName: "Option name", optValues: "Values", optValuesPh: "Type a value and press Enter",
-    variantCol: "Variant", priceAdj: "Price difference", qtyCol: "Quantity", totalQty: "Total quantity",
+    otherName: "Option name", otherNamePh: "Example: Material",
+    pickCommon: "Pick from common values", addCustom: "Or type another value", addBtn: "Add",
+    chosen: "Selected values", noneChosen: "No value selected yet",
+    phColor: "Example: Beige", phSize: "Example: XXXL", phOther: "Example: Cotton",
+    maxOpts: `Maximum ${MAX_OPTS} options.`,
+    tableTitle: "Variants",
+    tableHint: "Set the available quantity for each variant. Price difference is the increase or decrease from the product price, leave 0 for the same price.",
+    variantCol: "Variant", priceAdj: "Price difference", finalPrice: "Final price", qtyCol: "Quantity",
+    totalQty: "Total quantity",
     qtyPerVariant: "Quantity is set per variant in the variants table.",
     tooMany: `Variants exceed ${MAX_COMBOS}. Reduce the values.`,
-    errOpts: "Enter a unique name for every option.",
+    errNames: "Enter a unique name for every option.",
+    errNoValues: "Pick at least one value for every option, or remove the empty option.",
     errRows: "Price difference or quantity of a variant is invalid.",
     createdBut: "Product created, but",
     failImgs: (n: number) => `${n} image(s) failed to upload.`,
@@ -137,6 +173,7 @@ export default function NewProductPage() {
   const { i18n, t } = useTranslation();
   const en = !!i18n.language?.startsWith("en");
   const s = en ? L.en : L.ar;
+  const sugs = en ? SUG.en : SUG.ar;
 
   const [f, setF] = useState({
     nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", categoryId: "",
@@ -147,6 +184,7 @@ export default function NewProductPage() {
   const [warranty, setWarranty] = useState(false);
   const [imgs, setImgs] = useState<Img[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
+  const [variantsOn, setVariantsOn] = useState(false);
   const [opts, setOpts] = useState<Opt[]>([]);
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [busy, setBusy] = useState<Kind | null>(null);
@@ -170,7 +208,9 @@ export default function NewProductPage() {
     return () => imgsRef.current.forEach((i) => URL.revokeObjectURL(i.url));
   }, []);
 
-  const dirty = !!(f.nameAr || f.nameEn || f.basePrice || imgs.length || opts.length);
+  const activeOpts = variantsOn ? opts : [];
+
+  const dirty = !!(f.nameAr || f.nameEn || f.basePrice || imgs.length || activeOpts.length);
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
       if (dirty && !done.current) { e.preventDefault(); e.returnValue = ""; }
@@ -194,17 +234,19 @@ export default function NewProductPage() {
   const removeImg = (id: string) => setImgs((p) => p.filter((i) => i.id !== id));
   const makePrimary = (idx: number) => setImgs((p) => [p[idx], ...p.filter((_, i) => i !== idx)]);
 
-  const addOpt = (name: string) =>
-    setOpts((p) =>
-      p.length >= MAX_OPTS
-        ? p
-        : [...p, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name, values: [], input: "" }]
-    );
+  const addOpt = (kind: OptKind) =>
+    setOpts((p) => {
+      if (p.length >= MAX_OPTS) return p;
+      if (kind !== "other" && p.some((o) => o.kind === kind)) return p;
+      const name = kind === "color" ? s.optColor : kind === "size" ? s.optSize : "";
+      return [...p, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, kind, name, values: [], input: "" }];
+    });
   const updOpt = (id: string, patch: Partial<Opt>) =>
     setOpts((p) => p.map((o) => (o.id === id ? { ...o, ...patch } : o)));
   const delOpt = (id: string) => setOpts((p) => p.filter((o) => o.id !== id));
   const commitValue = (id: string, raw: string) => {
     const parts = raw.split(/[,،]/).map((x) => x.trim()).filter(Boolean);
+    if (!parts.length) return;
     setOpts((p) =>
       p.map((o) => {
         if (o.id !== id) return o;
@@ -216,16 +258,26 @@ export default function NewProductPage() {
       })
     );
   };
-  const delValue = (id: string, v: string) =>
-    setOpts((p) => p.map((o) => (o.id === id ? { ...o, values: o.values.filter((x) => x !== v) } : o)));
+  const toggleValue = (id: string, v: string) =>
+    setOpts((p) =>
+      p.map((o) => {
+        if (o.id !== id) return o;
+        const has = o.values.some((x) => x.toLowerCase() === v.toLowerCase());
+        return { ...o, values: has ? o.values.filter((x) => x.toLowerCase() !== v.toLowerCase()) : [...o.values, v] };
+      })
+    );
+  const toggleVariants = (on: boolean) => {
+    setVariantsOn(on);
+    if (on && opts.length === 0) addOpt("color");
+  };
 
-  const combos = useMemo(() => buildCombos(opts), [opts]);
-  const comboCount = countCombos(opts);
+  const combos = useMemo(() => buildCombos(activeOpts), [activeOpts]);
+  const comboCount = countCombos(activeOpts);
   const tooMany = comboCount > MAX_COMBOS;
   const hasVariants = combos.length > 0;
-  const usableNames = usableOpts(opts).map((o) => o.name.trim().toLowerCase());
-  const optsInvalid =
-    opts.some((o) => o.values.length > 0 && !o.name.trim()) || new Set(usableNames).size !== usableNames.length;
+  const namesList = activeOpts.map((o) => o.name.trim().toLowerCase());
+  const namesBad = activeOpts.some((o) => !o.name.trim()) || new Set(namesList).size !== namesList.length;
+  const emptyOpt = activeOpts.some((o) => o.values.length === 0);
 
   const rowOf = (k: string): Row => rows[k] ?? { price: "0", qty: "0" };
   const setRow = (k: string, patch: Partial<Row>) =>
@@ -257,10 +309,16 @@ export default function NewProductPage() {
   const margin = !isNaN(cost) && cost > 0 && !isNaN(eff) && eff > 0
     ? Math.round(((eff - cost) / eff) * 100) : null;
 
+  const finalOf = (c: Combo) => {
+    const a = parseFloat(rowOf(c.key).price);
+    if (isNaN(eff) || isNaN(a)) return "—";
+    return `${fmt(eff + a)} ${t("common.sar")}`;
+  };
+
   const submit = async (kind: Kind) => {
     setTouched(true); setAttempt(kind); setErr("");
     const draft = kind === "Draft";
-    if (errors.name || (!draft && errors.price) || errors.disc || errors.dates || optsInvalid || tooMany || rowsBad) return;
+    if (errors.name || (!draft && errors.price) || errors.disc || errors.dates || namesBad || emptyOpt || tooMany || rowsBad) return;
     setBusy(kind);
     try {
       if (!createdId.current) {
@@ -338,6 +396,9 @@ export default function NewProductPage() {
   const inv = (bad: boolean) => (touched && bad ? " !border-[var(--danger)]" : "");
   const priceBad = errors.price && attempt === "Active";
   const working = busy !== null;
+  const canAddColor = opts.length < MAX_OPTS && !opts.some((o) => o.kind === "color");
+  const canAddSize = opts.length < MAX_OPTS && !opts.some((o) => o.kind === "size");
+  const canAddOther = opts.length < MAX_OPTS;
 
   return (
     <div>
@@ -449,99 +510,156 @@ export default function NewProductPage() {
             </div>
           </section>
 
-          <section className="card p-5 space-y-3">
-            <div className="flex items-start justify-between gap-3 flex-wrap">
-              <div>
-                <h2 className="text-[15px] font-bold text-[var(--blue-deep)]">{s.variants}</h2>
-                <p className="text-[11.5px] text-[var(--sub)] mt-0.5">{s.variantsHint}</p>
-              </div>
-              {opts.length < MAX_OPTS && (
-                <div className="flex gap-2 flex-wrap">
-                  <button type="button" className="btn btn-secondary" onClick={() => addOpt(s.optColor)}>+ {s.optColor}</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => addOpt(s.optSize)}>+ {s.optSize}</button>
-                  <button type="button" className="btn btn-secondary" onClick={() => addOpt("")}>+ {s.optOther}</button>
-                </div>
-              )}
+          <section className="card p-5 space-y-4">
+            <div>
+              <h2 className="text-[15px] font-bold text-[var(--blue-deep)]">{s.variants}</h2>
+              <label className="mt-3 flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" className="mt-1" checked={variantsOn} onChange={(e) => toggleVariants(e.target.checked)} />
+                <span>
+                  <span className="block text-[13.5px] font-bold text-[var(--ink)]">{s.variantsToggle}</span>
+                  <span className="block text-[12px] text-[var(--sub)] mt-0.5">{s.variantsHint}</span>
+                </span>
+              </label>
             </div>
 
-            {opts.map((o) => (
-              <div key={o.id} className="rounded-xl border border-[var(--border)] p-3 space-y-2">
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <label className={label}>{s.optName}</label>
-                    <div className="field-shell">
-                      <input type="text" value={o.name} onChange={(e) => updOpt(o.id, { name: e.target.value })} />
+            {variantsOn && (
+              <>
+                <p className="text-[12px] text-[var(--sub)] rounded-lg bg-[var(--blue-50)] p-3">{s.example}</p>
+
+                {activeOpts.map((o) => {
+                  const list = o.kind === "other" ? [] : sugs[o.kind];
+                  const ph = o.kind === "color" ? s.phColor : o.kind === "size" ? s.phSize : s.phOther;
+                  return (
+                    <div key={o.id} className="rounded-xl border border-[var(--border)] p-4 space-y-3">
+                      <div className="flex items-end justify-between gap-3">
+                        {o.kind === "other" ? (
+                          <div className="flex-1">
+                            <label className={label}>{s.otherName}</label>
+                            <div className="field-shell">
+                              <input type="text" value={o.name} placeholder={s.otherNamePh} onChange={(e) => updOpt(o.id, { name: e.target.value })} />
+                            </div>
+                          </div>
+                        ) : (
+                          <h3 className="text-[14px] font-bold text-[var(--ink)]">{o.name}</h3>
+                        )}
+                        <button type="button" onClick={() => delOpt(o.id)} aria-label={s.remove}
+                          className="w-9 h-9 rounded-lg border border-[var(--border)] text-[var(--danger)] text-[13px] shrink-0">✕</button>
+                      </div>
+
+                      {list.length > 0 && (
+                        <div>
+                          <p className="text-[12px] font-bold text-[var(--sub)] mb-2">{s.pickCommon}</p>
+                          <div className="flex flex-wrap gap-2">
+                            {list.map((v) => {
+                              const on = o.values.some((x) => x.toLowerCase() === v.toLowerCase());
+                              return (
+                                <button key={v} type="button" onClick={() => toggleValue(o.id, v)}
+                                  className={`px-3 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors ${on ? "bg-[var(--blue-deep)] text-white border-transparent" : "bg-white text-[var(--ink)] border-[var(--border)] hover:bg-[var(--blue-50)]"}`}>
+                                  {on ? "✓ " : "+ "}{v}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <p className="text-[12px] font-bold text-[var(--sub)] mb-2">{o.kind === "other" ? s.chosen : s.addCustom}</p>
+                        <div className="flex gap-2">
+                          <div className="field-shell flex-1">
+                            <input
+                              type="text"
+                              value={o.input}
+                              placeholder={ph}
+                              onChange={(e) => updOpt(o.id, { input: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === "," || e.key === "،") {
+                                  e.preventDefault();
+                                  commitValue(o.id, o.input);
+                                }
+                              }}
+                            />
+                          </div>
+                          <button type="button" className="btn btn-secondary" onClick={() => commitValue(o.id, o.input)}>{s.addBtn}</button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-[12px] font-bold text-[var(--sub)] mb-2">{s.chosen}</p>
+                        {o.values.length === 0 ? (
+                          <p className="text-[12px] text-[var(--sub)]">{s.noneChosen}</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {o.values.map((v) => (
+                              <span key={v} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--blue-50)] text-[12.5px] text-[var(--ink)]">
+                                {v}
+                                <button type="button" onClick={() => toggleValue(o.id, v)} aria-label={s.remove} className="text-[var(--sub)] text-[11px] leading-none">✕</button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <button type="button" onClick={() => delOpt(o.id)} aria-label={s.remove}
-                    className="w-9 h-9 rounded-lg border border-[var(--border)] text-[var(--danger)] text-[13px] shrink-0">✕</button>
-                </div>
-                <div>
-                  <label className={label}>{s.optValues}</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {o.values.map((v) => (
-                      <span key={v} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--blue-50)] text-[12.5px] text-[var(--ink)]">
-                        {v}
-                        <button type="button" onClick={() => delValue(o.id, v)} aria-label={s.remove} className="text-[var(--sub)] text-[11px] leading-none">✕</button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="field-shell">
-                    <input
-                      type="text"
-                      value={o.input}
-                      placeholder={s.optValuesPh}
-                      onChange={(e) => updOpt(o.id, { input: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === "," || e.key === "،") {
-                          e.preventDefault();
-                          commitValue(o.id, o.input);
-                        }
-                      }}
-                      onBlur={() => commitValue(o.id, o.input)}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
+                  );
+                })}
 
-            {tooMany && <p className="text-[12px] text-[var(--danger)]">{s.tooMany}</p>}
-            {touched && optsInvalid && <p className="text-[12px] text-[var(--danger)]">{s.errOpts}</p>}
-            {touched && rowsBad && <p className="text-[12px] text-[var(--danger)]">{s.errRows}</p>}
+                {opts.length < MAX_OPTS ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[12.5px] font-bold text-[var(--sub)]">{s.addOptionTitle}</span>
+                    {canAddColor && <button type="button" className="btn btn-secondary" onClick={() => addOpt("color")}>+ {s.optColor}</button>}
+                    {canAddSize && <button type="button" className="btn btn-secondary" onClick={() => addOpt("size")}>+ {s.optSize}</button>}
+                    {canAddOther && <button type="button" className="btn btn-secondary" onClick={() => addOpt("other")}>+ {s.optOther}</button>}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-[var(--sub)]">{s.maxOpts}</p>
+                )}
 
-            {combos.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.variantCol}</th>
-                      <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.priceAdj}</th>
-                      <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.qtyCol}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {combos.map((c) => {
-                      const r = rowOf(c.key);
-                      return (
-                        <tr key={c.key} className="border-t border-[var(--border)]">
-                          <td className="p-2 font-medium text-[var(--ink)]">{c.name}</td>
-                          <td className="p-2">
-                            <div className="field-shell w-28">
-                              <input type="number" step="0.01" value={r.price} onChange={(e) => setRow(c.key, { price: e.target.value })} />
-                            </div>
-                          </td>
-                          <td className="p-2">
-                            <div className="field-shell w-24">
-                              <input type="number" min={0} step={1} value={r.qty} onChange={(e) => setRow(c.key, { qty: e.target.value })} />
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                <p className="text-[12px] text-[var(--sub)] mt-2">{s.totalQty}: {totalQty}</p>
-              </div>
+                {tooMany && <p className="text-[12px] text-[var(--danger)]">{s.tooMany}</p>}
+                {touched && namesBad && <p className="text-[12px] text-[var(--danger)]">{s.errNames}</p>}
+                {touched && emptyOpt && <p className="text-[12px] text-[var(--danger)]">{s.errNoValues}</p>}
+                {touched && rowsBad && <p className="text-[12px] text-[var(--danger)]">{s.errRows}</p>}
+
+                {combos.length > 0 && (
+                  <div>
+                    <p className="text-[13.5px] font-bold text-[var(--ink)]">{s.tableTitle} ({combos.length})</p>
+                    <p className="text-[11.5px] text-[var(--sub)] mb-2">{s.tableHint}</p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.variantCol}</th>
+                            <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.priceAdj}</th>
+                            <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.finalPrice}</th>
+                            <th className="text-start p-2 text-[12px] font-bold text-[var(--sub)]">{s.qtyCol}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {combos.map((c) => {
+                            const r = rowOf(c.key);
+                            return (
+                              <tr key={c.key} className="border-t border-[var(--border)]">
+                                <td className="p-2 font-medium text-[var(--ink)]">{c.name}</td>
+                                <td className="p-2">
+                                  <div className="field-shell w-28">
+                                    <input type="number" step="0.01" value={r.price} onChange={(e) => setRow(c.key, { price: e.target.value })} />
+                                  </div>
+                                </td>
+                                <td className="p-2 text-[var(--sub)] whitespace-nowrap">{finalOf(c)}</td>
+                                <td className="p-2">
+                                  <div className="field-shell w-24">
+                                    <input type="number" min={0} step={1} value={r.qty} onChange={(e) => setRow(c.key, { qty: e.target.value })} />
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-[12px] text-[var(--sub)] mt-2">{s.totalQty}: {totalQty}</p>
+                  </div>
+                )}
+              </>
             )}
           </section>
 
@@ -628,7 +746,7 @@ export default function NewProductPage() {
             </div>
             {hasVariants && (
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {usableOpts(opts).flatMap((o) => o.values).slice(0, 8).map((v) => (
+                {usableOpts(activeOpts).flatMap((o) => o.values).slice(0, 8).map((v) => (
                   <span key={v} className="px-2 py-0.5 rounded-md border border-[var(--border)] text-[11.5px] text-[var(--sub)]">{v}</span>
                 ))}
               </div>

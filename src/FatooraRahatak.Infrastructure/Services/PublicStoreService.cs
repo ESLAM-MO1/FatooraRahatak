@@ -602,6 +602,7 @@ public class PublicStoreService : IPublicStoreService
                     ChangedAt = h.ChangedAt
                 }).ToList(),
             Shipments = order.Shipments
+                .Where(s => !s.IsSimulation)
                 .OrderByDescending(s => s.CreatedAt)
                 .Select(s => new PublicShipmentDto
                 {

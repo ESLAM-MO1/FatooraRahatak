@@ -84,7 +84,7 @@ export default function MarketingScripts({ slug }: { slug: string }) {
         loadScript(`https://www.googletagmanager.com/gtag/js?id=${googleCodes[0]}`, "ga-script");
         const w = window as any;
         w.dataLayer = w.dataLayer || [];
-        w.gtag = function (...args: unknown[]) { w.dataLayer.push(args); };
+        w.gtag = function () { w.dataLayer.push(arguments); };
         w.gtag("js", new Date());
         googleCodes.forEach((id) => {
           w.gtag("config", id);

@@ -53,6 +53,9 @@ const STORE_TAGS: Record<string, string> = {
   "rafahrahatak.com": "G-JJ0R67Q8X0",
   "faturatrahatik.sa": "G-MF3WPZT92C",
   "ramzrahatk.com": "G-9JSZ5KS7SG",
+  "rrahtkm.com": "G-MER2ZKM25C",
+  "rahtkm.sa": "G-4JG444G5VZ",
+  "thqah.net": "G-5F3ZTR6W6R",
 };
 
 function storeTagInit(id: string) {

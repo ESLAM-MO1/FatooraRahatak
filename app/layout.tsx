@@ -39,6 +39,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title, description };
 }
 
+const GOOGLE_TAG_INIT = `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-27SY8BQQC7');
+gtag('event', 'conversion', {'send_to': 'AW-11127647850/8JLjCKqY75MYEOrcibop'});
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -57,6 +65,8 @@ export default function RootLayout({
         <link rel="icon" type="image/png" href="/favicon.png" sizes="64x64" />
         <link rel="apple-touch-icon" type="image/png" href="/favicon.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-27SY8BQQC7"></script>
+        <script dangerouslySetInnerHTML={{ __html: GOOGLE_TAG_INIT }} />
       </head>
       <body className="min-h-full flex flex-col">
         <GlobalFormValidation />

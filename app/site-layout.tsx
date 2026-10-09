@@ -806,6 +806,15 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
             <p className="text-[12.5px]" style={{ color: "#9FCBDD" }}>
               &copy; {new Date().getFullYear()} {footer.copyright}
             </p>
+            <a
+              href="https://g.page/r/CQu2VmcjSUaLEBI/review"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-[13px] font-bold transition-colors hover:text-white"
+              style={{ color: "#BFE6F3" }}
+            >
+              {isAr ? "قيّمنا على جوجل" : "Rate us on Google"}
+            </a>
           </div>
         </div>
       </footer>

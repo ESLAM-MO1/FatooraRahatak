@@ -76,9 +76,20 @@ export default function MarketingScripts({ slug }: { slug: string }) {
     const googleAds = integrations.find((i) => i.channel === "GoogleAds");
     const landingPages = integrations.find((i) => i.channel === "LandingPages");
     const searchPages = integrations.find((i) => i.channel === "SearchPages");
-    const googleCodes = [ga?.code, googleAds?.code, landingPages?.code, searchPages?.code]
-      .map((c) => (typeof c === "string" ? c.trim() : c))
-      .filter(isValidId) as string[];
+    const googleCodes: string[] = [];
+    const conversions: string[] = [];
+    [ga, googleAds, landingPages, searchPages].forEach((item) => {
+      const raw = typeof item?.code === "string" ? item.code.trim() : "";
+      if (!raw) return;
+      const [baseId, inlineLabel] = raw.split("/");
+      if (!isValidId(baseId)) return;
+      if (!googleCodes.includes(baseId)) googleCodes.push(baseId);
+      const extra = typeof item?.additionalCode === "string" ? item.additionalCode.trim() : "";
+      const label = (inlineLabel || extra || "").trim();
+      if (baseId.startsWith("AW-") && /^[A-Za-z0-9_\-\/]{5,100}$/.test(label)) {
+        conversions.push(label.includes("/") ? label : `${baseId}/${label}`);
+      }
+    });
     if (googleCodes.length > 0) {
       safe(() => {
         loadScript(`https://www.googletagmanager.com/gtag/js?id=${googleCodes[0]}`, "ga-script");
@@ -93,6 +104,7 @@ export default function MarketingScripts({ slug }: { slug: string }) {
           }
         });
         w.gtag("set", "linker", { domains: ["googlesyndication.com"] });
+        conversions.forEach((sendTo) => w.gtag("event", "conversion", { send_to: sendTo }));
       });
     }
 

@@ -158,6 +158,14 @@ export default function MarketingPage() {
     );
   };
 
+  const updateAdditional = (channel: string, value: string) => {
+    setIntegrations((list) =>
+      list.some((i) => i.channel === channel)
+        ? list.map((i) => (i.channel === channel ? { ...i, additionalCode: value } : i))
+        : [...list, { id: 0, channel, code: "", additionalCode: value, isEnabled: true, accessTokenMasked: null, hasAccessToken: false, enableServerSideTracking: false, supportsServerSideTracking: false }]
+    );
+  };
+
   const handleSaveCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!campaignForm.name.trim()) { setError(t("marketing.campaignNameRequired")); return; }
@@ -253,6 +261,18 @@ export default function MarketingPage() {
                           />
                         </div>
                       </div>
+                      {channel === "GoogleAds" && (
+                        <div className="flex-1 min-w-[200px]">
+                          <div className="field-shell !mb-0">
+                            <input
+                              type="text"
+                              value={existing?.additionalCode || ""}
+                              onChange={(e) => updateAdditional(channel, e.target.value)}
+                              placeholder="Conversion label (اختياري) مثال: 8JLjCKqY75MYEOrcibop"
+                            />
+                          </div>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => toggleIntegration(channel)}

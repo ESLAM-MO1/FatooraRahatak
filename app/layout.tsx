@@ -44,6 +44,7 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'G-27SY8BQQC7');
+gtag('config', 'G-QFWCXMF97W');
 gtag('event', 'conversion', {'send_to': 'AW-11127647850/8JLjCKqY75MYEOrcibop'});
 `;
 

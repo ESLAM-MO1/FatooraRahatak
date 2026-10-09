@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./theme.css";
@@ -48,11 +49,32 @@ gtag('config', 'G-QFWCXMF97W');
 gtag('event', 'conversion', {'send_to': 'AW-11127647850/8JLjCKqY75MYEOrcibop'});
 `;
 
-export default function RootLayout({
+const STORE_TAGS: Record<string, string> = {
+  "rafahrahatak.com": "G-JJ0R67Q8X0",
+  "faturatrahatik.sa": "G-MF3WPZT92C",
+  "ramzrahatk.com": "G-9JSZ5KS7SG",
+};
+
+function storeTagInit(id: string) {
+  return `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', '${id}');
+`;
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const h = await headers();
+  const rawHost = h.get("x-forwarded-host") || h.get("host") || "";
+  const hostname = rawHost.split(",")[0].split(":")[0].trim().toLowerCase().replace(/^www\./, "");
+  const storeTag = STORE_TAGS[hostname];
+
   return (
     <html
       lang="ar"
@@ -68,6 +90,12 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-27SY8BQQC7"></script>
         <script dangerouslySetInnerHTML={{ __html: GOOGLE_TAG_INIT }} />
+        {storeTag && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${storeTag}`}></script>
+            <script dangerouslySetInnerHTML={{ __html: storeTagInit(storeTag) }} />
+          </>
+        )}
       </head>
       <body className="min-h-full flex flex-col">
         <GlobalFormValidation />

@@ -1503,6 +1503,9 @@ export default function ProductsPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
+                <Link href={`/dashboard/products/${editingId}`} className="btn btn-secondary flex-1 justify-center">
+                  {en ? "Full edit" : "تعديل كامل"}
+                </Link>
                 <button type="submit" disabled={submitting} className="btn btn-primary flex-1 disabled:opacity-60">
                   {submitting ? t("product.saving") : t("common.save")}
                 </button>

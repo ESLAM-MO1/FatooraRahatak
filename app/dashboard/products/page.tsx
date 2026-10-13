@@ -317,6 +317,8 @@ export default function ProductsPage() {
   const [actionError, setActionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [search, setSearch] = useState("");
+  const searchSeq = useRef(0);
+  const hadServerSearch = useRef(false);
   const [catFilter, setCatFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState("new");
@@ -405,6 +407,29 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) {
+      if (hadServerSearch.current) {
+        hadServerSearch.current = false;
+        fetchData();
+      }
+      return;
+    }
+    const seq = ++searchSeq.current;
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await api.get("/products", { params: { page: 1, pageSize: 100, search: q } });
+        if (seq !== searchSeq.current) return;
+        setProducts(res.data.data.items || []);
+        hadServerSearch.current = true;
+      } catch {
+        /* keep the current list when the server search fails */
+      }
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [search, fetchData]);
 
   const fetchReviews = useCallback(async () => {
     setReviewsLoading(true);

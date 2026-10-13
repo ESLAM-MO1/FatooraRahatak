@@ -22,6 +22,7 @@ public class Product : BaseEntity
     public int? WarrantyMonths { get; set; }
     public decimal? Weight { get; set; }
     public ProductStatus Status { get; set; } = ProductStatus.Draft;
+    public string? Slug { get; set; }
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
     public System.DateTime? DiscountStartsAt { get; set; }

@@ -3,6 +3,7 @@ namespace FatooraRahatak.Application.DTOs.Public;
 public class PublicProductDto
 {
     public long Id { get; set; }
+    public string? Slug { get; set; }
     public long? CategoryId { get; set; }
     public string NameAr { get; set; } = string.Empty;
     public string NameEn { get; set; } = string.Empty;
@@ -37,6 +38,7 @@ public class PublicProductDetailDto
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
     public long Id { get; set; }
+    public string? Slug { get; set; }
     public long? CategoryId { get; set; }
     public string NameAr { get; set; } = string.Empty;
     public string NameEn { get; set; } = string.Empty;

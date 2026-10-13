@@ -52,6 +52,7 @@ interface ProductReview {
 
 interface PublicProduct {
   id: number;
+  slug?: string | null;
   nameAr: string;
   nameEn: string;
   basePrice: number;
@@ -504,7 +505,7 @@ export default function ProductDetailPage() {
               {related.map((p) => (
                 <Link
                   key={p.id}
-                  href={`/store/${slug}/products/${p.id}`}
+                  href={`/store/${slug}/products/${p.slug || p.id}`}
                   className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden group transition-shadow hover:shadow-md"
                 >
                   <div className="aspect-square bg-gray-50 overflow-hidden">

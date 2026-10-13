@@ -21,6 +21,7 @@ type Row = { price: string; qty: string };
 
 interface Product {
   id: number;
+  slug: string | null;
   categoryId: number | null;
   nameAr: string;
   nameEn: string;
@@ -47,6 +48,8 @@ interface Variant {
   id: number;
   variantName: string;
   sku: string;
+  barcode: string | null;
+  image: string | null;
   priceAdjustment: number;
   availableQuantity: number;
   isActive: boolean;
@@ -128,6 +131,12 @@ const L = {
     publish: "نشر المنتج", toDraft: "تحويل لمسودة",
     confirmPublish: "نشر هذا المنتج في المتجر؟", confirmDraft: "تحويل هذا المنتج لمسودة وإخفاؤه عن المتجر؟",
     statusErr: "تعذر تغيير الحالة.", published: "تم نشر المنتج.", drafted: "تم تحويل المنتج لمسودة.",
+    slugLabel: "الرابط المختصر (Slug)",
+    slugHint: "يظهر في رابط المنتج داخل المتجر. اتركه فارغًا للإبقاء على الرابط الحالي.",
+    reorderHint: "اسحب الصورة لمكانها الجديد لتغيير الترتيب.",
+    reorderErr: "تعذر حفظ ترتيب الصور.",
+    editVar: "تعديل", saveVar: "حفظ المتغير", varSaved: "تم حفظ المتغير.", cancelEdit: "إلغاء",
+    vImg: "صورة المتغير",
     loadError: "تعذر تحميل بيانات المنتج.", notFound: "المنتج غير موجود.",
   },
   en: {
@@ -183,6 +192,12 @@ const L = {
     publish: "Publish product", toDraft: "Move to draft",
     confirmPublish: "Publish this product to the store?", confirmDraft: "Move this product to draft and hide it from the store?",
     statusErr: "Could not change the status.", published: "Product published.", drafted: "Product moved to draft.",
+    slugLabel: "Product link (slug)",
+    slugHint: "Shown in the product URL. Leave empty to keep the current link.",
+    reorderHint: "Drag an image to a new spot to reorder.",
+    reorderErr: "Could not save the image order.",
+    editVar: "Edit", saveVar: "Save variant", varSaved: "Variant saved.", cancelEdit: "Cancel",
+    vImg: "Variant image",
     loadError: "Could not load the product.", notFound: "Product not found.",
   },
 };
@@ -259,7 +274,7 @@ export default function EditProductPage() {
   const [f, setF] = useState({
     nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", categoryId: "",
     basePrice: "", discountPrice: "", discountStartsAt: "", discountEndsAt: "",
-    costPrice: "", barcode: "", weight: "", warrantyMonths: "", seoTitle: "", seoDescription: "",
+    costPrice: "", barcode: "", weight: "", warrantyMonths: "", slug: "", seoTitle: "", seoDescription: "",
   });
   const [warranty, setWarranty] = useState(false);
   const [qty, setQty] = useState("0");
@@ -267,6 +282,8 @@ export default function EditProductPage() {
   const [variantsOn, setVariantsOn] = useState(false);
   const [opts, setOpts] = useState<Opt[]>([]);
   const [rows, setRows] = useState<Record<string, Row>>({});
+  const [editVar, setEditVar] = useState<{ id: number; name: string; price: string; barcode: string; image: string | null } | null>(null);
+  const [varSaving, setVarSaving] = useState(false);
 
   const [busy, setBusy] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -317,6 +334,7 @@ export default function EditProductPage() {
           barcode: p.barcode ?? "",
           weight: p.weight != null ? String(p.weight) : "",
           warrantyMonths: p.warrantyMonths != null ? String(p.warrantyMonths) : "",
+          slug: p.slug ?? "",
           seoTitle: p.seoTitle ?? "",
           seoDescription: p.seoDescription ?? "",
         });
@@ -353,6 +371,39 @@ export default function EditProductPage() {
     setImgs((p) => [p[idx], ...p.filter((_, i) => i !== idx)]);
   };
 
+  const dragEx = useRef<number | null>(null);
+  const dragNew = useRef<number | null>(null);
+
+  const dropEx = async (to: number) => {
+    const from = dragEx.current;
+    dragEx.current = null;
+    if (from == null || from === to) return;
+    const prev = exImgs;
+    const next = [...exImgs];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setExImgs(next);
+    try {
+      await api.put(`/products/${productId}/images/order`, { imageIds: next.map((x) => x.id) });
+    } catch (e: unknown) {
+      setExImgs(prev);
+      setErr(msgOf(e, s.reorderErr));
+    }
+  };
+
+  const dropNew = (to: number) => {
+    const from = dragNew.current;
+    dragNew.current = null;
+    if (from == null || from === to) return;
+    setDirty(true);
+    setImgs((p) => {
+      const next = [...p];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
   const delExImg = async (id: number) => {
     if (!(await confirm(s.delImgConfirm))) return;
     try {
@@ -380,6 +431,46 @@ export default function EditProductPage() {
       setExVars((p) => p.filter((v) => v.id !== id));
     } catch (e: unknown) {
       setErr(msgOf(e, s.varErr));
+    }
+  };
+
+  const startEditVar = (v: Variant) => {
+    setEditVar({ id: v.id, name: v.variantName, price: String(v.priceAdjustment), barcode: v.barcode ?? "", image: v.image ?? null });
+  };
+
+  const saveEditVar = async () => {
+    if (!editVar || !editVar.name.trim()) return;
+    setVarSaving(true);
+    setErr("");
+    try {
+      const res = await api.put(`/products/${productId}/variants/${editVar.id}`, {
+        variantName: editVar.name.trim(),
+        priceAdjustment: parseFloat(editVar.price) || 0,
+        barcode: editVar.barcode || null,
+        image: editVar.image,
+      });
+      const updated: Variant = res.data.data;
+      setExVars((p) => p.map((v) => (v.id === updated.id ? updated : v)));
+      setEditVar(null);
+      setToast(s.varSaved);
+      window.setTimeout(() => setToast(""), 2500);
+    } catch (e: unknown) {
+      setErr(msgOf(e, s.varErr));
+    } finally {
+      setVarSaving(false);
+    }
+  };
+
+  const uploadVarImg = async (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file || !editVar) return;
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const up = await api.post("/products/upload-image", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      setEditVar((p) => (p ? { ...p, image: up.data.data.url } : p));
+    } catch {
+      setErr(s.badFile);
     }
   };
 
@@ -485,6 +576,7 @@ export default function EditProductPage() {
       descriptionEn: f.descriptionEn || null,
       barcode: f.barcode || null,
       weight: f.weight ? parseFloat(f.weight) : null,
+      slug: f.slug.trim() || null,
       seoTitle: f.seoTitle.trim(),
       seoDescription: f.seoDescription.trim(),
     };
@@ -655,8 +747,9 @@ export default function EditProductPage() {
             <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp,.gif" multiple className="hidden"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {exImgs.map((im) => (
-                <div key={`ex-${im.id}`} className="relative aspect-square rounded-xl border border-[var(--border)] overflow-hidden bg-[#F4F6F8]">
+              {exImgs.map((im, i) => (
+                <div key={`ex-${im.id}`} draggable onDragStart={() => { dragEx.current = i; }} onDragOver={(e) => e.preventDefault()} onDrop={() => dropEx(i)}
+                  className="relative aspect-square rounded-xl border border-[var(--border)] overflow-hidden bg-[#F4F6F8] cursor-grab active:cursor-grabbing">
                   <img src={im.imageUrl} alt="" className="w-full h-full object-cover" />
                   {im.isPrimary && <span className="badge badge--green absolute top-1.5 start-1.5">{s.primary}</span>}
                   <button type="button" onClick={() => delExImg(im.id)} aria-label={s.remove}
@@ -664,7 +757,8 @@ export default function EditProductPage() {
                 </div>
               ))}
               {imgs.map((im, i) => (
-                <div key={im.id} className="relative aspect-square rounded-xl border border-[var(--border)] overflow-hidden bg-[#F4F6F8]">
+                <div key={im.id} draggable onDragStart={() => { dragNew.current = i; }} onDragOver={(e) => e.preventDefault()} onDrop={() => dropNew(i)}
+                  className="relative aspect-square rounded-xl border border-[var(--border)] overflow-hidden bg-[#F4F6F8] cursor-grab active:cursor-grabbing">
                   <img src={im.url} alt="" className="w-full h-full object-cover" />
                   {i === 0 && exImgs.length === 0 && !exImgs.some((x) => x.isPrimary)
                     ? <span className="badge badge--green absolute top-1.5 start-1.5">{s.primary}</span>
@@ -685,7 +779,7 @@ export default function EditProductPage() {
                 </div>
               )}
             </div>
-            <p className="text-[11.5px] text-[var(--sub)] mt-2">{s.imgHint}</p>
+            <p className="text-[11.5px] text-[var(--sub)] mt-2">{s.imgHint} {s.reorderHint}</p>
           </section>
 
           <section className="card p-5 space-y-3">
@@ -768,20 +862,49 @@ export default function EditProductPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {exVars.map((v) => (
+                    {exVars.map((v) => (editVar && editVar.id === v.id ? (
+                      <tr key={v.id} className="border-t border-[var(--border)] bg-[var(--blue-50)]">
+                        <td className="p-2">
+                          <div className="field-shell"><input type="text" value={editVar.name}
+                            onChange={(e) => { setDirty(true); setEditVar({ ...editVar, name: e.target.value }); }} /></div>
+                        </td>
+                        <td className="p-2 text-[var(--sub)]" dir="ltr">{v.sku}</td>
+                        <td className="p-2">
+                          <div className="field-shell"><input type="number" step="0.01" value={editVar.price}
+                            onChange={(e) => { setDirty(true); setEditVar({ ...editVar, price: e.target.value }); }} /></div>
+                        </td>
+                        <td className="p-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            {editVar.image
+                              ? <img src={editVar.image} alt="" className="w-8 h-8 rounded-lg object-cover border border-[var(--border)]" />
+                              : <span className="w-8 h-8 rounded-lg border-2 border-dashed border-[var(--border)] flex items-center justify-center text-[12px] text-[var(--sub)]">+</span>}
+                            <span className="text-[11.5px] text-[var(--blue)] underline">{s.vImg}</span>
+                            <input type="file" accept=".jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={(e) => uploadVarImg(e.target.files)} />
+                          </label>
+                        </td>
+                        <td className="p-2 whitespace-nowrap text-end">
+                          <button type="button" onClick={saveEditVar} disabled={varSaving || !editVar.name.trim()} className="btn btn-primary text-[12px] px-3 py-1.5 disabled:opacity-60">{varSaving ? s.saving : s.saveVar}</button>
+                          <button type="button" onClick={() => setEditVar(null)} className="text-[var(--sub)] hover:opacity-80 font-medium text-[12.5px] ms-3">{s.cancelEdit}</button>
+                        </td>
+                      </tr>
+                    ) : (
                       <tr key={v.id} className="border-t border-[var(--border)]">
-                        <td className="p-2 font-medium text-[var(--ink)]">{v.variantName}</td>
+                        <td className="p-2 font-medium text-[var(--ink)]">
+                          {v.image && <img src={v.image} alt="" className="w-7 h-7 rounded-md object-cover border border-[var(--border)] inline-block me-2 align-middle" />}
+                          {v.variantName}
+                        </td>
                         <td className="p-2 text-[var(--sub)]" dir="ltr">{v.sku}</td>
                         <td className="p-2 text-[var(--sub)] whitespace-nowrap">
                           {v.priceAdjustment >= 0 ? "+" : ""}{fmt(v.priceAdjustment)} {t("common.sar")}
                         </td>
                         <td className="p-2 text-[var(--sub)]">{v.availableQuantity}</td>
                         <td className="p-2 whitespace-nowrap text-end">
+                          <button type="button" onClick={() => startEditVar(v)} className="text-[var(--blue)] hover:opacity-80 font-medium text-[12.5px]">{s.editVar}</button>
                           <button type="button" onClick={() => hideVar(v.id)} className="text-[var(--blue)] hover:opacity-80 font-medium text-[12.5px] ms-3">{s.hide}</button>
                           <button type="button" onClick={() => delVar(v.id)} className="text-[var(--danger)] hover:opacity-80 font-medium text-[12.5px] ms-3">{s.remove}</button>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
@@ -984,6 +1107,11 @@ export default function EditProductPage() {
           <details className="card p-5">
             <summary className="cursor-pointer text-[15px] font-bold text-[var(--blue-deep)]">{s.seo}</summary>
             <div className="mt-3 space-y-3">
+              <div>
+                <label className={label}>{s.slugLabel}</label>
+                <div className="field-shell"><input type="text" dir="ltr" maxLength={200} value={f.slug} onChange={set("slug")} placeholder={product.slug ?? ""} /></div>
+                <p className="text-[11.5px] text-[var(--sub)] mt-1">{s.slugHint}</p>
+              </div>
               <div>
                 <label className={label}>{s.seoTitle}</label>
                 <div className="field-shell"><input type="text" maxLength={70} value={f.seoTitle} onChange={set("seoTitle")} /></div>

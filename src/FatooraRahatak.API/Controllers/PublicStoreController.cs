@@ -92,7 +92,7 @@ public class PublicStoreController : ControllerBase
         return Ok(new { success = true, data = products });
     }
     [HttpGet("{slug}/products/{productId}")]
-    public async Task<IActionResult> GetProductDetail(string slug, long productId)
+    public async Task<IActionResult> GetProductDetail(string slug, string productId)
     {
         var product = await _publicStoreService.GetProductDetailAsync(slug, productId);
         if (product == null)
@@ -148,7 +148,7 @@ public class PublicStoreController : ControllerBase
         return Ok(new { success = true, data = contact });
     }
     [HttpGet("{slug}/products/{productId}/reviews")]
-    public async Task<IActionResult> GetProductReviews(string slug, long productId)
+    public async Task<IActionResult> GetProductReviews(string slug, string productId)
     {
         var reviews = await _publicStoreService.GetProductReviewsAsync(slug, productId);
         if (reviews == null)
@@ -156,7 +156,7 @@ public class PublicStoreController : ControllerBase
         return Ok(new { success = true, data = reviews });
     }
     [HttpGet("{slug}/products/{productId}/related")]
-    public async Task<IActionResult> GetRelatedProducts(string slug, long productId)
+    public async Task<IActionResult> GetRelatedProducts(string slug, string productId)
     {
         var products = await _publicStoreService.GetRelatedProductsAsync(slug, productId);
         if (products == null)
@@ -164,7 +164,7 @@ public class PublicStoreController : ControllerBase
         return Ok(new { success = true, data = products });
     }
     [HttpPost("{slug}/products/{productId}/reviews")]
-    public async Task<IActionResult> CreateProductReview(string slug, long productId, [FromBody] CreateProductReviewDto dto)
+    public async Task<IActionResult> CreateProductReview(string slug, string productId, [FromBody] CreateProductReviewDto dto)
     {
         long? customerId = null;
         if (User.Identity?.IsAuthenticated == true)

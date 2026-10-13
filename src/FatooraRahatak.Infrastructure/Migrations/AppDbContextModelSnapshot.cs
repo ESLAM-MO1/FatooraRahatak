@@ -3860,6 +3860,10 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("Slug")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -3882,6 +3886,10 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
                     b.HasIndex("StoreId", "Sku")
                         .IsUnique();
+
+                    b.HasIndex("StoreId", "Slug")
+                        .IsUnique()
+                        .HasFilter("[Slug] IS NOT NULL");
 
                     b.ToTable("Products");
                 });

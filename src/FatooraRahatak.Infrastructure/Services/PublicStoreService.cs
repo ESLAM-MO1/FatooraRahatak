@@ -222,6 +222,7 @@ public class PublicStoreService : IPublicStoreService
                 return new PublicProductDto
                 {
                     Id = p.Id,
+                    Slug = p.Slug,
                     CategoryId = p.CategoryId,
                     NameAr = p.NameAr,
                     NameEn = p.NameEn,
@@ -240,10 +241,14 @@ public class PublicStoreService : IPublicStoreService
             }).ToList();
     }
 
-    public async Task<List<PublicProductDto>?> GetRelatedProductsAsync(string slug, long productId)
+    public async Task<List<PublicProductDto>?> GetRelatedProductsAsync(string slug, string productIdOrSlug)
     {
         var store = await GetOnlineStoreBySlugAsync(slug);
         if (store == null) return null;
+
+        var resolved = await ResolveProductIdAsync(store.Id, productIdOrSlug);
+        if (resolved == null) return null;
+        var productId = resolved.Value;
 
         var product = await _context.Products
             .AsNoTracking()
@@ -289,6 +294,7 @@ public class PublicStoreService : IPublicStoreService
                 return new PublicProductDto
                 {
                     Id = p.Id,
+                    Slug = p.Slug,
                     CategoryId = p.CategoryId,
                     NameAr = p.NameAr,
                     NameEn = p.NameEn,
@@ -307,10 +313,14 @@ public class PublicStoreService : IPublicStoreService
             }).ToList();
     }
 
-    public async Task<PublicProductDetailDto?> GetProductDetailAsync(string slug, long productId)
+    public async Task<PublicProductDetailDto?> GetProductDetailAsync(string slug, string productIdOrSlug)
     {
         var store = await GetOnlineStoreBySlugAsync(slug);
         if (store == null) return null;
+
+        var resolved = await ResolveProductIdAsync(store.Id, productIdOrSlug);
+        if (resolved == null) return null;
+        var productId = resolved.Value;
 
         var product = await _context.Products
             .Include(p => p.Images)
@@ -353,6 +363,7 @@ public class PublicStoreService : IPublicStoreService
         return new PublicProductDetailDto
         {
             Id = product.Id,
+            Slug = product.Slug,
             CategoryId = product.CategoryId,
             NameAr = product.NameAr,
             NameEn = product.NameEn,
@@ -623,10 +634,31 @@ public class PublicStoreService : IPublicStoreService
         };
     }
 
-    public async Task<List<PublicProductReviewDto>?> GetProductReviewsAsync(string slug, long productId)
+    private async Task<long?> ResolveProductIdAsync(long storeId, string idOrSlug)
+    {
+        if (string.IsNullOrWhiteSpace(idOrSlug)) return null;
+
+        if (long.TryParse(idOrSlug, out var id))
+            return await _context.Products
+                .AnyAsync(p => p.Id == id && p.StoreId == storeId && p.Status == ProductStatus.Active)
+                ? id
+                : (long?)null;
+
+        var key = idOrSlug.Trim().ToLowerInvariant();
+        return await _context.Products
+            .Where(p => p.StoreId == storeId && p.Slug == key && p.Status == ProductStatus.Active)
+            .Select(p => (long?)p.Id)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<PublicProductReviewDto>?> GetProductReviewsAsync(string slug, string productIdOrSlug)
     {
         var store = await GetOnlineStoreBySlugAsync(slug);
         if (store == null) return null;
+
+        var resolved = await ResolveProductIdAsync(store.Id, productIdOrSlug);
+        if (resolved == null) return null;
+        var productId = resolved.Value;
 
         var productExists = await _context.Products
             .AnyAsync(p => p.Id == productId && p.StoreId == store.Id && p.Status == ProductStatus.Active);
@@ -646,10 +678,14 @@ public class PublicStoreService : IPublicStoreService
             .ToListAsync();
     }
 
-    public async Task<PublicProductReviewDto?> CreateProductReviewAsync(string slug, long productId, long? customerId, CreateProductReviewDto dto)
+    public async Task<PublicProductReviewDto?> CreateProductReviewAsync(string slug, string productIdOrSlug, long? customerId, CreateProductReviewDto dto)
     {
         var store = await GetOnlineStoreBySlugAsync(slug);
         if (store == null) return null;
+
+        var resolved = await ResolveProductIdAsync(store.Id, productIdOrSlug);
+        if (resolved == null) return null;
+        var productId = resolved.Value;
 
         var product = await _context.Products
             .FirstOrDefaultAsync(p => p.Id == productId && p.StoreId == store.Id && p.Status == ProductStatus.Active);

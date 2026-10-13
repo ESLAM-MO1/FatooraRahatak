@@ -17,6 +17,7 @@ public class CreateProductDto
     public bool HasWarranty { get; set; } = false;
     public int? WarrantyMonths { get; set; }
     public string? Status { get; set; }
+    public string? Slug { get; set; }
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
     public System.DateTime? DiscountStartsAt { get; set; }

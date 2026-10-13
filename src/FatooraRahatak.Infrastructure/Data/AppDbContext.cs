@@ -350,6 +350,14 @@ public class AppDbContext : DbContext
             .HasIndex(p => new { p.StoreId, p.Sku })
             .IsUnique();
 
+        modelBuilder.Entity<Product>()
+            .Property(p => p.Slug).HasMaxLength(450);
+
+        modelBuilder.Entity<Product>()
+            .HasIndex(p => new { p.StoreId, p.Slug })
+            .IsUnique()
+            .HasFilter("[Slug] IS NOT NULL");
+
         modelBuilder.Entity<ProductVariant>()
             .HasIndex(v => v.Sku)
             .IsUnique();

@@ -96,6 +96,29 @@ public class ProductVariantService : IProductVariantService
         return await MapToDtoAsync(variant);
     }
 
+    public async Task<VariantResponseDto> UpdateVariantAsync(long storeId, long productId, long variantId, UpdateVariantDto dto)
+    {
+        await GetOwnedProductAsync(storeId, productId);
+
+        var variant = await _context.ProductVariants
+            .FirstOrDefaultAsync(v => v.Id == variantId && v.ProductId == productId);
+
+        if (variant == null)
+            throw new InvalidOperationException("المتغير غير موجود");
+
+        if (string.IsNullOrWhiteSpace(dto.VariantName))
+            throw new InvalidOperationException("اسم المتغير مطلوب");
+
+        variant.VariantName = dto.VariantName.Trim();
+        variant.PriceAdjustment = dto.PriceAdjustment;
+        variant.Barcode = string.IsNullOrWhiteSpace(dto.Barcode) ? null : dto.Barcode.Trim();
+        variant.Image = string.IsNullOrWhiteSpace(dto.Image) ? null : dto.Image.Trim();
+
+        await _context.SaveChangesAsync();
+
+        return await MapToDtoAsync(variant);
+    }
+
     public async Task<List<VariantResponseDto>> GetVariantsAsync(long storeId, long productId)
     {
         await GetOwnedProductAsync(storeId, productId);
@@ -219,6 +242,30 @@ public class ProductVariantService : IProductVariantService
         await _context.SaveChangesAsync();
     }
 
+    public async Task ReorderImagesAsync(long storeId, long productId, List<long> imageIds)
+    {
+        await GetOwnedProductAsync(storeId, productId);
+
+        var images = await _context.ProductImages
+            .Where(i => i.ProductId == productId)
+            .ToListAsync();
+
+        if (imageIds.Count == 0 || imageIds.Any(id => !images.Any(i => i.Id == id)))
+            throw new InvalidOperationException("قائمة ترتيب الصور غير مكتملة");
+
+        var order = 0;
+        foreach (var imgId in imageIds)
+        {
+            var img = images.First(i => i.Id == imgId);
+            img.SortOrder = order++;
+        }
+
+        foreach (var img in images.Where(i => !imageIds.Contains(i.Id)).OrderBy(i => i.Id))
+            img.SortOrder = order++;
+
+        await _context.SaveChangesAsync();
+    }
+
     private async Task<VariantResponseDto> MapToDtoAsync(ProductVariant v)
     {
         var quantity = await _context.InventoryStocks
@@ -241,6 +288,7 @@ public class ProductVariantService : IProductVariantService
             Sku = v.Sku,
             Barcode = v.Barcode,
             PriceAdjustment = v.PriceAdjustment,
+            Image = v.Image,
             AvailableQuantity = quantity,
             IsActive = v.IsActive,
             Attributes = attributes

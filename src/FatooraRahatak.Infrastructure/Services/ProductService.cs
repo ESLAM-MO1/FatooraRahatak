@@ -52,9 +52,16 @@ public class ProductService : IProductService
         if (skuExists)
             throw new InvalidOperationException("رمز المنتج (SKU) مستخدم بالفعل في هذا المتجر");
 
+        var slugSource = !string.IsNullOrWhiteSpace(dto.Slug) ? dto.Slug
+            : !string.IsNullOrWhiteSpace(dto.NameEn) ? dto.NameEn : sku;
+        var baseSlug = Slugify(slugSource);
+        if (string.IsNullOrEmpty(baseSlug)) baseSlug = Slugify(sku);
+        if (string.IsNullOrEmpty(baseSlug)) baseSlug = "product";
+
         var product = new Product
         {
             StoreId = storeId,
+            Slug = await EnsureUniqueSlugAsync(storeId, baseSlug, null),
             CategoryId = dto.CategoryId,
             NameAr = dto.NameAr,
             NameEn = dto.NameEn,
@@ -116,12 +123,21 @@ public class ProductService : IProductService
         return await MapToDtoAsync(product);
     }
 
-    public async Task<PagedResult<ProductResponseDto>> GetAllAsync(long storeId, int page = 1, int pageSize = 20)
+    public async Task<PagedResult<ProductResponseDto>> GetAllAsync(long storeId, int page = 1, int pageSize = 20, string? search = null)
     {
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
         var query = _context.Products.Where(p => p.StoreId == storeId);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var q = search.Trim();
+            query = query.Where(p =>
+                p.NameAr.Contains(q) ||
+                p.NameEn.Contains(q) ||
+                p.Sku.Contains(q) ||
+                (p.Barcode != null && p.Barcode.Contains(q)));
+        }
         var totalCount = await query.CountAsync();
 
         var products = await query
@@ -196,6 +212,19 @@ public class ProductService : IProductService
         product.WarrantyMonths = dto.HasWarranty ? dto.WarrantyMonths : null;
         if (dto.SeoTitle != null) product.SeoTitle = Clean(dto.SeoTitle, 70);
         if (dto.SeoDescription != null) product.SeoDescription = Clean(dto.SeoDescription, 160);
+        if (!string.IsNullOrWhiteSpace(dto.Slug))
+        {
+            var newSlug = Slugify(dto.Slug);
+            if (!string.IsNullOrEmpty(newSlug) && newSlug != product.Slug)
+                product.Slug = await EnsureUniqueSlugAsync(storeId, newSlug, productId);
+        }
+        else if (product.Slug == null)
+        {
+            var fallbackSrc = !string.IsNullOrWhiteSpace(product.NameEn) ? product.NameEn : product.Sku;
+            var fallback = Slugify(fallbackSrc);
+            if (string.IsNullOrEmpty(fallback)) fallback = "product";
+            product.Slug = await EnsureUniqueSlugAsync(storeId, fallback, productId);
+        }
         if ((product.Status == ProductStatus.Active || product.Status == ProductStatus.Draft) && TryParseStatus(dto.Status, out var newStatus))
             product.Status = newStatus;
         product.UpdatedAt = DateTime.UtcNow;
@@ -370,6 +399,31 @@ public class ProductService : IProductService
         return v.Length > max ? v[..max] : v;
     }
 
+    private static string Slugify(string input)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in input.Trim().ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch)) sb.Append(ch);
+            else if (sb.Length > 0 && sb[^1] != '-') sb.Append('-');
+        }
+        var slug = sb.ToString().Trim('-');
+        return slug.Length > 200 ? slug[..200].Trim('-') : slug;
+    }
+
+    private async Task<string> EnsureUniqueSlugAsync(long storeId, string baseSlug, long? excludeProductId)
+    {
+        var slug = baseSlug;
+        var i = 2;
+        while (await _context.Products.AnyAsync(p =>
+            p.StoreId == storeId && p.Slug == slug && (excludeProductId == null || p.Id != excludeProductId)))
+        {
+            slug = $"{baseSlug}-{i}";
+            i++;
+        }
+        return slug;
+    }
+
     private async Task<ProductResponseDto> MapToDtoAsync(Product p, string? primaryImageUrl = null, bool imageLookedUp = false)
     {
         var totalQuantity = await _context.InventoryStocks
@@ -407,6 +461,7 @@ public class ProductService : IProductService
             PrimaryImageUrl = primaryImageUrl,
             HasWarranty = p.HasWarranty,
             WarrantyMonths = p.WarrantyMonths,
+            Slug = p.Slug,
             SeoTitle = p.SeoTitle,
             SeoDescription = p.SeoDescription
         };

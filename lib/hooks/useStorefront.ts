@@ -29,6 +29,7 @@ export interface CategoryItem {
 
 export interface ProductItem {
   id: number;
+  slug?: string | null;
   nameAr: string;
   nameEn: string;
   basePrice: number;

@@ -27,7 +27,7 @@ function ProductCard({ product, slug, currencySymbol, isWishlist, onWishlist, on
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
       <div className="relative" style={{ aspectRatio: "4/3", background: "#F3F4F6" }}>
-        <a href={`/store/${slug}/products/${product.id}`} className="block w-full h-full">
+        <a href={`/store/${slug}/products/${product.slug || product.id}`} className="block w-full h-full">
           {product.primaryImageUrl ? (
             <img src={product.primaryImageUrl} alt={product.nameAr} className="w-full h-full object-cover" />
           ) : (
@@ -52,7 +52,7 @@ function ProductCard({ product, slug, currencySymbol, isWishlist, onWishlist, on
         </button>
       </div>
       <div className="p-4 flex-1 flex flex-col">
-        <a href={`/store/${slug}/products/${product.id}`} className="block">
+        <a href={`/store/${slug}/products/${product.slug || product.id}`} className="block">
           <h3 className="font-extrabold text-[15px] truncate" style={{ color: "#111827" }}>{product.nameAr}</h3>
         </a>
         {(product.ratingCount ?? 0) > 0 && (

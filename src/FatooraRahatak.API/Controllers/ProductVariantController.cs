@@ -102,6 +102,42 @@ public class ProductVariantController : ControllerBase
     }
 
     [RequirePermission("Products.Edit")]
+    [HttpPut("variants/{variantId}")]
+    public async Task<IActionResult> UpdateVariant(long productId, long variantId, [FromBody] UpdateVariantDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            var result = await _variantService.UpdateVariantAsync(storeId.Value, productId, variantId, dto);
+            return Ok(new { success = true, data = result, message = "تم تعديل المتغير بنجاح" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Products.Edit")]
+    [HttpPut("images/order")]
+    public async Task<IActionResult> ReorderImages(long productId, [FromBody] ReorderImagesDto dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
+
+        try
+        {
+            await _variantService.ReorderImagesAsync(storeId.Value, productId, dto.ImageIds ?? new List<long>());
+            return Ok(new { success = true, message = "تم تحديث ترتيب الصور" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [RequirePermission("Products.Edit")]
     [HttpPost("images")]
     public async Task<IActionResult> AddImage(long productId, [FromBody] AddProductImageDto dto)
     {

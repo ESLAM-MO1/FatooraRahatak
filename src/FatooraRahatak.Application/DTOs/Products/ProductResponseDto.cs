@@ -19,6 +19,7 @@ public class ProductResponseDto
     public string? PrimaryImageUrl { get; set; }
     public bool HasWarranty { get; set; }
     public int? WarrantyMonths { get; set; }
+    public string? Slug { get; set; }
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
     public System.DateTime? DiscountStartsAt { get; set; }

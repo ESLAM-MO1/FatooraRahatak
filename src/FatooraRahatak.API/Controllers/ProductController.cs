@@ -93,13 +93,13 @@ public class ProductController : ControllerBase
 
     [RequirePermission("Products.View")]
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
     {
         var storeId = await GetStoreIdAsync();
         if (storeId == null)
             return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك" });
 
-        var result = await _productService.GetAllAsync(storeId.Value, page, pageSize);
+        var result = await _productService.GetAllAsync(storeId.Value, page, pageSize, search);
         return Ok(new { success = true, data = result });
     }
 

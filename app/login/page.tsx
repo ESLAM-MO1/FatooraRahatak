@@ -303,7 +303,7 @@ export default function LoginPage() {
                 </button>
                 <div
                   id="googleBtn"
-                  className="absolute inset-0 w-full h-full opacity-0 overflow-hidden [&_iframe]:!w-full [&_iframe]:!h-full"
+                  className="absolute inset-0 w-full h-full opacity-0 overflow-hidden google-overlay"
                 />
               </div>
 

@@ -795,6 +795,22 @@ textarea.field-error {
   width: 100% !important;
 }
 
+#googleBtn.google-overlay > div {
+  position: absolute !important;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+#googleBtn.google-overlay iframe {
+  position: absolute !important;
+  top: 0;
+  right: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* ============= PACKAGE CARD ============= */
 .package-card {
   position: relative;

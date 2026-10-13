@@ -167,10 +167,10 @@ public class AuthService : IAuthService
                 Audience = new[] { _googleClientId }
             });
         }
-        catch (InvalidJwtException ex)
+        catch (Exception ex)
         {
-            Console.WriteLine($"GOOGLE AUTH ERROR: {ex.Message}");
-            throw new UnauthorizedAccessException($"توكن جوجل غير صالح: {ex.Message}");
+            _logger.LogError(ex, "Google token validation failed");
+            throw new UnauthorizedAccessException("توكن جوجل غير صالح");
         }
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.GoogleId == payload.Subject || u.Email == payload.Email);

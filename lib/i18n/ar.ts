@@ -2280,6 +2280,15 @@ const ar = {
   "pos.bankTransferPendingCreated": "تم تسجيل بيانات التحويل — بانتظار التأكيد",
   "pos.bankTransferConfirmed": "تم تأكيد التحويل وتسجيل عملية البيع",
   "pos.pendingTransfersTitle": "تحويلات بنكية بانتظار التأكيد",
+  "pos.holdSale": "تعليق البيع",
+  "pos.holdSaved": "تم تعليق البيع — تقدر ترجعه من المسودات",
+  "pos.heldCarts": "مسودات معلّقة",
+  "pos.heldEmpty": "لا توجد مسودات معلّقة حاليًا",
+  "pos.heldItems": "أصناف",
+  "pos.resume": "استئناف البيع",
+  "pos.heldRestored": "تم استئناف البيع المعلّق",
+  "pos.heldDeleteConfirm": "حذف هذه المسودة؟",
+  "pos.holdConfirmReplace": "الفاتورة الحالية فيها أصناف. استبدالها بالمعلّق؟",
 
   // ── Packages Admin ──
   "packagesAdmin.title": "إدارة الباقات",

@@ -2242,6 +2242,15 @@ const en: Record<string, string> = {
   "pos.qty": "Qty",
   "pos.price": "Price",
   "pos.totalDue": "Total Due",
+  "pos.holdSale": "Hold sale",
+  "pos.holdSaved": "Sale held — resume it from drafts",
+  "pos.heldCarts": "Held drafts",
+  "pos.heldEmpty": "No held drafts right now",
+  "pos.heldItems": "items",
+  "pos.resume": "Resume sale",
+  "pos.heldRestored": "Held sale resumed",
+  "pos.heldDeleteConfirm": "Delete this draft?",
+  "pos.holdConfirmReplace": "The current invoice has items. Replace them with the held sale?",
 
   // ── Packages Admin ──
   "packagesAdmin.title": "Package Management",

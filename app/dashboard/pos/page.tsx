@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import LoadingState from "@/components/LoadingState";
 import SuccessToast from "@/components/SuccessToast";
 import Can from "@/components/Can";
+import { useConfirm } from "@/components/ConfirmDialog";
 import PaymentMethodLogo from "@/components/PaymentMethodLogo";
 import { InvoiceDetail, printInvoice } from "@/lib/invoicePrint";
 
@@ -21,6 +22,23 @@ interface CartLine {
 interface PosShift {
   id: number; openedByName: string; openedAt: string;
   startingCash: number; totalSales: number; isOpen: boolean;
+}
+interface HeldCart {
+  id: string; label: string; cart: CartLine[]; guestName: string; heldAt: string; total: number;
+}
+
+const HELD_KEY = "pos.heldCarts";
+const HELD_MAX = 20;
+
+function loadHeld(): HeldCart[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(HELD_KEY) || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch { return []; }
+}
+
+function saveHeld(list: HeldCart[]) {
+  try { localStorage.setItem(HELD_KEY, JSON.stringify(list)); } catch { /* localStorage ممتلئ أو محظور */ }
 }
 
 const VAT_RATE = 0.15;
@@ -64,6 +82,9 @@ export default function CashierPage() {
   const [showBankTransferModal, setShowBankTransferModal] = useState(false);
   const [confirmingTransfer, setConfirmingTransfer] = useState(false);
   const [pendingTransfersList, setPendingTransfersList] = useState<{ paymentReference: string; amount: number; guestName?: string | null; createdAt: string }[]>([]);
+  const [held, setHeld] = useState<HeldCart[]>(() => (typeof window === "undefined" ? [] : loadHeld()));
+  const [showHeld, setShowHeld] = useState(false);
+  const confirm = useConfirm();
 
   const [shift, setShift] = useState<PosShift | null>(null);
   const [shiftLoading, setShiftLoading] = useState(true);
@@ -131,6 +152,41 @@ export default function CashierPage() {
 
   const removeLine = (productId: number) => {
     setCart(prev => prev.filter(c => c.productId !== productId));
+  };
+
+  const holdSale = () => {
+    if (cart.length === 0) return;
+    const entry: HeldCart = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      label: guestName.trim() || new Date().toLocaleTimeString("ar-SA-u-nu-latn", { hour: "2-digit", minute: "2-digit" }),
+      cart,
+      guestName: guestName.trim(),
+      heldAt: new Date().toISOString(),
+      total: cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0),
+    };
+    const next = [entry, ...held].slice(0, HELD_MAX);
+    setHeld(next); saveHeld(next);
+    setCart([]); setGuestName(""); setReceivedAmount("");
+    setSuccessMessage(t("pos.holdSaved"));
+  };
+
+  const resumeHeld = async (id: string) => {
+    const entry = held.find(h => h.id === id);
+    if (!entry) return;
+    if (cart.length > 0 && !(await confirm(t("pos.holdConfirmReplace")))) return;
+    setCart(entry.cart);
+    setGuestName(entry.guestName);
+    setReceivedAmount("");
+    const next = held.filter(h => h.id !== id);
+    setHeld(next); saveHeld(next);
+    setShowHeld(false);
+    setSuccessMessage(t("pos.heldRestored"));
+  };
+
+  const deleteHeld = async (id: string) => {
+    if (!(await confirm(t("pos.heldDeleteConfirm")))) return;
+    const next = held.filter(h => h.id !== id);
+    setHeld(next); saveHeld(next);
   };
 
   const subtotal = cart.reduce((s, c) => s + c.unitPrice * c.quantity, 0);
@@ -356,7 +412,12 @@ export default function CashierPage() {
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-4 sticky top-4 h-fit">
-          <h2 className="text-[15px] font-bold text-[var(--ink)] mb-3">{t("pos.invoice")}</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-[15px] font-bold text-[var(--ink)]">{t("pos.invoice")}</h2>
+            <button type="button" onClick={() => setShowHeld(true)} className="btn btn-secondary btn-sm">
+              {t("pos.heldCarts")} ({held.length})
+            </button>
+          </div>
 
           <div className="field-shell mb-3">
             <span className="text-[var(--sub)] text-[12px]">{t("pos.customer")}</span>
@@ -464,12 +525,18 @@ export default function CashierPage() {
             </div>
           </div>
 
-          <Can code="POS.Add">
-            <button onClick={handleSale} disabled={cart.length === 0 || submitting || !shift || cashShort}
-              className="btn btn-primary w-full disabled:opacity-40">
-              {submitting ? t("common.loading") : t("pos.checkout")}
+          <div className="flex gap-2">
+            <button type="button" onClick={holdSale} disabled={cart.length === 0 || !shift}
+              className="btn btn-secondary flex-1 disabled:opacity-40">
+              {t("pos.holdSale")}
             </button>
-          </Can>
+            <Can code="POS.Add">
+              <button onClick={handleSale} disabled={cart.length === 0 || submitting || !shift || cashShort}
+                className="btn btn-primary flex-1 disabled:opacity-40">
+                {submitting ? t("common.loading") : t("pos.checkout")}
+              </button>
+            </Can>
+          </div>
         </div>
       </div>
 
@@ -571,6 +638,36 @@ export default function CashierPage() {
           </div>
         </div>
       )}
+
+      {showHeld && <div className="modal-overlay" onClick={() => setShowHeld(false)}>
+        <div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[18px] font-bold">{t("pos.heldCarts")} ({held.length})</h2>
+            <button onClick={() => setShowHeld(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+          </div>
+          {held.length === 0 ? (
+            <p className="text-[13px] text-[var(--sub)] text-center py-6">{t("pos.heldEmpty")}</p>
+          ) : (
+            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+              {held.map(h => (
+                <div key={h.id} className="rounded-xl border border-gray-200 p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-[var(--ink)] truncate">{h.label}</p>
+                    <p className="text-[11.5px] text-[var(--sub)]">
+                      {h.cart.length} × {t("pos.heldItems")} • <span dir="ltr">{h.total.toFixed(2)} {t("common.sar")}</span>
+                      {" • "}{new Date(h.heldAt).toLocaleString("ar-SA-u-nu-latn", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button type="button" onClick={() => resumeHeld(h.id)} disabled={!shift} className="btn btn-primary btn-sm disabled:opacity-40">{t("pos.resume")}</button>
+                    <button type="button" onClick={() => deleteHeld(h.id)} className="btn btn-outline btn-sm text-[var(--danger)]">{t("common.delete")}</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>}
     </div>
   );
 }

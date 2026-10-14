@@ -10,6 +10,7 @@ import Icon, { ICONS } from "@/components/Icon";
 import QuickAddManager, { QuickAddType } from "@/components/QuickAdd";
 import UpgradeModal from "@/components/UpgradeModal";
 import PageHelp from "@/components/PageHelp";
+import SupportChatWidget from "@/components/SupportChatWidget";
 
 import api from "@/lib/api";
 import { useTranslation } from "react-i18next";
@@ -1004,6 +1005,7 @@ const handler = () => {
 
       <UpgradeModal />
       <PageHelp />
+      <SupportChatWidget />
     </div>
   );
 }

@@ -100,11 +100,49 @@ public class PaymentService : IPaymentService
     private async Task<long?> ResolveStoreIdAsync(Payment payment)
     {
         if (payment.Order != null) return payment.Order.StoreId;
+        if (payment.Invoice != null) return payment.Invoice.StoreId;
+        if (payment.SubscriptionId.HasValue) return null;
+        if (payment.InvoiceId.HasValue)
+        {
+            var invoiceStoreId = await _context.Invoices
+                .Where(i => i.Id == payment.InvoiceId.Value)
+                .Select(i => (long?)i.StoreId)
+                .FirstOrDefaultAsync();
+            if (invoiceStoreId != null) return invoiceStoreId;
+        }
         if (!payment.OrderId.HasValue) return payment.PosShiftStoreId;
         return await _context.Orders
             .Where(o => o.Id == payment.OrderId.Value)
             .Select(o => (long?)o.StoreId)
             .FirstOrDefaultAsync();
+    }
+
+    private async Task<string?> GetMoyasarSecretAsync(long? storeId)
+    {
+        if (storeId == null) return null;
+        var secrets = await _credentialService.GetSecretsAsync(storeId.Value, PaymentProviderType.Moyasar);
+        return string.IsNullOrWhiteSpace(secrets?.SecretKey) ? null : secrets!.SecretKey;
+    }
+
+    public async Task<string?> GetMoyasarWebhookSecretAsync(string? paymentId, string? invoiceId)
+    {
+        Payment? payment = null;
+        if (!string.IsNullOrWhiteSpace(paymentId))
+        {
+            payment = await _context.Payments
+                .Include(p => p.Order)
+                .Include(p => p.Invoice)
+                .FirstOrDefaultAsync(p => p.ProviderPaymentId == paymentId);
+        }
+        if (payment == null && !string.IsNullOrWhiteSpace(invoiceId))
+        {
+            payment = await _context.Payments
+                .Include(p => p.Order)
+                .Include(p => p.Invoice)
+                .FirstOrDefaultAsync(p => p.ProviderPaymentId == invoiceId);
+        }
+        if (payment == null) return null;
+        return await GetMoyasarSecretAsync(await ResolveStoreIdAsync(payment));
     }
 
     private async Task<ProviderStatus> GetProviderStatusAsync(Payment payment)
@@ -130,7 +168,8 @@ public class PaymentService : IPaymentService
                 return await GetTamaraStatusAsync(payment);
             default:
             {
-                var r = await _provider.GetPaymentStatusAsync(providerId);
+                var msSecret = await GetMoyasarSecretAsync(await ResolveStoreIdAsync(payment));
+                var r = await _provider.GetPaymentStatusAsync(providerId, msSecret);
                 return new ProviderStatus
                 {
                     Success = r.Success,
@@ -450,6 +489,26 @@ public class PaymentService : IPaymentService
         }
         else
         {
+            long? payStoreId = dto.SubscriptionId.HasValue
+                ? null
+                : (order?.StoreId ?? storeId ?? dto.PosShiftStoreId);
+            if (payStoreId == null && dto.InvoiceId.HasValue)
+            {
+                payStoreId = await _context.Invoices
+                    .Where(i => i.Id == dto.InvoiceId.Value)
+                    .Select(i => (long?)i.StoreId)
+                    .FirstOrDefaultAsync();
+            }
+            var moyasarSecret = await GetMoyasarSecretAsync(payStoreId);
+            if (payStoreId != null && string.IsNullOrWhiteSpace(moyasarSecret))
+            {
+                return new CreatePaymentResult
+                {
+                    Success = false,
+                    Message = "الدفع الإلكتروني غير مفعّل حاليًا — إذا كنت صاحب المتجر، أضف مفاتيح بوابة الدفع من إعدادات المتجر ثم أعد المحاولة"
+                };
+            }
+
             if (!string.IsNullOrWhiteSpace(dto.CardNumber))
             {
                 moyasarResult = await _provider.CreatePaymentAsync(
@@ -465,7 +524,8 @@ public class PaymentService : IPaymentService
                     cardNumber: dto.CardNumber,
                     cardExpiryMonth: dto.CardExpiryMonth,
                     cardExpiryYear: dto.CardExpiryYear,
-                    cardCvc: dto.CardCvc);
+                    cardCvc: dto.CardCvc,
+                    secretKey: moyasarSecret);
             }
             else
             {
@@ -478,7 +538,8 @@ public class PaymentService : IPaymentService
                     paymentCallbackUrl,
                     fullSuccessUrl,
                     fullSuccessUrl,
-                    dto.CustomerEmail);
+                    dto.CustomerEmail,
+                    secretKey: moyasarSecret);
             }
 
             if (!moyasarResult.Success)
@@ -1237,7 +1298,8 @@ public class PaymentService : IPaymentService
         }
         else
         {
-            var moyasarRefund = await _provider.RefundPaymentAsync(payment.ProviderPaymentId);
+            var msRefundSecret = await GetMoyasarSecretAsync(await ResolveStoreIdAsync(payment));
+            var moyasarRefund = await _provider.RefundPaymentAsync(payment.ProviderPaymentId, null, msRefundSecret);
             refundResult = new RefundOutcome
             {
                 Success = moyasarRefund.Success,

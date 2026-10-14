@@ -1,4 +1,6 @@
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Text;
 using FatooraRahatak.Application.DTOs.Payment;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Domain.Entities.Payments;
@@ -6,6 +8,7 @@ using FatooraRahatak.Domain.Enums;
 using FatooraRahatak.Infrastructure.Data;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace FatooraRahatak.Infrastructure.Services;
 
@@ -13,17 +16,22 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
 {
     private static readonly PaymentProviderType[] SupportedProviders =
     {
+        PaymentProviderType.Moyasar,
         PaymentProviderType.Tabby,
         PaymentProviderType.Tamara
     };
 
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
+
     private readonly AppDbContext _context;
     private readonly IDataProtector _protector;
+    private readonly IConfiguration _config;
 
-    public StorePaymentCredentialService(AppDbContext context, IDataProtectionProvider protectionProvider)
+    public StorePaymentCredentialService(AppDbContext context, IDataProtectionProvider protectionProvider, IConfiguration config)
     {
         _context = context;
         _protector = protectionProvider.CreateProtector("StorePaymentCredentials.v1");
+        _config = config;
     }
 
     public async Task<List<StorePaymentCredentialStatusDto>> GetStatusesAsync(long storeId)
@@ -126,6 +134,7 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
         var hasSecret = !string.IsNullOrWhiteSpace(row.SecretKeyEncrypted);
         return row.Provider switch
         {
+            PaymentProviderType.Moyasar => hasSecret,
             PaymentProviderType.Tabby => hasSecret
                 && !string.IsNullOrWhiteSpace(row.PublicKey)
                 && !string.IsNullOrWhiteSpace(row.MerchantCode),
@@ -135,13 +144,15 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
         };
     }
 
-    private static StorePaymentCredentialStatusDto ToStatus(StorePaymentCredential row) => new()
+    private StorePaymentCredentialStatusDto ToStatus(StorePaymentCredential row) => new()
     {
         Provider = row.Provider.ToString(),
         PublicKey = row.PublicKey,
         MerchantCode = row.MerchantCode,
         HasSecretKey = !string.IsNullOrWhiteSpace(row.SecretKeyEncrypted),
         HasNotificationToken = !string.IsNullOrWhiteSpace(row.NotificationTokenEncrypted),
+        SecretKey = Decrypt(row.SecretKeyEncrypted),
+        NotificationToken = Decrypt(row.NotificationTokenEncrypted),
         IsEnabled = row.IsEnabled,
         IsTestMode = row.IsTestMode,
         IsConfigured = IsComplete(row)
@@ -151,4 +162,65 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
     {
         Provider = provider.ToString()
     };
+
+    public async Task<TestConnectionResultDto> TestConnectionAsync(TestConnectionDto dto)
+    {
+        if (!Enum.TryParse<PaymentProviderType>(dto.Provider, true, out var provider) || !SupportedProviders.Contains(provider))
+            return new TestConnectionResultDto { Success = false, Message = "مزود الدفع غير مدعوم" };
+
+        var secret = (dto.SecretKey ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(secret))
+            return new TestConnectionResultDto { Success = false, Message = "أدخل المفتاح السري أولًا لاختبار الاتصال" };
+
+        try
+        {
+            switch (provider)
+            {
+                case PaymentProviderType.Moyasar:
+                {
+                    var baseUrl = (_config["Moyasar:BaseUrl"] ?? "https://api.moyasar.com/v1").TrimEnd('/');
+                    using var req = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/invoices?limit=1");
+                    req.Headers.Authorization = new AuthenticationHeaderValue(
+                        "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secret}:")));
+                    using var resp = await Http.SendAsync(req);
+                    if (resp.IsSuccessStatusCode)
+                        return new TestConnectionResultDto { Success = true, Message = "تم الاتصال بمويسر بنجاح ✓" };
+                    if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                        return new TestConnectionResultDto { Success = false, Message = "مفتاح Moyasar غير صالح — تأكد من أن المفتاح السري (sk_...) صحيح" };
+                    return new TestConnectionResultDto { Success = false, Message = $"مويسر رفض الاتصال (كود {(int)resp.StatusCode})" };
+                }
+                case PaymentProviderType.Tabby:
+                {
+                    using var req = new HttpRequestMessage(HttpMethod.Get, "https://api.tabby.ai/api/v2/payments/connection-test");
+                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
+                    using var resp = await Http.SendAsync(req);
+                    if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                        return new TestConnectionResultDto { Success = true, Message = "تم الاتصال بتابي بنجاح ✓" };
+                    if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                        return new TestConnectionResultDto { Success = false, Message = "مفتاح Tabby غير صالح — تأكد من Secret Key" };
+                    return new TestConnectionResultDto { Success = false, Message = $"تابي رفض الاتصال (كود {(int)resp.StatusCode})" };
+                }
+                case PaymentProviderType.Tamara:
+                {
+                    var url = dto.IsTestMode
+                        ? "https://sandbox-api.tamara.co/v2/payments/connection-test"
+                        : "https://api.tamara.co/v2/payments/connection-test";
+                    using var req = new HttpRequestMessage(HttpMethod.Get, url);
+                    req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
+                    using var resp = await Http.SendAsync(req);
+                    if (resp.IsSuccessStatusCode || resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+                        return new TestConnectionResultDto { Success = true, Message = "تم الاتصال بتمارا بنجاح ✓" };
+                    if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                        return new TestConnectionResultDto { Success = false, Message = "مفتاح Tamara غير صالح — تأكد من API Token" };
+                    return new TestConnectionResultDto { Success = false, Message = $"تمارا رفضت الاتصال (كود {(int)resp.StatusCode})" };
+                }
+                default:
+                    return new TestConnectionResultDto { Success = false, Message = "اختبار الاتصال غير متاح لهذه البوابة" };
+            }
+        }
+        catch (Exception)
+        {
+            return new TestConnectionResultDto { Success = false, Message = "تعذّر الاتصال بالبوابة — تحقق من اتصال السيرفر بالإنترنت" };
+        }
+    }
 }

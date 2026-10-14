@@ -232,6 +232,8 @@ public class StoreController : ControllerBase
 
             if (Enum.TryParse<FatooraRahatak.Domain.Enums.PaymentMethodType>(dto.Provider, true, out var methodType))
             {
+                if (methodType == FatooraRahatak.Domain.Enums.PaymentMethodType.Moyasar)
+                    methodType = FatooraRahatak.Domain.Enums.PaymentMethodType.CreditCard;
                 var method = await _context.StorePaymentMethods
                     .FirstOrDefaultAsync(m => m.StoreId == storeId.Value && m.Type == methodType);
                 if (method != null)
@@ -247,6 +249,18 @@ public class StoreController : ControllerBase
         {
             return BadRequest(new { success = false, message = ex.Message });
         }
+    }
+
+    [RequirePermission("StoreSettings.Edit")]
+    [HttpPost("payment-credentials/test")]
+    public async Task<IActionResult> TestPaymentCredential([FromBody] FatooraRahatak.Application.DTOs.Payment.TestConnectionDto dto)
+    {
+        var storeId = await _permCheck.GetUserStoreIdAsync(GetUserId());
+        if (storeId == null)
+            return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بحسابك بعد" });
+
+        var result = await _credentialService.TestConnectionAsync(dto);
+        return Ok(new { success = result.Success, message = result.Message });
     }
 
     [RequirePermission("StoreSettings.Edit")]

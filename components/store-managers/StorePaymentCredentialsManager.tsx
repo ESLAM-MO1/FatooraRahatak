@@ -7,7 +7,7 @@ import ToggleSwitch from "@/components/ToggleSwitch";
 import SuccessToast from "@/components/SuccessToast";
 import "@/lib/i18n/config";
 
-type Provider = "Tabby" | "Tamara";
+type Provider = "Moyasar" | "Tabby" | "Tamara";
 
 interface Status {
   provider: string;
@@ -18,191 +18,291 @@ interface Status {
   isEnabled: boolean;
   isTestMode: boolean;
   isConfigured: boolean;
+  secretKey: string | null;
+  notificationToken: string | null;
 }
 
 interface FormState {
   publicKey: string;
-  secretKey: string;
   merchantCode: string;
+  secretKey: string;
   notificationToken: string;
-  isEnabled: boolean;
+  tabbyWebhookBaseUrl: string;
   isTestMode: boolean;
 }
 
+const PROVIDERS: Provider[] = ["Moyasar", "Tabby", "Tamara"];
+
 const emptyForm: FormState = {
   publicKey: "",
-  secretKey: "",
   merchantCode: "",
+  secretKey: "",
   notificationToken: "",
-  isEnabled: false,
+  tabbyWebhookBaseUrl: "",
   isTestMode: false,
 };
 
-const PROVIDERS: Provider[] = ["Tabby", "Tamara"];
-
-export default function StorePaymentCredentialsManager({ storeId }: { storeId?: number }) {
+export default function StorePaymentCredentialsManager({ storeId: _storeId }: { storeId?: number } = {}) {
   const { t } = useTranslation();
-  const [statuses, setStatuses] = useState<Record<string, Status>>({});
-  const [forms, setForms] = useState<Record<Provider, FormState>>({ Tabby: emptyForm, Tamara: emptyForm });
+  const [statuses, setStatuses] = useState<Record<Provider, Status | null>>({
+    Moyasar: null,
+    Tabby: null,
+    Tamara: null,
+  });
+  const [forms, setForms] = useState<Record<Provider, FormState>>({
+    Moyasar: { ...emptyForm },
+    Tabby: { ...emptyForm },
+    Tamara: { ...emptyForm },
+  });
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Provider | null>(null);
+  const [testing, setTesting] = useState<Provider | null>(null);
+  const [testResults, setTestResults] = useState<Record<Provider, { ok: boolean; msg: string } | null>>({
+    Moyasar: null,
+    Tabby: null,
+    Tamara: null,
+  });
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [toast, setToast] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const load = async () => {
     try {
       const res = await api.get("/stores/payment-credentials");
-      const list = res.data.data as Status[];
-      const map: Record<string, Status> = {};
+      const list: Status[] = res.data.data || [];
+      const map: Record<Provider, Status | null> = { Moyasar: null, Tabby: null, Tamara: null };
+      const f: Record<Provider, FormState> = {
+        Moyasar: { ...emptyForm },
+        Tabby: { ...emptyForm },
+        Tamara: { ...emptyForm },
+      };
       list.forEach((s) => {
-        map[s.provider] = s;
+        const p = s.provider as Provider;
+        if (!PROVIDERS.includes(p)) return;
+        map[p] = s;
+        f[p] = {
+          publicKey: s.publicKey || "",
+          merchantCode: s.merchantCode || "",
+          secretKey: s.secretKey || "",
+          notificationToken: s.notificationToken || "",
+          tabbyWebhookBaseUrl: "",
+          isTestMode: !!s.isTestMode,
+        };
       });
       setStatuses(map);
-      setForms((prev) => {
-        const next = { ...prev };
-        list.forEach((s) => {
-          const key = s.provider as Provider;
-          if (key in next) {
-            next[key] = {
-              publicKey: s.publicKey || "",
-              merchantCode: s.merchantCode || "",
-              isEnabled: s.isEnabled,
-              isTestMode: s.isTestMode,
-              secretKey: "",
-              notificationToken: "",
-            };
-          }
-        });
-        return next;
-      });
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("storeSettings.genericError"));
+      setForms(f);
+    } catch {
+      setError(t("common.error"));
+    } finally {
+      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const setField = (p: Provider, patch: Partial<FormState>) => {
-    setForms((prev) => ({ ...prev, [p]: { ...prev[p], ...patch } }));
   };
 
   const save = async (p: Provider) => {
     setSaving(p);
     setError("");
-    setSuccess("");
-    const f = forms[p];
     try {
+      const f = forms[p];
       await api.put("/stores/payment-credentials", {
         provider: p,
         publicKey: f.publicKey || null,
         secretKey: f.secretKey || null,
         merchantCode: f.merchantCode || null,
         notificationToken: f.notificationToken || null,
-        isEnabled: f.isEnabled,
+        isEnabled: statuses[p]?.isEnabled ?? false,
         isTestMode: f.isTestMode,
       });
-      setSuccess(t("storeSettings.bnplSaved"));
+      setToast(true);
       await load();
     } catch (err: any) {
-      setError(err.response?.data?.message || t("storeSettings.genericError"));
+      setError(err?.response?.data?.message || t("common.error"));
     } finally {
       setSaving(null);
     }
   };
 
-  const apiBase = String(api.defaults.baseURL || "").replace(/\/$/, "");
-  const tabbyWebhook = `${apiBase}/payments/webhook/tabby/${storeId ?? ""}`;
+  const toggleEnabled = async (p: Provider) => {
+    const current = statuses[p];
+    if (!current) return;
+    setError("");
+    try {
+      const f = forms[p];
+      await api.put("/stores/payment-credentials", {
+        provider: p,
+        publicKey: f.publicKey || null,
+        secretKey: f.secretKey || null,
+        merchantCode: f.merchantCode || null,
+        notificationToken: f.notificationToken || null,
+        isEnabled: !current.isEnabled,
+        isTestMode: f.isTestMode,
+      });
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || t("common.error"));
+    }
+  };
+
+  const test = async (p: Provider) => {
+    setTesting(p);
+    setError("");
+    try {
+      const f = forms[p];
+      const res = await api.post("/stores/payment-credentials/test", {
+        provider: p,
+        publicKey: f.publicKey || null,
+        secretKey: f.secretKey || null,
+        merchantCode: f.merchantCode || null,
+        notificationToken: f.notificationToken || null,
+        isTestMode: f.isTestMode,
+      });
+      setTestResults((prev) => ({
+        ...prev,
+        [p]: { ok: !!res.data.success, msg: res.data.message || "" },
+      }));
+    } catch (err: any) {
+      setTestResults((prev) => ({
+        ...prev,
+        [p]: { ok: false, msg: err?.response?.data?.message || t("common.error") },
+      }));
+    } finally {
+      setTesting(null);
+    }
+  };
 
   const renderInput = (
+    p: Provider,
+    field: keyof FormState,
     label: string,
-    value: string,
-    onChange: (v: string) => void,
-    opts?: { secret?: boolean; hasValue?: boolean }
+    placeholder: string,
+    type: "text" | "password" = "text"
   ) => (
     <div>
-      <label>{label}</label>
-      <div className="field-shell">
+      <label className="form-label">{label}</label>
+      <div className="field-shell" style={{ position: "relative" }}>
         <input
-          type={opts?.secret ? "password" : "text"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={opts?.secret && opts.hasValue ? "••••••••" : ""}
-          autoComplete="off"
-          dir="ltr"
+          className="form-input"
+          type={type === "password" && revealed[`${p}:${field}`] ? "text" : type}
+          placeholder={placeholder}
+          value={String(forms[p][field] ?? "")}
+          onChange={(e) =>
+            setForms((prev) => ({
+              ...prev,
+              [p]: { ...prev[p], [field]: e.target.value },
+            }))
+          }
         />
+        {type === "password" && (
+          <button
+            type="button"
+            onClick={() =>
+              setRevealed((prev) => ({
+                ...prev,
+                [`${p}:${field}`]: !prev[`${p}:${field}`],
+              }))
+            }
+            className="btn btn--ghost btn--sm"
+            style={{ position: "absolute", left: 6, top: "50%", transform: "translateY(-50%)" }}
+          >
+            {revealed[`${p}:${field}`] ? "🙈" : "👁"}
+          </button>
+        )}
       </div>
-      {opts?.secret && opts.hasValue && (
-        <p className="text-[11px] text-[var(--sub)] mt-1">{t("storeSettings.bnplSecretKept")}</p>
-      )}
     </div>
   );
 
+  const renderTestResult = (p: Provider) => {
+    const r = testResults[p];
+    if (!r) return null;
+    return (
+      <div style={{ fontSize: 13, marginTop: 8, color: r.ok ? "#16a34a" : "#dc2626" }}>{r.msg}</div>
+    );
+  };
+
+  if (loading) return <div className="card"><div className="card__body">{t("common.loading")}</div></div>;
+
   return (
-    <div className="space-y-6">
+    <div className="stack">
+      <SuccessToast message={toast ? t("common.saved") : null} onClose={() => setToast(false)} />
       {error && <div className="alert alert--danger">{error}</div>}
-      <SuccessToast message={success} fixed className="mb-2" />
-      <p className="text-[12px] text-[var(--sub)]">{t("storeSettings.bnplDesc")}</p>
 
       {PROVIDERS.map((p) => {
-        const f = forms[p];
         const s = statuses[p];
+        const f = forms[p];
+        const configured = !!s?.isConfigured;
+        const badgeClass = configured && s?.isEnabled ? "badge badge--green" : configured ? "badge" : "badge badge--danger";
+        const badgeText = configured && s?.isEnabled
+          ? t("storeSettings.gatewayEnabled")
+          : configured
+          ? t("storeSettings.gatewayDisabled")
+          : t("storeSettings.gatewayIncomplete");
         return (
-          <div key={p} className="border border-gray-100 rounded-xl p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <p className="text-[14px] font-bold text-[var(--ink)]">{t(`storeSettings.payment${p}`)}</p>
-                <span className={s?.isConfigured ? "badge badge--green" : "badge badge--gray"}>
-                  {s?.isConfigured ? t("storeSettings.bnplConfigured") : t("storeSettings.bnplIncomplete")}
-                </span>
+          <div key={p} className="card">
+            <div className="card__body">
+              <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginBottom: 16 }}>
+                <h3 style={{ margin: 0 }}>{t(`storeSettings.payment${p}`)}</h3>
+                <div className="flex items-center gap-2">
+                  <span className={badgeClass}>{badgeText}</span>
+                  <ToggleSwitch
+                    enabled={!!s?.isEnabled}
+                    onToggle={() => toggleEnabled(p)}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] text-[var(--sub)]">{t("storeSettings.bnplEnable")}</span>
-                <ToggleSwitch enabled={f.isEnabled} onToggle={() => setField(p, { isEnabled: !f.isEnabled })} />
+
+              <div className="form-grid form-grid--2">
+                {p === "Moyasar" && (
+                  <>
+                    {renderInput(p, "publicKey", t("storeSettings.bnplPublicKey"), t("storeSettings.bnplPublicKeyPlaceholder"))}
+                    {renderInput(p, "secretKey", t("storeSettings.bnplSecretKey"), t("storeSettings.bnplSecretKeyPlaceholder"), "password")}
+                  </>
+                )}
+                {p === "Tabby" && (
+                  <>
+                    {renderInput(p, "publicKey", t("storeSettings.bnplPublicKey"), t("storeSettings.bnplPublicKeyPlaceholder"))}
+                    {renderInput(p, "merchantCode", t("storeSettings.tabbyMerchantCode"), t("storeSettings.tabbyMerchantCodePlaceholder"))}
+                    {renderInput(p, "secretKey", t("storeSettings.bnplSecretKey"), t("storeSettings.bnplSecretKeyPlaceholder"), "password")}
+                    {renderInput(p, "tabbyWebhookBaseUrl", t("storeSettings.tabbyWebhookUrl"), t("storeSettings.tabbyWebhookUrlPlaceholder"))}
+                  </>
+                )}
+                {p === "Tamara" && (
+                  <>
+                    {renderInput(p, "secretKey", t("storeSettings.bnplSecretKey"), t("storeSettings.bnplSecretKeyPlaceholder"), "password")}
+                    {renderInput(p, "notificationToken", t("storeSettings.tamaraNotificationToken"), t("storeSettings.tamaraNotificationTokenPlaceholder"), "password")}
+                  </>
+                )}
+              </div>
+
+              {(p === "Tabby" || p === "Tamara") && (
+                <div style={{ marginTop: 12 }}>
+                  <label className="toggle-row" style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <ToggleSwitch
+                      enabled={f.isTestMode}
+                      onToggle={() => setForms((prev) => ({ ...prev, [p]: { ...prev[p], isTestMode: !f.isTestMode } }))}
+                    />
+                    <span style={{ fontSize: 14 }}>{t("storeSettings.useSandbox")}</span>
+                  </label>
+                </div>
+              )}
+
+              {f.isTestMode && <div className="alert alert--info" style={{ marginTop: 12 }}>{t("storeSettings.testModeActive")}</div>}
+
+              {s?.hasSecretKey === false && <div className="alert alert--info" style={{ marginTop: 12 }}>{t("storeSettings.bnplSecretKept")}</div>}
+
+              {renderTestResult(p)}
+
+              <div className="flex items-center justify-end gap-3 flex-wrap" style={{ marginTop: 20 }}>
+                <button type="button" className="btn btn--secondary" onClick={() => test(p)} disabled={testing === p || saving === p}>
+                  {testing === p ? `${t("storeSettings.testConnection")}…` : `⚡ ${t("storeSettings.testConnection")}`}
+                </button>
+                <button type="button" className="btn btn--primary" onClick={() => save(p)} disabled={saving === p || testing === p}>
+                  {saving === p ? `${t("common.save")}…` : t("common.save")}
+                </button>
               </div>
             </div>
-
-            {p === "Tabby" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {renderInput(t("storeSettings.bnplPublicKey"), f.publicKey, (v) => setField(p, { publicKey: v }))}
-                {renderInput(t("storeSettings.bnplMerchantCode"), f.merchantCode, (v) => setField(p, { merchantCode: v }))}
-                {renderInput(t("storeSettings.bnplSecretKey"), f.secretKey, (v) => setField(p, { secretKey: v }), {
-                  secret: true,
-                  hasValue: !!s?.hasSecretKey,
-                })}
-              </div>
-            )}
-
-            {p === "Tamara" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {renderInput(t("storeSettings.bnplApiToken"), f.secretKey, (v) => setField(p, { secretKey: v }), {
-                  secret: true,
-                  hasValue: !!s?.hasSecretKey,
-                })}
-                {renderInput(t("storeSettings.bnplNotificationToken"), f.notificationToken, (v) => setField(p, { notificationToken: v }), {
-                  secret: true,
-                  hasValue: !!s?.hasNotificationToken,
-                })}
-                <div className="flex items-center gap-2 pt-6">
-                  <ToggleSwitch enabled={f.isTestMode} onToggle={() => setField(p, { isTestMode: !f.isTestMode })} />
-                  <span className="text-[12.5px] text-[var(--ink)]">{t("storeSettings.bnplTestMode")}</span>
-                </div>
-              </div>
-            )}
-
-            {p === "Tabby" && storeId && (
-              <div>
-                <label>{t("storeSettings.bnplWebhook")}</label>
-                <div className="field-shell">
-                  <input type="text" value={tabbyWebhook} readOnly dir="ltr" />
-                </div>
-              </div>
-            )}
-
-            <button type="button" onClick={() => save(p)} disabled={saving === p} className="btn btn-primary btn-sm">
-              {saving === p ? t("storeSettings.saving") : t("storeSettings.save")}
-            </button>
           </div>
         );
       })}

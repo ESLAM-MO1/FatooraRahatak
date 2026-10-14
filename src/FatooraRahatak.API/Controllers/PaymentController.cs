@@ -79,13 +79,22 @@ public class PaymentController : ControllerBase
 
         var signature = Request.Headers["X-Moyasar-Signature"].FirstOrDefault();
 
-        if (!_provider.VerifyWebhookSignature(rawBody, signature ?? string.Empty))
-            return Unauthorized(new { success = false, message = "توقيع الويب هوك غير صالح" });
-
-        var parsed = _provider.ParseWebhookJson(rawBody);
+        MoyasarWebhookData? parsed;
+        try
+        {
+            parsed = _provider.ParseWebhookJson(rawBody);
+        }
+        catch
+        {
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+        }
 
         if (parsed == null || string.IsNullOrWhiteSpace(parsed.Status))
             return BadRequest(new { success = false, message = "Invalid webhook payload" });
+
+        var webhookSecret = await _paymentService.GetMoyasarWebhookSecretAsync(parsed.PaymentId, parsed.InvoiceId);
+        if (!_provider.VerifyWebhookSignature(rawBody, signature ?? string.Empty, webhookSecret))
+            return Unauthorized(new { success = false, message = "توقيع الويب هوك غير صالح" });
 
         await _paymentService.HandleWebhookAsync(new WebhookPayload
         {

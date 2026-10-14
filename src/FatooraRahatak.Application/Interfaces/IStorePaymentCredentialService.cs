@@ -9,4 +9,5 @@ public interface IStorePaymentCredentialService
     Task<StorePaymentCredentialStatusDto> SaveAsync(long storeId, SaveStorePaymentCredentialDto dto);
     Task<StorePaymentCredentialSecrets?> GetSecretsAsync(long storeId, PaymentProviderType provider);
     Task<HashSet<PaymentProviderType>> GetEnabledProvidersAsync(long storeId);
+    Task<TestConnectionResultDto> TestConnectionAsync(TestConnectionDto dto);
 }

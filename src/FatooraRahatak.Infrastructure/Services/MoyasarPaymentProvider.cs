@@ -44,7 +44,22 @@ public class MoyasarPaymentProvider
         }
     }
 
-    public async Task<MoyasarPaymentResult> CreatePaymentAsync(decimal amount, string currency, string description, string? callbackUrl = null, string? customerEmail = null, string? customerName = null, string? customerPhone = null, string? recipientId = null, string? cardHolder = null, string? cardNumber = null, string? cardExpiryMonth = null, string? cardExpiryYear = null, string? cardCvc = null)
+    private static HttpRequestMessage BuildRequest(HttpMethod method, string url, object? body, string? secretKey)
+    {
+        var request = new HttpRequestMessage(method, url);
+        if (!string.IsNullOrWhiteSpace(secretKey))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Basic",
+                Convert.ToBase64String(Encoding.UTF8.GetBytes($"{secretKey}:")));
+        }
+        if (body != null)
+            request.Content = JsonContent.Create(body);
+        return request;
+    }
+
+    public async Task<MoyasarPaymentResult> CreatePaymentAsync(decimal amount, string currency, string description, string? callbackUrl = null, string? customerEmail = null, string? customerName = null, string? customerPhone = null, string? recipientId = null, string? cardHolder = null, string? cardNumber = null, string? cardExpiryMonth = null, string? cardExpiryYear = null, string? cardCvc = null,
+        string? secretKey = null)
     {
         try
         {
@@ -93,7 +108,7 @@ public class MoyasarPaymentProvider
                 };
             }
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/payments", payload);
+            var response = await _httpClient.SendAsync(BuildRequest(HttpMethod.Post, $"{_baseUrl}/payments", payload, secretKey));
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -194,7 +209,8 @@ public class MoyasarPaymentProvider
         string? callbackUrl = null,
         string? successUrl = null,
         string? backUrl = null,
-        string? customerEmail = null)
+        string? customerEmail = null,
+        string? secretKey = null)
     {
         try
         {
@@ -216,7 +232,7 @@ public class MoyasarPaymentProvider
             if (!string.IsNullOrWhiteSpace(backUrl))
                 payload["back_url"] = backUrl;
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/invoices", payload);
+            var response = await _httpClient.SendAsync(BuildRequest(HttpMethod.Post, $"{_baseUrl}/invoices", payload, secretKey));
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -257,7 +273,7 @@ public class MoyasarPaymentProvider
         }
     }
 
-    public async Task<MoyasarPaymentResult> GetPaymentStatusAsync(string providerPaymentId)
+    public async Task<MoyasarPaymentResult> GetPaymentStatusAsync(string providerPaymentId, string? secretKey = null)
     {
         try
         {
@@ -268,12 +284,12 @@ public class MoyasarPaymentProvider
             // تُفسَّر بالغلط أو تفشل بصمت دون تفعيل الاشتراك رغم نجاح الدفع فعليًا.
             // الآن نتحقق من الفاتورة أولًا مباشرة (المسار الصحيح والمؤكد لهذا المعرّف)، ولا نلجأ
             // لمسار الدفعة المباشرة إلا لو فشل ذلك فعلًا (توافقًا مع مسار الكارت المدمج القديم).
-            var invoiceResult = await GetInvoiceStatusAsync(providerPaymentId);
+            var invoiceResult = await GetInvoiceStatusAsync(providerPaymentId, secretKey);
             if (invoiceResult.Success)
                 return invoiceResult;
 
             // https://api.moyasar.com/v1/payments/{id} — يستخدم SecretKey للتحقق من حالة الدفع (paid/failed)
-            var response = await _httpClient.GetAsync($"{_baseUrl}/payments/{providerPaymentId}");
+            var response = await _httpClient.SendAsync(BuildRequest(HttpMethod.Get, $"{_baseUrl}/payments/{providerPaymentId}", null, secretKey));
 
             if (!response.IsSuccessStatusCode)
                 return invoiceResult; // نُرجع خطأ الفاتورة الأصلي، أوضح من خطأ دفعة غير موجودة أصلًا
@@ -304,11 +320,11 @@ public class MoyasarPaymentProvider
     }
 
     // الحالة من فاتورة موياسر: الفاتورة "paid" تعني اكتمال الدفع، و"initiated" تعني ما زال مفتوحًا
-    public async Task<MoyasarPaymentResult> GetInvoiceStatusAsync(string invoiceId)
+    public async Task<MoyasarPaymentResult> GetInvoiceStatusAsync(string invoiceId, string? secretKey = null)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/invoices/{invoiceId}");
+            var response = await _httpClient.SendAsync(BuildRequest(HttpMethod.Get, $"{_baseUrl}/invoices/{invoiceId}", null, secretKey));
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -359,7 +375,8 @@ public class MoyasarPaymentProvider
 
     // ❗️ إنشاء حساب مستلم (sub-merchant) في ميسرة — أوتوماتيك بالكامل
     // بياخد البيانات البنكية من الـ Owner وبيحاول يعمل الحساب لوحده.
-    public async Task<MoyasarRecipientResult> CreateRecipientAsync(string holderName, string bankName, string iban)
+    public async Task<MoyasarRecipientResult> CreateRecipientAsync(string holderName, string bankName, string iban,
+        string? secretKey = null)
     {
         try
         {
@@ -376,7 +393,7 @@ public class MoyasarPaymentProvider
                 }
             };
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/recipients", payload);
+            var response = await _httpClient.SendAsync(BuildRequest(HttpMethod.Post, $"{_baseUrl}/recipients", payload, secretKey));
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -408,13 +425,13 @@ public class MoyasarPaymentProvider
         }
     }
 
-    public async Task<MoyasarPaymentResult> RefundPaymentAsync(string providerPaymentId, decimal? amount = null)
+    public async Task<MoyasarPaymentResult> RefundPaymentAsync(string providerPaymentId, decimal? amount = null, string? secretKey = null)
     {
         try
         {
             // الفاتورة تحوي محاولات دفع فعلية — نوضح معرّف الدفعة الحقيقي قبل الاسترداد
             var targetPaymentId = providerPaymentId;
-            var invoiceStatus = await GetInvoiceStatusAsync(providerPaymentId);
+            var invoiceStatus = await GetInvoiceStatusAsync(providerPaymentId, secretKey);
             if (!string.IsNullOrWhiteSpace(invoiceStatus.ProviderPaymentId) &&
                 !string.Equals(invoiceStatus.ProviderPaymentId, providerPaymentId, StringComparison.OrdinalIgnoreCase))
             {
@@ -430,7 +447,7 @@ public class MoyasarPaymentProvider
             if (amount.HasValue)
                 payload["amount"] = (int)(amount.Value * 100);
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/payments/{targetPaymentId}/refund", payload);
+            var response = await _httpClient.SendAsync(BuildRequest(HttpMethod.Post, $"{_baseUrl}/payments/{targetPaymentId}/refund", payload, secretKey));
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -527,12 +544,13 @@ public class MoyasarPaymentProvider
         };
     }
 
-    public bool VerifyWebhookSignature(string jsonBody, string signature)
+    public bool VerifyWebhookSignature(string jsonBody, string signature, string? secretKey = null)
     {
-        if (string.IsNullOrWhiteSpace(_secretKey))
+        var secret = string.IsNullOrWhiteSpace(secretKey) ? _secretKey : secretKey;
+        if (string.IsNullOrWhiteSpace(secret))
             return false;
 
-        var expected = ComputeHmacSha256(jsonBody, _secretKey);
+        var expected = ComputeHmacSha256(jsonBody, secret);
         return expected.Equals(signature, StringComparison.OrdinalIgnoreCase);
     }
 

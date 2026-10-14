@@ -12,6 +12,7 @@ public interface IPaymentService
     Task<PaymentStatusResult> CheckOrderPaymentStatusAsync(long storeId, string orderNumber);
     Task<PaymentStatusResult> CheckOrderPaymentStatusBySlugAsync(string slug, string orderNumber);
     Task HandleWebhookAsync(WebhookPayload payload);
+    Task<string?> GetMoyasarWebhookSecretAsync(string? paymentId, string? invoiceId);
     Task<PagedResult<PaymentListDto>> GetPaymentsAsync(long storeId, string? statusFilter = null, int page = 1, int pageSize = 20);
     Task<PaymentStatusResult> RefundPaymentAsync(long storeId, string paymentReference);
     Task<BankTransferResult> UploadBankTransferReceiptAsync(string slug, string orderNumber, string? phone, long? customerId, string receiptUrl, string? reference);

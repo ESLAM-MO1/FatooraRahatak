@@ -63,6 +63,10 @@ public class ProductService : IProductService
             StoreId = storeId,
             Slug = await EnsureUniqueSlugAsync(storeId, baseSlug, null),
             CategoryId = dto.CategoryId,
+            ProductType = ParseProductType(dto.ProductType),
+            PrepTimeMinutes = dto.PrepTimeMinutes,
+            IngredientsText = dto.IngredientsText,
+            DigitalFileUrl = dto.DigitalFileUrl,
             NameAr = dto.NameAr,
             NameEn = dto.NameEn,
             DescriptionAr = dto.DescriptionAr,
@@ -120,8 +124,41 @@ public class ProductService : IProductService
             await _context.SaveChangesAsync();
         }
 
+        if (dto.CardCodes != null)
+        {
+            foreach (var code in dto.CardCodes
+                .Select(c => (c ?? "").Trim())
+                .Where(c => c.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(500))
+                _context.CardCodes.Add(new CardCode { ProductId = product.Id, Code = code });
+        }
+
+        if (dto.BundleItems != null && dto.BundleItems.Count > 0)
+        {
+            var childIds = dto.BundleItems.Select(b => b.ProductId).Distinct().ToList();
+            var validChildren = await _context.Products
+                .Where(p => p.StoreId == storeId && childIds.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync();
+            foreach (var item in dto.BundleItems
+                .Where(b => b.ProductId != product.Id && validChildren.Contains(b.ProductId))
+                .Take(50))
+                _context.BundleItems.Add(new BundleItem
+                {
+                    BundleProductId = product.Id,
+                    ItemProductId = item.ProductId,
+                    Quantity = Math.Max(1, item.Quantity),
+                });
+        }
+
+        await _context.SaveChangesAsync();
+
         return await MapToDtoAsync(product);
     }
+
+    private static ProductType ParseProductType(string? value) =>
+        Enum.TryParse<ProductType>(value, true, out var t) ? t : ProductType.Physical;
 
     public async Task<PagedResult<ProductResponseDto>> GetAllAsync(long storeId, int page = 1, int pageSize = 20, string? search = null)
     {
@@ -208,6 +245,10 @@ public class ProductService : IProductService
         product.DiscountEndsAt = dto.DiscountPrice.HasValue ? dto.DiscountEndsAt : null;
         product.CostPrice = dto.CostPrice;
         product.Weight = dto.Weight;
+        product.ProductType = ParseProductType(dto.ProductType);
+        product.PrepTimeMinutes = dto.PrepTimeMinutes;
+        product.IngredientsText = dto.IngredientsText;
+        product.DigitalFileUrl = dto.DigitalFileUrl;
         product.HasWarranty = dto.HasWarranty;
         product.WarrantyMonths = dto.HasWarranty ? dto.WarrantyMonths : null;
         if (dto.SeoTitle != null) product.SeoTitle = Clean(dto.SeoTitle, 70);
@@ -225,6 +266,42 @@ public class ProductService : IProductService
             if (string.IsNullOrEmpty(fallback)) fallback = "product";
             product.Slug = await EnsureUniqueSlugAsync(storeId, fallback, productId);
         }
+        if (dto.CardCodes != null)
+        {
+            var unusedCodes = await _context.CardCodes
+                .Where(c => c.ProductId == productId && !c.IsUsed)
+                .ToListAsync();
+            _context.CardCodes.RemoveRange(unusedCodes);
+            foreach (var code in dto.CardCodes
+                .Select(c => (c ?? "").Trim())
+                .Where(c => c.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(500))
+                _context.CardCodes.Add(new CardCode { ProductId = productId, Code = code });
+        }
+
+        if (dto.BundleItems != null)
+        {
+            var oldItems = await _context.BundleItems
+                .Where(b => b.BundleProductId == productId)
+                .ToListAsync();
+            _context.BundleItems.RemoveRange(oldItems);
+            var childIds = dto.BundleItems.Select(b => b.ProductId).Distinct().ToList();
+            var validChildren = await _context.Products
+                .Where(p => p.StoreId == storeId && childIds.Contains(p.Id))
+                .Select(p => p.Id)
+                .ToListAsync();
+            foreach (var item in dto.BundleItems
+                .Where(b => b.ProductId != productId && validChildren.Contains(b.ProductId))
+                .Take(50))
+                _context.BundleItems.Add(new BundleItem
+                {
+                    BundleProductId = productId,
+                    ItemProductId = item.ProductId,
+                    Quantity = Math.Max(1, item.Quantity),
+                });
+        }
+
         if ((product.Status == ProductStatus.Active || product.Status == ProductStatus.Draft) && TryParseStatus(dto.Status, out var newStatus))
             product.Status = newStatus;
         product.UpdatedAt = DateTime.UtcNow;
@@ -440,6 +517,35 @@ public class ProductService : IProductService
                 .FirstOrDefaultAsync();
         }
 
+        List<string>? cardCodes = null;
+        var cardCodesCount = 0;
+        List<BundleItemResponseDto>? bundleItemsList = null;
+        if (p.ProductType == ProductType.Card)
+        {
+            cardCodes = await _context.CardCodes
+                .Where(c => c.ProductId == p.Id && !c.IsUsed)
+                .OrderBy(c => c.Id)
+                .Select(c => c.Code)
+                .Take(500)
+                .ToListAsync();
+            cardCodesCount = cardCodes.Count;
+        }
+        else if (p.ProductType == ProductType.Bundle)
+        {
+            bundleItemsList = await _context.BundleItems
+                .Where(b => b.BundleProductId == p.Id)
+                .OrderBy(b => b.Id)
+                .Select(b => new BundleItemResponseDto
+                {
+                    ProductId = b.ItemProductId,
+                    NameAr = b.ItemProduct.NameAr,
+                    NameEn = b.ItemProduct.NameEn,
+                    Price = b.ItemProduct.BasePrice,
+                    Quantity = b.Quantity,
+                })
+                .ToListAsync();
+        }
+
         return new ProductResponseDto
         {
             Id = p.Id,
@@ -461,6 +567,13 @@ public class ProductService : IProductService
             PrimaryImageUrl = primaryImageUrl,
             HasWarranty = p.HasWarranty,
             WarrantyMonths = p.WarrantyMonths,
+            ProductType = p.ProductType.ToString(),
+            PrepTimeMinutes = p.PrepTimeMinutes,
+            IngredientsText = p.IngredientsText,
+            DigitalFileUrl = p.DigitalFileUrl,
+            CardCodesCount = cardCodesCount,
+            CardCodes = cardCodes,
+            BundleItems = bundleItemsList,
             Slug = p.Slug,
             SeoTitle = p.SeoTitle,
             SeoDescription = p.SeoDescription

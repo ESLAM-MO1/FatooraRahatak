@@ -22,6 +22,10 @@ public class Product : BaseEntity
     public int? WarrantyMonths { get; set; }
     public decimal? Weight { get; set; }
     public ProductStatus Status { get; set; } = ProductStatus.Draft;
+    public ProductType ProductType { get; set; } = ProductType.Physical;
+    public int? PrepTimeMinutes { get; set; }
+    public string? IngredientsText { get; set; }
+    public string? DigitalFileUrl { get; set; }
     public string? Slug { get; set; }
     public string? SeoTitle { get; set; }
     public string? SeoDescription { get; set; }
@@ -32,4 +36,6 @@ public class Product : BaseEntity
     public Category? Category { get; set; }
     public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
     public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
+    public ICollection<CardCode> CardCodes { get; set; } = new List<CardCode>();
+    public ICollection<BundleItem> BundleItems { get; set; } = new List<BundleItem>();
 }

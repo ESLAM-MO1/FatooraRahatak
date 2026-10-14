@@ -223,6 +223,7 @@ public class PublicStoreService : IPublicStoreService
                 {
                     Id = p.Id,
                     Slug = p.Slug,
+                    ProductType = p.ProductType.ToString(),
                     CategoryId = p.CategoryId,
                     NameAr = p.NameAr,
                     NameEn = p.NameEn,
@@ -295,6 +296,7 @@ public class PublicStoreService : IPublicStoreService
                 {
                     Id = p.Id,
                     Slug = p.Slug,
+                    ProductType = p.ProductType.ToString(),
                     CategoryId = p.CategoryId,
                     NameAr = p.NameAr,
                     NameEn = p.NameEn,
@@ -360,10 +362,35 @@ public class PublicStoreService : IPublicStoreService
             .Select(r => (double)r.Rating)
             .ToListAsync();
 
+        int cardCodesAvailable = 0;
+        List<PublicBundleItemDto>? bundleContents = null;
+        if (product.ProductType == ProductType.Card)
+            cardCodesAvailable = await _context.CardCodes.CountAsync(c => c.ProductId == product.Id && !c.IsUsed);
+        else if (product.ProductType == ProductType.Bundle)
+            bundleContents = await _context.BundleItems
+                .Where(b => b.BundleProductId == product.Id)
+                .OrderBy(b => b.Id)
+                .Select(b => new PublicBundleItemDto
+                {
+                    ProductId = b.ItemProductId,
+                    Slug = b.ItemProduct.Slug,
+                    NameAr = b.ItemProduct.NameAr,
+                    NameEn = b.ItemProduct.NameEn,
+                    Price = b.ItemProduct.BasePrice,
+                    Quantity = b.Quantity,
+                })
+                .ToListAsync();
+
         return new PublicProductDetailDto
         {
             Id = product.Id,
             Slug = product.Slug,
+            ProductType = product.ProductType.ToString(),
+            PrepTimeMinutes = product.PrepTimeMinutes,
+            IngredientsText = product.IngredientsText,
+            HasDigitalFile = product.ProductType == ProductType.Digital && !string.IsNullOrEmpty(product.DigitalFileUrl),
+            CardCodesAvailable = cardCodesAvailable,
+            BundleContents = bundleContents ?? new(),
             CategoryId = product.CategoryId,
             NameAr = product.NameAr,
             NameEn = product.NameEn,

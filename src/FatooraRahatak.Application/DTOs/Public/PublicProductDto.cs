@@ -4,6 +4,7 @@ public class PublicProductDto
 {
     public long Id { get; set; }
     public string? Slug { get; set; }
+    public string ProductType { get; set; } = "Physical";
     public long? CategoryId { get; set; }
     public string NameAr { get; set; } = string.Empty;
     public string NameEn { get; set; } = string.Empty;
@@ -39,6 +40,7 @@ public class PublicProductDetailDto
     public string? SeoDescription { get; set; }
     public long Id { get; set; }
     public string? Slug { get; set; }
+    public string ProductType { get; set; } = "Physical";
     public long? CategoryId { get; set; }
     public string NameAr { get; set; } = string.Empty;
     public string NameEn { get; set; } = string.Empty;
@@ -53,6 +55,21 @@ public class PublicProductDetailDto
     public int RatingCount { get; set; }
     public bool HasWarranty { get; set; }
     public int? WarrantyMonths { get; set; }
+    public int? PrepTimeMinutes { get; set; }
+    public string? IngredientsText { get; set; }
+    public bool HasDigitalFile { get; set; }
+    public int CardCodesAvailable { get; set; }
     public List<PublicProductImageDto> Images { get; set; } = new();
     public List<PublicProductVariantDto> Variants { get; set; } = new();
+    public List<PublicBundleItemDto> BundleContents { get; set; } = new();
+}
+
+public class PublicBundleItemDto
+{
+    public long ProductId { get; set; }
+    public string? Slug { get; set; }
+    public string NameAr { get; set; } = string.Empty;
+    public string NameEn { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public int Quantity { get; set; }
 }

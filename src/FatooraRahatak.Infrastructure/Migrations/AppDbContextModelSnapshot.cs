@@ -3749,6 +3749,71 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("ZatcaCredentials");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Products.BundleItem", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("BundleProductId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ItemProductId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BundleProductId");
+
+                    b.HasIndex("BundleProductId", "ItemProductId")
+                        .IsUnique();
+
+                    b.ToTable("BundleItems");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Products.CardCode", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("ProductId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("UsedByOrderId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("CardCodes");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Products.Category", b =>
                 {
                     b.Property<long>("Id")
@@ -3826,6 +3891,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<string>("DescriptionEn")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DigitalFileUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("DiscountEndsAt")
                         .HasColumnType("datetime2");
 
@@ -3842,6 +3910,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<bool>("HasWarranty")
                         .HasColumnType("bit");
 
+                    b.Property<string>("IngredientsText")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("NameAr")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -3849,6 +3920,12 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<string>("NameEn")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PrepTimeMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductType")
+                        .HasColumnType("int");
 
                     b.Property<string>("SeoDescription")
                         .HasColumnType("nvarchar(max)");
@@ -5456,6 +5533,36 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("VerificationCodes");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Products.BundleItem", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Products.Product", "BundleProduct")
+                        .WithMany("BundleItems")
+                        .HasForeignKey("BundleProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FatooraRahatak.Domain.Entities.Products.Product", "ItemProduct")
+                        .WithMany()
+                        .HasForeignKey("ItemProductId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("BundleProduct");
+
+                    b.Navigation("ItemProduct");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Products.CardCode", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Products.Product", "Product")
+                        .WithMany("CardCodes")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Accounting.Account", b =>
                 {
                     b.HasOne("FatooraRahatak.Domain.Entities.Accounting.Account", "ParentAccount")
@@ -7010,6 +7117,10 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Products.Product", b =>
                 {
+                    b.Navigation("BundleItems");
+
+                    b.Navigation("CardCodes");
+
                     b.Navigation("Images");
 
                     b.Navigation("Variants");

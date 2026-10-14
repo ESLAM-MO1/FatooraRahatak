@@ -38,6 +38,12 @@ interface ProductDetail {
   availableQuantity: number;
   hasWarranty: boolean;
   warrantyMonths: number | null;
+  productType: string;
+  prepTimeMinutes: number | null;
+  ingredientsText: string | null;
+  hasDigitalFile: boolean;
+  cardCodesAvailable: number;
+  bundleContents: { productId: number; slug?: string | null; nameAr: string; nameEn: string; price: number; quantity: number }[] | null;
   images: ProductImage[];
   variants: ProductVariant[];
 }
@@ -62,6 +68,14 @@ interface PublicProduct {
   ratingCount: number;
   availableQuantity: number;
 }
+
+const PT_LABEL: Record<string, string> = {
+  Service: "productDetail.ptype.service",
+  Food: "productDetail.ptype.food",
+  Digital: "productDetail.ptype.digital",
+  Card: "productDetail.ptype.card",
+  Bundle: "productDetail.ptype.bundle",
+};
 
 function getCartSessionKey(slug: string) {
   return `cart_session_${slug}`;
@@ -469,6 +483,39 @@ export default function ProductDetailPage() {
           {product.hasWarranty && product.warrantyMonths != null && (
             <div className="mb-4 text-sm font-medium text-gray-700">
               {t("productDetail.warranty", { months: product.warrantyMonths })}
+            </div>
+          )}
+
+          {PT_LABEL[product.productType] && (
+            <div className="mb-3">
+              <span className="inline-block px-3 py-1 rounded-full text-[12px] font-bold" style={{ backgroundColor: `${colors.accentColor}22`, color: colors.accentColor }}>
+                {t(PT_LABEL[product.productType])}
+              </span>
+            </div>
+          )}
+          {product.productType === "Food" && product.prepTimeMinutes != null && (
+            <p className="mb-2 text-sm text-gray-700">{t("productDetail.foodPrep", { minutes: product.prepTimeMinutes })}</p>
+          )}
+          {product.productType === "Food" && product.ingredientsText && (
+            <p className="mb-2 text-sm text-gray-700">{t("productDetail.foodIngredients", { text: product.ingredientsText })}</p>
+          )}
+          {product.productType === "Digital" && (
+            <p className="mb-2 text-sm text-gray-700">{t("productDetail.digitalNote")}</p>
+          )}
+          {product.productType === "Card" && (
+            <p className="mb-2 text-sm text-gray-700">{t("productDetail.cardNote", { count: product.cardCodesAvailable })}</p>
+          )}
+          {product.bundleContents && product.bundleContents.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-bold text-gray-800 mb-2">{t("productDetail.bundleIncludes")}</p>
+              <ul className="space-y-1">
+                {product.bundleContents.map((b) => (
+                  <li key={b.productId} className="text-sm text-gray-700">
+                    <a href={`/store/${slug}/products/${b.slug || b.productId}`} className="underline" style={{ color: colors.accentColor }}>{b.nameAr}</a>
+                    {b.quantity > 1 && <span className="text-gray-400"> × {b.quantity}</span>}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

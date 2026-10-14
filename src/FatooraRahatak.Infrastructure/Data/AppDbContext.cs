@@ -55,6 +55,8 @@ public class AppDbContext : DbContext
 
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<CardCode> CardCodes => Set<CardCode>();
+    public DbSet<BundleItem> BundleItems => Set<BundleItem>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
@@ -357,6 +359,24 @@ public class AppDbContext : DbContext
             .HasIndex(p => new { p.StoreId, p.Slug })
             .IsUnique()
             .HasFilter("[Slug] IS NOT NULL");
+
+        modelBuilder.Entity<Product>()
+            .Property(p => p.ProductType)
+            .HasConversion<int>();
+
+        modelBuilder.Entity<CardCode>()
+            .HasIndex(c => new { c.ProductId, c.Code })
+            .IsUnique();
+
+        modelBuilder.Entity<BundleItem>()
+            .HasIndex(b => new { b.BundleProductId, b.ItemProductId })
+            .IsUnique();
+
+        modelBuilder.Entity<BundleItem>()
+            .HasOne(b => b.ItemProduct)
+            .WithMany()
+            .HasForeignKey(b => b.ItemProductId)
+            .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<ProductVariant>()
             .HasIndex(v => v.Sku)

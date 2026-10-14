@@ -22,4 +22,16 @@ public class CreateProductDto
     public string? SeoDescription { get; set; }
     public System.DateTime? DiscountStartsAt { get; set; }
     public System.DateTime? DiscountEndsAt { get; set; }
+    public string? ProductType { get; set; }
+    public int? PrepTimeMinutes { get; set; }
+    public string? IngredientsText { get; set; }
+    public string? DigitalFileUrl { get; set; }
+    public List<string>? CardCodes { get; set; }
+    public List<CreateBundleItemDto>? BundleItems { get; set; }
+}
+
+public class CreateBundleItemDto
+{
+    public long ProductId { get; set; }
+    public int Quantity { get; set; } = 1;
 }

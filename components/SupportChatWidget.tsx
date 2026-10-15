@@ -131,14 +131,15 @@ export default function SupportChatWidget() {
             <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         ) : (
-          <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden>
-            <path
-              fill="white"
-              d="M12 3C6.9 3 3 6.4 3 10.7c0 2.4 1.2 4.6 3.2 6l-.7 3.2c-.1.5.4.9.8.6l3.8-2.1c.6.1 1.3.2 1.9.2 5.1 0 9-3.4 9-7.9S17.1 3 12 3z"
-            />
-            <circle cx="8" cy="10.7" r="1.3" fill="#0052CC" />
-            <circle cx="12" cy="10.7" r="1.3" fill="#0052CC" />
-            <circle cx="16" cy="10.7" r="1.3" fill="#0052CC" />
+          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden>
+            <line x1="12" y1="2.8" x2="12" y2="5.4" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+            <circle cx="12" cy="2.3" r="1.6" fill="white" />
+            <rect x="2" y="9.2" width="2.4" height="5.8" rx="1.2" fill="white" />
+            <rect x="19.6" y="9.2" width="2.4" height="5.8" rx="1.2" fill="white" />
+            <rect x="4.2" y="5.6" width="15.6" height="12.8" rx="3.6" fill="white" />
+            <circle cx="9" cy="11.6" r="1.8" fill="#0052CC" />
+            <circle cx="15" cy="11.6" r="1.8" fill="#0052CC" />
+            <path d="M9.4 15.2h5.2" stroke="#0052CC" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         )}
         {!open && (

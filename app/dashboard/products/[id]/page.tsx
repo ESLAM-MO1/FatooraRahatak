@@ -144,6 +144,13 @@ const L = {
     reorderErr: "تعذر حفظ ترتيب الصور.",
     editVar: "تعديل", saveVar: "حفظ المتغير", varSaved: "تم حفظ المتغير.", cancelEdit: "إلغاء",
     vImg: "صورة المتغير",
+    typeLabel: "نوع المنتج",
+    typeName: { Physical: "منتج فيزيائي", Service: "خدمة", Food: "طعام", Digital: "منتج رقمي", Card: "كارت أكواد", Bundle: "باكدج" },
+    typeHint: { Physical: "مخزون وشحن", Service: "بدون مخزون", Food: "وقت تجهيز ومكونات", Digital: "ملف يُسلَّم بعد الشراء", Card: "أكواد جاهزة", Bundle: "مجموعة منتجات" },
+    prepTime: "وقت التجهيز (دقائق)", ingredients: "المكونات / وصف مختصر",
+    digitalUrl: "رابط الملف الرقمي", digitalHint: "رابط تحميل الملف (مثل Google Drive) — يُسلَّم للعميل بعد الشراء.",
+    cardCodes: "الأكواد", cardCodesPh: "كل سطر = كود واحد", cardCodesHint: "الأكواد غير المستخدمة بتتسلّم للعملاء بالترتيب. الحفظ بيستبدل القائمة القديمة.",
+    bundleLabel: "منتجات الباكدج", bundleSearchPh: "ابحث عن منتج لإضافته...", bundleEmpty: "لم تُضف منتجات للباكدج بعد.",
     loadError: "تعذر تحميل بيانات المنتج.", notFound: "المنتج غير موجود.",
   },
   en: {
@@ -205,6 +212,13 @@ const L = {
     reorderErr: "Could not save the image order.",
     editVar: "Edit", saveVar: "Save variant", varSaved: "Variant saved.", cancelEdit: "Cancel",
     vImg: "Variant image",
+    typeLabel: "Product type",
+    typeName: { Physical: "Physical", Service: "Service", Food: "Food", Digital: "Digital", Card: "Code card", Bundle: "Bundle" },
+    typeHint: { Physical: "Stock & shipping", Service: "No stock", Food: "Prep time & ingredients", Digital: "File delivered after purchase", Card: "Ready codes", Bundle: "Group of products" },
+    prepTime: "Prep time (minutes)", ingredients: "Ingredients / short description",
+    digitalUrl: "Digital file URL", digitalHint: "Download link (e.g. Google Drive) — delivered to the buyer after purchase.",
+    cardCodes: "Codes", cardCodesPh: "One code per line", cardCodesHint: "Unused codes are handed to buyers in order. Saving replaces the current list.",
+    bundleLabel: "Bundle products", bundleSearchPh: "Search a product to add...", bundleEmpty: "No products in this bundle yet.",
     loadError: "Could not load the product.", notFound: "Product not found.",
   },
 };
@@ -282,6 +296,7 @@ export default function EditProductPage() {
     nameAr: "", nameEn: "", descriptionAr: "", descriptionEn: "", categoryId: "",
     basePrice: "", discountPrice: "", discountStartsAt: "", discountEndsAt: "",
     costPrice: "", barcode: "", weight: "", warrantyMonths: "", slug: "", seoTitle: "", seoDescription: "",
+    prepTime: "", ingredients: "", digitalUrl: "", cardCodesText: "",
   });
   const [warranty, setWarranty] = useState(false);
   const [qty, setQty] = useState("0");
@@ -291,6 +306,51 @@ export default function EditProductPage() {
   const [rows, setRows] = useState<Record<string, Row>>({});
   const [editVar, setEditVar] = useState<{ id: number; name: string; price: string; barcode: string; image: string | null } | null>(null);
   const [varSaving, setVarSaving] = useState(false);
+  const [pType, setPType] = useState("Physical");
+  const [bundleItems, setBundleItems] = useState<{ productId: number; nameAr: string; nameEn: string; price: number; quantity: number }[]>([]);
+  const [bQuery, setBQuery] = useState("");
+  const [bResults, setBResults] = useState<{ id: number; nameAr: string; nameEn: string; basePrice: number }[]>([]);
+  const bSeq = useRef(0);
+  const TYPE_ICON: Record<string, string> = { Physical: "📦", Service: "🛠️", Food: "🍽️", Digital: "💾", Card: "🎟️", Bundle: "🎁" };
+
+  useEffect(() => {
+    if (!product) return;
+    setPType(product.productType || "Physical");
+    setBundleItems(product.bundleItems ?? []);
+  }, [product]);
+
+  useEffect(() => {
+    if (pType !== "Bundle") return;
+    const q = bQuery.trim();
+    if (q.length < 1) { setBResults([]); return; }
+    const seq = ++bSeq.current;
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await api.get("/products", { params: { page: 1, pageSize: 8, search: q } });
+        if (seq !== bSeq.current) return;
+        const items = (res.data.data.items ?? []) as { id: number; nameAr: string; nameEn: string; basePrice: number }[];
+        setBResults(items.filter((p) => !bundleItems.some((b) => b.productId === p.id)));
+      } catch {
+        setBResults([]);
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [bQuery, pType, bundleItems]);
+
+  const addBundleItem = (p: { id: number; nameAr: string; nameEn: string; basePrice: number }) => {
+    setDirty(true);
+    setBundleItems((prev) => [...prev, { productId: p.id, nameAr: p.nameAr, nameEn: p.nameEn, price: p.basePrice, quantity: 1 }]);
+    setBQuery("");
+    setBResults([]);
+  };
+  const setBundleQty = (id: number, q: string) => {
+    setDirty(true);
+    setBundleItems((prev) => prev.map((b) => (b.productId === id ? { ...b, quantity: Math.max(1, parseInt(q) || 1) } : b)));
+  };
+  const removeBundleItem = (id: number) => {
+    setDirty(true);
+    setBundleItems((prev) => prev.filter((b) => b.productId !== id));
+  };
 
   const [busy, setBusy] = useState(false);
   const [toggling, setToggling] = useState(false);
@@ -342,6 +402,10 @@ export default function EditProductPage() {
           weight: p.weight != null ? String(p.weight) : "",
           warrantyMonths: p.warrantyMonths != null ? String(p.warrantyMonths) : "",
           slug: p.slug ?? "",
+          prepTime: p.prepTimeMinutes != null ? String(p.prepTimeMinutes) : "",
+          ingredients: p.ingredientsText ?? "",
+          digitalUrl: p.digitalFileUrl ?? "",
+          cardCodesText: (p.cardCodes ?? []).join("\n"),
           seoTitle: p.seoTitle ?? "",
           seoDescription: p.seoDescription ?? "",
         });
@@ -596,6 +660,12 @@ export default function EditProductPage() {
       payload.discountStartsAt = null;
       payload.discountEndsAt = null;
     }
+    payload.productType = pType;
+    payload.prepTimeMinutes = pType === "Food" && f.prepTime.trim() ? parseInt(f.prepTime) : null;
+    payload.ingredientsText = pType === "Food" && f.ingredients.trim() ? f.ingredients.trim() : null;
+    payload.digitalFileUrl = pType === "Digital" && f.digitalUrl.trim() ? f.digitalUrl.trim() : null;
+    payload.cardCodes = pType === "Card" ? f.cardCodesText.split("\n").map((x) => x.trim()).filter(Boolean) : null;
+    payload.bundleItems = pType === "Bundle" ? bundleItems.map((b) => ({ productId: b.productId, quantity: b.quantity })) : null;
     payload.warrantyMonths = warranty && f.warrantyMonths ? parseInt(f.warrantyMonths) : null;
     return payload;
   };
@@ -791,6 +861,75 @@ export default function EditProductPage() {
 
           <section className="card p-5 space-y-3">
             <h2 className="text-[15px] font-bold text-[var(--blue-deep)]">{s.basics}</h2>
+            <div className="mb-3">
+              <label className={label}>{s.typeLabel}</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(["Physical", "Service", "Food", "Digital", "Card", "Bundle"] as const).map((tp) => (
+                  <button key={tp} type="button" onClick={() => { setDirty(true); setPType(tp); }}
+                    className={`rounded-xl border px-3 py-2 text-start transition ${pType === tp ? "border-[var(--blue)] bg-[var(--blue-50)]" : "border-[var(--border)] hover:border-[var(--blue)]"}`}>
+                    <span className="block text-[15px]">{TYPE_ICON[tp]}</span>
+                    <span className="block text-[12px] font-bold text-[var(--ink)] mt-0.5">{s.typeName[tp]}</span>
+                    <span className="block text-[11px] text-[var(--sub)]">{s.typeHint[tp]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {pType === "Food" && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                <div>
+                  <label className={label}>{s.prepTime}</label>
+                  <div className="field-shell"><input type="number" min={0} value={f.prepTime} onChange={set("prepTime")} /></div>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={label}>{s.ingredients}</label>
+                  <div className="field-shell"><input type="text" value={f.ingredients} onChange={set("ingredients")} /></div>
+                </div>
+              </div>
+            )}
+            {pType === "Digital" && (
+              <div className="mb-3">
+                <label className={label}>{s.digitalUrl}</label>
+                <div className="field-shell"><input type="text" dir="ltr" value={f.digitalUrl} onChange={set("digitalUrl")} placeholder="https://..." /></div>
+                <p className="text-[11.5px] text-[var(--sub)] mt-1">{s.digitalHint}</p>
+              </div>
+            )}
+            {pType === "Card" && (
+              <div className="mb-3">
+                <label className={label}>{s.cardCodes}</label>
+                <div className="field-shell"><textarea rows={4} value={f.cardCodesText} onChange={set("cardCodesText")} className="w-full bg-transparent outline-none text-[13px] resize-y" placeholder={s.cardCodesPh} /></div>
+                <p className="text-[11.5px] text-[var(--sub)] mt-1">{s.cardCodesHint}</p>
+              </div>
+            )}
+            {pType === "Bundle" && (
+              <div className="mb-3">
+                <label className={label}>{s.bundleLabel}</label>
+                <div className="field-shell"><input type="text" value={bQuery} onChange={(e) => setBQuery(e.target.value)} placeholder={s.bundleSearchPh} /></div>
+                {bResults.length > 0 && (
+                  <div className="border border-[var(--border)] rounded-xl divide-y divide-[var(--border)] max-h-44 overflow-y-auto mt-2">
+                    {bResults.map((p) => (
+                      <button key={p.id} type="button" onClick={() => addBundleItem(p)} className="w-full text-start px-3 py-2 text-[13px] hover:bg-[var(--blue-50)] flex justify-between">
+                        <span>{p.nameAr}</span>
+                        <span className="text-[var(--sub)]">{fmt(p.basePrice)} {t("common.sar")}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {bundleItems.length === 0 ? (
+                  <p className="text-[11.5px] text-[var(--sub)] mt-2">{s.bundleEmpty}</p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    {bundleItems.map((b) => (
+                      <div key={b.productId} className="flex items-center gap-2">
+                        <span className="text-[13px] flex-1">{b.nameAr}</span>
+                        <input type="number" min={1} value={b.quantity} onChange={(e) => setBundleQty(b.productId, e.target.value)}
+                          className="w-16 px-2 py-1 border border-[var(--border)] rounded-lg text-[13px]" />
+                        <button type="button" onClick={() => removeBundleItem(b.productId)} className="text-[var(--danger)] text-[12.5px] px-1">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className={label}>{s.nameAr} *</label>

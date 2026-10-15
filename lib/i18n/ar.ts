@@ -4516,6 +4516,17 @@ const ar = {
   "storeBlog.processing": "جاري...",
   "storeBlog.saving": "جارٍ الحفظ...",
   "storeBlog.noPosts": "لا توجد مقالات بعد. أنشئ أول مقال الآن.",
+  "common.saved": "تم الحفظ بنجاح",
+  "storeSettings.bnplPublicKeyPlaceholder": "المفتاح العام (Publishable Key)",
+  "storeSettings.bnplSecretKeyPlaceholder": "المفتاح السري (Secret Key)",
+  "storeSettings.tabbyMerchantCode": "رمز التاجر (Merchant Code)",
+  "storeSettings.tabbyMerchantCodePlaceholder": "الرمز من لوحة تاجر تابي",
+  "storeSettings.tabbyWebhookUrl": "رابط الويب هوك (Webhook URL)",
+  "storeSettings.tabbyWebhookUrlPlaceholder": "رابط إشعارات متجرك لدى تابي",
+  "storeSettings.tamaraNotificationToken": "توكن الإشعارات (Notification Token)",
+  "storeSettings.tamaraNotificationTokenPlaceholder": "التوكن من لوحة تاجر تمارا",
+  "storeSettings.testModeActive": "وضع الاختبار مفعّل — الدفع هيتجرّب في بيئة التجربة (Sandbox)",
+  "storeSettings.useSandbox": "استخدام بيئة الاختبار (Sandbox)",
 };
 
 export default ar;

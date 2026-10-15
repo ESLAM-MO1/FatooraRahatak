@@ -88,6 +88,7 @@ const PAYMENT_LOGOS: Record<string, string> = {
   PayPal: "/payment/paypal.png",
   Tabby: "/payment/tabby.png",
   Tamara: "/payment/tamara.png",
+  Moyasar: "/payment/moyasar.svg",
 };
 
 function paymentIcon(type: string) {

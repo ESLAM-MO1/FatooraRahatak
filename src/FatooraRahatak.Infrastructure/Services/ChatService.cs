@@ -245,7 +245,9 @@ public class ChatService : IChatService
             temperature = 0.3,
         });
 
-        using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+        var baseUrl = _config["OpenAI:BaseUrl"];
+        if (string.IsNullOrWhiteSpace(baseUrl)) baseUrl = "https://api.openai.com/v1";
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl.TrimEnd('/')}/chat/completions")
         {
             Content = new StringContent(payload, Encoding.UTF8, "application/json"),
         };

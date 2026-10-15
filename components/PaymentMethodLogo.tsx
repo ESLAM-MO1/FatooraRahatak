@@ -80,6 +80,14 @@ export default function PaymentMethodLogo({ method, size = 44 }: PaymentMethodLo
         </div>
       );
 
+    case "Moyasar":
+      return (
+        <div className="w-14 h-6 rounded-md bg-white border border-gray-200 flex items-center justify-center overflow-hidden px-1 py-0.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/payment/moyasar.svg" alt="ميسر" className="max-w-full max-h-full object-contain" />
+        </div>
+      );
+
     default:
       return null;
   }

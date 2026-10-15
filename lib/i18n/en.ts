@@ -4478,6 +4478,17 @@ const en: Record<string, string> = {
   "storeBlog.processing": "Working...",
   "storeBlog.saving": "Saving...",
   "storeBlog.noPosts": "No posts yet. Create your first post now.",
+  "common.saved": "Saved successfully",
+  "storeSettings.bnplPublicKeyPlaceholder": "Publishable key",
+  "storeSettings.bnplSecretKeyPlaceholder": "Secret key",
+  "storeSettings.tabbyMerchantCode": "Merchant code",
+  "storeSettings.tabbyMerchantCodePlaceholder": "Code from your Tabby merchant dashboard",
+  "storeSettings.tabbyWebhookUrl": "Webhook URL",
+  "storeSettings.tabbyWebhookUrlPlaceholder": "Your Tabby webhook endpoint",
+  "storeSettings.tamaraNotificationToken": "Notification token",
+  "storeSettings.tamaraNotificationTokenPlaceholder": "Token from your Tamara merchant dashboard",
+  "storeSettings.testModeActive": "Test mode is on — payments will run in the sandbox",
+  "storeSettings.useSandbox": "Use sandbox mode",
 };
 
 export default en;

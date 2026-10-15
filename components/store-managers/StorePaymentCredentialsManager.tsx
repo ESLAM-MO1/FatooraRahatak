@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
 import ToggleSwitch from "@/components/ToggleSwitch";
 import SuccessToast from "@/components/SuccessToast";
+import PaymentMethodLogo from "@/components/PaymentMethodLogo";
 import "@/lib/i18n/config";
 
 type Provider = "Moyasar" | "PayPal" | "Tabby" | "Tamara";
@@ -247,7 +248,10 @@ export default function StorePaymentCredentialsManager({ storeId: _storeId }: { 
           <div key={p} className="card">
             <div className="card__body">
               <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginBottom: 16 }}>
-                <h3 style={{ margin: 0 }}>{t(`storeSettings.payment${p}`)}</h3>
+                <div className="flex items-center gap-2.5">
+                  <PaymentMethodLogo method={p} />
+                  <h3 style={{ margin: 0 }}>{t(`storeSettings.payment${p}`)}</h3>
+                </div>
                 <div className="flex items-center gap-2">
                   <span className={badgeClass}>{badgeText}</span>
                   <ToggleSwitch

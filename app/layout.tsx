@@ -1,3 +1,4 @@
+import { GtmHead, GtmBody, PlatformGoogleTags } from "./GtmPlatform";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -39,15 +40,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title, description };
 }
 
-const GOOGLE_TAG_INIT = `
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-27SY8BQQC7');
-gtag('config', 'G-QFWCXMF97W');
-gtag('event', 'conversion', {'send_to': 'AW-11127647850/8JLjCKqY75MYEOrcibop'});
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -60,16 +52,16 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
+      <head><GtmHead /><PlatformGoogleTags />
+
         <meta charSet="utf-8" />
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" href="/favicon.png" sizes="64x64" />
         <link rel="apple-touch-icon" type="image/png" href="/favicon.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-27SY8BQQC7"></script>
-        <script dangerouslySetInnerHTML={{ __html: GOOGLE_TAG_INIT }} />
       </head>
       <body className="min-h-full flex flex-col">
+<GtmBody />
         <GlobalFormValidation />
         <I18nProviderWrapper>
           <ConfirmProvider>{children}</ConfirmProvider>

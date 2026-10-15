@@ -1577,7 +1577,7 @@ export default function StoreSettingsPage() {
             <SettingCard icon="card" title={t("storeSettings.paymentOptions")} accent="green">
               <SuccessToast message={paymentSuccess} fixed className="mb-4" />
               <div className="space-y-1">
-                {store?.paymentMethods.filter((method) => method.type !== "Tabby" && method.type !== "Tamara").map((method) => (
+                {store?.paymentMethods.map((method) => (
                   <ToggleRow
                     key={method.type}
                     label={paymentLabels[method.type] ? t(paymentLabels[method.type]) : method.type}

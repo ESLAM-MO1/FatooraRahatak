@@ -198,6 +198,11 @@ export default function NewProductPage() {
   });
   const [warranty, setWarranty] = useState(false);
   const [pType, setPType] = useState("Physical");
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("type");
+    if (q && ["Physical", "Service", "Food", "Digital", "Card", "Bundle"].includes(q)) setPType(q);
+  }, []);
   const [bundleItems, setBundleItems] = useState<{ productId: number; nameAr: string; basePrice: number; quantity: number }[]>([]);
   const [bQuery, setBQuery] = useState("");
   const [bResults, setBResults] = useState<{ id: number; nameAr: string; nameEn: string; basePrice: number }[]>([]);

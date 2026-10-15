@@ -17,6 +17,7 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
     private static readonly PaymentProviderType[] SupportedProviders =
     {
         PaymentProviderType.Moyasar,
+        PaymentProviderType.PayPal,
         PaymentProviderType.Tabby,
         PaymentProviderType.Tamara
     };
@@ -134,6 +135,8 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
         var hasSecret = !string.IsNullOrWhiteSpace(row.SecretKeyEncrypted);
         return row.Provider switch
         {
+            PaymentProviderType.PayPal => hasSecret
+                && !string.IsNullOrWhiteSpace(row.PublicKey),
             PaymentProviderType.Moyasar => hasSecret,
             PaymentProviderType.Tabby => hasSecret
                 && !string.IsNullOrWhiteSpace(row.PublicKey)
@@ -188,6 +191,30 @@ public class StorePaymentCredentialService : IStorePaymentCredentialService
                     if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
                         return new TestConnectionResultDto { Success = false, Message = "مفتاح Moyasar غير صالح — تأكد من أن المفتاح السري (sk_...) صحيح" };
                     return new TestConnectionResultDto { Success = false, Message = $"مويسر رفض الاتصال (كود {(int)resp.StatusCode})" };
+                }
+                case PaymentProviderType.PayPal:
+                {
+                    var clientId = (dto.PublicKey ?? string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(clientId))
+                        return new TestConnectionResultDto { Success = false, Message = "أدخل PayPal Client ID أولًا لاختبار الاتصال" };
+                    var baseUrl = dto.IsTestMode
+                        ? "https://api-m.sandbox.paypal.com"
+                        : "https://api-m.paypal.com";
+                    using var req = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v1/oauth2/token")
+                    {
+                        Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                        {
+                            ["grant_type"] = "client_credentials"
+                        })
+                    };
+                    req.Headers.Authorization = new AuthenticationHeaderValue(
+                        "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{secret}")));
+                    using var resp = await Http.SendAsync(req);
+                    if (resp.IsSuccessStatusCode)
+                        return new TestConnectionResultDto { Success = true, Message = "تم الاتصال بباي بال بنجاح ✓" };
+                    if (resp.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+                        return new TestConnectionResultDto { Success = false, Message = "بيانات PayPal غير صالحة — تأكد من Client ID و Secret" };
+                    return new TestConnectionResultDto { Success = false, Message = $"باي بال رفض الاتصال (كود {(int)resp.StatusCode})" };
                 }
                 case PaymentProviderType.Tabby:
                 {

@@ -124,6 +124,19 @@ public class PaymentController : ControllerBase
         if (string.IsNullOrWhiteSpace(rawBody))
             return BadRequest(new { success = false, message = "Empty webhook body" });
 
+        PayPalWebhookData parsed;
+        try
+        {
+            parsed = _payPalProvider.ParseWebhookJson(rawBody);
+        }
+        catch
+        {
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+        }
+
+        if (string.IsNullOrWhiteSpace(parsed.EventType))
+            return BadRequest(new { success = false, message = "Invalid webhook payload" });
+
         var transmissionId = Request.Headers["PAYPAL-TRANSMISSION-ID"].FirstOrDefault();
         var transmissionTime = Request.Headers["PAYPAL-TRANSMISSION-TIME"].FirstOrDefault();
         var signature = Request.Headers["PAYPAL-TRANSMISSION-SIG"].FirstOrDefault();
@@ -138,21 +151,9 @@ public class PaymentController : ControllerBase
             certUrl ?? string.Empty,
             authAlgo ?? string.Empty);
 
-        if (!verified)
+        if (!verified
+            && !await _paymentService.ConfirmMerchantPayPalWebhookAsync(parsed.EventType, parsed.OrderId, parsed.CaptureId))
             return Unauthorized(new { success = false, message = "توقيع الويب هوك غير صالح" });
-
-        PayPalWebhookData parsed;
-        try
-        {
-            parsed = _payPalProvider.ParseWebhookJson(rawBody);
-        }
-        catch
-        {
-            return BadRequest(new { success = false, message = "Invalid webhook payload" });
-        }
-
-        if (string.IsNullOrWhiteSpace(parsed.EventType))
-            return BadRequest(new { success = false, message = "Invalid webhook payload" });
 
         await _paymentService.HandlePayPalWebhookAsync(new PayPalWebhookPayload
         {

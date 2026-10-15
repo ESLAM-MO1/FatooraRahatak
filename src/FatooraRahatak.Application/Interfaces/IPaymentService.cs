@@ -19,5 +19,6 @@ public interface IPaymentService
     Task<PaymentStatusResult> ConfirmBankTransferAsync(long storeId, long orderId);
     Task<PaymentStatusResult> ConfirmPosBankTransferAsync(long storeId, string paymentReference);
     Task<PaymentStatusResult> HandlePayPalWebhookAsync(PayPalWebhookPayload payload);
+    Task<bool> ConfirmMerchantPayPalWebhookAsync(string eventType, string? orderId, string? captureId);
     Task<PaymentStatusResult> HandleBnplWebhookAsync(long storeId, PaymentProviderType provider, string providerPaymentId);
 }

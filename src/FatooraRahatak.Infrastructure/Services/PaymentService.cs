@@ -97,6 +97,45 @@ public class PaymentService : IPaymentService
         return value;
     }
 
+    private async Task<(string? ClientId, string? Secret, string? BaseUrl)> GetPayPalCredsAsync(long? storeId)
+    {
+        if (storeId == null)
+            return (null, null, null);
+
+        var secrets = await _credentialService.GetSecretsAsync(storeId.Value, PaymentProviderType.PayPal);
+        if (secrets == null
+            || string.IsNullOrWhiteSpace(secrets.PublicKey)
+            || string.IsNullOrWhiteSpace(secrets.SecretKey))
+            return (null, null, null);
+
+        return (
+            secrets.PublicKey,
+            secrets.SecretKey,
+            secrets.IsTestMode ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com");
+    }
+
+    public async Task<bool> ConfirmMerchantPayPalWebhookAsync(string eventType, string? orderId, string? captureId)
+    {
+        if (!eventType.StartsWith("PAYMENT.CAPTURE.", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(orderId))
+            return false;
+
+        var payment = await _context.Payments
+            .FirstOrDefaultAsync(p => p.ProviderPaymentId == orderId);
+        if (payment == null && !string.IsNullOrWhiteSpace(captureId))
+            payment = await _context.Payments
+                .FirstOrDefaultAsync(p => p.ProviderCaptureId == captureId);
+        if (payment == null || payment.ProviderType != PaymentProviderType.PayPal)
+            return false;
+
+        var creds = await GetPayPalCredsAsync(await ResolveStoreIdAsync(payment));
+        if (string.IsNullOrWhiteSpace(creds.ClientId) || string.IsNullOrWhiteSpace(creds.Secret))
+            return false;
+
+        var status = await _payPalProvider.GetOrderStatusAsync(orderId, creds.ClientId, creds.Secret, creds.BaseUrl);
+        return status.Success;
+    }
+
     private async Task<long?> ResolveStoreIdAsync(Payment payment)
     {
         if (payment.Order != null) return payment.Order.StoreId;
@@ -152,7 +191,8 @@ public class PaymentService : IPaymentService
         {
             case PaymentProviderType.PayPal:
             {
-                var r = await _payPalProvider.GetOrderStatusAsync(providerId);
+                var ppStatusCreds = await GetPayPalCredsAsync(await ResolveStoreIdAsync(payment));
+                var r = await _payPalProvider.GetOrderStatusAsync(providerId, ppStatusCreds.ClientId, ppStatusCreds.Secret, ppStatusCreds.BaseUrl);
                 return new ProviderStatus
                 {
                     Success = r.Success,
@@ -350,12 +390,33 @@ public class PaymentService : IPaymentService
 
         if (providerType == PaymentProviderType.PayPal)
         {
+            long? ppStoreId = dto.SubscriptionId.HasValue ? null : bnplStoreId;
+            if (ppStoreId == null && !dto.SubscriptionId.HasValue && dto.InvoiceId.HasValue)
+            {
+                ppStoreId = await _context.Invoices
+                    .Where(i => i.Id == dto.InvoiceId.Value)
+                    .Select(i => (long?)i.StoreId)
+                    .FirstOrDefaultAsync();
+            }
+            var ppCreds = await GetPayPalCredsAsync(ppStoreId);
+            if (ppStoreId != null && (string.IsNullOrWhiteSpace(ppCreds.ClientId) || string.IsNullOrWhiteSpace(ppCreds.Secret)))
+            {
+                return new CreatePaymentResult
+                {
+                    Success = false,
+                    Message = "الدفع الإلكتروني غير مفعّل حاليًا — إذا كنت صاحب المتجر، أضف مفاتيح بوابة الدفع من إعدادات المتجر ثم أعد المحاولة"
+                };
+            }
+
             payPalResult = await _payPalProvider.CreateOrderAsync(
                 dto.Amount,
                 dto.Currency,
                 description,
                 dto.SuccessUrl,
-                dto.CallbackUrl);
+                dto.CallbackUrl,
+                ppCreds.ClientId,
+                ppCreds.Secret,
+                ppCreds.BaseUrl);
 
             if (!payPalResult.Success)
             {
@@ -793,7 +854,8 @@ public class PaymentService : IPaymentService
             && string.Equals(result.Status, "Pending", StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(result.ProviderCaptureId))
         {
-            var captured = await _payPalProvider.CaptureOrderAsync(payment.ProviderPaymentId!);
+            var ppCapCreds = await GetPayPalCredsAsync(await ResolveStoreIdAsync(payment));
+            var captured = await _payPalProvider.CaptureOrderAsync(payment.ProviderPaymentId!, ppCapCreds.ClientId, ppCapCreds.Secret, ppCapCreds.BaseUrl);
             if (captured.Success)
             {
                 payment.ProviderCaptureId = captured.ProviderCaptureId;
@@ -1230,10 +1292,11 @@ public class PaymentService : IPaymentService
         RefundOutcome refundResult;
         if (payment.ProviderType == PaymentProviderType.PayPal)
         {
+            var ppRefCreds = await GetPayPalCredsAsync(await ResolveStoreIdAsync(payment));
             var captureId = payment.ProviderCaptureId;
             if (string.IsNullOrWhiteSpace(captureId))
             {
-                var orderStatus = await _payPalProvider.GetOrderStatusAsync(payment.ProviderPaymentId);
+                var orderStatus = await _payPalProvider.GetOrderStatusAsync(payment.ProviderPaymentId, ppRefCreds.ClientId, ppRefCreds.Secret, ppRefCreds.BaseUrl);
                 captureId = orderStatus.ProviderCaptureId;
             }
             if (string.IsNullOrWhiteSpace(captureId))
@@ -1246,7 +1309,7 @@ public class PaymentService : IPaymentService
                     Message = "لا يمكن الاسترداد قبل اكتمال تحصيل الدفع عبر PayPal"
                 };
             }
-            var payPalRefund = await _payPalProvider.RefundCaptureAsync(captureId, payment.Amount, payment.Currency);
+            var payPalRefund = await _payPalProvider.RefundCaptureAsync(captureId, payment.Amount, payment.Currency, ppRefCreds.ClientId, ppRefCreds.Secret, ppRefCreds.BaseUrl);
             refundResult = new RefundOutcome
             {
                 Success = payPalRefund.Success,

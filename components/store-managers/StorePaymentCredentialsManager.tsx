@@ -7,7 +7,7 @@ import ToggleSwitch from "@/components/ToggleSwitch";
 import SuccessToast from "@/components/SuccessToast";
 import "@/lib/i18n/config";
 
-type Provider = "Moyasar" | "Tabby" | "Tamara";
+type Provider = "Moyasar" | "PayPal" | "Tabby" | "Tamara";
 
 interface Status {
   provider: string;
@@ -31,7 +31,7 @@ interface FormState {
   isTestMode: boolean;
 }
 
-const PROVIDERS: Provider[] = ["Moyasar", "Tabby", "Tamara"];
+const PROVIDERS: Provider[] = ["Moyasar", "PayPal", "Tabby", "Tamara"];
 
 const emptyForm: FormState = {
   publicKey: "",
@@ -46,11 +46,13 @@ export default function StorePaymentCredentialsManager({ storeId: _storeId }: { 
   const { t } = useTranslation();
   const [statuses, setStatuses] = useState<Record<Provider, Status | null>>({
     Moyasar: null,
+    PayPal: null,
     Tabby: null,
     Tamara: null,
   });
   const [forms, setForms] = useState<Record<Provider, FormState>>({
     Moyasar: { ...emptyForm },
+    PayPal: { ...emptyForm },
     Tabby: { ...emptyForm },
     Tamara: { ...emptyForm },
   });
@@ -59,6 +61,7 @@ export default function StorePaymentCredentialsManager({ storeId: _storeId }: { 
   const [testing, setTesting] = useState<Provider | null>(null);
   const [testResults, setTestResults] = useState<Record<Provider, { ok: boolean; msg: string } | null>>({
     Moyasar: null,
+    PayPal: null,
     Tabby: null,
     Tamara: null,
   });
@@ -74,9 +77,10 @@ export default function StorePaymentCredentialsManager({ storeId: _storeId }: { 
     try {
       const res = await api.get("/stores/payment-credentials");
       const list: Status[] = res.data.data || [];
-      const map: Record<Provider, Status | null> = { Moyasar: null, Tabby: null, Tamara: null };
+      const map: Record<Provider, Status | null> = { Moyasar: null, PayPal: null, Tabby: null, Tamara: null };
       const f: Record<Provider, FormState> = {
         Moyasar: { ...emptyForm },
+        PayPal: { ...emptyForm },
         Tabby: { ...emptyForm },
         Tamara: { ...emptyForm },
       };
@@ -260,6 +264,12 @@ export default function StorePaymentCredentialsManager({ storeId: _storeId }: { 
                     {renderInput(p, "secretKey", t("storeSettings.bnplSecretKey"), t("storeSettings.bnplSecretKeyPlaceholder"), "password")}
                   </>
                 )}
+                {p === "PayPal" && (
+                  <>
+                    {renderInput(p, "publicKey", t("storeSettings.paypalClientId"), t("storeSettings.paypalClientIdPlaceholder"))}
+                    {renderInput(p, "secretKey", t("storeSettings.paypalSecret"), t("storeSettings.paypalSecretPlaceholder"), "password")}
+                  </>
+                )}
                 {p === "Tabby" && (
                   <>
                     {renderInput(p, "publicKey", t("storeSettings.bnplPublicKey"), t("storeSettings.bnplPublicKeyPlaceholder"))}
@@ -276,7 +286,7 @@ export default function StorePaymentCredentialsManager({ storeId: _storeId }: { 
                 )}
               </div>
 
-              {(p === "Tabby" || p === "Tamara") && (
+              {(p === "PayPal" || p === "Tabby" || p === "Tamara") && (
                 <div style={{ marginTop: 12 }}>
                   <label className="toggle-row" style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                     <ToggleSwitch

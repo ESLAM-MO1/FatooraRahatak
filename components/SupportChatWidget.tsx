@@ -123,15 +123,33 @@ export default function SupportChatWidget() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={t("chat.title")}
-        className="fixed bottom-5 start-5 z-[75] w-14 h-14 rounded-full bg-[var(--blue)] text-white shadow-xl flex items-center justify-center text-[22px] hover:opacity-90 transition-opacity"
+        className="fixed bottom-5 left-5 z-[75] w-14 h-14 rounded-full text-white shadow-[0_10px_30px_rgba(0,82,204,0.45)] flex items-center justify-center transition-transform duration-200 hover:scale-105 active:scale-95"
+        style={{ background: "linear-gradient(135deg, #0052CC 0%, #00A3FF 100%)" }}
       >
-        {open ? "✕" : "💬"}
+        {open ? (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        ) : (
+          <svg width="25" height="25" viewBox="0 0 24 24" aria-hidden>
+            <path
+              fill="white"
+              d="M12 3C6.9 3 3 6.4 3 10.7c0 2.4 1.2 4.6 3.2 6l-.7 3.2c-.1.5.4.9.8.6l3.8-2.1c.6.1 1.3.2 1.9.2 5.1 0 9-3.4 9-7.9S17.1 3 12 3z"
+            />
+            <circle cx="8" cy="10.7" r="1.3" fill="#0052CC" />
+            <circle cx="12" cy="10.7" r="1.3" fill="#0052CC" />
+            <circle cx="16" cy="10.7" r="1.3" fill="#0052CC" />
+          </svg>
+        )}
+        {!open && (
+          <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white rounded-full" aria-hidden />
+        )}
       </button>
 
       {open && (
         <div
           dir={en ? "ltr" : "rtl"}
-          className="fixed bottom-24 start-5 z-[75] w-[min(360px,calc(100vw-40px))] h-[480px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+          className="fixed bottom-24 left-5 z-[75] w-[min(360px,calc(100vw-40px))] h-[480px] max-h-[70vh] bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
         >
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2 bg-[var(--blue)] text-white">
             <div className="min-w-0">

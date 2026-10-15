@@ -13,7 +13,6 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import Can from "@/components/Can";
 import Pagination from "@/components/Pagination";
 import ProductImport from "@/components/ProductImport";
-import ProductTypeMenu from "@/components/products/ProductTypeMenu";
 
 interface Category {
   id: number;
@@ -962,7 +961,10 @@ export default function ProductsPage() {
           <ProductImport basePath="/products" t={(k: string) => t(k)} onImported={() => fetchData(true)} />
         </Can>
         <Can code="Products.Add">
-          <ProductTypeMenu />
+          <Link href="/dashboard/products/new" className="btn btn-primary">
+            <Icon name="plus" />
+            {en ? "New product" : "منتج جديد"}
+          </Link>
         </Can>
       </PageHeader>
 

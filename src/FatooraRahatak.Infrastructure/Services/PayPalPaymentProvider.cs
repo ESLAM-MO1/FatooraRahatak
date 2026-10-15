@@ -15,8 +15,7 @@ public class PayPalPaymentProvider
     private readonly string _baseUrl;
     private readonly string _webhookId;
     private readonly HttpClient _httpClient;
-    private string? _cachedToken;
-    private DateTime _tokenExpiresAt = DateTime.MinValue;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Token, DateTime ExpiresAt)> _tokenCache = new();
 
     public PayPalPaymentProvider(IConfiguration configuration, HttpClient httpClient)
     {
@@ -58,17 +57,20 @@ public class PayPalPaymentProvider
         return DefaultPlatformDomain + (url.StartsWith("/") ? url : "/" + url);
     }
 
-    public async Task<PayPalPaymentResult> GetAccessTokenAsync()
+    public async Task<PayPalPaymentResult> GetAccessTokenAsync() => await GetAccessTokenCoreAsync(_clientId, _clientSecret, _baseUrl);
+
+    private async Task<PayPalPaymentResult> GetAccessTokenCoreAsync(string clientId, string clientSecret, string baseUrl)
     {
-        if (!IsConfigured)
+        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
             return new PayPalPaymentResult { Success = false, ErrorMessage = "إعدادات PayPal غير مكتملة" };
 
-        if (!string.IsNullOrWhiteSpace(_cachedToken) && DateTime.UtcNow < _tokenExpiresAt)
-            return new PayPalPaymentResult { Success = true, AccessToken = _cachedToken };
+        var cacheKey = $"{clientId}|{baseUrl}";
+        if (_tokenCache.TryGetValue(cacheKey, out var cached) && DateTime.UtcNow < cached.ExpiresAt)
+            return new PayPalPaymentResult { Success = true, AccessToken = cached.Token };
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/v1/oauth2/token")
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/v1/oauth2/token")
             {
                 Content = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
@@ -77,7 +79,7 @@ public class PayPalPaymentProvider
             };
             request.Headers.Authorization = new AuthenticationHeaderValue(
                 "Basic",
-                Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_clientId}:{_clientSecret}")));
+                Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}")));
 
             var response = await _httpClient.SendAsync(request);
             var json = await response.Content.ReadAsStringAsync();
@@ -93,8 +95,7 @@ public class PayPalPaymentProvider
             if (string.IsNullOrWhiteSpace(token))
                 return new PayPalPaymentResult { Success = false, ErrorMessage = "استجابة PayPal بلا توكن" };
 
-            _cachedToken = token;
-            _tokenExpiresAt = DateTime.UtcNow.AddSeconds(Math.Max(expiresIn - 60, 60));
+            _tokenCache[cacheKey] = (token, DateTime.UtcNow.AddSeconds(Math.Max(expiresIn - 60, 60)));
             return new PayPalPaymentResult { Success = true, AccessToken = token };
         }
         catch (Exception ex)
@@ -104,9 +105,13 @@ public class PayPalPaymentProvider
     }
 
     // إنشاء أمر دفع PayPal (Order) برمز approve — العميل يكمل الدفع على صفحة PayPal
-    public async Task<PayPalPaymentResult> CreateOrderAsync(decimal amount, string currency, string description, string? returnUrl = null, string? cancelUrl = null)
+    public async Task<PayPalPaymentResult> CreateOrderAsync(decimal amount, string currency, string description, string? returnUrl = null, string? cancelUrl = null,
+        string? clientId = null, string? clientSecret = null, string? baseUrl = null)
     {
-        var tokenResult = await GetAccessTokenAsync();
+        var effClientId = string.IsNullOrWhiteSpace(clientId) ? _clientId : clientId;
+        var effSecret = string.IsNullOrWhiteSpace(clientSecret) ? _clientSecret : clientSecret;
+        var effBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? _baseUrl : baseUrl;
+        var tokenResult = await GetAccessTokenCoreAsync(effClientId, effSecret, effBaseUrl);
         if (!tokenResult.Success)
             return tokenResult;
 
@@ -141,7 +146,7 @@ public class PayPalPaymentProvider
                 }
             };
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/v2/checkout/orders");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{effBaseUrl}/v2/checkout/orders");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResult.AccessToken);
             request.Content = JsonContent.Create(payload);
 
@@ -183,15 +188,18 @@ public class PayPalPaymentProvider
     }
 
     // جلب حالة أمر PayPal (قبل أو بعد الإكمال)
-    public async Task<PayPalPaymentResult> GetOrderStatusAsync(string orderId)
+    public async Task<PayPalPaymentResult> GetOrderStatusAsync(string orderId, string? clientId = null, string? clientSecret = null, string? baseUrl = null)
     {
-        var tokenResult = await GetAccessTokenAsync();
+        var effClientId = string.IsNullOrWhiteSpace(clientId) ? _clientId : clientId;
+        var effSecret = string.IsNullOrWhiteSpace(clientSecret) ? _clientSecret : clientSecret;
+        var effBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? _baseUrl : baseUrl;
+        var tokenResult = await GetAccessTokenCoreAsync(effClientId, effSecret, effBaseUrl);
         if (!tokenResult.Success)
             return tokenResult;
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, $"{_baseUrl}/v2/checkout/orders/{orderId}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{effBaseUrl}/v2/checkout/orders/{orderId}");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResult.AccessToken);
 
             var response = await _httpClient.SendAsync(request);
@@ -241,15 +249,18 @@ public class PayPalPaymentProvider
     }
 
     // تأكيد (Capture) أمر PayPal بعد موافقة العميل
-    public async Task<PayPalPaymentResult> CaptureOrderAsync(string orderId)
+    public async Task<PayPalPaymentResult> CaptureOrderAsync(string orderId, string? clientId = null, string? clientSecret = null, string? baseUrl = null)
     {
-        var tokenResult = await GetAccessTokenAsync();
+        var effClientId = string.IsNullOrWhiteSpace(clientId) ? _clientId : clientId;
+        var effSecret = string.IsNullOrWhiteSpace(clientSecret) ? _clientSecret : clientSecret;
+        var effBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? _baseUrl : baseUrl;
+        var tokenResult = await GetAccessTokenCoreAsync(effClientId, effSecret, effBaseUrl);
         if (!tokenResult.Success)
             return tokenResult;
 
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/v2/checkout/orders/{orderId}/capture");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{effBaseUrl}/v2/checkout/orders/{orderId}/capture");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResult.AccessToken);
             request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
 
@@ -300,9 +311,13 @@ public class PayPalPaymentProvider
     }
 
     // استرداد عبر PayPal (يتم على capture id — العملية الفعلية المُحصَّلة)
-    public async Task<PayPalPaymentResult> RefundCaptureAsync(string captureId, decimal? amount = null, string currency = "SAR")
+    public async Task<PayPalPaymentResult> RefundCaptureAsync(string captureId, decimal? amount = null, string currency = "SAR",
+        string? clientId = null, string? clientSecret = null, string? baseUrl = null)
     {
-        var tokenResult = await GetAccessTokenAsync();
+        var effClientId = string.IsNullOrWhiteSpace(clientId) ? _clientId : clientId;
+        var effSecret = string.IsNullOrWhiteSpace(clientSecret) ? _clientSecret : clientSecret;
+        var effBaseUrl = string.IsNullOrWhiteSpace(baseUrl) ? _baseUrl : baseUrl;
+        var tokenResult = await GetAccessTokenCoreAsync(effClientId, effSecret, effBaseUrl);
         if (!tokenResult.Success)
             return tokenResult;
 
@@ -319,7 +334,7 @@ public class PayPalPaymentProvider
                 };
             }
 
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/v2/payments/captures/{captureId}/refund");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{effBaseUrl}/v2/payments/captures/{captureId}/refund");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenResult.AccessToken);
             request.Content = JsonContent.Create(payload);
 

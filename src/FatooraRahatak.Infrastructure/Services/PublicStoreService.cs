@@ -35,9 +35,16 @@ public class PublicStoreService : IPublicStoreService
         var normalized = (domain ?? string.Empty).Trim().ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(normalized)) return null;
 
+        var candidates = new List<string> { normalized };
+        if (normalized.StartsWith("www."))
+        {
+            candidates.Add(normalized.Substring(4));
+        }
+
         return await _context.Stores
-            .Where(s => s.CustomDomain != null && s.CustomDomain.ToLower() == normalized
+            .Where(s => s.CustomDomain != null && candidates.Contains(s.CustomDomain.ToLower())
                      && s.CustomDomainStatus == FatooraRahatak.Domain.Enums.CustomDomainStatus.Active)
+            .OrderBy(s => s.Id)
             .Select(s => s.StoreSlug)
             .FirstOrDefaultAsync();
     }

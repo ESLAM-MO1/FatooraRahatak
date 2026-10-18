@@ -7,8 +7,9 @@ import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
 import PageHeader from "@/components/PageHeader";
+import { PRODUCT_IMPORT_KEY, type ImportedProductData } from "@/components/ProductUrlImport";
 
-type Img = { id: string; file: File; url: string };
+type Img = { id: string; file?: File; url: string };
 type Cat = { id: number; nameAr: string; nameEn?: string };
 type Kind = "Active" | "Draft";
 type OptKind = "color" | "size" | "other";
@@ -203,6 +204,32 @@ export default function NewProductPage() {
     const q = new URLSearchParams(window.location.search).get("type");
     if (q && ["Physical", "Service", "Food", "Digital", "Card", "Bundle"].includes(q)) setPType(q);
   }, []);
+
+  const importDataRef = useRef<ImportedProductData | null>(null);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(PRODUCT_IMPORT_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(PRODUCT_IMPORT_KEY);
+      const d = JSON.parse(raw) as ImportedProductData;
+      importDataRef.current = d;
+      const name = (d.name || "").trim();
+      const desc = (d.description || "").trim();
+      const hasAr = (v: string) => /[\u0600-\u06FF]/.test(v);
+      if (name) setF((p) => ({ ...p, nameAr: name, nameEn: hasAr(name) ? p.nameEn : name }));
+      if (desc) setF((p) => (hasAr(desc) ? { ...p, descriptionAr: desc } : { ...p, descriptionEn: desc }));
+      setF((p) => ({
+        ...p,
+        basePrice: d.basePrice != null ? String(d.basePrice) : p.basePrice,
+        discountPrice: d.discountPrice != null ? String(d.discountPrice) : p.discountPrice,
+        sku: d.sku ? d.sku : p.sku,
+      }));
+      const imported = (d.images || []).filter(Boolean).map((u, i) => ({ id: `imported-${Date.now()}-${i}`, url: u }));
+      if (imported.length) setImgs((prev) => [...imported, ...prev]);
+    } catch {
+      // payload تالف بيتجاهل
+    }
+  }, []);
   const [bundleItems, setBundleItems] = useState<{ productId: number; nameAr: string; basePrice: number; quantity: number }[]>([]);
   const [bQuery, setBQuery] = useState("");
   const [bResults, setBResults] = useState<{ id: number; nameAr: string; nameEn: string; basePrice: number }[]>([]);
@@ -260,7 +287,18 @@ export default function NewProductPage() {
     setF((p) => ({ ...p, [k]: e.target.value }));
 
   useEffect(() => {
-    api.get("/categories").then((r) => setCats(r.data.data || [])).catch(() => {});
+    api
+      .get("/categories")
+      .then((r) => {
+        const list: Cat[] = r.data.data || [];
+        setCats(list);
+        const sug = importDataRef.current?.category;
+        if (sug && list.length) {
+          const match = list.find((c) => c.nameAr === sug || (!!c.nameEn && c.nameEn === sug));
+          if (match) setF((p) => ({ ...p, categoryId: String(match.id) }));
+        }
+      })
+      .catch(() => {});
     return () => imgsRef.current.forEach((i) => URL.revokeObjectURL(i.url));
   }, []);
 
@@ -414,12 +452,18 @@ export default function NewProductPage() {
       const failed: Img[] = [];
       for (const im of imgs) {
         try {
-          const fd = new FormData();
-          fd.append("file", im.file);
-          const up = await api.post("/products/upload-image", fd, { headers: { "Content-Type": "multipart/form-data" } });
-          await api.post(`/products/${id}/images`, {
-            imageUrl: up.data.data.url, isPrimary: uploaded.current === 0, sortOrder: uploaded.current,
-          });
+          if (im.file) {
+            const fd = new FormData();
+            fd.append("file", im.file);
+            const up = await api.post("/products/upload-image", fd, { headers: { "Content-Type": "multipart/form-data" } });
+            await api.post(`/products/${id}/images`, {
+              imageUrl: up.data.data.url, isPrimary: uploaded.current === 0, sortOrder: uploaded.current,
+            });
+          } else {
+            await api.post(`/products/${id}/images`, {
+              imageUrl: im.url, isPrimary: uploaded.current === 0, sortOrder: uploaded.current,
+            });
+          }
           uploaded.current += 1;
         } catch { failed.push(im); }
       }

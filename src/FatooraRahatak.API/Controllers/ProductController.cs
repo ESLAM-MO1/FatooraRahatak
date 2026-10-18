@@ -5,6 +5,7 @@ using FatooraRahatak.Application.DTOs.Products;
 using FatooraRahatak.Application.Interfaces;
 using FatooraRahatak.Infrastructure.Data;
 using FatooraRahatak.API.Filters;
+using System.Collections.Concurrent;
 
 namespace FatooraRahatak.API.Controllers;
 
@@ -25,6 +26,57 @@ public class ProductController : ControllerBase
         _permCheck = permCheck;
         _importService = importService;
     }
+
+    private static readonly ConcurrentDictionary<long, (DateTime Start, int Count)> UrlImportHits = new();
+
+    [RequirePermission("Products.Add")]
+    [HttpPost("import-url")]
+    public async Task<IActionResult> ImportFromUrl([FromBody] ImportFromUrlRequest dto)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null)
+            return BadRequest(new { success = false, code = "NO_STORE" });
+
+        var userId = GetUserId();
+        var now = DateTime.UtcNow;
+        var hits = UrlImportHits.AddOrUpdate(
+            userId,
+            _ => (now, 1),
+            (_, v) => now - v.Start > TimeSpan.FromMinutes(1) ? (now, 1) : (v.Start, v.Count + 1));
+        if (hits.Count > 10)
+            return BadRequest(new { success = false, code = "RATE_LIMITED", message = "عدد كبير من طلبات الاستيراد — انتظر دقيقة ثم أعد المحاولة" });
+
+        if (string.IsNullOrWhiteSpace(dto?.Url))
+            return BadRequest(new { success = false, code = "URL_REQUIRED", message = "الرجاء إدخال رابط المنتج" });
+
+        try
+        {
+            var result = await _importService.PreviewUrlImportAsync(dto.Url, HttpContext.RequestAborted);
+            result.Images = result.Images.Select(u => Helpers.UrlHelpers.AbsoluteUrl(Request, u)).ToList();
+            return Ok(new { success = true, data = result });
+        }
+        catch (ProductImportException ex)
+        {
+            return BadRequest(new { success = false, code = ex.Code, message = UrlImportMessage(ex.Code) });
+        }
+        catch (OperationCanceledException)
+        {
+            return BadRequest(new { success = false, code = "TIMEOUT", message = "انتهت مهلة تحميل الصفحة" });
+        }
+        catch
+        {
+            return BadRequest(new { success = false, code = "FETCH_FAILED", message = "تعذر استيراد البيانات من هذا الرابط" });
+        }
+    }
+
+    private static string UrlImportMessage(string code) => code switch
+    {
+        "URL_INVALID" => "الرابط غير صالح — استخدم رابطًا يبدأ بـ http أو https",
+        "FETCH_FAILED" => "تعذر الوصول إلى الموقع — تأكد أن الرابط يعمل",
+        "TIMEOUT" => "استغرق الموقع وقتًا طويلًا — حاول مرة أخرى",
+        "NOT_A_PRODUCT_PAGE" => "الصفحة لا تحتوي على بيانات منتج واضحة",
+        _ => "تعذر استيراد البيانات من هذا الرابط",
+    };
 
     [RequirePermission("Products.Add")]
     [HttpGet("import/template")]

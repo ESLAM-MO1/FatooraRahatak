@@ -1,5 +1,9 @@
 using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
@@ -632,4 +636,451 @@ public class ProductImportService : IProductImportService
         wb.SaveAs(ms);
         return ms.ToArray();
     }
+
+    // ---------- URL import: scrape a product page ----------
+
+    private const int MaxHtmlChars = 2_500_000;
+    private const long MaxImageBytes = 3 * 1024 * 1024;
+    private const int MaxImportImages = 8;
+
+    private static readonly HttpClient UrlImportHttp = CreateUrlImportClient();
+
+    private static readonly Regex LdJsonRegex = new(
+        "<script[^>]*type\\s*=\\s*[\"']application/ld\\+json[\"'][^>]*>(.*?)</script>",
+        RegexOptions.Singleline | RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex PriceRegex = new(
+        "\\d{1,3}(?:[\\s,.]\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?",
+        RegexOptions.Compiled);
+
+    private static HttpClient CreateUrlImportClient()
+    {
+        var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = true,
+            AutomaticDecompression = DecompressionMethods.All,
+            ConnectCallback = async (context, ct) =>
+            {
+                var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, ct);
+                var allowed = addresses.Where(a => !IsBlockedAddress(a)).ToArray();
+                if (allowed.Length == 0)
+                    throw new HttpRequestException("Blocked host address");
+                var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+                try
+                {
+                    await socket.ConnectAsync(allowed, context.DnsEndPoint.Port, ct);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
+                {
+                    socket.Dispose();
+                    throw;
+                }
+            },
+        };
+        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
+    }
+
+    private static bool IsBlockedAddress(IPAddress ip)
+    {
+        if (IPAddress.IsLoopback(ip)) return true;
+        if (ip.IsIPv6LinkLocal || ip.IsIPv6SiteLocal || ip.IsIPv6UniqueLocal) return true;
+        if (ip.IsIPv4MappedToIPv6) ip = ip.MapToIPv4();
+        if (ip.AddressFamily != AddressFamily.InterNetwork) return false;
+        var b = ip.GetAddressBytes();
+        return b[0] == 10
+            || b[0] == 0
+            || (b[0] == 100 && b[1] >= 64 && b[1] <= 127)
+            || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)
+            || (b[0] == 192 && b[1] == 168)
+            || (b[0] == 169 && b[1] == 254);
+    }
+
+    public async Task<ProductUrlImportDto> PreviewUrlImportAsync(string url, CancellationToken ct = default)
+    {
+        if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || (!uri.IsDefaultPort && uri.Port != 80 && uri.Port != 443))
+        {
+            throw new ProductImportException("URL_INVALID");
+        }
+
+        string html;
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, uri);
+            req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (compatible; FatooraRahatak-ProductImport/1.0)");
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+            using var resp = await UrlImportHttp.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+            resp.EnsureSuccessStatusCode();
+            var mediaType = resp.Content.Headers.ContentType?.MediaType ?? "";
+            if (mediaType.Length > 0 && !mediaType.Contains("html", StringComparison.OrdinalIgnoreCase))
+                throw new ProductImportException("NOT_A_PRODUCT_PAGE");
+            await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var reader = new StreamReader(stream);
+            var buffer = new char[MaxHtmlChars];
+            var read = await reader.ReadBlockAsync(buffer.AsMemory(0, MaxHtmlChars), ct);
+            html = new string(buffer, 0, read);
+        }
+        catch (ProductImportException) { throw; }
+        catch (OperationCanceledException) { throw new ProductImportException("TIMEOUT"); }
+        catch { throw new ProductImportException("FETCH_FAILED"); }
+
+        var (dto, foundProduct) = ExtractUrlProductData(html, uri);
+        if (!foundProduct && dto.BasePrice == null && dto.DiscountPrice == null)
+            throw new ProductImportException("NOT_A_PRODUCT_PAGE");
+
+        dto.Images = await DownloadImagesAsync(dto.Images, ct);
+        dto.Name = string.IsNullOrWhiteSpace(dto.Name) ? null : WebUtility.HtmlDecode(dto.Name).Trim();
+        dto.Sku = string.IsNullOrWhiteSpace(dto.Sku) ? null : dto.Sku.Trim();
+        return dto;
+    }
+
+    private static (ProductUrlImportDto Dto, bool FoundProduct) ExtractUrlProductData(string html, Uri baseUri)
+    {
+        var dto = new ProductUrlImportDto { SourceDomain = baseUri.Host };
+        var images = new List<string>();
+        var prices = new List<decimal>();
+        decimal? highPrice = null;
+        string? currency = null;
+        var foundProduct = false;
+
+        foreach (var node in FindJsonLdProductNodes(html))
+        {
+            foundProduct = true;
+            dto.Name ??= FirstString(node, "name");
+            dto.Description ??= FirstString(node, "description");
+            dto.Sku ??= FirstString(node, "sku");
+            dto.Category ??= FirstString(node, "category");
+            CollectImageValues(node, "image", images);
+
+            if (node.TryGetProperty("offers", out var offersEl))
+            {
+                foreach (var offer in AsElements(offersEl))
+                {
+                    if (offer.ValueKind != JsonValueKind.Object) continue;
+                    var price = NumberValue(offer, "price") ?? NumberValue(offer, "lowPrice");
+                    var high = NumberValue(offer, "highPrice");
+                    if (price.HasValue) prices.Add(price.Value);
+                    if (high.HasValue) highPrice = high;
+                    currency ??= FirstString(offer, "priceCurrency");
+                }
+            }
+        }
+
+        var meta = ReadMetaTags(html);
+        string? Meta(string key) => meta.TryGetValue(key, out var v) ? v : null;
+
+        dto.Name ??= Meta("og:title") ?? Meta("twitter:title") ?? ReadTitleTag(html);
+        dto.Description ??= Meta("og:description") ?? Meta("description") ?? Meta("twitter:description");
+        currency ??= Meta("product:price:currency") ?? Meta("price:currency");
+        var metaPrice = ParsePrice(Meta("product:price:amount") ?? Meta("price:amount"));
+        if (metaPrice.HasValue) prices.Add(metaPrice.Value);
+        AddImageCandidate(Meta("og:image"), images);
+        AddImageCandidate(Meta("og:image:url"), images);
+        AddImageCandidate(Meta("twitter:image"), images);
+
+        if (prices.Count > 0)
+        {
+            var min = prices.Min();
+            var max = prices.Max();
+            if (highPrice.HasValue && highPrice.Value > min)
+            {
+                dto.BasePrice = highPrice.Value;
+                dto.DiscountPrice = min;
+            }
+            else
+            {
+                dto.BasePrice = max;
+                if (min < max) dto.DiscountPrice = min;
+            }
+        }
+
+        dto.Currency = currency;
+        dto.Description = CleanDescription(dto.Description);
+        dto.Images = ResolveImageUrls(images, baseUri).ToList();
+        return (dto, foundProduct);
+    }
+
+    private static IEnumerable<JsonElement> FindJsonLdProductNodes(string html)
+    {
+        foreach (Match m in LdJsonRegex.Matches(html))
+        {
+            JsonDocument doc;
+            try { doc = JsonDocument.Parse(WebUtility.HtmlDecode(m.Groups[1].Value)); }
+            catch { continue; }
+
+            using (doc)
+            {
+                foreach (var node in EnumerateJsonNodes(doc.RootElement))
+                {
+                    if (IsProductNode(node))
+                        yield return node.Clone();
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<JsonElement> EnumerateJsonNodes(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in root.EnumerateArray()) yield return item;
+            yield break;
+        }
+        if (root.ValueKind != JsonValueKind.Object) yield break;
+        if (root.TryGetProperty("@graph", out var graph) && graph.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in graph.EnumerateArray()) yield return item;
+            yield break;
+        }
+        yield return root;
+    }
+
+    private static bool IsProductNode(JsonElement node)
+    {
+        if (node.ValueKind != JsonValueKind.Object || !node.TryGetProperty("@type", out var t))
+            return false;
+        if (t.ValueKind == JsonValueKind.String)
+            return t.GetString()?.Contains("Product", StringComparison.OrdinalIgnoreCase) == true;
+        if (t.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var x in t.EnumerateArray())
+            {
+                if (x.ValueKind == JsonValueKind.String && x.GetString()?.Contains("Product", StringComparison.OrdinalIgnoreCase) == true)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private static IEnumerable<JsonElement> AsElements(JsonElement el)
+    {
+        if (el.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in el.EnumerateArray()) yield return item;
+        }
+        else
+        {
+            yield return el;
+        }
+    }
+
+    private static string? FirstString(JsonElement obj, string prop)
+    {
+        if (obj.ValueKind != JsonValueKind.Object || !obj.TryGetProperty(prop, out var v))
+            return null;
+        return ElementAsString(v);
+    }
+
+    private static string? ElementAsString(JsonElement v)
+    {
+        switch (v.ValueKind)
+        {
+            case JsonValueKind.String:
+                return v.GetString();
+            case JsonValueKind.Number:
+                return v.GetRawText();
+            case JsonValueKind.Array:
+                foreach (var item in v.EnumerateArray())
+                {
+                    var s = ElementAsString(item);
+                    if (!string.IsNullOrWhiteSpace(s)) return s;
+                }
+                return null;
+            case JsonValueKind.Object:
+                foreach (var p in new[] { "name", "url", "contentUrl" })
+                {
+                    if (v.TryGetProperty(p, out var inner) && inner.ValueKind == JsonValueKind.String)
+                        return inner.GetString();
+                }
+                return null;
+            default:
+                return null;
+        }
+    }
+
+    private static decimal? NumberValue(JsonElement obj, string prop)
+    {
+        if (obj.ValueKind != JsonValueKind.Object || !obj.TryGetProperty(prop, out var v))
+            return null;
+        if (v.ValueKind == JsonValueKind.Number && v.TryGetDecimal(out var d)) return d;
+        if (v.ValueKind == JsonValueKind.String) return ParsePrice(v.GetString());
+        return null;
+    }
+
+    private static void CollectImageValues(JsonElement v, string prop, List<string> into)
+    {
+        if (v.ValueKind != JsonValueKind.Object || !v.TryGetProperty(prop, out var img)) return;
+        CollectImageValues(img, into);
+    }
+
+    private static void CollectImageValues(JsonElement v, List<string> into)
+    {
+        switch (v.ValueKind)
+        {
+            case JsonValueKind.String:
+                AddImageCandidate(v.GetString(), into);
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in v.EnumerateArray()) CollectImageValues(item, into);
+                break;
+            case JsonValueKind.Object:
+                foreach (var p in new[] { "url", "contentUrl", "thumbnailUrl" })
+                {
+                    if (v.TryGetProperty(p, out var inner)) CollectImageValues(inner, into);
+                }
+                break;
+        }
+    }
+
+    private static void AddImageCandidate(string? raw, List<string> into)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || into.Count >= MaxImportImages * 3) return;
+        var s = raw.Trim();
+        if (s.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) return;
+        into.Add(s);
+    }
+
+    private static IEnumerable<string> ResolveImageUrls(IEnumerable<string> raws, Uri baseUri)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in raws)
+        {
+            if (!Uri.TryCreate(baseUri, raw, out var u)) continue;
+            if (u.Scheme != Uri.UriSchemeHttp && u.Scheme != Uri.UriSchemeHttps) continue;
+            if (!u.IsDefaultPort && u.Port != 80 && u.Port != 443) continue;
+            if (Path.GetExtension(u.AbsolutePath).Equals(".svg", StringComparison.OrdinalIgnoreCase)) continue;
+            if (seen.Add(u.AbsoluteUri)) yield return u.AbsoluteUri;
+        }
+    }
+
+    private static Dictionary<string, string> ReadMetaTags(string html)
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match m in Regex.Matches(html, "<meta\\b[^>]*>", RegexOptions.IgnoreCase))
+        {
+            var tag = m.Value;
+            var key = MetaAttr(tag, "property") ?? MetaAttr(tag, "name");
+            var content = MetaAttr(tag, "content");
+            if (key == null || content == null) continue;
+            map.TryAdd(key.Trim().ToLowerInvariant(), WebUtility.HtmlDecode(content).Trim());
+        }
+        return map;
+    }
+
+    private static string? MetaAttr(string tag, string attr)
+    {
+        var m = Regex.Match(tag, attr + "\\s*=\\s*[\"']([^\"']+)[\"']", RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups[1].Value.Trim() : null;
+    }
+
+    private static string? ReadTitleTag(string html)
+    {
+        var m = Regex.Match(html, "<title[^>]*>(.*?)</title>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        return m.Success ? WebUtility.HtmlDecode(m.Groups[1].Value).Trim() : null;
+    }
+
+    private static decimal? ParsePrice(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var sb = new StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (ch >= '\u0660' && ch <= '\u0669') sb.Append((char)('0' + (ch - '\u0660')));
+            else if (ch >= '\u06F0' && ch <= '\u06F9') sb.Append((char)('0' + (ch - '\u06F0')));
+            else sb.Append(ch);
+        }
+
+        var m = PriceRegex.Match(sb.ToString());
+        if (!m.Success) return null;
+        var s = m.Value.Replace(" ", "");
+        var lastDot = s.LastIndexOf('.');
+        var lastComma = s.LastIndexOf(',');
+        if (lastDot >= 0 && lastComma >= 0)
+        {
+            var decSep = lastDot > lastComma ? '.' : ',';
+            var thouSep = decSep == '.' ? ',' : '.';
+            s = s.Replace(thouSep.ToString(), "").Replace(decSep, '.');
+        }
+        else if (lastComma >= 0)
+        {
+            s = (s.Length - lastComma - 1) == 3 ? s.Replace(",", "") : s.Replace(',', '.');
+        }
+        else if (lastDot >= 0 && (s.Length - lastDot - 1) == 3 && s.Length > 4)
+        {
+            s = s.Replace(".", "");
+        }
+
+        return decimal.TryParse(s, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) && d > 0 ? d : null;
+    }
+
+    private static string? CleanDescription(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html)) return null;
+        var s = Regex.Replace(html, "<(script|style)[^>]*>.*?</\\1>", " ", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, "<(?:br\\s*/?|/p|/div|/li|/h[1-6])[^>]*>", "\n", RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, "<li[^>]*>", "\n- ", RegexOptions.IgnoreCase);
+        s = Regex.Replace(s, "<[^>]+>", " ");
+        s = WebUtility.HtmlDecode(s);
+        s = Regex.Replace(s, "[ \\t\\u00A0]+", " ");
+        s = Regex.Replace(s, "\\s*\\n\\s*", "\n");
+        s = Regex.Replace(s, "\\n{3,}", "\n\n").Trim();
+        return s.Length == 0 ? null : (s.Length > 8000 ? s[..8000].TrimEnd() : s);
+    }
+
+    private async Task<List<string>> DownloadImagesAsync(List<string> urls, CancellationToken ct)
+    {
+        var saved = new List<string>();
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+        Directory.CreateDirectory(uploadsDir);
+
+        foreach (var raw in urls)
+        {
+            if (saved.Count >= MaxImportImages) break;
+            try
+            {
+                using var req = new HttpRequestMessage(HttpMethod.Get, raw);
+                req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (compatible; FatooraRahatak-ProductImport/1.0)");
+                using var resp = await UrlImportHttp.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+                if (!resp.IsSuccessStatusCode) continue;
+                var ext = ExtFromMime(resp.Content.Headers.ContentType?.MediaType ?? "");
+                if (ext == null) continue;
+                if (resp.Content.Headers.ContentLength > MaxImageBytes) continue;
+
+                await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+                using var ms = new MemoryStream();
+                var buffer = new byte[81920];
+                long total = 0;
+                var tooBig = false;
+                int read;
+                while ((read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), ct)) > 0)
+                {
+                    total += read;
+                    if (total > MaxImageBytes) { tooBig = true; break; }
+                    ms.Write(buffer, 0, read);
+                }
+                if (tooBig || ms.Length == 0) continue;
+
+                var fileName = $"{Guid.NewGuid():N}{ext}";
+                await File.WriteAllBytesAsync(Path.Combine(uploadsDir, fileName), ms.ToArray(), ct);
+                saved.Add($"/uploads/{fileName}");
+            }
+            catch
+            {
+                // صور معطلة بتتخطى والاستيراد يكمل
+            }
+        }
+
+        return saved;
+    }
+
+    private static string? ExtFromMime(string mime) => mime.ToLowerInvariant() switch
+    {
+        "image/jpeg" => ".jpg",
+        "image/png" => ".png",
+        "image/webp" => ".webp",
+        "image/gif" => ".gif",
+        _ => null,
+    };
 }

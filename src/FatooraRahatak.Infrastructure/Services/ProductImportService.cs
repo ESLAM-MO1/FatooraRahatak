@@ -709,8 +709,12 @@ public class ProductImportService : IProductImportService
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get, uri);
+            req.Version = HttpVersion.Version20;
+            req.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
             req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (compatible; FatooraRahatak-ProductImport/1.0)");
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
+            req.Headers.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
             using var resp = await UrlImportHttp.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
             resp.EnsureSuccessStatusCode();
             var mediaType = resp.Content.Headers.ContentType?.MediaType ?? "";
@@ -727,8 +731,17 @@ public class ProductImportService : IProductImportService
         catch { throw new ProductImportException("FETCH_FAILED"); }
 
         var (dto, foundProduct) = ExtractUrlProductData(html, uri);
+        if (uri.Host.Contains("amazon.", StringComparison.OrdinalIgnoreCase))
+            ApplyAmazonFallback(html, uri, dto);
         if (!foundProduct && dto.BasePrice == null && dto.DiscountPrice == null)
+        {
+            var title = ReadTitleTag(html);
+            _logger.LogWarning("URL import: no product data. host={Host} htmlChars={Len} botCheck={Bot} title={Title}",
+                uri.Host, html.Length, IsBotCheckPage(html), title == null ? "" : title.Length > 160 ? title[..160] : title);
+            if (IsBotCheckPage(html))
+                throw new ProductImportException("BOT_BLOCKED");
             throw new ProductImportException("NOT_A_PRODUCT_PAGE");
+        }
 
         dto.Images = await DownloadImagesAsync(dto.Images, ct);
         dto.Name = string.IsNullOrWhiteSpace(dto.Name) ? null : WebUtility.HtmlDecode(dto.Name).Trim();
@@ -1083,4 +1096,83 @@ public class ProductImportService : IProductImportService
         "image/gif" => ".gif",
         _ => null,
     };
+
+    // صفحات أمازون مفيهاش JSON-LD أو og:tags — البيانات جوه عناصر HTML مباشرة
+    private static void ApplyAmazonFallback(string html, Uri uri, ProductUrlImportDto dto)
+    {
+        dto.Name ??= TagInnerText(html, "productTitle");
+
+        if (dto.BasePrice == null)
+        {
+            var off = Regex.Match(html, "<span[^>]*class=\"[^\"]*a-offscreen[^\"]*\"[^>]*>([^<]+)</span>", RegexOptions.IgnoreCase);
+            if (off.Success)
+            {
+                var raw = WebUtility.HtmlDecode(off.Groups[1].Value);
+                dto.BasePrice = ParsePrice(raw);
+                dto.Currency ??= IsoCurrencyFromText(raw);
+            }
+        }
+
+        if (dto.Images.Count == 0)
+        {
+            var candidates = new List<string>();
+            foreach (Match m in Regex.Matches(html, "\"(?:hiRes|large)\":\"(https://m\\.media-amazon\\.com/[^\"]+)\"", RegexOptions.IgnoreCase))
+                candidates.Add(m.Groups[1].Value);
+            if (candidates.Count == 0)
+            {
+                var legacy = Regex.Match(html, "data-old-hires=\"(https://[^\"]+)\"", RegexOptions.IgnoreCase);
+                if (legacy.Success) candidates.Add(legacy.Groups[1].Value);
+            }
+            foreach (var u in ResolveImageUrls(candidates, uri))
+            {
+                if (!dto.Images.Contains(u, StringComparer.OrdinalIgnoreCase))
+                    dto.Images.Add(u);
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Description))
+        {
+            var bullets = Regex.Match(html, "id=\"feature-bullets\"(.*?)</ul>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            if (bullets.Success)
+            {
+                var items = new List<string>();
+                foreach (Match m in Regex.Matches(bullets.Groups[1].Value, "<span[^>]*class=\"[^\"]*a-list-item[^\"]*\"[^>]*>(.*?)</span>", RegexOptions.Singleline | RegexOptions.IgnoreCase))
+                {
+                    var txt = CleanDescription(m.Groups[1].Value);
+                    if (!string.IsNullOrWhiteSpace(txt)) items.Add(txt);
+                }
+                if (items.Count > 0) dto.Description = string.Join("\n", items);
+            }
+        }
+
+        dto.Sku ??= ExtractAsin(uri.AbsolutePath);
+    }
+
+    private static string? ExtractAsin(string path)
+    {
+        var m = Regex.Match(path, "/(?:dp|gp/product)/([A-Z0-9]{10})", RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
+    }
+
+    private static string? TagInnerText(string html, string id)
+    {
+        var m = Regex.Match(html, $"id=\"{Regex.Escape(id)}\"[^>]*>([^<]+)<", RegexOptions.IgnoreCase);
+        return m.Success ? WebUtility.HtmlDecode(m.Groups[1].Value).Trim() : null;
+    }
+
+    private static string? IsoCurrencyFromText(string text)
+    {
+        var m = Regex.Match(text, @"\b(USD|EGP|SAR|AED|EUR|GBP|KWD|QAR|BHD|OMR|JOD|TRY|MAD|DZD|TND)\b", RegexOptions.IgnoreCase);
+        return m.Success ? m.Groups[1].Value.ToUpperInvariant() : null;
+    }
+
+    private static bool IsBotCheckPage(string html) =>
+        html.Contains("make sure you're not a robot", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("enter the characters you see below", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("pardon our interruption", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("automated access to amazon data", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("validatecaptcha", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("التأكد من أنك لست", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("لست روبوتا", StringComparison.OrdinalIgnoreCase)
+        || html.Contains("الحروف التي تظهر", StringComparison.OrdinalIgnoreCase);
 }

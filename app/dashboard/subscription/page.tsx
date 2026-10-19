@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
@@ -12,6 +12,44 @@ import PackageCard from "@/components/PackageCard";
 import Can from "@/components/Can";
 import Icon from "@/components/Icon";
 import { formatMoney } from "@/lib/formatNumber";
+
+// ── Moyasar Payment Form (in-page) ── تُحمَّل من CDN مرة واحدة وتُحقن داخل المودال
+const MOYASAR_JS_URL = "https://cdn.jsdelivr.net/npm/moyasar-payment-form@2.3.0/dist/moyasar.umd.min.js";
+const MOYASAR_CSS_URL = "https://cdn.jsdelivr.net/npm/moyasar-payment-form@2.3.0/dist/moyasar.css";
+let moyasarSdkPromise: Promise<void> | null = null;
+
+const loadMoyasarSdk = (): Promise<void> => {
+  if ((window as any).Moyasar) return Promise.resolve();
+  if (moyasarSdkPromise) return moyasarSdkPromise;
+  moyasarSdkPromise = new Promise<void>((resolve, reject) => {
+    if (!document.querySelector(`link[href="${MOYASAR_CSS_URL}"]`)) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = MOYASAR_CSS_URL;
+      document.head.appendChild(link);
+    }
+    const existing = document.querySelector(`script[src="${MOYASAR_JS_URL}"]`) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => resolve());
+      existing.addEventListener("error", () => { moyasarSdkPromise = null; reject(new Error("moyasar script failed")); });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = MOYASAR_JS_URL;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => { moyasarSdkPromise = null; reject(new Error("moyasar script failed")); };
+    document.head.appendChild(script);
+  });
+  return moyasarSdkPromise;
+};
+
+interface PayFormSession {
+  ref: string;
+  invoiceId: string;
+  publishableKey: string;
+  amountHalalas: number;
+}
 
 interface SubscriptionStatus {
   currentPackage: string;
@@ -90,7 +128,7 @@ const getCycleTotalPrice = (monthlyPrice: number, cycle: BillingCycle) => {
 
 
 export default function SubscriptionPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const confirm = useConfirm();
   const [status, setStatus] = useState<SubscriptionStatus | null>(null);
   const [packages, setPackages] = useState<PackageInfo[]>([]);
@@ -107,6 +145,12 @@ export default function SubscriptionPage() {
   const [bankTransferEnabled, setBankTransferEnabled] = useState(false);
   const [transferRef, setTransferRef] = useState("");
   const [bankSubmitting, setBankSubmitting] = useState(false);
+  // جلسة فورم الدفع داخل الصفحة (Moyasar.init عبر invoice_id — بدون تحويل خارجي)
+  const [payForm, setPayForm] = useState<PayFormSession | null>(null);
+  const [formReady, setFormReady] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [payLoading, setPayLoading] = useState(false);
+  const paidHandledRef = useRef(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -224,10 +268,12 @@ export default function SubscriptionPage() {
     }
   };
 
-  // الدفع المحمي: تحويل العميل مباشرة إلى صفحة موياسر (لا تُدخل بيانات البطاقة هنا)
+  // الدفع المحمي: إنشاء فاتورة على ميستر ثم عرض فورم الدفع داخل نفس الصفحة
+  // (Moyasar.init + invoice_id) — بدون أي تحويل لصفحة خارجية
   const startHostedPayment = async (subscriptionId: number, amount: number) => {
     setActionError("");
     setActionSuccess("");
+    setPayLoading(true);
     try {
       const payRes = await api.post("/payments/create-link", {
         subscriptionId,
@@ -237,17 +283,40 @@ export default function SubscriptionPage() {
         callbackUrl: window.location.href,
       });
       if (payRes.data.success && payRes.data.data.paymentLinkUrl) {
-        const ref = payRes.data?.data?.paymentReference;
+        const d = payRes.data.data;
+        const ref = d?.paymentReference;
         if (ref) sessionStorage.setItem("sub_payment_ref", ref);
-        setActionSuccess(t("subscription.paymentInitiated"));
-        window.location.assign(payRes.data.data.paymentLinkUrl);
+        if (d?.providerPaymentId && d?.publishableKey) {
+          // فين-بيج: نعرض فورم ميستر داخل المودال نفسه (لا تحويل خارجي)
+          paidHandledRef.current = false;
+          setFormReady(false);
+          setPayForm({
+            ref: ref || "",
+            invoiceId: d.providerPaymentId,
+            publishableKey: d.publishableKey,
+            amountHalalas: typeof d.amountHalalas === "number" ? d.amountHalalas : Math.round(amount * 100),
+          });
+        } else {
+          // احتياط: لو المفتاح العام غير متاح نستخدم الرابط المُضاف (سلوك قديم)
+          setActionSuccess(t("subscription.paymentInitiated"));
+          window.location.assign(d.paymentLinkUrl);
+        }
       } else {
         setActionError(payRes.data?.message || t("subscription.paymentError"));
       }
     } catch (err) {
       const e = err as { response?: { data?: { message?: string } } };
       setActionError(e.response?.data?.message || t("subscription.paymentError"));
+    } finally {
+      setPayLoading(false);
     }
+  };
+
+  // إغلاق المودال مع تنظيف جلسة الفورم
+  const closePayModal = () => {
+    setShowPayModal(false);
+    setPayForm(null);
+    setFormReady(false);
   };
 
   // فتح مودال الدفع داخل صفحة الاشتراك: يجلب طرق الدفع المتاحة (إلكتروني + تحويل بنكي بحساب المنصة)
@@ -257,6 +326,8 @@ export default function SubscriptionPage() {
     setTransferRef("");
     setActionError("");
     setActionSuccess("");
+    setPayForm(null);
+    setFormReady(false);
     setShowPayModal(true);
     try {
       const res = await api.get("/subscriptions/payment-methods");
@@ -300,11 +371,79 @@ export default function SubscriptionPage() {
     }
   };
 
-  // الدفع الإلكتروني من داخل المودال (لا يغادر الصفحة نهائيًا — يفتح البوابة في نافذة جديدة)
+  // الدفع الإلكتروني من داخل المودال (لا يغادر الصفحة نهائيًا — الفورم يُحقن هنا)
   const payOnlineFromModal = async () => {
     if (!paySubscriptionId) return;
     await startHostedPayment(paySubscriptionId, payAmount);
   };
+
+  // تحميل فورم ميستر وتشغيله داخل المودال بمجرد إنشاء الفاتورة (payForm)
+  useEffect(() => {
+    if (!payForm) return;
+    let disposed = false;
+    (async () => {
+      try {
+        await loadMoyasarSdk();
+        if (disposed) return;
+        const el = document.querySelector(".mysr-form");
+        if (!el) return;
+        (window as any).Moyasar.init({
+          element: ".mysr-form",
+          invoice_id: payForm.invoiceId,
+          publishable_api_key: payForm.publishableKey,
+          amount: payForm.amountHalalas,
+          currency: "SAR",
+          description: t("subscription.paymentTitle"),
+          callback_url: window.location.href,
+          methods: ["creditcard"],
+          supported_networks: ["mada", "visa", "mastercard", "amex", "unionpay"],
+          language: (i18n.language || "ar").startsWith("ar") ? "ar" : "en",
+          on_completed: async (payment: any) => {
+            if (disposed) return;
+            // الدفع اكتمل بدون 3DS — نؤكد الطرف الخلفي مباشرة ثم نغلق
+            if (payment?.status === "paid") {
+              paidHandledRef.current = true;
+              const ref = payForm.ref || sessionStorage.getItem("sub_payment_ref");
+              sessionStorage.removeItem("sub_payment_ref");
+              setConfirming(true);
+              try {
+                if (ref) await api.get(`/payments/status/${ref}`);
+              } catch { /* webhook/status يتكفل بالتأكيد كاحتياط */ }
+              setConfirming(false);
+              setPayForm(null);
+              setShowPayModal(false);
+              setActionSuccess(t("subscription.paymentSuccess"));
+              fetchData();
+            }
+            // status === "initiated" يعني 3DS — سيعالجه on_redirect بالتحويل ثم العودة
+          },
+          // ملاحظة: إصدار moyasar-payment-form@2.3.0 يتطلب أن تكون كل العوائد
+          // (on_completed / on_failure / on_redirect) قائمة على الوعود (Promise)
+          // وإلا يرفض الفورم عرضه برسالة "Form configuration issue".
+          on_failure: async (error: any) => {
+            if (disposed) return;
+            setActionError(typeof error === "string" ? error : (error?.message || t("subscription.paymentError")));
+          },
+          on_redirect: async (url: string) => {
+            // 3DS: التحويل لصفحة البنك ثم العودة تلقائيًا إلى هذه الصفحة نفسها
+            // (callback_url) ثم تعمل آلية sub_payment_ref القائمة.
+            if (paidHandledRef.current) return;
+            window.location.assign(url);
+          },
+        });
+        setFormReady(true);
+      } catch {
+        if (!disposed) {
+          setActionError(t("subscription.paymentError"));
+          setPayForm(null);
+        }
+      }
+    })();
+    return () => {
+      disposed = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payForm]);
 
   // بعد الرجوع من صفحة موياسر المحمية، نتحقق من نتيجة الدفع
   useEffect(() => {
@@ -643,11 +782,11 @@ export default function SubscriptionPage() {
 
       {/* ── مودال إتمام الدفع داخل صفحة الاشتراك ── */}
       {showPayModal && (
-        <div className="modal-overlay" onClick={() => setShowPayModal(false)}>
+        <div className="modal-overlay" onClick={closePayModal}>
           <div className="modal-card max-w-md" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-[18px] font-bold text-[var(--blue-deep)]">{t("subscription.paymentTitle")}</h2>
-              <button onClick={() => setShowPayModal(false)} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
+              <button onClick={closePayModal} className="text-[var(--sub)] hover:text-[var(--ink)] transition-colors" aria-label={t("common.close")}>✕</button>
             </div>
 
             <div className="bg-[var(--blue-50)] rounded-xl px-4 py-3 mb-5 flex items-center justify-between">
@@ -657,19 +796,41 @@ export default function SubscriptionPage() {
 
             {actionError && <div className="alert alert--danger mb-4">{actionError}</div>}
 
+            {/* مرحلة فورم الدفع داخل الصفحة (Moyasar.init + invoice_id) */}
+            {payForm ? (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <button
+                    type="button"
+                    onClick={() => { setPayForm(null); setFormReady(false); setActionError(""); }}
+                    className="text-[13px] font-bold text-[var(--blue)] flex items-center gap-1"
+                  >
+                    <Icon name="arrowLeft" size={14} /> {t("common.back")}
+                  </button>
+                </div>
+                <div className="mysr-form" />
+                {!formReady && (
+                  <div className="text-center text-[13px] text-[var(--sub)] py-6">{t("common.loading")}</div>
+                )}
+                {confirming && (
+                  <div className="text-center text-[13px] text-[var(--sub)] pt-3">{t("common.loading")}</div>
+                )}
+              </div>
+            ) : (
             <div className="space-y-3">
               {/* خيار الدفع الإلكتروني */}
               <button
                 type="button"
                 onClick={payOnlineFromModal}
-                className="w-full flex items-center gap-3 border-2 border-[var(--blue)] rounded-xl p-4 text-start transition-colors hover:bg-[var(--blue-50)]/50"
+                disabled={payLoading}
+                className="w-full flex items-center gap-3 border-2 border-[var(--blue)] rounded-xl p-4 text-start transition-colors hover:bg-[var(--blue-50)]/50 disabled:opacity-60"
               >
                 <span className="w-10 h-10 rounded-full bg-[var(--blue-50)] flex items-center justify-center shrink-0">
                   <Icon name="card" size={18} className="text-[var(--blue)]" />
                 </span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-[14px] font-bold text-[var(--ink)]">{t("subscription.onlinePayment")}</span>
-                  <span className="block text-[12px] text-[var(--sub)] mt-0.5">{t("subscription.onlinePaymentDesc")}</span>
+                  <span className="block text-[12px] text-[var(--sub)] mt-0.5">{payLoading ? t("common.loading") : t("subscription.onlinePaymentDesc")}</span>
                 </span>
                 <Icon name="arrowLeft" size={16} className="text-[var(--sub)] shrink-0" />
               </button>
@@ -725,9 +886,10 @@ export default function SubscriptionPage() {
                 </div>
               )}
             </div>
+            )}
 
             <div className="mt-4 pt-4 border-t border-[var(--border)] text-center">
-              <button onClick={() => setShowPayModal(false)} className="text-[12.5px] text-[var(--sub)] hover:text-[var(--ink)] transition-colors">
+              <button onClick={closePayModal} className="text-[12.5px] text-[var(--sub)] hover:text-[var(--ink)] transition-colors">
                 {t("subscription.cancelPayment")}
               </button>
             </div>

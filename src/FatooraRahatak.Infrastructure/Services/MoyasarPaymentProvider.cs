@@ -15,6 +15,10 @@ public class MoyasarPaymentProvider
     private readonly HttpClient _httpClient;
     private readonly ILogger<MoyasarPaymentProvider> _logger;
 
+    // Publishable (public) key - exposed for the in-page payment form. Unlike the secret
+    // key, this is designed to be visible in the browser (used with Moyasar.init).
+    public string PublishableKey => _publicKey;
+    
     public MoyasarPaymentProvider(IConfiguration configuration, HttpClient httpClient, ILogger<MoyasarPaymentProvider> logger)
     {
         // ⚠️ الأولوية: Environment Variable → appsettings.json

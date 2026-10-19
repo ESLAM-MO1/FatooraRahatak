@@ -350,6 +350,7 @@ public class PaymentService : IPaymentService
         TabbyPaymentResult? tabbyResult = null;
         TamaraPaymentResult? tamaraResult = null;
         BankTransferInfoDto? bankTransferInfo = null;
+        string? moyasarPublishableKey = null; // only for the platform Moyasar account (payStoreId == null)
 
         var description = string.IsNullOrWhiteSpace(dto.Description)
             ? BuildPaymentDescription(dto)
@@ -611,6 +612,11 @@ public class PaymentService : IPaymentService
                     Message = moyasarResult.ErrorMessage ?? "فشل إنشاء رابط الدفع"
                 };
             }
+
+            // الاشتراكات تُدفع بحساب ميستر للمنصة (payStoreId == null) — نُعيد المفتاح العام
+            // ليُستخدم داخل صفحة الويب مباشرة عبر فورم الدفع (Moyasar.init) بدون تحويل خارجي.
+            if (payStoreId == null)
+                moyasarPublishableKey = _provider.PublishableKey;
         }
 
         var providerPaymentId = providerType == PaymentProviderType.PayPal ? payPalResult!.ProviderPaymentId
@@ -687,6 +693,8 @@ public class PaymentService : IPaymentService
             PaymentLinkUrl = paymentLinkUrl,
             ProviderPaymentId = payment.ProviderPaymentId,
             BankTransfer = bankTransferInfo,
+            PublishableKey = moyasarPublishableKey,
+            AmountHalalas = providerType == PaymentProviderType.Moyasar ? (int)(dto.Amount * 100) : (int?)null,
             Message = providerType == PaymentProviderType.BankTransfer
                 ? "تم إنشاء الطلب — يُرجى إتمام الحوالة البنكية وإرسال إيصال التحويل"
                 : "تم إنشاء رابط الدفع بنجاح"

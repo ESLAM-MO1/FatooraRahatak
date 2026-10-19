@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import api from "@/lib/api";
@@ -15,6 +15,64 @@ type Msg = {
 };
 const STORE_KEY = "supportChat.v1";
 const REQ_TIMEOUT = 90000;
+
+// روابط قابلة للنقر: روابط كاملة (http)، روابط تبدأ بـ www، مسارات داخلية شائعة،
+// ودومينات من غير بروتوكول زي rahtk.sa/contact — كمان يدعم النص الغامق **...**
+const LINK_RE =
+  /(https?:\/\/[^\s<>"'`]+|www\.[^\s<>"'`]+|\/(?:dashboard|products|orders|categories|settings|store|blogs?)(?:\/[\w\-?=&#%]*)*|(?<![@\w])(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>"'`]*)?)/;
+const TRAIL_RE = /[.,;:!?\u060C\u061F)'"\]}*`]+$/;
+
+function linkify(text: string, keyBase: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  const bold = /\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let seg = 0;
+
+  // يحوّل الروابط داخل مقطع نص لـ <a>
+  const urls = (chunk: string, key: string): ReactNode[] => {
+    const arr: ReactNode[] = [];
+    const re = new RegExp(LINK_RE.source, "gi");
+    let l = 0;
+    let mm: RegExpExecArray | null;
+    while ((mm = re.exec(chunk)) !== null) {
+      const raw = mm[0];
+      const url = raw.replace(TRAIL_RE, "");
+      if (!url) continue;
+      if (mm.index > l) arr.push(chunk.slice(l, mm.index));
+      const href = /^(https?:\/\/|\/)/i.test(url) ? url : `https://${url}`;
+      arr.push(
+        <a
+          key={`${key}-${mm.index}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline font-bold break-all"
+          style={{ color: "var(--blue)" }}
+        >
+          {url}
+        </a>
+      );
+      l = mm.index + url.length;
+    }
+    if (l < chunk.length) arr.push(chunk.slice(l));
+    return arr;
+  };
+
+  // أولاً: قسّم على النص الغامق **...** وبعدين ابحث عن الروابط جوه كل قسم
+  while ((m = bold.exec(text)) !== null) {
+    if (m.index > last) out.push(...urls(text.slice(last, m.index), `${keyBase}p${seg}`));
+    out.push(
+      <strong key={`${keyBase}g${seg}`} className="font-bold">
+        {urls(m[1], `${keyBase}b${seg}`)}
+      </strong>
+    );
+    last = m.index + m[0].length;
+    seg += 1;
+  }
+  if (last < text.length) out.push(...urls(text.slice(last), `${keyBase}p${seg}`));
+  return out;
+}
 
 export default function SupportChatWidget() {
   const { t, i18n } = useTranslation();
@@ -179,12 +237,12 @@ export default function SupportChatWidget() {
                 </div>
               ) : m.pending ? (
                 <div key={i} className="bg-white border border-gray-100 rounded-xl rounded-start-sm px-3 py-2 text-[12.5px] text-[var(--ink)] leading-relaxed max-w-[85%] space-y-2">
-                  {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
+                  {m.text && <p className="whitespace-pre-wrap break-words">{linkify(m.text, `p${i}`)}</p>}
                   {m.pending && !m.done && (
                     <div className="border border-dashed rounded-lg p-2.5 space-y-2" style={{ borderColor: "var(--blue)", background: "rgba(0,122,255,0.05)" }}>
                       <p className="text-[12px] font-bold flex items-center gap-1.5">
                         <span>⚡</span>
-                        <span>{m.pending.description}</span>
+                        <span>{linkify(m.pending.description, `d${i}`)}</span>
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -220,7 +278,7 @@ export default function SupportChatWidget() {
                 </div>
               ) : (
                 <div key={i} className="bg-white border border-gray-100 rounded-xl rounded-start-sm px-3 py-2 text-[12.5px] text-[var(--ink)] leading-relaxed max-w-[85%] whitespace-pre-wrap break-words">
-                  {m.text}
+                  {linkify(m.text, `b${i}`)}
                 </div>
               )
             )}

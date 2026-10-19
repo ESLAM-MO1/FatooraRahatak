@@ -14,12 +14,14 @@ namespace FatooraRahatak.API.Controllers;
 public class CategoryController : ControllerBase
 {
     private readonly ICategoryService _categoryService;
+    private readonly ICategoryImportService _importService;
     private readonly AppDbContext _context;
     private readonly IPermissionCheckService _permCheck;
 
-    public CategoryController(ICategoryService categoryService, AppDbContext context, IPermissionCheckService permCheck)
+    public CategoryController(ICategoryService categoryService, ICategoryImportService importService, AppDbContext context, IPermissionCheckService permCheck)
     {
         _categoryService = categoryService;
+        _importService = importService;
         _context = context;
         _permCheck = permCheck;
     }
@@ -28,6 +30,47 @@ public class CategoryController : ControllerBase
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private Task<long?> GetStoreIdAsync() => _permCheck.GetUserStoreIdAsync(GetUserId());
+
+    [RequirePermission("Categories.Add")]
+    [HttpGet("import/template")]
+    public IActionResult DownloadImportTemplate()
+    {
+        var bytes = _importService.BuildTemplate();
+        return File(bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "categories-import-template.xlsx");
+    }
+
+    [RequirePermission("Categories.Add")]
+    [HttpPost("import"), RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> ImportCategories(IFormFile file)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null)
+            return BadRequest(new { success = false, code = "NO_STORE" });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, code = "NO_FILE" });
+
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { success = false, code = "UNSUPPORTED_FORMAT" });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { success = false, code = "FILE_TOO_LARGE" });
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            ms.Position = 0;
+            var result = await _importService.ImportAsync(storeId.Value, ms);
+            return Ok(new { success = true, data = result });
+        }
+        catch (CategoryImportException ex)
+        {
+            return BadRequest(new { success = false, code = ex.Code, details = ex.Details });
+        }
+    }
 
     [RequirePermission("Categories.Add")]
     [HttpPost]

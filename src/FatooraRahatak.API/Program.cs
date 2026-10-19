@@ -118,6 +118,7 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IStoreBlogServi
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductService, FatooraRahatak.Infrastructure.Services.ProductService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IChatService, FatooraRahatak.Infrastructure.Services.ChatService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductImportService, FatooraRahatak.Infrastructure.Services.ProductImportService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.ICategoryImportService, FatooraRahatak.Infrastructure.Services.CategoryImportService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IInventoryService, FatooraRahatak.Infrastructure.Services.InventoryService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IEmployeeService, FatooraRahatak.Infrastructure.Services.EmployeeService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IProductVariantService, FatooraRahatak.Infrastructure.Services.ProductVariantService>();

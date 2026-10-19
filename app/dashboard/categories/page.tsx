@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import Can from "@/components/Can";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
+import CategoryImport from "@/components/CategoryImport";
 
 interface Category {
   id: number;
@@ -46,7 +47,6 @@ export default function CategoriesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchCategories = useCallback(async () => {
-    setLoading(true);
     setError("");
     try {
       const res = await api.get("/categories");
@@ -153,6 +153,9 @@ export default function CategoriesPage() {
   return (
     <div>
       <PageHeader icon="tag" title={t("category.title")}>
+        <Can code="Categories.Add">
+          <CategoryImport basePath="/categories" onImported={fetchCategories} />
+        </Can>
         <Can code="Categories.Add">
           <button onClick={openAddModal} className="btn btn-primary">
             <Icon name="plus" />

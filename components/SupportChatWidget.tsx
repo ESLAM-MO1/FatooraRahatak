@@ -7,16 +7,20 @@ import api from "@/lib/api";
 import { loadPermissions, hasAnyPermission } from "@/lib/permissions";
 import { getUserType } from "@/lib/auth";
 
+type Pending = { tool: string; arguments: string; description: string };
 type Msg = {
   role: "user" | "bot";
   text: string;
   fallback?: boolean;
+  pending?: Pending;
+  done?: "confirmed" | "cancelled";
 };
 const STORE_KEY = "supportChat.v1";
 const REQ_TIMEOUT = 90000;
 
-// البوت للقراءة فقط — يظهر لمن يملك صلاحية قراءة واحدة على الأقل من أدواته،
-// كي لا يظهر لموظف لا يملك أي معلومة متاحة (فلا يعطيه واجهة فارغة).
+// البوت يظهر لكل رواد المنصة (المالك والموظف). الموظف لا يراه فقط إن لم
+// يملك أي صلاحية قراءة، كي لا يحصل على واجهة بلا أي معلومة متاحة له.
+// أدوات التنفيذ تبقى للمالك، ومقفولة على الموظف من جهة السيرفر بالصلاحية.
 const CHAT_VIEW_PERMS = ["Orders.View", "Products.View", "Statistics.View", "SubscriptionPackage.View"];
 
 // روابط قابلة للنقر: روابط كاملة (http)، روابط تبدأ بـ www، مسارات داخلية شائعة،
@@ -152,6 +156,7 @@ export default function SupportChatWidget() {
           role: "bot",
           text: data.reply || "",
           fallback: !!data.fallback,
+          pending: data.pendingAction || undefined,
         },
       ]);
     } catch {
@@ -159,6 +164,39 @@ export default function SupportChatWidget() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const confirmAction = async (idx: number) => {
+    const m = msgs[idx];
+    if (!m || !m.pending || busy) return;
+    setErr("");
+    setBusy(true);
+    try {
+      const res = await api.post(
+        "/chat",
+        {
+          message: "(تم تأكيد الأمر)",
+          history: buildHistory(msgs),
+          confirmedAction: { tool: m.pending.tool, arguments: m.pending.arguments },
+        },
+        { timeout: REQ_TIMEOUT }
+      );
+      const data = res.data.data;
+      setMsgs((p) => [
+        ...p.map((x, i) => (i === idx ? { ...x, done: "confirmed" as const } : x)),
+        { role: "bot", text: data.reply || "" },
+      ]);
+    } catch {
+      setErr(t("chat.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelAction = (idx: number) => {
+    setMsgs((p) =>
+      p.map((x, i) => (i === idx ? { ...x, done: "cancelled" as const } : x))
+    );
   };
 
   if (!allowed) return null;
@@ -222,6 +260,42 @@ export default function SupportChatWidget() {
               m.role === "user" ? (
                 <div key={i} className="bg-[var(--blue)] text-white rounded-xl rounded-end-sm px-3 py-2 text-[12.5px] leading-relaxed max-w-[85%] ms-auto whitespace-pre-wrap break-words">
                   {m.text}
+                </div>
+              ) : m.pending ? (
+                <div key={i} className="bg-white border border-gray-100 rounded-xl rounded-start-sm px-3 py-2 text-[12.5px] text-[var(--ink)] leading-relaxed max-w-[85%] space-y-2">
+                  {m.text && <p className="whitespace-pre-wrap break-words">{linkify(m.text, `p${i}`)}</p>}
+                  {m.pending && !m.done && (
+                    <div className="border border-dashed rounded-lg p-2.5 space-y-2" style={{ borderColor: "var(--blue)", background: "rgba(0,122,255,0.05)" }}>
+                      <p className="text-[12px] font-bold flex items-center gap-1.5">
+                        <span>⚡</span>
+                        <span>{linkify(m.pending.description, `d${i}`)}</span>
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => confirmAction(i)}
+                          disabled={busy}
+                          className="btn btn-primary text-[11.5px] px-3 py-1.5 disabled:opacity-50"
+                        >
+                          {busy ? "…" : t("chat.confirm")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => cancelAction(i)}
+                          disabled={busy}
+                          className="btn text-[11.5px] px-3 py-1.5 border border-gray-200 disabled:opacity-50"
+                        >
+                          {t("chat.cancel")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {m.done === "confirmed" && (
+                    <p className="text-[11.5px] font-bold" style={{ color: "#16A34A" }}>✓ {t("chat.confirmed")}</p>
+                  )}
+                  {m.done === "cancelled" && (
+                    <p className="text-[11.5px] text-[var(--sub)]">✕ {t("chat.cancelled")}</p>
+                  )}
                 </div>
               ) : m.fallback ? (
                 <div key={i} className="bg-white border border-gray-100 rounded-xl rounded-start-sm px-3 py-2 text-[12.5px] text-[var(--ink)] leading-relaxed max-w-[85%]">

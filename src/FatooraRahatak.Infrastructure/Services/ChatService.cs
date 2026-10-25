@@ -24,9 +24,10 @@ public class ChatService : IChatService
         Converters = { new JsonStringEnumConverter() },
     };
 
-    // خريطة الصلاحية المطلوبة لكل أداة قراءة. الموظف لا يستدعي أداة إلا إذا كان
-    // يملك صلاحيتها فعليًا في RBAC — والمالك يمر دائمًا (زي باقي النظام).
-    private static readonly Dictionary<string, string> ReadToolPermissions = new()
+    // خريطة الصلاحية المطلوبة لكل أداة. الموظف لا يستدعي أداة إلا إذا كان يملك
+    // صلاحيتها فعليًا في RBAC — والمالك يمر دائمًا (زي باقي النظام).
+    // أدوات التنفيذ متاحة للمالك، ومتاحة للموظف فقط لو يملك صلاحية التعديل.
+    private static readonly Dictionary<string, string> ToolPermissions = new()
     {
         ["get_sales_summary"] = "Statistics.View",
         ["get_orders"] = "Orders.View",
@@ -34,11 +35,14 @@ public class ChatService : IChatService
         ["get_products"] = "Products.View",
         ["get_low_stock"] = "Products.View",
         ["get_subscription"] = "SubscriptionPackage.View",
+        ["update_order_status"] = "Orders.Edit",
+        ["toggle_product_status"] = "Products.Edit",
+        ["update_product_price"] = "Products.Edit",
+        ["create_coupon"] = "Coupons.Add",
     };
 
-    // أدوات التنفيذ (كتابة) — أُلغيت بالكامل. البوت للقراءة والاستفسار فقط.
-    // أي أداة كتابة قادمة من عميل قديم تُرفض قبل الوصول لأي تنفيذ.
-    private static readonly HashSet<string> LegacyWriteTools = new()
+    // أدوات التنفيذ (كتابة) — تتطلب صلاحية تعديل، ويرفضها من لا يملكها.
+    private static readonly HashSet<string> WriteTools = new()
     {
         "update_order_status", "toggle_product_status", "update_product_price", "create_coupon",
     };
@@ -77,6 +81,41 @@ public class ChatService : IChatService
             type = "object",
             properties = new { },
         }),
+        Fn("update_order_status", "تغيير حالة طلب — النظام يعرض تأكيد المستخدم قبل التنفيذ", new {
+            type = "object",
+            properties = new {
+                orderNumber = new { type = "string", description = "رقم الطلب" },
+                newStatus = new { type = "string", @enum = new[] { "Processing", "Shipped", "Delivered", "Cancelled" }, description = "الحالة الجديدة" },
+            },
+            @required = new[] { "orderNumber", "newStatus" },
+        }),
+        Fn("toggle_product_status", "تعليق منتج أو تفعيله — النظام يعرض تأكيد المستخدم قبل التنفيذ", new {
+            type = "object",
+            properties = new {
+                productId = new { type = "integer", description = "معرف المنتج" },
+                activate = new { type = "boolean", description = "true لتفعيل المنتج وfalse لتعليقه" },
+            },
+            @required = new[] { "productId", "activate" },
+        }),
+        Fn("update_product_price", "تعديل سعر المنتج الأساسي — النظام يعرض تأكيد المستخدم قبل التنفيذ", new {
+            type = "object",
+            properties = new {
+                productId = new { type = "integer", description = "معرف المنتج" },
+                newPrice = new { type = "number", description = "السعر الجديد بالريال" },
+            },
+            @required = new[] { "productId", "newPrice" },
+        }),
+        Fn("create_coupon", "إنشاء كوبون خصم جديد — النظام يعرض تأكيد المستخدم قبل التنفيذ", new {
+            type = "object",
+            properties = new {
+                code = new { type = "string", description = "كود الكوبون بالأحرف اللاتينية" },
+                discountType = new { type = "string", @enum = new[] { "Percentage", "FixedAmount" }, description = "Percentage نسبة مئوية أو FixedAmount مبلغ ثابت" },
+                discountValue = new { type = "number", description = "قيمة الخصم" },
+                usageLimit = new { type = "integer", description = "حد الاستخدام الإجمالي (اختياري)" },
+                validUntil = new { type = "string", description = "تاريخ الانتهاء بصيغة ISO اختياري (افتراضي بعد 30 يومًا)" },
+            },
+            @required = new[] { "code", "discountType", "discountValue" },
+        }),
     };
 
     private readonly AppDbContext _db;
@@ -104,16 +143,30 @@ public class ChatService : IChatService
     // والموظف النشط عبر Employees.StoreId. كل الاستعلامات مقيّدة بهذا المعرّف.
     private Task<long?> ResolveStoreIdAsync(long userId) => _permCheck.GetUserStoreIdAsync(userId);
 
+    // تفويض الصلاحية لخدمة الصلاحيات المركزية — المالك يمر دائمًا (كما في باقي النظام)،
+    // والموظف يمر فقط لو كان يملك الكود المطلوب فعليًا.
+    private Task<bool> HasToolPermissionAsync(long userId, string tool) =>
+        ToolPermissions.TryGetValue(tool, out var perm)
+            ? _permCheck.UserHasPermissionAsync(userId, perm)
+            : Task.FromResult(false);
+
+    // أدوات التنفيذ للمالك فقط — حتى لو كان الموظف يملك صلاحية تعديل في RBAC.
+    // (المالك = صاحب المتجر؛ روّاد المنصة/الموظفون قراءة فقط.)
+    private async Task<bool> IsStoreOwnerAsync(long userId) =>
+        await _db.Stores.AsNoTracking().AnyAsync(s => s.OwnerUserId == userId);
+
     private const string SystemPrompt = "أنت «مساعد فاتورة راحتك»، مساعد دعم داخل لوحة تحكم تجار المنصة rahtk.sa في السعودية.\n\n" +
         "عن المنصة: فاتورة راحتك منصة سعودية توفر: فواتير ضريبية متوافقة مع متطلبات هيئة الزاتكا، كاشير نقاط بيع (POS) للموبايل والكمبيوتر مع مزامنة فورية للمخزون، " +
         "إدارة منتجات وتصنيفات ومستودعات وجرد، إدارة طلبات وشحن وتوصيل، متجر إلكتروني لكل تاجر مع دومين مخصص، " +
         "كوبونات وخصومات، تقارير مبيعات وأرباح، إدارة موظفين وصلاحيات، وإدارة عملاء وموردين، وباقات اشتراك شهرية وسنوية.\n\n" +
-        "أدوات القراءة المتاحة: لديك أدوات لقراءة بيانات المتجر فقط (ملخص مبيعات، آخر الطلبات، تفاصيل طلب، بحث منتجات، منتجات منخفضة المخزون، معلومات الاشتراك).\n" +
-        "أنت لا تنفّذ أي تغييرات على المتجر إطلاقًا — لا تعدّل أسعارًا ولا حالات طلبات ولا كوبونات ولا منتجات. دورك القراءة والاستفسار والإرشاد فقط.\n" +
+        "أكشنز المتجر: لديك أدوات لقراءة بيانات متجر التاجر (ملخص مبيعات، آخر الطلبات، تفاصيل طلب، بحث منتجات، منتجات منخفضة المخزون، معلومات الاشتراك) " +
+        "ولتنفيذ أوامر داخل المتجر (تغيير حالة طلب، تعليق أو تفعيل منتج، تعديل سعر منتج، إنشاء كوبون خصم).\n" +
+        "صلاحيات المستخدم: تنفيذ التغييرات متاح لصاحب المتجر فقط. إن رجعت أداة التنفيذ برسالة رفض، " +
+        "أخبر المستخدم بلطف أن التنفيذ متاح لصاحب المتجر فقط وأنه يستطيع تنفيذه من لوحة التحكم أو مراجعة صاحب المتجر.\n" +
         "قواعد استخدام الأدوات:\n" +
         "1. عند طلب معلومة: استدعِ أداة القراءة المناسبة فورًا ثم لخّص النتيجة بالعربية مع الأرقام المهمة.\n" +
-        "2. إن لم تكن الأداة متاحة أو رجعت نتيجة فارغة أو رسالة عدم صلاحية، أخبر المستخدم بلطف أن هذه المعلومة غير متاحة لحسابه وأنه يستطيع مراجعة المسؤول عن المتجر.\n" +
-        "3. لو طُلب منك تنفيذ أي تغيير (تعديل سعر، تغيير حالة طلب، إنشاء كوبون، تعليق منتج): ارفض بلطف ووضّح أن مساعد الدعم للقراءة فقط، ووجّهه لتنفيذ ذلك من صفحة لوحة التحكم المخصصة له.\n" +
+        "2. عند طلب تنفيذ تغيير: استدعِ أداة التنفيذ مباشرة واذكر التفاصيل في ردك — النظام سيعرض للمستخدم طلب تأكيد وينفّذ الأمر بعد تأكيده.\n" +
+        "3. قبل تعليق منتج أو تعديل سعره استخدم get_products للعثور على productId؛ وقبل أي أمر على طلب استخدم get_orders إن لم تعرف رقم الطلب.\n" +
         "4. أرقام الطلبات ومعرفات المنتجات أعِدها كما هي بدون تغيير.\n\n" +
         "قواعد الرد:\n" +
         "5. رد بالعربية الفصحى المبسطة، قصير ومباشر (3 أسطر كحد أقصى غالبًا).\n" +
@@ -137,14 +190,16 @@ public class ChatService : IChatService
         // لكل رواد المنصة، مع بقاء كل قراءة مقصورة على متجر واحد فقط.
         var storeId = await ResolveStoreIdAsync(userId);
 
-        // أدوات التنفيذ أُلغيت نهائيًا. أي طلب تأكيد (حتى لو جاء من عميل قديم
-        // أو طُلب مباشرة عبر الـAPI) يُرفض هنا قبل الوصول لأي عملية كتابة.
+        // أدوات التنفيذ للمالك فقط. الموظف/رائد المنصة يُرفض هنا قبل أي كتابة،
+        // حتى لو كان يملك صلاحية تعديل في RBAC.
         if (dto.ConfirmedAction != null && !string.IsNullOrWhiteSpace(dto.ConfirmedAction.Tool))
         {
-            if (LegacyWriteTools.Contains(dto.ConfirmedAction.Tool))
-                return Fail("مساعد الدعم للقراءة فقط — لا يمكنه تنفيذ تغييرات على المتجر. نفّذ ذلك من لوحة التحكم.");
+            var tool = dto.ConfirmedAction.Tool;
+            if (WriteTools.Contains(tool) && !await IsStoreOwnerAsync(userId))
+                return Fail("تنفيذ التغييرات متاح لصاحب المتجر فقط.");
 
-            return Fail("أمر غير معروف.");
+            return await ExecuteWriteAsync(storeId, tool,
+                dto.ConfirmedAction.Arguments ?? "{}", userId);
         }
 
         var apiKey = _config["OpenAI:ApiKey"];
@@ -187,17 +242,32 @@ public class ChatService : IChatService
                 {
                     var toolArgs = string.IsNullOrWhiteSpace(rawArgs) ? "{}" : rawArgs;
 
-                    // دفاع في العمق: حتى لو حاول الموديل استدعاء أداة تنفيذ (لم تعد
-                    // معرّفة له) نرفضها ولا نعيدها كطلب تأكيد.
-                    if (LegacyWriteTools.Contains(toolName))
+                    // أداة تنفيذ: لا تُنفَّذ الآن — تُعرض على المستخدم كطلب تأكيد.
+                    // تُرفض فورًا لو المستخدم لا يملك صلاحية التعديل المطلوبة.
+                    if (WriteTools.Contains(toolName))
                     {
-                        messages.Add(new
+                        if (!await IsStoreOwnerAsync(userId))
                         {
-                            role = "tool",
-                            tool_call_id = callId,
-                            content = ErrJson("مساعد الدعم للقراءة فقط ولا ينفّذ تغييرات على المتجر."),
-                        });
-                        continue;
+                            messages.Add(new
+                            {
+                                role = "tool",
+                                tool_call_id = callId,
+                                content = ErrJson("تنفيذ التغييرات متاح لصاحب المتجر فقط."),
+                            });
+                            continue;
+                        }
+
+                        var desc = DescribeAction(toolName, toolArgs);
+                        return new ChatResponseDto
+                        {
+                            Reply = string.IsNullOrWhiteSpace(ai.Content) ? desc : ai.Content.Trim(),
+                            PendingAction = new PendingActionDto
+                            {
+                                Tool = toolName,
+                                Arguments = toolArgs,
+                                Description = desc,
+                            },
+                        };
                     }
 
                     var result = await ExecuteReadAsync(storeId, toolName, toolArgs, userId);
@@ -310,14 +380,39 @@ public class ChatService : IChatService
         return null;
     }
 
+    private static string DescribeAction(string tool, string args)
+    {
+        switch (tool)
+        {
+            case "update_order_status":
+                return $"تغيير حالة الطلب {ArgStr(args, "orderNumber", "؟")} إلى {ArgStr(args, "newStatus", "؟")}";
+            case "toggle_product_status":
+                return ArgBool(args, "activate", true)
+                    ? $"تفعيل المنتج رقم {ArgLong(args, "productId")}"
+                    : $"تعليق المنتج رقم {ArgLong(args, "productId")}";
+            case "update_product_price":
+                return $"تعديل سعر المنتج رقم {ArgLong(args, "productId")} إلى {ArgDec(args, "newPrice", 0)} ر.س";
+            case "create_coupon":
+            {
+                var code = ArgStr(args, "code", "؟");
+                var value = ArgDec(args, "discountValue", 0);
+                var isPct = !string.Equals(ArgStr(args, "discountType"), "FixedAmount", StringComparison.OrdinalIgnoreCase);
+                return isPct
+                    ? $"إنشاء كوبون {code} بخصم {value}%"
+                    : $"إنشاء كوبون {code} بخصم {value} ر.س";
+            }
+            default:
+                return "تنفيذ أمر";
+        }
+    }
+
     private async Task<string> ExecuteReadAsync(long? storeId, string tool, string args, long userId)
     {
         if (storeId == null) return ErrJson("لا يوجد متجر مرتبط بهذا الحساب");
 
         // صلاحية القراءة: الموظف لا يقرأ إلا ما تسمح به صلاحياته (RBAC)،
         // والمالك يمر دائمًا. القراءة أيضًا محصورة في متجره المحلول أعلاه.
-        if (ReadToolPermissions.TryGetValue(tool, out var requiredPerm)
-            && !await _permCheck.UserHasPermissionAsync(userId, requiredPerm))
+        if (!await HasToolPermissionAsync(userId, tool))
             return ErrJson("ليس لديك صلاحية الوصول لهذه المعلومة");
 
         try
@@ -493,6 +588,133 @@ public class ChatService : IChatService
         catch (Exception ex)
         {
             return ErrJson(ex.Message);
+        }
+    }
+
+    private async Task<ChatResponseDto> ExecuteWriteAsync(long? storeId, string tool, string args, long userId)
+    {
+        if (storeId == null)
+            return Fail("لا يوجد متجر مرتبط بهذا الحساب — لا يمكن تنفيذ الأوامر.");
+        if (!WriteTools.Contains(tool))
+            return Fail("أمر غير معروف");
+
+        // حاجز مستقل: التنفيذ للمالك فقط — حتى لو استُدعيت هذه الدالة من مسار آخر.
+        if (!await IsStoreOwnerAsync(userId))
+            return Fail("تنفيذ التغييرات متاح لصاحب المتجر فقط.");
+
+        try
+        {
+            switch (tool)
+            {
+                case "update_order_status":
+                {
+                    var number = ArgStr(args, "orderNumber").Trim();
+                    var newStatus = ArgStr(args, "newStatus").Trim();
+                    if (number.Length == 0 || newStatus.Length == 0)
+                        return Fail("بيانات ناقصة: رقم الطلب والحالة الجديدة مطلوبان");
+
+                    var orderId = await _db.Orders
+                        .Where(o => o.StoreId == storeId && o.OrderNumber == number)
+                        .Select(o => (long?)o.Id)
+                        .FirstOrDefaultAsync();
+                    if (orderId == null)
+                        return Fail($"لا يوجد طلب بالرقم {number}");
+
+                    if (string.Equals(newStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                        await _orderService.CancelOrderAsync(storeId.Value, orderId.Value, userId);
+                    else
+                        await _orderService.UpdateOrderStatusAsync(storeId.Value, orderId.Value, userId, newStatus);
+
+                    return Ok($"تم التنفيذ بنجاح ✓\nالطلب {number} ← الحالة: {newStatus}");
+                }
+
+                case "toggle_product_status":
+                {
+                    var pid = ArgLong(args, "productId");
+                    var activate = ArgBool(args, "activate", true);
+                    var product = await _db.Products
+                        .FirstOrDefaultAsync(p => p.Id == pid && p.StoreId == storeId);
+                    if (product == null)
+                        return Fail("المنتج غير موجود في متجرك");
+
+                    product.Status = activate ? ProductStatus.Active : ProductStatus.Draft;
+                    product.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+
+                    return Ok($"تم التنفيذ بنجاح ✓\nالمنتج «{product.NameAr}» أصبح {(activate ? "مفعّلًا" : "معلّقًا (مسودة)")}.");
+                }
+
+                case "update_product_price":
+                {
+                    var pid = ArgLong(args, "productId");
+                    var price = ArgDec(args, "newPrice", -1);
+                    if (price <= 0)
+                        return Fail("السعر الجديد غير صحيح — يجب أن يكون أكبر من صفر");
+
+                    var product = await _db.Products
+                        .FirstOrDefaultAsync(p => p.Id == pid && p.StoreId == storeId);
+                    if (product == null)
+                        return Fail("المنتج غير موجود في متجرك");
+
+                    var oldPrice = product.BasePrice;
+                    product.BasePrice = price;
+                    product.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+
+                    return Ok($"تم تعديل السعر بنجاح ✓\n«{product.NameAr}»: {oldPrice} ← {price} ر.س");
+                }
+
+                case "create_coupon":
+                {
+                    var code = ArgStr(args, "code").Trim().ToUpperInvariant();
+                    if (code.Length == 0)
+                        return Fail("كود الكوبون مطلوب");
+
+                    var type = string.Equals(ArgStr(args, "discountType"), "FixedAmount", StringComparison.OrdinalIgnoreCase)
+                        ? "FixedAmount" : "Percentage";
+                    var value = ArgDec(args, "discountValue", 0);
+                    if (value <= 0)
+                        return Fail("قيمة الخصم غير صحيحة");
+                    if (type == "Percentage" && value > 100)
+                        return Fail("نسبة الخصم لا يمكن أن تتجاوز 100%");
+
+                    var until = DateTime.UtcNow.AddDays(30);
+                    var untilRaw = ArgStr(args, "validUntil");
+                    if (DateTime.TryParse(untilRaw, System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out var parsedUntil)
+                        && parsedUntil > DateTime.UtcNow)
+                    {
+                        until = parsedUntil;
+                    }
+
+                    var usage = (int)ArgLong(args, "usageLimit", 0);
+
+                    await _couponService.CreateAsync(storeId.Value, new CreateCouponDto
+                    {
+                        Code = code,
+                        DiscountType = type,
+                        DiscountValue = value,
+                        UsageLimitTotal = usage > 0 ? usage : null,
+                        MinOrderAmount = 0,
+                        ValidFrom = DateTime.UtcNow,
+                        ValidUntil = until,
+                    });
+
+                    var discountText = type == "Percentage" ? $"{value}%" : $"{value} ر.س";
+                    return Ok($"تم إنشاء الكوبون بنجاح ✓\nالكود: {code}\nالخصم: {discountText}\nصالح حتى: {until:yyyy-MM-dd}");
+                }
+
+                default:
+                    return Fail("أمر غير معروف");
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Fail(ex.Message);
+        }
+        catch (Exception)
+        {
+            return Fail("حصلت مشكلة أثناء التنفيذ — جرّب مرة أخرى");
         }
     }
 

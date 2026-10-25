@@ -26,6 +26,28 @@ public class RoleService : IRoleService
         return await _context.Stores.FirstOrDefaultAsync(s => s.Id == employee.StoreId);
     }
 
+    /// <summary>
+    /// Guards against privilege escalation: an employee may never change or delete
+    /// the very role they are assigned to. Without this, any employee whose role
+    /// carries EmployeeManagement.Edit could strip their own role's permissions
+    /// (locking everyone out) or grant themselves more than the owner intended.
+    /// Owners and SuperAdmins are exempt - they are not employees, and the owner
+    /// must remain able to manage the store's roles.
+    /// </summary>
+    private async Task EnsureNotOwnRoleAsync(long actingUserId, long roleId)
+    {
+        var isEmployee = await _context.Employees
+            .AnyAsync(e => e.UserId == actingUserId && e.Status == "Active");
+
+        if (!isEmployee) return;
+
+        var isOwnRole = await _context.Employees
+            .AnyAsync(e => e.UserId == actingUserId && e.RoleId == roleId && e.Status == "Active");
+
+        if (isOwnRole)
+            throw new InvalidOperationException("لا يمكنك تعديل المسمى الوظيفي المُعيَّن لك");
+    }
+
     public async Task<List<PermissionDto>> GetAllPermissionsAsync()
     {
         return await _context.Permissions
@@ -123,6 +145,9 @@ public class RoleService : IRoleService
         if (role == null)
             throw new InvalidOperationException("المسمى الوظيفي غير موجود");
 
+        // ⚠️ منع تصعيد الصلاحيات: الموظف لا يعدّل المسمى المُعيَّن له نفسه
+        await EnsureNotOwnRoleAsync(ownerUserId, roleId);
+
         // ⚠️ إغلاق تسريب الأدوار بين المتاجر: لا يجوز تعديل مسمى وظيفي يخص متجرًا آخر
         if (role.StoreId.HasValue && role.StoreId.Value != store.Id)
             throw new InvalidOperationException("المسمى الوظيفي غير موجود");
@@ -158,6 +183,9 @@ public class RoleService : IRoleService
         var role = await _context.Roles.FindAsync(roleId);
         if (role == null)
             throw new InvalidOperationException("المسمى الوظيفي غير موجود");
+
+        // ⚠️ منع تصعيد الصلاحيات: الموظف لا يحذف المسمى المُعيَّن له نفسه
+        await EnsureNotOwnRoleAsync(ownerUserId, roleId);
 
         // ⚠️ إغلاق تسريب الأدوار بين المتاجر: لا يجوز حذف مسمى وظيفي يخص متجرًا آخر
         if (role.StoreId.HasValue && role.StoreId.Value != store.Id)

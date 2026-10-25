@@ -47,6 +47,18 @@ public class PermissionCheckService : IPermissionCheckService
 
         if (employee == null) return false;
 
+        // Defence in depth: a store employee must only ever draw permissions from a
+        // Store-scoped role. Platform roles (SuperAdmin/SupportStaff) are for
+        // UserType.SuperAdmin/SupportStaff only - if bad data - or a direct DB edit
+        // hands one to an employee, it grants nothing here.
+        var roleScope = await _context.Roles
+            .Where(r => r.Id == employee.RoleId)
+            .Select(r => (RoleScope?)r.RoleScope)
+            .FirstOrDefaultAsync();
+
+        if (roleScope != RoleScope.Store)
+            return false;
+
         var overridePerm = employee.PermissionOverrides
             .FirstOrDefault(o => o.Permission!.PermissionCode == permissionCode);
 
@@ -112,6 +124,16 @@ public class PermissionCheckService : IPermissionCheckService
             .FirstOrDefaultAsync(e => e.UserId == userId && e.Status == "Active");
 
         if (employee == null) return new();
+
+        // Defence in depth: an employee draws permissions only from a Store-scoped
+        // role. A platform role handed to an employee by bad data grants nothing.
+        var roleScope = await _context.Roles
+            .Where(r => r.Id == employee.RoleId)
+            .Select(r => (RoleScope?)r.RoleScope)
+            .FirstOrDefaultAsync();
+
+        if (roleScope != RoleScope.Store)
+            return new();
 
         var rolePerms = await _context.RolePermissions
             .Include(rp => rp.Permission)

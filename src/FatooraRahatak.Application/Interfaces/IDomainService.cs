@@ -31,6 +31,8 @@ public interface IDomainService
     Task<ProfessionalEmailSetupDto> CreateEmailSetupAsync(CreateEmailSetupDto dto);
     Task ToggleEmailSetupAsync(long id);
     Task DeleteEmailSetupAsync(long id);
+    Task<ProfessionalEmailSetupDto> SetEmailPasswordAsync(long id, string password);
+    Task<ProfessionalEmailSetupDto> VerifyEmailMxAsync(long id);
     Task<List<DomainBlacklistEntryDto>> GetBlacklistAsync();
     Task<DomainBlacklistEntryDto> AddToBlacklistAsync(CreateBlacklistEntryDto dto, long adminUserId);
     Task RemoveFromBlacklistAsync(long id);

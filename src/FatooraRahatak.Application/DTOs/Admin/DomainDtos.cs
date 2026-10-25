@@ -65,6 +65,15 @@ public class ProfessionalEmailSetupDto
     public string Provider { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? MxRecords { get; set; }
+    public string ExpectedMx { get; set; } = "mail.rahtk.sa";
+    public bool MxVerified { get; set; }
+    public string? GeneratedPassword { get; set; }
+}
+
+public class SetEmailPasswordDto
+{
+    public string Password { get; set; } = string.Empty;
 }
 
 public class DomainRegistrationRequestDto
@@ -161,6 +170,7 @@ public class CreateEmailSetupDto
     public string MailboxName { get; set; } = string.Empty;
     public string EmailAddress { get; set; } = string.Empty;
     public string Provider { get; set; } = string.Empty;
+    public string? Password { get; set; }
 }
 
 public class CreateRegistrationRequestDto

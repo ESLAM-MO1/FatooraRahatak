@@ -25,6 +25,8 @@ interface RedirectRule {
 interface EmailSetup {
   id: number; domainName: string; mailboxName: string; emailAddress: string;
   isActive: boolean; provider: string; createdAt: string;
+  mxRecords?: string | null; expectedMx?: string; mxVerified?: boolean;
+  generatedPassword?: string | null;
 }
 interface RegistrationRequest {
   id: number; domainName: string; registrantName: string; registrantEmail: string;
@@ -80,7 +82,11 @@ export default function DomainsPage() {
   const [newStoreId, setNewStoreId] = useState("");
   const [dnsForm, setDnsForm] = useState({ recordType: "A", name: "", value: "", ttl: 3600, priority: 0 });
   const [redirectForm, setRedirectForm] = useState({ sourceDomain: "", targetUrl: "", redirectType: 302, isActive: true });
-  const [emailForm, setEmailForm] = useState({ domainName: "", mailboxName: "", provider: "Zoho" });
+  const [emailForm, setEmailForm] = useState({ domainName: "", mailboxName: "", provider: "Rahtk Mail", password: "" });
+  const [emailNotice, setEmailNotice] = useState<{ email: string; password: string } | null>(null);
+  const [copiedKey, setCopiedKey] = useState("");
+  const [pwTarget, setPwTarget] = useState<EmailSetup | null>(null);
+  const [pwValue, setPwValue] = useState("");
   const [regForm, setRegForm] = useState({ domainName: "", registrantName: "", registrantEmail: "" });
   const [blacklistForm, setBlacklistForm] = useState({ domainOrPattern: "", reason: "" });
 
@@ -176,14 +182,60 @@ export default function DomainsPage() {
   const handleDeleteRedirect = async (id: number) => {
     try { await api.delete(`/admin/domains/redirects/${id}`); loadRedirects(); } catch { setError(t("domains.actionError")); }
   };
+  const copyText = async (text: string, key: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(""), 2000);
+    } catch { setError(t("domains.actionError")); }
+  };
   const handleCreateEmail = async () => {
-    try { await api.post("/admin/domains/email-setups", emailForm); setShowAddEmail(false); loadEmails(); } catch { setError(t("domains.actionError")); }
+    try {
+      const payload = { ...emailForm, password: emailForm.password || undefined };
+      const r = await api.post("/admin/domains/email-setups", payload);
+      const created = r.data?.data;
+      // Show the generated password exactly once, then wipe it from state.
+      if (created?.generatedPassword) {
+        setEmailNotice({ email: created.emailAddress, password: created.generatedPassword });
+      }
+      setShowAddEmail(false);
+      setEmailForm({ domainName: "", mailboxName: "", provider: "Rahtk Mail", password: "" });
+      loadEmails();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || t("domains.actionError"));
+    }
   };
   const handleToggleEmail = async (id: number) => {
-    try { await api.put(`/admin/domains/email-setups/${id}/toggle`); loadEmails(); } catch { setError(t("domains.actionError")); }
+    try { await api.put(`/admin/domains/email-setups/${id}/toggle`); loadEmails(); }
+    catch (e: any) { setError(e?.response?.data?.message || t("domains.actionError")); }
   };
   const handleDeleteEmail = async (id: number) => {
-    try { await api.delete(`/admin/domains/email-setups/${id}`); loadEmails(); } catch { setError(t("domains.actionError")); }
+    try { await api.delete(`/admin/domains/email-setups/${id}`); loadEmails(); }
+    catch (e: any) { setError(e?.response?.data?.message || t("domains.actionError")); }
+  };
+  const handleVerifyEmailMx = async (id: number) => {
+    try {
+      const r = await api.get(`/admin/domains/email-setups/${id}/verify-mx`);
+      const d = r.data?.data;
+      if (d) setEmailSetups(prev => prev.map(x => x.id === id ? { ...x, ...d } : x));
+    } catch { setError(t("domains.actionError")); }
+  };
+  const handleChangeEmailPassword = async () => {
+    if (!pwTarget) return;
+    try {
+      await api.put(`/admin/domains/email-setups/${pwTarget.id}/password`, { password: pwValue });
+      setEmailNotice({ email: pwTarget.emailAddress, password: pwValue });
+      setPwTarget(null); setPwValue("");
+    } catch (e: any) {
+      setError(e?.response?.data?.message || t("domains.actionError"));
+    }
   };
   const handleRegister = async () => {
     try { await api.post("/admin/domains/registrations", regForm); setShowRegister(false); loadRegistrations(); } catch { setError(t("domains.actionError")); }
@@ -213,6 +265,7 @@ export default function DomainsPage() {
   const openAdd = (tab: TabKey) => {
     setShowAddDomain(false); setShowAddDns(false); setShowAddRedirect(false);
     setShowAddEmail(false); setShowRegister(false); setShowAddBlacklist(false);
+    setEmailNotice(null); setPwTarget(null); setPwValue("");
     if (tab === "subdomains" || tab === "custom-domains") setShowAddDomain(true);
     if (tab === "dns") setShowAddDns(true);
     if (tab === "redirects") setShowAddRedirect(true);
@@ -756,24 +809,65 @@ export default function DomainsPage() {
       {/* ───── Professional Email ───── */}
       {activeTab === "email" && (
         <div className="space-y-4">
-          <button className="btn btn-primary" onClick={() => setShowAddEmail(true)}>{t("domains.setupEmail")}</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="btn btn-primary" onClick={() => setShowAddEmail(true)}>{t("domains.setupEmail")}</button>
+            <span className="text-[12.5px] text-[var(--sub)]">{t("domains.emailActiveHint")} <span dir="ltr" className="font-medium">mail.rahtk.sa</span></span>
+          </div>
+
+          {/* Password shown exactly once (on create / change). */}
+          {emailNotice && (
+            <div className="card p-4 space-y-2" style={{ borderColor: "var(--primary, #2563eb)", borderWidth: 1 }}>
+              <p className="font-semibold">{t("domains.generatedPasswordTitle")}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <code dir="ltr" className="px-3 py-1.5 rounded bg-[var(--bg-soft,#f3f4f6)] text-sm">{emailNotice.email}</code>
+                <code dir="ltr" className="px-3 py-1.5 rounded bg-[var(--bg-soft,#f3f4f6)] text-sm font-mono">{emailNotice.password}</code>
+                <button className="btn btn-sm btn-ghost" onClick={() => copyText(emailNotice.password, "notice")}>
+                  {copiedKey === "notice" ? t("domains.copied") : t("domains.copy")}
+                </button>
+                <button className="btn btn-sm btn-ghost" onClick={() => setEmailNotice(null)}>{t("domains.cancel")}</button>
+              </div>
+              <p className="text-[12.5px] text-[var(--sub)]">{t("domains.generatedPasswordNote")}</p>
+            </div>
+          )}
+
           {showAddEmail && (
             <div className="card p-4 space-y-3">
               <input className="field-input" placeholder={t("domains.domainName")} value={emailForm.domainName} onChange={e => setEmailForm({ ...emailForm, domainName: e.target.value })} />
               <input className="field-input" placeholder={t("domains.mailboxName")} value={emailForm.mailboxName} onChange={e => setEmailForm({ ...emailForm, mailboxName: e.target.value })} />
               <select className="field-input" value={emailForm.provider} onChange={e => setEmailForm({ ...emailForm, provider: e.target.value })}>
-                <option value="Zoho">Zoho</option><option value="Google">Google Workspace</option><option value="Microsoft">Microsoft 365</option>
+                <option value="Rahtk Mail">Rahtk Mail (على الخادم)</option>
+                <option value="Google">Google Workspace</option>
+                <option value="Microsoft">Microsoft 365</option>
+                <option value="Zoho">Zoho</option>
               </select>
+              <div>
+                <input className="field-input" type="password" autoComplete="new-password" placeholder={t("domains.mailboxPassword")} value={emailForm.password} onChange={e => setEmailForm({ ...emailForm, password: e.target.value })} />
+                <p className="text-[12px] text-[var(--sub)] mt-1">{t("domains.mailboxPasswordHint")} {t("domains.passwordRules")}</p>
+              </div>
               <div className="flex gap-2">
                 <button className="btn btn-primary btn-sm" onClick={handleCreateEmail}>{t("domains.save")}</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setShowAddEmail(false)}>{t("domains.cancel")}</button>
               </div>
             </div>
           )}
+
+          {/* Change password */}
+          {pwTarget && (
+            <div className="card p-4 space-y-3">
+              <p className="font-semibold">{t("domains.changePassword")} — <span dir="ltr">{pwTarget.emailAddress}</span></p>
+              <input className="field-input" type="password" autoComplete="new-password" placeholder={t("domains.newPassword")} value={pwValue} onChange={e => setPwValue(e.target.value)} />
+              <p className="text-[12px] text-[var(--sub)]">{t("domains.passwordRules")}</p>
+              <div className="flex gap-2">
+                <button className="btn btn-primary btn-sm" onClick={handleChangeEmailPassword}>{t("domains.save")}</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setPwTarget(null); setPwValue(""); }}>{t("domains.cancel")}</button>
+              </div>
+            </div>
+          )}
+
           <div className="table-wrap">
             <table className="hidden md:table">
               <thead><tr>
-                <th>{t("domains.domainName")}</th><th>{t("domains.mailboxName")}</th><th>{t("domains.emailAddress")}</th><th>{t("domains.provider")}</th><th>{t("domains.status")}</th><th>{t("domains.createdAt")}</th><th>{t("domains.actions")}</th>
+                <th>{t("domains.domainName")}</th><th>{t("domains.mailboxName")}</th><th>{t("domains.emailAddress")}</th><th>{t("domains.provider")}</th><th>{t("domains.status")}</th><th>{t("domains.mxRecords")}</th><th>{t("domains.createdAt")}</th><th>{t("domains.actions")}</th>
               </tr></thead>
               <tbody>
                 {emailSetups.map(e => (
@@ -783,12 +877,24 @@ export default function DomainsPage() {
                     <td dir="ltr" style={{ textAlign: "left" }}>{e.emailAddress}</td>
                     <td>{e.provider}</td>
                     <td>{e.isActive ? <span className="badge badge--green">{t("domains.active")}</span> : <span className="badge badge--gray">{t("domains.inactive")}</span>}</td>
+                    <td>
+                      <div className="flex flex-col gap-1">
+                        <span className={e.mxVerified ? "badge badge--green" : "badge badge--yellow"}>
+                          {e.mxVerified ? t("domains.mxVerified") : t("domains.mxNotVerified")}
+                        </span>
+                        <code dir="ltr" className="text-[11.5px] text-[var(--sub)]">MX 10 {e.expectedMx || "mail.rahtk.sa"}</code>
+                      </div>
+                    </td>
                     <td>{fmtDate(e.createdAt)}</td>
-                    <td className="flex gap-1">
-                      <button className="btn btn-sm btn-ghost" onClick={() => handleToggleEmail(e.id)}>
-                        {e.isActive ? t("domains.deactivate") : t("domains.activate")}
-                      </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleDeleteEmail(e.id)}>{t("domains.delete")}</button>
+                    <td>
+                      <div className="flex flex-wrap gap-1">
+                        <button className="btn btn-sm btn-ghost" onClick={() => handleVerifyEmailMx(e.id)}>{t("domains.verifyMx")}</button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => { setPwTarget(e); setPwValue(""); }}>{t("domains.changePassword")}</button>
+                        <button className="btn btn-sm btn-ghost" onClick={() => handleToggleEmail(e.id)}>
+                          {e.isActive ? t("domains.deactivate") : t("domains.activate")}
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteEmail(e.id)}>{t("domains.delete")}</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -819,11 +925,21 @@ export default function DomainsPage() {
                       {e.isActive ? <span className="badge badge--green">{t("domains.active")}</span> : <span className="badge badge--gray">{t("domains.inactive")}</span>}
                     </div>
                     <div>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.mxRecords")}</p>
+                      <span className={e.mxVerified ? "badge badge--green" : "badge badge--yellow"}>
+                        {e.mxVerified ? t("domains.mxVerified") : t("domains.mxNotVerified")}
+                      </span>
+                      <p className="text-[12.5px] text-[var(--sub)] mb-0.5 mt-1">{t("domains.mxHint")}</p>
+                      <code dir="ltr" className="text-[11.5px]">MX 10 {e.expectedMx || "mail.rahtk.sa"}</code>
+                    </div>
+                    <div className="col-span-2">
                       <p className="text-[12.5px] text-[var(--sub)] mb-0.5">{t("domains.createdAt")}</p>
                       {fmtDate(e.createdAt)}
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <button className="btn btn-sm btn-ghost" onClick={() => handleVerifyEmailMx(e.id)}>{t("domains.verifyMx")}</button>
+                    <button className="btn btn-sm btn-ghost" onClick={() => { setPwTarget(e); setPwValue(""); }}>{t("domains.changePassword")}</button>
                     <button className="btn btn-sm btn-ghost" onClick={() => handleToggleEmail(e.id)}>
                       {e.isActive ? t("domains.deactivate") : t("domains.activate")}
                     </button>

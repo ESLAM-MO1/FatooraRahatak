@@ -373,6 +373,38 @@ public class DomainController : ControllerBase
         }
     }
 
+    [HttpPut("email-setups/{id}/password")]
+    public async Task<IActionResult> SetEmailPassword(long id, [FromBody] SetEmailPasswordDto dto)
+    {
+        var forbidden = CheckAccess();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _domainService.SetEmailPasswordAsync(id, dto.Password);
+            return Ok(new { success = true, data });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpGet("email-setups/{id}/verify-mx")]
+    public async Task<IActionResult> VerifyEmailMx(long id)
+    {
+        var forbidden = CheckAccess();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _domainService.VerifyEmailMxAsync(id);
+            return Ok(new { success = true, data });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     [HttpGet("blacklist")]
     public async Task<IActionResult> GetBlacklist()
     {

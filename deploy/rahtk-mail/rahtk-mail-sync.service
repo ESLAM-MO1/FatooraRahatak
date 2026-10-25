@@ -1,0 +1,9 @@
+[Unit]
+Description=Rahtk mail sync - re-apply custom Postfix/Dovecot mail maps
+After=postfix.service dovecot.service
+Wants=postfix.service dovecot.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rahtk-mail-admin sync
+Nice=10

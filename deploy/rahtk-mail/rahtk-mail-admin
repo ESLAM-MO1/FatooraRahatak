@@ -1,0 +1,293 @@
+#!/bin/bash
+# rahtk-mail-admin — manage real mailboxes for store domains that are NOT hosted in Plesk.
+# Source of truth: /etc/rahtk-mail/mailboxes.tsv  (email<TAB>active<TAB>password_hash)
+# Idempotent: "sync" rebuilds Postfix maps + Dovecot passwd-file from the TSV and self-heals
+# Plesk rewrites of main.cf / dovecot config.
+set -u
+
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root
+umask 077
+
+STATE_DIR=/etc/rahtk-mail
+TSV=$STATE_DIR/mailboxes.tsv
+LOG=/var/log/rahtk-mail-admin.log
+
+MAILNAMES=/var/qmail/mailnames
+POSTFIX_DIR=/etc/postfix
+RAHTK_DOMAINS=$POSTFIX_DIR/rahtk_mail_domains
+RAHTK_VMAILBOX=$POSTFIX_DIR/rahtk_vmailbox
+RAHTK_TRANSPORT=$POSTFIX_DIR/rahtk_transport
+DOVECOT_PASSWD=/etc/dovecot/rahtk-mail.passwd
+DOVECOT_CONF=/etc/dovecot/conf.d/05-rahtk-mail.conf
+USERDB=/var/lib/plesk/mail/userdb/userdb.db
+MAIN_CF=/etc/postfix/main.cf
+
+MAIL_UID=30
+MAIL_GID=30
+
+BASELINE=$STATE_DIR/postfix-baseline.env
+
+log() { echo "$(date '+%F %T') $*" >>"$LOG"; }
+fail() { echo "ERR $1 ${2:-}"; log "ERR $1 ${2:-}"; exit 1; }
+
+# Remove our own map entries from a Postfix list value.
+strip_ours() {
+  printf '%s' "$1" | sed -E 's#(, ?)?hash:/etc/postfix/rahtk_[a-z_]+##g' \
+    | sed -E 's/^[[:space:]]*,[[:space:]]*//; s/[[:space:]]*,[[:space:]]*$//'
+}
+
+read_baseline() {  # key -> value (no shell expansion)
+  [[ -f "$BASELINE" ]] || return 1
+  awk -F= -v k="$1" '$1==k {sub(/^[^=]*=/,""); print; exit}' "$BASELINE"
+}
+
+# Capture the Plesk-owned base values once. If the setting was wiped entirely
+# (value no longer references plesk), fall back to the known-good Plesk defaults.
+ensure_baseline() {
+  ensure_state
+  [[ -f "$BASELINE" ]] && return 0
+  local vmd vmm tm
+  vmd=$(strip_ours "$(postconf -h virtual_mailbox_domains)")
+  vmm=$(strip_ours "$(postconf -h virtual_mailbox_maps)")
+  tm=$(strip_ours "$(postconf -h transport_maps)")
+  [[ "$vmd" == *plesk* ]] || vmd='$virtual_mailbox_maps, hash:/var/spool/postfix/plesk/virtual_domains'
+  [[ "$vmm" == *plesk* ]] || vmm=', hash:/var/spool/postfix/plesk/vmailbox'
+  [[ "$tm"  == *plesk* ]] || tm=', hash:/var/spool/postfix/plesk/transport'
+  printf 'VMD=%s\nVMM=%s\nTM=%s\n' "$vmd" "$vmm" "$tm" > "$BASELINE"
+  chmod 600 "$BASELINE"
+  log "baseline captured"
+}
+
+# Ensure one Postfix list setting equals "<baseline>, hash:<ours>".
+ensure_postfix_list() {
+  local key="$1" base="$2" ours="$3" want have
+  want="$base, hash:$ours"
+  have=$(postconf -h "$key")
+  if [[ "$have" != "$want" ]]; then
+    postconf -e "$key = $want"
+    return 0
+  fi
+  return 1
+}
+
+valid_email() {
+  local e="${1,,}"
+  [[ ${#e} -le 254 ]] || return 1
+  [[ "$e" =~ ^[a-z0-9]([a-z0-9._-]*[a-z0-9])?@([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$ ]] || return 1
+  local d="${e#*@}"
+  case "$d" in
+    rahtk.sa|*.rahtk.sa) return 1 ;;
+  esac
+  return 0
+}
+
+ensure_state() {
+  mkdir -p "$STATE_DIR"
+  chmod 700 "$STATE_DIR"
+  if [[ ! -f "$TSV" ]]; then
+    : > "$TSV"
+    chmod 600 "$TSV"
+  fi
+}
+
+tsv_set() {
+  local email="$1" active="$2" hash="$3" tmp
+  ensure_state
+  tmp=$(mktemp)
+  awk -F'\t' -v e="$email" '$1 != e' "$TSV" > "$tmp"
+  printf '%s\t%s\t%s\n' "$email" "$active" "$hash" >> "$tmp"
+  sort -o "$tmp" "$tmp"
+  install -m 600 -o root -g root "$tmp" "$TSV"
+  rm -f "$tmp"
+}
+
+tsv_del() {
+  local email="$1" tmp
+  ensure_state
+  tmp=$(mktemp)
+  awk -F'\t' -v e="$email" '$1 != e' "$TSV" > "$tmp"
+  install -m 600 -o root -g root "$tmp" "$TSV"
+  rm -f "$tmp"
+}
+
+set_maildir() {
+  local email="$1" localp domain dir
+  localp="${email%@*}"
+  domain="${email#*@}"
+  dir="$MAILNAMES/$domain/$localp"
+  mkdir -p "$dir/Maildir/cur" "$dir/Maildir/new" "$dir/Maildir/tmp"
+  chown -R "$MAIL_UID:$MAIL_GID" "$MAILNAMES/$domain"
+  chmod 700 "$MAILNAMES/$domain" "$dir" "$dir/Maildir"
+  chmod 700 "$dir/Maildir/cur" "$dir/Maildir/new" "$dir/Maildir/tmp"
+}
+
+sync_all() {
+  ensure_state
+  local changed=0
+  local domains_tmp vm_tmp tr_tmp pw_tmp
+  domains_tmp=$(mktemp); vm_tmp=$(mktemp); tr_tmp=$(mktemp); pw_tmp=$(mktemp)
+
+  local email active hash localp domain
+  while IFS=$'\t' read -r email active hash; do
+    [[ -z "${email:-}" ]] && continue
+    [[ "${active:-0}" == "1" ]] || continue
+    [[ -n "${hash:-}" ]] || continue
+    localp="${email%@*}"; domain="${email#*@}"
+    printf '%s\t%s/\n' "$domain" "$domain" >> "$domains_tmp"
+    printf '%s\t%s/%s/Maildir/\n' "$email" "$domain" "$localp" >> "$vm_tmp"
+    printf '%s\tvirtual\n' "$domain" >> "$tr_tmp"
+    printf '%s:%s\n' "$email" "$hash" >> "$pw_tmp"
+    sqlite3 "$USERDB" "INSERT OR IGNORE INTO mailbox_quota (domain_name, mailbox_name, quota) VALUES ('$domain','$localp','0B');" 2>/dev/null || true
+  done < "$TSV"
+
+  sort -u "$domains_tmp" -o "$domains_tmp"
+  sort -u "$tr_tmp" -o "$tr_tmp"
+
+  install_changed() {
+    local src="$1" dst="$2"
+    if [[ -f "$dst" ]] && cmp -s "$src" "$dst"; then return 1; fi
+    cp "$src" "$dst"
+    return 0
+  }
+
+  install_changed "$domains_tmp" "$RAHTK_DOMAINS" && changed=1
+  install_changed "$vm_tmp" "$RAHTK_VMAILBOX" && changed=1
+  install_changed "$tr_tmp" "$RAHTK_TRANSPORT" && changed=1
+  install_changed "$pw_tmp" "$DOVECOT_PASSWD" && changed=1
+
+  chmod 644 "$RAHTK_DOMAINS" "$RAHTK_VMAILBOX" "$RAHTK_TRANSPORT" 2>/dev/null || true
+  chmod 640 "$DOVECOT_PASSWD" 2>/dev/null || true
+  chown root:root "$DOVECOT_PASSWD" 2>/dev/null || true
+
+  postmap hash:"$RAHTK_DOMAINS" >/dev/null 2>&1 || fail POSTMAP_DOMAINS
+  postmap hash:"$RAHTK_VMAILBOX" >/dev/null 2>&1 || fail POSTMAP_VMAILBOX
+  postmap hash:"$RAHTK_TRANSPORT" >/dev/null 2>&1 || fail POSTMAP_TRANSPORT
+
+  ensure_baseline
+  local base_vmd base_vmm base_tm
+  base_vmd=$(read_baseline VMD)
+  base_vmm=$(read_baseline VMM)
+  base_tm=$(read_baseline TM)
+
+  ensure_postfix_list virtual_mailbox_domains "$base_vmd" "$RAHTK_DOMAINS" && changed=1
+  ensure_postfix_list virtual_mailbox_maps "$base_vmm" "$RAHTK_VMAILBOX" && changed=1
+  ensure_postfix_list transport_maps "$base_tm" "$RAHTK_TRANSPORT" && changed=1
+  if [[ "$(postconf -h virtual_minimum_uid)" != "30" ]]; then
+    postconf -e "virtual_minimum_uid = 30"
+    changed=1
+  fi
+
+  if [[ ! -f "$DOVECOT_CONF" ]]; then
+    cat > "$DOVECOT_CONF" <<EOF
+# Rahtk custom passdb for non-Plesk mail domains (managed by rahtk-mail-admin)
+passdb rahtk {
+  driver = passwd-file
+  passwd_file_path = $DOVECOT_PASSWD
+}
+EOF
+    changed=1
+  fi
+
+  rm -f "$domains_tmp" "$vm_tmp" "$tr_tmp" "$pw_tmp"
+
+  if [[ $changed -eq 1 ]]; then
+    postfix check >/dev/null 2>&1 || fail POSTFIX_CHECK
+    postfix reload >/dev/null 2>&1 || true
+    doveconf -n >/dev/null 2>&1 || fail DOVECONF_INVALID
+    systemctl reload dovecot >/dev/null 2>&1 || systemctl restart dovecot >/dev/null 2>&1 || true
+    log "sync applied (changed)"
+  else
+    log "sync no-op"
+  fi
+}
+
+cmd_create() {
+  local email="${1,,}" pw="${2:-}" quota="${3:-0B}"
+  valid_email "$email" || fail INVALID_EMAIL "$email"
+  [[ ${#pw} -ge 8 ]] || fail WEAK_PASSWORD "min 8 chars"
+  local h
+  h=$(doveadm pw -s SHA512-CRYPT -p "$pw") || fail HASH_FAILED
+  set_maildir "$email"
+  tsv_set "$email" 1 "$h"
+  sync_all
+  echo "OK created $email"
+}
+
+cmd_password() {
+  local email="${1,,}" pw="${2:-}"
+  valid_email "$email" || fail INVALID_EMAIL "$email"
+  [[ ${#pw} -ge 8 ]] || fail WEAK_PASSWORD "min 8 chars"
+  local cur h
+  cur=$(awk -F'\t' -v e="$email" '$1==e {print $2; exit}' "$TSV")
+  [[ -n "$cur" ]] || fail NOT_FOUND "$email"
+  h=$(doveadm pw -s SHA512-CRYPT -p "$pw") || fail HASH_FAILED
+  set_maildir "$email"
+  tsv_set "$email" "$cur" "$h"
+  sync_all
+  echo "OK password updated $email"
+}
+
+cmd_enable() {
+  local email="${1,,}" hash
+  valid_email "$email" || fail INVALID_EMAIL "$email"
+  hash=$(awk -F'\t' -v e="$email" '$1==e {print $3; exit}' "$TSV")
+  [[ -n "$hash" ]] || fail NOT_FOUND "$email"
+  set_maildir "$email"
+  tsv_set "$email" 1 "$hash"
+  sync_all
+  echo "OK enabled $email"
+}
+
+cmd_disable() {
+  local email="${1,,}" hash
+  valid_email "$email" || fail INVALID_EMAIL "$email"
+  hash=$(awk -F'\t' -v e="$email" '$1==e {print $3; exit}' "$TSV")
+  [[ -n "$hash" ]] || fail NOT_FOUND "$email"
+  tsv_set "$email" 0 "$hash"
+  sync_all
+  echo "OK disabled $email"
+}
+
+cmd_delete() {
+  local email="${1,,}" localp domain
+  valid_email "$email" || fail INVALID_EMAIL "$email"
+  localp="${email%@*}"; domain="${email#*@}"
+  tsv_del "$email"
+  sqlite3 "$USERDB" "DELETE FROM mailbox_quota WHERE domain_name='$domain' AND mailbox_name='$localp';" 2>/dev/null || true
+  rm -rf "$MAILNAMES/$domain/$localp"
+  sync_all
+  echo "OK deleted $email"
+}
+
+cmd_status() {
+  local email="${1,,}" row
+  valid_email "$email" || fail INVALID_EMAIL "$email"
+  row=$(awk -F'\t' -v e="$email" '$1==e {print $2; exit}' "$TSV")
+  if [[ -z "$row" ]]; then
+    echo "STATUS $email notfound"
+  elif [[ "$row" == "1" ]]; then
+    echo "STATUS $email active"
+  else
+    echo "STATUS $email disabled"
+  fi
+}
+
+cmd_list() {
+  ensure_state
+  awk -F'\t' '{print $1"\t"($2=="1"?"active":"disabled")}' "$TSV"
+}
+
+ACTION="${1:-}"
+shift 2>/dev/null || true
+case "$ACTION" in
+  create)   cmd_create "$@" ;;
+  password) cmd_password "$@" ;;
+  enable)   cmd_enable "$@" ;;
+  disable)  cmd_disable "$@" ;;
+  delete)   cmd_delete "$@" ;;
+  status)   cmd_status "$@" ;;
+  list)     cmd_list ;;
+  sync)     sync_all; echo "OK synced" ;;
+  *) echo "usage: $0 {create|password|enable|disable|delete|status|list|sync} [args]"; exit 2 ;;
+esac

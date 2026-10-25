@@ -150,12 +150,15 @@ export default function SupportChatWidget() {
         { timeout: REQ_TIMEOUT }
       );
       const data = res.data.data;
+      const reply = (data.reply || "").trim();
       setMsgs((p) => [
         ...p,
         {
           role: "bot",
-          text: data.reply || "",
-          fallback: !!data.fallback,
+          text: reply,
+          // رد فاضي أو تعذّر الوصول للموديل: نعرض رسالة الدعم بدل فقاعة فاضية.
+          // (لكن لو فيه طلب تأكيد نعرضه حتى لو النص فاضي.)
+          fallback: !reply && !data.pendingAction ? true : !!data.fallback,
           pending: data.pendingAction || undefined,
         },
       ]);

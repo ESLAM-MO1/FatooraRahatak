@@ -368,7 +368,7 @@ public class ChatService : IChatService
             model,
             messages,
             tools = withTools ? ToolList : null,
-            max_tokens = 700,
+            max_tokens = withTools ? 700 : 1500,
             temperature = 0.3,
         });
 

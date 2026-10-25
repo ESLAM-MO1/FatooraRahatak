@@ -142,9 +142,15 @@ export default function PublicChatWidget() {
         { timeout: REQ_TIMEOUT }
       );
       const data = res.data.data;
+      const reply = (data.reply || "").trim();
       setMsgs((p) => [
         ...p,
-        { role: "bot", text: data.reply || "", fallback: !!data.fallback },
+        {
+          role: "bot",
+          text: reply,
+          // رد فاضي أو تعذّر الوصول للموديل: نعرض رسالة الدعم بدل فقاعة فاضية.
+          fallback: !reply || !!data.fallback,
+        },
       ]);
     } catch {
       setErr(t("chat.error"));

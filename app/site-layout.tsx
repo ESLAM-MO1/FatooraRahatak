@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import Icon from "@/components/Icon";
 import LangSwitch from "@/components/LangSwitch";
+import PublicChatWidget from "@/components/PublicChatWidget";
 import "@/lib/i18n/config";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5092/api/v1";
@@ -819,6 +820,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
+      <PublicChatWidget />
       <a
         href="https://wa.me/966531118224"
         target="_blank"

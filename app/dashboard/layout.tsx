@@ -92,32 +92,15 @@ const ownerNavKeys: NavGroupKey[] = [
   },
 ];
 
-const employeeNavKeys: NavGroupKey[] = [
-  { items: [{ href: "/dashboard", labelKey: "nav.dashboard", icon: "home", perm: "Dashboard.View" }] },
-  {
-    titleKey: "nav.sales",
-    items: [
-      { href: "/dashboard/pos", labelKey: "nav.pos", icon: "cashier", perm: "POS.View" },
-      { href: "/dashboard/orders", labelKey: "nav.orders", icon: "receipt", perm: "Orders.View" },
-      { href: "/dashboard/orders/returns", labelKey: "nav.returns", icon: "receipt", perm: "Orders.View" },
-      { href: "/dashboard/customers", labelKey: "nav.customers", icon: "userGroup", perm: "Customers.View" },
-      { href: "/dashboard/statistics", labelKey: "nav.statistics", icon: "chart", perm: "Statistics.View" },
-    ],
-  },
-  {
-    titleKey: "nav.accounting",
-    items: [
-      { href: "/dashboard/accounting/accounts", labelKey: "nav.accounts", icon: "ledger", perm: "ChartOfAccounts.View" },
-      { href: "/dashboard/accounting/journal-entries", labelKey: "nav.journalEntries", icon: "journal", perm: "JournalEntries.View" },
-      { href: "/dashboard/accounting/ledger", labelKey: "nav.ledger", icon: "book", perm: "Ledger.View" },
-      { href: "/dashboard/accounting/invoices", labelKey: "nav.invoices", icon: "receipt", perm: "Invoices.View" },
-      { href: "/dashboard/accounting/vouchers", labelKey: "nav.vouchers", icon: "wallet", perm: "Vouchers.View" },
-      { href: "/dashboard/accounting/fixed-assets", labelKey: "nav.fixedAssets", icon: "fixedAsset", perm: "FixedAssets.View" },
-      { href: "/dashboard/accounting/reports", labelKey: "nav.reports", icon: "chart", perm: "FinancialReports.View" },
-      { href: "/dashboard/business-reports", labelKey: "nav.businessReports", icon: "chart", perm: "Orders.View" },
-    ],
-  },
-];
+// Store-side users (Owner AND Employee) share ONE master nav. Which items each
+// person actually sees is decided per item by `hasPerm(...)`, using the real
+// permission codes returned by GET /auth/profile.
+//
+// Employees used to get a hard-coded 3-group list that omitted Products,
+// Categories, Inventory, Coupons, Store settings and Marketing entirely, so a
+// store manager (EcommerceManager, 126 permissions) only saw Sales +
+// Accounting. Never branch the nav on UserType again - only on permissions.
+const storeNavKeys: NavGroupKey[] = ownerNavKeys;
 
 // Platform staff (UserType.SupportStaff) only ever see the modules their
 // specific StaffRole is granted on the backend (see AdminController.ModuleAccess,
@@ -407,8 +390,10 @@ const handler = () => {
     if (!isEmployee) return true;
     return permissions.includes(code);
   };
+  // Route permission map: built from the SAME source as the nav, so a section
+  // that is hidden from the menu is also unreachable by typing its URL.
   const permByHref = new Map<string, string>();
-  [...ownerNavKeys, ...employeeNavKeys].forEach((g) =>
+  storeNavKeys.forEach((g) =>
     g.items.forEach((it) => it.perm && permByHref.set(it.href, it.perm))
   );
   const routePerm = pathname ? [...permByHref.entries()]
@@ -424,6 +409,8 @@ const handler = () => {
       pathname === "/dashboard/profile" ||
       [...staffAllowedHrefs].some((href) => href !== "/dashboard" && pathname?.startsWith(href))
     );
+  // Platform-only console routes. These have no store-side permission code and
+  // must stay closed to every non-platform user (Owner and Employee alike).
   const ADMIN_ONLY_ROUTES = [
     "stores", "packages", "themes", "users", "reports", "kpis", "domains",
     "admin-referrals", "admin-verifications", "admin-merchant-accounts",
@@ -434,7 +421,12 @@ const handler = () => {
   const deniedAdminRoute =
     userType !== null && !isSuperAdmin && !isSupportStaff &&
     ADMIN_ONLY_ROUTES.some((r) => pathname === `/dashboard/${r}` || pathname?.startsWith(`/dashboard/${r}/`));
-  const routeDenied = deniedAsStaff || deniedAdminRoute || (isEmployee && routePerm ? !permissions.includes(routePerm) : false);
+  // Everything else is gated by the same permission that hides its menu item.
+  // Applies to Owner AND Employee, so the menu and the URL bar can never disagree.
+  const deniedStoreRoute =
+    userType !== null && !isSuperAdmin && !isSupportStaff &&
+    !!routePerm && !permissions.includes(routePerm);
+  const routeDenied = deniedAsStaff || deniedAdminRoute || deniedStoreRoute;
 
   useEffect(() => {
     if (!ready || !routeDenied) return;
@@ -462,7 +454,7 @@ const handler = () => {
       }))
       .filter((g) => g.items.length > 0);
   const groups = [
-    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isSupportStaff ? getSupportStaffNavKeys(staffRole) : isEmployee ? employeeNavKeys : ownerNavKeys),
+    ...resolveGroups(isSuperAdmin ? superAdminNavKeys : isSupportStaff ? getSupportStaffNavKeys(staffRole) : storeNavKeys),
     ...customNavGroups
       .map(g => ({ ...g, items: g.items.filter(item => hasPerm(item.perm)) }))
       .filter(g => g.items.length > 0),

@@ -626,6 +626,9 @@ export function AppPreview({
   // شاشة فرعية تُفتح داخل الإطار عند الضغط على عنصر (بدل أن يبقى الضغط بلا أثر)
   const [detail, setDetail] = useState<string | null>(null);
 
+  // حالة تسجيل الدخول لحساب العميل داخل المعاينة (تطابق متجرك الحقيقي)
+  const [loggedIn, setLoggedIn] = useState(false);
+
   const openDetail = (key: string) => setDetail(key);
 
   return (
@@ -678,7 +681,7 @@ export function AppPreview({
           {screen === "home" && <HomeScreen design={design} bundle={bundle} appName={appName} currency={currency} theme={theme} onNavigate={onNavigate} c={c} t={t} />}
           {screen === "product" && <ProductScreen product={product || bundle?.products?.[0] || null} bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.product.items ?? {}} />}
           {screen === "cart" && <CartScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.cart.items ?? {}} />}
-          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.account.items ?? {}} />}
+          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.account.items ?? {}} loggedIn={loggedIn} onLogin={() => setLoggedIn(true)} onLogout={() => setLoggedIn(false)} />}
           {screen === "tracking" && <TrackingScreen c={c} onNavigate={onNavigate} t={t} items={design.screens.tracking.items ?? {}} />}
           {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.catalog.items ?? {}} />}
 
@@ -1134,50 +1137,145 @@ function CartScreen({ bundle, c, currency, onNavigate, onDetail, t, items }: any
 }
 
 // ── شاشة الحساب ──
-function AccountScreen({ c, appName, onNavigate, onDetail, t, items }: any) {
+function AccountScreen({ c, appName, onNavigate, onDetail, t, items, loggedIn, onLogin, onLogout }: any) {
   const on = (k: string) => items?.[k] !== false;
-  const rows = [
-    { icon: "package", k: "orders" },
-    { icon: "star", k: "wishlist" },
-    { icon: "location", k: "addresses" },
-    { icon: "mail", k: "support" },
-    { icon: "layout", k: "settings" },
-  ].filter((r) => on(r.k));
+  const [tab, setTab] = useState<"orders" | "addresses" | "profile">("orders");
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [email, setEmail] = useState("");
+
+  // ── شاشة تسجيل الدخول (مطابقة لمتجرك الحقيقي) ──
+  if (on("profile") && !loggedIn) {
+    return (
+      <div className="p-4">
+        <div className="bg-white rounded-2xl border p-5 text-center" style={{ borderColor: "#eef0f3" }}>
+          <div className="mx-auto mb-3 w-14 h-14 rounded-full flex items-center justify-center" style={{ background: `${c.buttonColor}14`, color: c.buttonColor }}>
+            <Icon name="user" size={24} />
+          </div>
+          <p className="text-[13px] font-extrabold text-gray-800 mb-1">{t("storefront.myAccount")}</p>
+          <p className="text-[10px] text-gray-500 mb-4">{t("storefront.notLoggedInHint")}</p>
+          {step === "email" ? (
+            <div className="text-start">
+              <label className="block text-[10px] font-bold text-gray-700 mb-1">{t("storefront.quickLoginEmail")}</label>
+              <input
+                dir="ltr"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="example@domain.com"
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-[11px] outline-none"
+              />
+              <button type="button" onClick={() => setStep("code")} className="w-full mt-2.5 rounded-lg py-2 text-[11px] font-bold text-white cursor-pointer active:scale-[0.99] transition-transform" style={{ background: c.buttonColor }}>
+                {t("storefront.quickLoginSendCode")}
+              </button>
+            </div>
+          ) : (
+            <div className="text-start">
+              <p className="text-[9.5px] text-gray-500 mb-2">{t("storefront.quickLoginCodeDesc")}</p>
+              <label className="block text-[10px] font-bold text-gray-700 mb-1">{t("storefront.quickLoginCode")}</label>
+              <input dir="ltr" placeholder="••••" maxLength={6} className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-[11px] outline-none text-center tracking-widest" />
+              <button type="button" onClick={onLogin} className="w-full mt-2.5 rounded-lg py-2 text-[11px] font-bold text-white cursor-pointer active:scale-[0.99] transition-transform" style={{ background: c.buttonColor }}>
+                {t("storefront.quickLoginVerify")}
+              </button>
+              <button type="button" onClick={() => setStep("email")} className="w-full mt-1.5 text-center text-[9.5px] text-gray-500 cursor-pointer">
+                {t("storefront.quickLoginBack")}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── الحساب بعد الدخول: تبويبات الطلبات/العناوين/بياناتي + خروج ──
+  const tabs: { k: "orders" | "addresses" | "profile"; label: string }[] = [
+    { k: "orders", label: t("account.orders") },
+    { k: "addresses", label: t("account.addresses") },
+    { k: "profile", label: t("account.profile") },
+  ];
+  const statusLabel: Record<string, string> = {
+    confirmed: t("account.statusProcessing"),
+    preparing: t("account.statusProcessing"),
+    shipped: t("account.statusShipped"),
+    delivered: t("account.statusDelivered"),
+  };
   return (
     <div className="p-3">
-      {on("profile") && (
       <div className="rounded-2xl p-4 text-white mb-3" style={{ background: `linear-gradient(135deg, ${c.headerColor}, ${c.accentColor})` }}>
         <div className="flex items-center gap-2.5">
           <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center"><Icon name="user" size={20} /></span>
-          <div>
+          <div className="flex-1">
             <p className="text-[12px] font-extrabold">{t("appDesigner.welcomeUser")}</p>
             <p className="text-[9px] text-white/70">{appName}</p>
           </div>
+          <button type="button" onClick={onLogout} className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-white/20 cursor-pointer active:scale-95 transition-transform">
+            {t("account.logout")}
+          </button>
         </div>
       </div>
-      )}
-      {rows.length > 0 && (
-      <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
-        {rows.map((r, i) => (
+
+      <div className="flex gap-1.5 mb-3">
+        {tabs.map((tb) => (
           <button
-            key={r.k}
+            key={tb.k}
             type="button"
-            onClick={() => (r.k === "orders" ? onNavigate("tracking") : onDetail(r.k))}
-            className="w-full flex items-center gap-2.5 px-3 py-3 text-start cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
-            style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}
+            onClick={() => setTab(tb.k)}
+            className="flex-1 py-1.5 rounded-full text-[9.5px] font-bold cursor-pointer transition-colors"
+            style={tab === tb.k ? { background: c.buttonColor, color: "#fff" } : { background: "#eef0f3", color: "#6b7280" }}
           >
-            <span style={{ color: c.buttonColor }}><Icon name={r.icon as any} size={15} /></span>
-            <span className="flex-1 text-[11px] font-bold text-gray-700">{t(`appDesigner.accountItem.${r.k}`)}</span>
-            <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
+            {tb.label}
           </button>
         ))}
       </div>
+
+      {tab === "orders" && (
+        <div>
+          <div className="bg-white rounded-xl border p-3 mb-2 flex items-center justify-between cursor-pointer" style={{ borderColor: "#eef0f3" }}>
+            <div>
+              <p className="text-[11px] font-extrabold text-gray-800">#10245</p>
+              <p className="text-[9px] text-gray-400">{statusLabel.shipped}</p>
+            </div>
+            <p className="text-[11px] font-extrabold" style={{ color: c.buttonColor }}>320 ر.س</p>
+          </div>
+          <div className="bg-white rounded-xl border p-3 flex items-center justify-between cursor-pointer" style={{ borderColor: "#eef0f3" }}>
+            <div>
+              <p className="text-[11px] font-extrabold text-gray-800">#10231</p>
+              <p className="text-[9px] text-gray-400">{statusLabel.delivered}</p>
+            </div>
+            <p className="text-[11px] font-extrabold" style={{ color: c.buttonColor }}>180 ر.س</p>
+          </div>
+        </div>
       )}
-      {on("trackOrder") && (
+
+      {tab === "addresses" && (
+        <div>
+          <div className="bg-white rounded-xl border p-3 mb-2 flex items-center justify-between cursor-pointer" style={{ borderColor: "#eef0f3" }}>
+            <span className="flex items-center gap-2 text-[10.5px] font-bold text-gray-700"><Icon name="location" size={13} className="text-gray-400" />{t("appDesigner.detail.addresses.home")}</span>
+            <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
+          </div>
+          <div className="bg-white rounded-xl border p-3 flex items-center justify-between cursor-pointer" style={{ borderColor: "#eef0f3" }}>
+            <span className="flex items-center gap-2 text-[10.5px] font-bold text-gray-700"><Icon name="location" size={13} className="text-gray-400" />{t("appDesigner.detail.addresses.work")}</span>
+            <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
+          </div>
+        </div>
+      )}
+
+      {tab === "profile" && (
+        <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
+          <div className="flex items-center gap-2.5 px-3 py-2.5 border-b" style={{ borderColor: "#f3f4f6", color: c.buttonColor }}>
+            <Icon name="mail" size={14} />
+            <span className="flex-1 text-[10.5px] font-bold text-gray-700">{t("account.email")}</span>
+            <span className="text-[10px] text-gray-400" dir="ltr">customer@example.com</span>
+          </div>
+          <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ color: c.buttonColor }}>
+            <Icon name="phone" size={14} />
+            <span className="flex-1 text-[10.5px] font-bold text-gray-700">{t("account.phone")}</span>
+            <span className="text-[10px] text-gray-400" dir="ltr">+966 5x xxx xxxx</span>
+          </div>
+        </div>
+      )}
+
       <button type="button" onClick={() => onNavigate("tracking")} className="w-full mt-3 py-2.5 rounded-xl text-[11px] font-bold cursor-pointer transition-colors active:scale-[0.99]" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>
         {t("appDesigner.trackOrder")}
       </button>
-      )}
     </div>
   );
 }

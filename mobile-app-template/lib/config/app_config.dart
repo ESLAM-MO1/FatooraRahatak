@@ -16,6 +16,9 @@ class AppConfig {
   final String splashText;
   final Map<String, Color> colors;
   final Map<String, bool> screens;
+  final List<String> bottomNav;
+  final List<String> homeSections;
+  final Map<String, Map<String, bool>> screenItems;
 
   AppConfig({
     required this.appName,
@@ -29,7 +32,16 @@ class AppConfig {
     required this.splashText,
     required this.colors,
     required this.screens,
+    required this.bottomNav,
+    required this.homeSections,
+    required this.screenItems,
   });
+
+  /// هل العنصر مفعّل في شاشة معيّنة؟ (الافتراضي: مفعّل)
+  bool item(String screen, String key) => screenItems[screen]?[key] ?? true;
+
+  /// هل قسم الشاشة الرئيسية مفعّل وظاهر؟
+  bool hasHomeSection(String key) => homeSections.contains(key);
 
   static Color _hex(String? v, Color fallback) {
     if (v == null || v.isEmpty) return fallback;
@@ -41,6 +53,36 @@ class AppConfig {
   factory AppConfig.fromJson(Map<String, dynamic> j) {
     final c = (j['colors'] as Map?)?.cast<String, dynamic>() ?? {};
     final s = (j['screens'] as Map?)?.cast<String, dynamic>() ?? {};
+
+    // شريط التنقل السفلي: الترتيب الذي اختاره التاجر (الافتراضي: الرئيسية/الأقسام/السلة/حسابي).
+    final bottomNav = ((j['bottomNav'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (bottomNav.isEmpty) {
+      bottomNav.addAll(['home', 'categories', 'cart', 'account']);
+    }
+
+    // أقسام الشاشة الرئيسية بالترتيب (المفعّلة فقط)، وإلا الافتراضية.
+    final homeSections = ((j['homeSections'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (homeSections.isEmpty) {
+      homeSections.addAll(['hero', 'categories', 'featured', 'newArrivals', 'offers']);
+    }
+
+    // عناصر الشاشات الداخلية: { screen: { itemKey: bool } }
+    final screenItemsRaw = (j['screenItems'] as Map?)?.cast<String, dynamic>() ?? {};
+    final screenItems = <String, Map<String, bool>>{};
+    screenItemsRaw.forEach((screen, v) {
+      if (v is Map) {
+        screenItems[screen] = {
+          for (final e in v.entries) e.key.toString(): e.value == true,
+        };
+      }
+    });
+
     return AppConfig(
       appName: (j['appName'] ?? 'متجري').toString(),
       tagline: (j['tagline'] ?? '').toString(),
@@ -62,6 +104,9 @@ class AppConfig {
       screens: {
         for (final e in s.entries) e.key: e.value == true,
       },
+      bottomNav: bottomNav,
+      homeSections: homeSections,
+      screenItems: screenItems,
     );
   }
 

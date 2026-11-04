@@ -25,22 +25,24 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (_q.isNotEmpty) {
       items = items.where((p) => p.name.contains(_q)).toList();
     }
+    final cfg = AppConfig.I;
     return Scaffold(
       appBar: AppBar(title: const Text('تصفّح المتجر')),
       body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: TextField(
-            onChanged: (v) => setState(() => _q = v),
-            decoration: InputDecoration(
-              hintText: 'ابحث في المتجر...',
-              prefixIcon: const Icon(Icons.search),
-              filled: true, fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        if (cfg.item('catalog', 'search'))
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextField(
+              onChanged: (v) => setState(() => _q = v),
+              decoration: InputDecoration(
+                hintText: 'ابحث في المتجر...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true, fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
             ),
           ),
-        ),
-        if (widget.categoryId == null && s.categories.isNotEmpty)
+        if (cfg.item('catalog', 'categories') && widget.categoryId == null && s.categories.isNotEmpty)
           SizedBox(
             height: 40,
             child: ListView.separated(
@@ -65,14 +67,36 @@ class _CatalogScreenState extends State<CatalogScreen> {
         Expanded(
           child: items.isEmpty
               ? const Center(child: Text('لا توجد منتجات', style: TextStyle(color: Colors.grey)))
-              : GridView.builder(
-                  padding: const EdgeInsets.all(12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.72),
-                  itemCount: items.length,
-                  itemBuilder: (_, i) => ProductCard(product: items[i],
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(products: items[i])))),
-                ),
+              // إن كان عرض الشبكة معطّلًا، نعرض قائمة عمودية بسيطة.
+              : cfg.item('catalog', 'grid')
+                  ? GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.72),
+                      itemCount: items.length,
+                      itemBuilder: (_, i) => ProductCard(product: items[i],
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen.single(items[i])))),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, i) => Row(children: [
+                        ClipRRect(borderRadius: BorderRadius.circular(10), child: ProductThumb(url: items[i].image, size: 72)),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(items[i].name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          const SizedBox(height: 6),
+                          PriceText(items[i], size: 14),
+                        ])),
+                        IconButton(
+                          icon: Icon(Icons.chevron_left, color: c['button']),
+                          onPressed: () => Navigator.push(context,
+                              MaterialPageRoute(builder: (_) => ProductScreen.single(items[i]))),
+                        ),
+                      ]),
+                    ),
         ),
       ]),
     );

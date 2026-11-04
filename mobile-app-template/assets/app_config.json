@@ -23,5 +23,14 @@
     "cart": true,
     "account": true,
     "tracking": true
+  },
+  "bottomNav": ["home", "categories", "cart", "account"],
+  "homeSections": ["hero", "categories", "featured", "newArrivals", "offers"],
+  "screenItems": {
+    "product": {"photos": true, "price": true, "discount": true, "rating": true, "description": true, "addToCart": true, "related": true},
+    "cart": {"items": true, "coupon": true, "shipping": true, "total": true, "checkout": true},
+    "account": {"profile": true, "orders": true, "wishlist": true, "addresses": true, "support": true, "settings": true, "trackOrder": true},
+    "tracking": {"timeline": true, "courier": true},
+    "catalog": {"search": true, "categories": true, "grid": true}
   }
 }

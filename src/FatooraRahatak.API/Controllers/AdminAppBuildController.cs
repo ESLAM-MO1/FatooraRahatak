@@ -8,7 +8,7 @@ namespace FatooraRahatak.API.Controllers;
 // واجهات إدارة بناء تطبيقات الجوال (APK) — للأدمن فقط.
 [ApiController]
 [Route("api/v1/admin/app-builds")]
-[Authorize]
+[Authorize(Policy = "MobileAppAdmin")]
 public class AdminAppBuildController : ControllerBase
 {
     private readonly IMobileAppBuildService _service;
@@ -18,21 +18,6 @@ public class AdminAppBuildController : ControllerBase
         _service = service;
     }
 
-    private IActionResult? CheckAccess()
-    {
-        var role = User.FindFirstValue(ClaimTypes.Role);
-        if (role == "SuperAdmin")
-            return null;
-        if (role != "SupportStaff")
-            return Forbid();
-
-        var staffRole = User.FindFirstValue("StaffRole");
-        if (staffRole != "Admin" && staffRole != "Technical")
-            return Forbid();
-
-        return null;
-    }
-
     private long GetCurrentUserId() =>
         long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -40,8 +25,6 @@ public class AdminAppBuildController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] string? status)
     {
-        var forbidden = CheckAccess();
-        if (forbidden != null) return forbidden;
         var data = await _service.GetAllBuildsAsync(status);
         return Ok(new { success = true, data });
     }
@@ -50,8 +33,6 @@ public class AdminAppBuildController : ControllerBase
     [HttpGet("by-subscription/{subscriptionId}")]
     public async Task<IActionResult> GetBySubscription(long subscriptionId)
     {
-        var forbidden = CheckAccess();
-        if (forbidden != null) return forbidden;
         var data = await _service.GetLatestBuildAsync(subscriptionId);
         return Ok(new { success = true, data });
     }
@@ -60,8 +41,6 @@ public class AdminAppBuildController : ControllerBase
     [HttpPost("subscription/{subscriptionId}/start")]
     public async Task<IActionResult> Start(long subscriptionId)
     {
-        var forbidden = CheckAccess();
-        if (forbidden != null) return forbidden;
         try
         {
             var data = await _service.StartBuildAsync(subscriptionId, GetCurrentUserId());
@@ -77,8 +56,6 @@ public class AdminAppBuildController : ControllerBase
     [HttpPost("{id}/refresh")]
     public async Task<IActionResult> Refresh(long id)
     {
-        var forbidden = CheckAccess();
-        if (forbidden != null) return forbidden;
         try
         {
             var data = await _service.RefreshBuildAsync(id);
@@ -94,8 +71,6 @@ public class AdminAppBuildController : ControllerBase
     [HttpGet("{id}/download")]
     public async Task<IActionResult> Download(long id)
     {
-        var forbidden = CheckAccess();
-        if (forbidden != null) return forbidden;
         var file = await _service.GetApkFileAsync(id);
         if (file == null) return NotFound(new { success = false, message = "ملف الـ APK غير جاهز" });
         var (path, fileName) = file.Value;

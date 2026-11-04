@@ -53,31 +53,33 @@ class _ProductScreenState extends State<ProductScreen> {
     final p = product;
     final c = AppConfig.I.colors;
     final s = context.read<AppState>();
+    final cfg = AppConfig.I;
 
     return Scaffold(
       appBar: AppBar(title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
       body: ListView(children: [
         // صور
-        AspectRatio(
-          aspectRatio: 1,
-          child: p.gallery.isEmpty
-              ? ProductThumb(url: p.image, size: double.infinity)
-              : PageView.builder(
-                  controller: _page,
-                  itemCount: p.gallery.length,
-                  onPageChanged: (i) => setState(() => _index = i),
-                  itemBuilder: (_, i) => ProductThumb(url: p.gallery[i], size: double.infinity),
-                ),
-        ),
+        if (cfg.item('product', 'photos'))
+          AspectRatio(
+            aspectRatio: 1,
+            child: p.gallery.isEmpty
+                ? ProductThumb(url: p.image, size: double.infinity)
+                : PageView.builder(
+                    controller: _page,
+                    itemCount: p.gallery.length,
+                    onPageChanged: (i) => setState(() => _index = i),
+                    itemBuilder: (_, i) => ProductThumb(url: p.gallery[i], size: double.infinity),
+                  ),
+          ),
         Padding(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(p.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Row(children: [
-              PriceText(p, size: 20),
+              if (cfg.item('product', 'price')) PriceText(p, size: 20),
               const SizedBox(width: 10),
-              if (p.hasDiscount)
+              if (cfg.item('product', 'discount') && p.hasDiscount)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: c['accent'], borderRadius: BorderRadius.circular(20)),
@@ -85,8 +87,14 @@ class _ProductScreenState extends State<ProductScreen> {
                       style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ),
             ]),
+            if (cfg.item('product', 'rating')) ...[
+              const SizedBox(height: 8),
+              Row(children: List.generate(5, (i) => Icon(
+                i < 4 ? Icons.star_rounded : Icons.star_border_rounded,
+                size: 16, color: Colors.amber.shade600))),
+            ],
             const SizedBox(height: 16),
-            if ((p.description ?? '').isNotEmpty) ...[
+            if (cfg.item('product', 'description') && (p.description ?? '').isNotEmpty) ...[
               const Text('الوصف', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
               const SizedBox(height: 6),
               Text(p.description!, style: const TextStyle(color: Color(0xFF4B5563), height: 1.6, fontSize: 13)),
@@ -104,30 +112,34 @@ class _ProductScreenState extends State<ProductScreen> {
               _qtyBtn(Icons.add, () => setState(() => _qty++)),
             ]),
             const SizedBox(height: 20),
-            AppButton(
-              label: 'أضف إلى السلة',
-              icon: Icons.shopping_cart_outlined,
-              onPressed: () {
-                for (var i = 0; i < _qty; i++) { s.addToCart(p); }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تمت الإضافة إلى السلة'), duration: Duration(seconds: 2)),
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            AppButton(
-              label: 'اشترِ الآن',
-              icon: Icons.flash_on,
-              outline: true,
-              onPressed: () {
-                for (var i = 0; i < _qty; i++) { s.addToCart(p); }
-                Navigator.of(context).popUntil((r) => r.isFirst);
-                TabController.I.go(2);
-              },
-            ),
+            if (cfg.item('product', 'addToCart')) ...[
+              AppButton(
+                label: 'أضف إلى السلة',
+                icon: Icons.shopping_cart_outlined,
+                onPressed: () {
+                  for (var i = 0; i < _qty; i++) { s.addToCart(p); }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تمت الإضافة إلى السلة'), duration: Duration(seconds: 2)),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              AppButton(
+                label: 'اشترِ الآن',
+                icon: Icons.flash_on,
+                outline: true,
+                onPressed: () {
+                  for (var i = 0; i < _qty; i++) { s.addToCart(p); }
+                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  // الانتقال لتبويب السلة حسب ترتيب التنقل الفعلي.
+                  final ci = AppConfig.I.bottomNav.indexOf('cart');
+                  TabController.I.go(ci >= 0 ? ci : 0);
+                },
+              ),
+            ],
           ]),
         ),
-        if (_related.isNotEmpty) ...[
+        if (cfg.item('product', 'related') && _related.isNotEmpty) ...[
           const SectionTitle('منتجات مشابهة'),
           SizedBox(
             height: 190,

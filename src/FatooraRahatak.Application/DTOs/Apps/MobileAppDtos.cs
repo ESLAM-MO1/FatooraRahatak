@@ -186,6 +186,17 @@ public class AdminMobileAppSubscriptionDto
     public DateTime? EndDate { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // ── التصميم كما اختاره التاجر (لعرضه ومعاينته من قِبَل الأدمن قبل الاعتماد) ──
+    public string? DesignJson { get; set; }
+    public string? Tagline { get; set; }
+    public string? CurrentAppVersion { get; set; }
+    public string? ListingKeywords { get; set; }
+    public string? ListingSupportEmail { get; set; }
+    public string? ListingPrivacyUrl { get; set; }
+    // آخر نسخة APK ناجحة (إن وُجدت) لعرض حالة البناء للأدمن.
+    public bool HasApk { get; set; }
+    public DateTime? LastBuildAt { get; set; }
 }
 
 // إجراء الأدمن على طلب اشتراك: اعتماد المتابعة (Complete) أو الرفض (Reject).

@@ -208,6 +208,39 @@ public class MobileAppController : ControllerBase
         }
     }
 
+    // ── رفع أيقونة التطبيق (نقطة مخصّصة بدل إعادة استخدام رفع صور المنتجات) ──
+    [RequirePermission("StoreSettings.Edit")]
+    [HttpPost("icon"), DisableRequestSizeLimit]
+    public async Task<IActionResult> UploadIcon(IFormFile file)
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بالمستخدم" });
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { success = false, message = "الملف مطلوب" });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowed = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        if (!allowed.Contains(ext))
+            return BadRequest(new { success = false, message = "صيغة الأيقونة غير مدعومة. استخدم PNG أو JPG أو WebP" });
+
+        if (file.Length > 5 * 1024 * 1024)
+            return BadRequest(new { success = false, message = "حجم الأيقونة يتجاوز 5 ميجابايت" });
+
+        var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "app-icons");
+        Directory.CreateDirectory(uploadsDir);
+
+        var fileName = $"app-icon-{storeId}-{Guid.NewGuid():N}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+        using (var stream = new FileStream(filePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var url = Helpers.UrlHelpers.AbsoluteUrl(Request, $"/uploads/app-icons/{fileName}");
+        return Ok(new { success = true, data = new { url } });
+    }
+
     // ── الإحصاءات ──
     [RequirePermission("StoreSettings.View")]
     [HttpGet("analytics")]

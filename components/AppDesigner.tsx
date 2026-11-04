@@ -311,7 +311,7 @@ export default function AppDesigner({ design, onChange, bundle, storeName }: Pro
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await api.post("/products/upload-image", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const res = await api.post("/mobile-app/icon", fd, { headers: { "Content-Type": "multipart/form-data" } });
       const url = res.data?.data?.url;
       if (url) update({ iconUrl: url });
     } catch (err: any) {

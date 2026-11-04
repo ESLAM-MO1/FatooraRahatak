@@ -51,37 +51,82 @@ class RootShell extends StatefulWidget {
 }
 
 class _RootShellState extends State<RootShell> {
+  // خريطة كل مفتاح تبويب إلى شاشته وبياناته البصرية.
+  static Widget _screenFor(String key) {
+    switch (key) {
+      case 'catalog':
+      case 'categories':
+        return const CatalogScreen();
+      case 'cart':
+        return const CartScreen();
+      case 'tracking':
+      case 'orders':
+        return const TrackingScreen();
+      case 'account':
+        return const AccountScreen();
+      case 'home':
+      default:
+        return const HomeScreen();
+    }
+  }
+
+  static const _labelOf = <String, String>{
+    'home': 'الرئيسية',
+    'catalog': 'تصفّح',
+    'categories': 'الأقسام',
+    'cart': 'السلة',
+    'tracking': 'طلباتي',
+    'orders': 'طلباتي',
+    'account': 'حسابي',
+  };
+
+  static const _iconOf = <String, IconData>{
+    'home': Icons.home_outlined,
+    'catalog': Icons.grid_view_outlined,
+    'categories': Icons.grid_view_outlined,
+    'cart': Icons.shopping_cart_outlined,
+    'tracking': Icons.receipt_long_outlined,
+    'orders': Icons.receipt_long_outlined,
+    'account': Icons.person_outline,
+  };
+
+  static const _activeIconOf = <String, IconData>{
+    'home': Icons.home,
+    'catalog': Icons.grid_view,
+    'categories': Icons.grid_view,
+    'cart': Icons.shopping_cart,
+    'tracking': Icons.receipt_long,
+    'orders': Icons.receipt_long,
+    'account': Icons.person,
+  };
+
   @override
   Widget build(BuildContext context) {
     final c = AppConfig.I.colors;
+
+    // ترتيب التبويبات كما اختاره التاجر، مع استبعاد غير المفعّلة.
+    final navKeys = <String>[];
+    for (final key in AppConfig.I.bottomNav) {
+      final enabled = key == 'home' || (AppConfig.I.screens[key] ?? true);
+      if (enabled && !navKeys.contains(key)) navKeys.add(key);
+    }
+    if (navKeys.isEmpty) navKeys.add('home');
+
     final screens = <Widget>[
-      if (AppConfig.I.screens['home'] ?? true) const HomeScreen(),
-      if (AppConfig.I.screens['catalog'] ?? true) const CatalogScreen(),
-      if (AppConfig.I.screens['cart'] ?? true) const CartScreen(),
-      if (AppConfig.I.screens['tracking'] ?? true) const TrackingScreen(),
-      if (AppConfig.I.screens['account'] ?? true) const AccountScreen(),
+      for (final key in navKeys) _screenFor(key),
     ];
     final labels = <String>[
-      if (AppConfig.I.screens['home'] ?? true) 'الرئيسية',
-      if (AppConfig.I.screens['catalog'] ?? true) 'تصفّح',
-      if (AppConfig.I.screens['cart'] ?? true) 'السلة',
-      if (AppConfig.I.screens['tracking'] ?? true) 'طلباتي',
-      if (AppConfig.I.screens['account'] ?? true) 'حسابي',
+      for (final key in navKeys) _labelOf[key] ?? 'الرئيسية',
     ];
     final icons = <IconData>[
-      if (AppConfig.I.screens['home'] ?? true) Icons.home_outlined,
-      if (AppConfig.I.screens['catalog'] ?? true) Icons.grid_view_outlined,
-      if (AppConfig.I.screens['cart'] ?? true) Icons.shopping_cart_outlined,
-      if (AppConfig.I.screens['tracking'] ?? true) Icons.receipt_long_outlined,
-      if (AppConfig.I.screens['account'] ?? true) Icons.person_outline,
+      for (final key in navKeys) _iconOf[key] ?? Icons.circle_outlined,
     ];
     final activeIcons = <IconData>[
-      if (AppConfig.I.screens['home'] ?? true) Icons.home,
-      if (AppConfig.I.screens['catalog'] ?? true) Icons.grid_view,
-      if (AppConfig.I.screens['cart'] ?? true) Icons.shopping_cart,
-      if (AppConfig.I.screens['tracking'] ?? true) Icons.receipt_long,
-      if (AppConfig.I.screens['account'] ?? true) Icons.person,
+      for (final key in navKeys) _activeIconOf[key] ?? Icons.circle,
     ];
+
+    // فهرس التبويب الخاص بالسلة (لزر السلة في الشريط العلوي).
+    final cartIndex = navKeys.indexOf('cart');
 
     return AnimatedBuilder(
       animation: TabController.I,
@@ -93,14 +138,14 @@ class _RootShellState extends State<RootShell> {
             centerTitle: true,
             title: Text(AppConfig.I.appName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             actions: [
-              if (AppConfig.I.screens['cart'] ?? true)
+              if (cartIndex >= 0)
                 IconButton(
                   icon: Badge(
                     isLabelVisible: cartCount > 0,
                     label: Text('$cartCount'),
                     child: const Icon(Icons.shopping_cart_outlined),
                   ),
-                  onPressed: () => TabController.I.go(screens.length > 2 ? 2 : 0),
+                  onPressed: () => TabController.I.go(cartIndex),
                 ),
             ],
           ),

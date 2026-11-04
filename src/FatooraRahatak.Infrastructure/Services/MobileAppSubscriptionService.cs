@@ -670,6 +670,7 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         IQueryable<StoreAppSubscription> q = _context.StoreAppSubscriptions
             .AsNoTracking()
             .Include(s => s.Store)
+            .Include(s => s.Builds)
             .Include(s => s.Package);
 
         if (!string.IsNullOrWhiteSpace(status) &&
@@ -764,7 +765,7 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
     {
         var list = await _context.StoreAppSubscriptions
             .AsNoTracking()
-            .Include(s => s.Store).Include(s => s.Package)
+            .Include(s => s.Store).Include(s => s.Builds).Include(s => s.Package)
             .Where(s => s.PublishStatus == "Submitted" || s.PublishStatus == "InReview")
             .OrderBy(s => s.SubmittedAt)
             .ToListAsync();
@@ -937,6 +938,16 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         StartDate = s.StartDate,
         EndDate = s.EndDate,
         CompletedAt = s.CompletedAt,
-        CreatedAt = s.CreatedAt
+        CreatedAt = s.CreatedAt,
+        DesignJson = s.DesignJson,
+        Tagline = s.Tagline,
+        CurrentAppVersion = s.CurrentAppVersion,
+        ListingKeywords = s.ListingKeywords,
+        ListingSupportEmail = s.ListingSupportEmail,
+        ListingPrivacyUrl = s.ListingPrivacyUrl,
+        HasApk = s.Builds != null && s.Builds.Any(b => b.Status == "Succeeded"),
+        LastBuildAt = s.Builds != null
+            ? s.Builds.Where(b => b.Status == "Succeeded").Max(b => (DateTime?)b.FinishedAt)
+            : null,
     };
 }

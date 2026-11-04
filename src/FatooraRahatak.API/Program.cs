@@ -88,7 +88,20 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // سياسة موحّدة للوصول إلى واجهات إدارة صانع التطبيقات:
+    // SuperAdmin، أو SupportStaff بدور Admin/Technical.
+    options.AddPolicy("MobileAppAdmin", policy =>
+        policy.RequireAssertion(ctx =>
+        {
+            var role = ctx.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            if (role == "SuperAdmin") return true;
+            if (role != "SupportStaff") return false;
+            var staffRole = ctx.User.FindFirst("StaffRole")?.Value;
+            return staffRole == "Admin" || staffRole == "Technical";
+        }));
+});
 
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IAuthService, FatooraRahatak.Infrastructure.Services.AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();

@@ -89,6 +89,17 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget _accountView(BuildContext context, Map<String, Color> c) {
     final s = context.watch<AppState>();
     final store = s.store;
+    final cfg = AppConfig.I;
+
+    // التبويبات المتاحة حسب اختيار التاجر.
+    final tabs = <MapEntry<int, String>>[
+      if (cfg.item('account', 'orders')) const MapEntry(0, 'طلباتي'),
+      if (cfg.item('account', 'addresses')) const MapEntry(1, 'العناوين'),
+      if (cfg.item('account', 'profile')) const MapEntry(2, 'بياناتي'),
+    ];
+    // نضمن بقاء التبويب المحدّد ضمن المتاح.
+    if (tabs.isNotEmpty && !tabs.any((t) => t.key == _tab)) _tab = tabs.first.key;
+
     return ListView(children: [
       Container(
         padding: const EdgeInsets.all(20),
@@ -113,31 +124,44 @@ class _AccountScreenState extends State<AccountScreen> {
         ]),
       ),
       const SizedBox(height: 12),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(children: [
-          _tabBtn(0, 'طلباتي', c),
-          const SizedBox(width: 6),
-          _tabBtn(1, 'العناوين', c),
-          const SizedBox(width: 6),
-          _tabBtn(2, 'بياناتي', c),
-        ]),
-      ),
+      if (tabs.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(children: [
+            for (var i = 0; i < tabs.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              _tabBtn(tabs[i].key, tabs[i].value, c),
+            ],
+          ]),
+        ),
       const SizedBox(height: 12),
-      if (_tab == 0) ...[
+      if (_tab == 0 && cfg.item('account', 'orders')) ...[
         _orderTile(c, '#10245', 'تم الشحن', '320'),
         _orderTile(c, '#10231', 'تم التوصيل', '180'),
-      ] else if (_tab == 1) ...[
+      ] else if (_tab == 1 && cfg.item('account', 'addresses')) ...[
         _tile(context, Icons.location_on_outlined, 'المنزل — الرياض، حي النخيل', () {}),
         _tile(context, Icons.location_on_outlined, 'العمل — الرياض، طريق الملك فهد', () {}),
-      ] else ...[
+      ] else if (_tab == 2 && cfg.item('account', 'profile')) ...[
         _tile(context, Icons.email_outlined, 'البريد الإلكتروني', () {}),
         _tile(context, Icons.phone_outlined, 'رقم الجوال', () {}),
       ],
-      const Divider(height: 24),
-      _tile(context, Icons.receipt_long_outlined, 'تتبّع طلبي', () =>
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const TrackingScreen()))),
-      const Divider(height: 1),
+      if (cfg.item('account', 'wishlist')) ...[
+        const Divider(height: 24),
+        _tile(context, Icons.favorite_border, 'المفضّلة', () {}),
+      ],
+      if (cfg.item('account', 'trackOrder')) ...[
+        const Divider(height: 24),
+        _tile(context, Icons.receipt_long_outlined, 'تتبّع طلبي', () =>
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const TrackingScreen()))),
+      ],
+      if (cfg.item('account', 'support')) ...[
+        const Divider(height: 1),
+        _tile(context, Icons.headset_mic_outlined, 'الدعم والمساعدة', () {}),
+      ],
+      if (cfg.item('account', 'settings')) ...[
+        const Divider(height: 1),
+        _tile(context, Icons.settings_outlined, 'الإعدادات', () {}),
+      ],
       Padding(
         padding: const EdgeInsets.all(20),
         child: Column(children: [

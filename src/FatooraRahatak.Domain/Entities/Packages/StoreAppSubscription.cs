@@ -38,6 +38,10 @@ public class StoreAppSubscription : BaseEntity
     [MaxLength(1000)]
     public string? MerchantNotes { get; set; }
 
+    // الوصف المختصر للتطبيق (يظهر تحت الاسم).
+    [MaxLength(300)]
+    public string? Tagline { get; set; }
+
     // عنوان التطبيق المطلوب ظهوره في متجر التطبيقات.
     [MaxLength(200)]
     public string? AppName { get; set; }
@@ -102,6 +106,23 @@ public class StoreAppSubscription : BaseEntity
     public int DownloadCount { get; set; }
     public int SalesCount { get; set; }
 
+    // ── مفتاح التوقيع (Keystore) الثابت لكل متجر ──
+    // يُولَّد مرة واحدة عند أول بناء ويُخزَّن، لتفادي كسر تحديثات Google Play
+    // (كل تحديث يجب أن يكون موقّعًا بالمفتاح نفسه).
+    public string? KeystoreBase64 { get; set; }
+
+    [MaxLength(200)]
+    public string? KeystorePassword { get; set; }
+
+    [MaxLength(200)]
+    public string? KeyAlias { get; set; }
+
+    [MaxLength(200)]
+    public string? KeyPassword { get; set; }
+
+    public DateTime? KeystoreCreatedAt { get; set; }
+
     public Store Store { get; set; } = null!;
     public Package Package { get; set; } = null!;
+    public ICollection<StoreAppBuild> Builds { get; set; } = new List<StoreAppBuild>();
 }

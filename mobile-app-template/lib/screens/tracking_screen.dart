@@ -100,6 +100,16 @@ class _TrackingScreenState extends State<TrackingScreen> {
         _kv('الحالة', status),
         if (total != null) _kv('الإجمالي', '$total ${AppConfig.I.currencySymbol}'),
         if (o['createdAt'] != null) _kv('التاريخ', o['createdAt'].toString().split('T').first),
+        if (AppConfig.I.item('tracking', 'courier') && (o['courierName'] ?? '').toString().isNotEmpty) ...[
+          const SizedBox(height: 6),
+          _kv('شركة الشحن', o['courierName'].toString()),
+        ],
+        if (AppConfig.I.item('tracking', 'timeline')) ...[
+          const Divider(height: 24),
+          const Text('مراحل الطلب', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+          const SizedBox(height: 10),
+          _timeline(status, c),
+        ],
         if (items.isNotEmpty) ...[
           const Divider(height: 24),
           const Text('المنتجات', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
@@ -125,4 +135,42 @@ class _TrackingScreenState extends State<TrackingScreen> {
       Text(v, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
     ]),
   );
+
+  // خط زمني مبسّط لمراحل الطلب (قيد التجهيز → قيد التوصيل → تم التسليم).
+  Widget _timeline(String status, Map<String, Color> c) {
+    final stages = ['قيد التجهيز', 'قيد التوصيل', 'تم التسليم'];
+    var active = 0;
+    if (status.contains('توصيل') || status.contains('شحن')) active = 1;
+    if (status.contains('تسليم') || status.contains('مكتمل') || status.contains('منته')) active = 2;
+    return Column(children: [
+      for (var i = 0; i < stages.length; i++)
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Column(children: [
+            Container(
+              width: 16, height: 16,
+              decoration: BoxDecoration(
+                color: i <= active ? c['accent'] : Colors.grey.shade300,
+                shape: BoxShape.circle,
+              ),
+              child: i <= active
+                  ? const Icon(Icons.check, size: 11, color: Colors.white)
+                  : null,
+            ),
+            if (i < stages.length - 1)
+              Container(width: 2, height: 26,
+                  color: i < active ? c['accent'] : Colors.grey.shade300),
+          ]),
+          const SizedBox(width: 10),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(stages[i],
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: i <= active ? FontWeight.w700 : FontWeight.normal,
+                  color: i <= active ? Colors.black87 : Colors.grey,
+                )),
+          ),
+        ]),
+    ]);
+  }
 }

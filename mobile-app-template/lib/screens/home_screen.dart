@@ -31,6 +31,58 @@ class HomeScreen extends StatelessWidget {
     }
     final offers = s.offers.take(6).toList();
     final featured = s.products.take(4).toList();
+    final newArrivals = s.products.take(6).toList();
+
+    // نبني الأقسام مرتّبة كما اختارها التاجر في المصمّم.
+    final sections = <Widget>[];
+    for (final key in AppConfig.I.homeSections) {
+      switch (key) {
+        case 'hero':
+          sections.add(_hero(context, s, c));
+          break;
+        case 'categories':
+          if (s.categories.isNotEmpty) {
+            sections.addAll([const SectionTitle('الأقسام'), _categories(context, s, c)]);
+          }
+          break;
+        case 'offers':
+          if (offers.isNotEmpty) {
+            sections.addAll([
+              SectionTitle('العروض',
+                  action: 'الكل',
+                  onAction: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const CatalogScreen()))),
+              _horizontalProducts(context, offers),
+            ]);
+          }
+          break;
+        case 'featured':
+          if (featured.isNotEmpty) {
+            sections.addAll([
+              SectionTitle('منتجات مميزة',
+                  action: 'الكل',
+                  onAction: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const CatalogScreen()))),
+              _gridProducts(context, featured),
+            ]);
+          }
+          break;
+        case 'newArrivals':
+          if (newArrivals.isNotEmpty) {
+            sections.addAll([
+              SectionTitle('وصل حديثًا',
+                  action: 'الكل',
+                  onAction: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => const CatalogScreen()))),
+              _gridProducts(context, newArrivals),
+            ]);
+          }
+          break;
+        // أقسام إضافية يدعمها المصمّم (تُعرض إن توفّرت بياناتها لاحقًا).
+        default:
+          break;
+      }
+    }
 
     return RefreshIndicator(
       onRefresh: s.init,
@@ -50,89 +102,93 @@ class HomeScreen extends StatelessWidget {
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
             ]),
           ),
-        // البانر الرئيسي
-        Container(
-          margin: const EdgeInsets.all(12),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-                colors: [c['heroFrom']!, c['heroTo']!]),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(s.store?.name ?? AppConfig.I.appName,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
-            if ((s.store?.bio ?? '').isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(s.store!.bio!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ],
-            const SizedBox(height: 12),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: c['button']),
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen())),
-              child: const Text('تسوّق الآن', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ]),
-        ),
-        // الأقسام
-        if (s.categories.isNotEmpty) ...[
-          const SectionTitle('الأقسام'),
-          SizedBox(
-            height: 92,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: s.categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) {
-                final cat = s.categories[i];
-                return GestureDetector(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(categoryId: cat.id))),
-                  child: Column(children: [
-                    CircleAvatar(radius: 28, backgroundColor: c['accent']!.withValues(alpha: 0.12),
-                      backgroundImage: (cat.image != null && cat.image!.isNotEmpty) ? NetworkImage(cat.image!) : null,
-                      child: (cat.image == null || cat.image!.isEmpty)
-                          ? Icon(Icons.category_outlined, color: c['accent']) : null),
-                    const SizedBox(height: 6),
-                    SizedBox(width: 64, child: Text(cat.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center, style: const TextStyle(fontSize: 11))),
-                  ]),
-                );
-              },
-            ),
-          ),
-        ],
-        // العروض
-        if (offers.isNotEmpty) ...[
-          SectionTitle('العروض', action: 'الكل', onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen()))),
-          SizedBox(
-            height: 190,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: offers.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) => SizedBox(width: 130,
-                child: ProductCard(product: offers[i],
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(products: offers[i]))))),
-            ),
-          ),
-        ],
-        // منتجات مميزة
-        if (featured.isNotEmpty) ...[
-          SectionTitle('منتجات مميزة', action: 'الكل', onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen()))),
-          GridView.builder(
-            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.72),
-            itemCount: featured.length,
-            itemBuilder: (_, i) => ProductCard(product: featured[i],
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(products: featured[i])))),
-          ),
-        ],
+        ...sections,
         const SizedBox(height: 20),
       ]),
+    );
+  }
+
+  // البانر الرئيسي.
+  Widget _hero(BuildContext context, AppState s, Map<String, Color> c) {
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+            colors: [c['heroFrom']!, c['heroTo']!]),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(s.store?.name ?? AppConfig.I.appName,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
+        if ((s.store?.bio ?? '').isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(s.store!.bio!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        ],
+        const SizedBox(height: 12),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: c['button']),
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen())),
+          child: const Text('تسوّق الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ]),
+    );
+  }
+
+  // شريط الأقسام الأفقي.
+  Widget _categories(BuildContext context, AppState s, Map<String, Color> c) {
+    return SizedBox(
+      height: 92,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: s.categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final cat = s.categories[i];
+          return GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(categoryId: cat.id))),
+            child: Column(children: [
+              CircleAvatar(radius: 28, backgroundColor: c['accent']!.withValues(alpha: 0.12),
+                backgroundImage: (cat.image != null && cat.image!.isNotEmpty) ? NetworkImage(cat.image!) : null,
+                child: (cat.image == null || cat.image!.isEmpty)
+                    ? Icon(Icons.category_outlined, color: c['accent']) : null),
+              const SizedBox(height: 6),
+              SizedBox(width: 64, child: Text(cat.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 11))),
+            ]),
+          );
+        },
+      ),
+    );
+  }
+
+  // قائمة منتجات أفقية.
+  Widget _horizontalProducts(BuildContext context, List<Product> items) {
+    return SizedBox(
+      height: 190,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) => SizedBox(width: 130,
+          child: ProductCard(product: items[i],
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen.single(items[i]))))),
+      ),
+    );
+  }
+
+  // شبكة منتجات بعمودين.
+  Widget _gridProducts(BuildContext context, List<Product> items) {
+    return GridView.builder(
+      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.72),
+      itemCount: items.length,
+      itemBuilder: (_, i) => ProductCard(product: items[i],
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen.single(items[i])))),
     );
   }
 }

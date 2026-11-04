@@ -11,6 +11,7 @@ class CartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final c = AppConfig.I.colors;
+    final cfg = AppConfig.I;
 
     if (s.cart.isEmpty) {
       return Center(
@@ -27,42 +28,66 @@ class CartScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        ...s.cart.map((line) => Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFEEF0F3)),
-          ),
-          child: Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: ProductThumb(url: line.product.image, size: 64),
+        if (cfg.item('cart', 'items'))
+          ...s.cart.map((line) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEEF0F3)),
             ),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(line.product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 6),
-              PriceText(line.product, size: 14),
-            ])),
-            Column(children: [
-              InkWell(
-                onTap: () => s.setQty(line.product, line.qty + 1),
-                child: _mini(Icons.add, c['button']!),
+            child: Row(children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: ProductThumb(url: line.product.image, size: 64),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text('${line.qty}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              InkWell(
-                onTap: () => s.setQty(line.product, line.qty - 1),
-                child: _mini(Icons.remove, Colors.grey),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(line.product.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                PriceText(line.product, size: 14),
+              ])),
+              Column(children: [
+                InkWell(
+                  onTap: () => s.setQty(line.product, line.qty + 1),
+                  child: _mini(Icons.add, c['button']!),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Text('${line.qty}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                InkWell(
+                  onTap: () => s.setQty(line.product, line.qty - 1),
+                  child: _mini(Icons.remove, Colors.grey),
+                ),
+              ]),
+            ]),
+          )),
+        if (cfg.item('cart', 'coupon'))
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFEEF0F3)),
+            ),
+            child: Row(children: [
+              Icon(Icons.local_offer_outlined, size: 18, color: c['button']),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'كود الخصم (اختياري)',
+                    border: InputBorder.none,
+                    isDense: true,
+                  ),
+                ),
               ),
             ]),
-          ]),
-        )),
+          ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -72,18 +97,23 @@ class CartScreen extends StatelessWidget {
           ),
           child: Column(children: [
             _row('المجموع الجزئي', '${s.cartSubtotal.toStringAsFixed(0)} ${AppConfig.I.currencySymbol}'),
-            const SizedBox(height: 8),
-            _row('الشحن', 'يُحدّد عند إتمام الطلب'),
-            const Divider(height: 24),
-            _row('الإجمالي', '${s.cartSubtotal.toStringAsFixed(0)} ${AppConfig.I.currencySymbol}', bold: true),
+            if (cfg.item('cart', 'shipping')) ...[
+              const SizedBox(height: 8),
+              _row('الشحن', 'يُحدّد عند إتمام الطلب'),
+            ],
+            if (cfg.item('cart', 'total')) ...[
+              const Divider(height: 24),
+              _row('الإجمالي', '${s.cartSubtotal.toStringAsFixed(0)} ${AppConfig.I.currencySymbol}', bold: true),
+            ],
           ]),
         ),
         const SizedBox(height: 14),
-        AppButton(
-          label: 'إتمام الطلب',
-          icon: Icons.check_circle_outline,
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen())),
-        ),
+        if (cfg.item('cart', 'checkout'))
+          AppButton(
+            label: 'إتمام الطلب',
+            icon: Icons.check_circle_outline,
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CheckoutScreen())),
+          ),
       ],
     );
   }

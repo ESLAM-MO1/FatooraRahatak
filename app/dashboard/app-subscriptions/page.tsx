@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import "@/lib/i18n/config";
 import api from "@/lib/api";
+import { AppPreview, parseDesign, type AppDesign, type AppScreenKey, type MobileAppBundle } from "@/components/AppDesigner";
 
 interface AppSubscription {
   id: number;
@@ -34,6 +35,15 @@ interface AppSubscription {
   endDate: string | null;
   completedAt: string | null;
   createdAt: string;
+  // ── التصميم والبيانات الإضافية (لمعاينة الأدمن) ──
+  designJson: string | null;
+  tagline: string | null;
+  currentAppVersion: string | null;
+  listingKeywords: string | null;
+  listingSupportEmail: string | null;
+  listingPrivacyUrl: string | null;
+  hasApk: boolean;
+  lastBuildAt: string | null;
 }
 
 interface AppBuild {
@@ -68,6 +78,8 @@ export default function AppSubscriptionsPage() {
   const [urls, setUrls] = useState<Record<number, { appStoreUrl: string; googlePlayUrl: string; appVersion: string }>>({});
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [builds, setBuilds] = useState<Record<number, AppBuild | null>>({});
+  // التاجر/الاشتراك الذي تُعرض معاينة تصميمه الآن.
+  const [previewFor, setPreviewFor] = useState<AppSubscription | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -389,6 +401,11 @@ export default function AppSubscriptionsPage() {
                     <td className="p-3" dir="ltr">{formatDate(r.createdAt)}</td>
                     <td className="p-3">
                       <div className="min-w-[260px] space-y-2">
+                        {r.designJson && (
+                          <button className="btn btn-sm" onClick={() => setPreviewFor(r)}>
+                            {t("adminMobileApp.previewDesignBtn")}
+                          </button>
+                        )}
                         {canAct(r) && (
                           <div className="flex flex-col gap-2">
                             <input
@@ -435,6 +452,23 @@ export default function AppSubscriptionsPage() {
                       <span className="text-xs text-gray-500 ms-2" dir="ltr">{r.storeSlug}</span>
                     </div>
                     <span className={publishBadgeClass(r.publishStatus)}>{publishLabel(r.publishStatus)}</span>
+                  </div>
+
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    {r.designJson && (
+                      <button className="btn btn-sm" onClick={() => setPreviewFor(r)}>
+                        {t("adminMobileApp.previewDesignBtn")}
+                      </button>
+                    )}
+                    {r.tagline && (
+                      <span className="text-xs text-gray-500">{r.tagline}</span>
+                    )}
+                    {r.currentAppVersion && (
+                      <span className="text-xs text-gray-500" dir="ltr">v{r.currentAppVersion}</span>
+                    )}
+                    {r.hasApk && (
+                      <span className="badge badge--green">{t("adminMobileApp.apkReady")}</span>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -547,6 +581,14 @@ export default function AppSubscriptionsPage() {
           )}
         </div>
       )}
+
+      {previewFor && (
+        <AdminDesignPreviewModal
+          t={t}
+          sub={previewFor}
+          onClose={() => setPreviewFor(null)}
+        />
+      )}
     </div>
   );
 }
@@ -637,6 +679,89 @@ function AdminBuildControl({ t, build, busy, onStart, onRefresh, onDownload }: {
           {t("adminMobileApp.buildDownloadBtn")}
         </button>
       )}
+    </div>
+  );
+}
+
+// ── معاينة تصميم التطبيق (الأدمن) داخل نافذة، بنفس محرّك المعاينة في المصمّم ──
+function AdminDesignPreviewModal({
+  t, sub, onClose,
+}: {
+  t: (key: string) => string;
+  sub: AppSubscription;
+  onClose: () => void;
+}) {
+  const design: AppDesign = parseDesign(sub.designJson, sub.appName);
+  const [screen, setScreen] = useState<AppScreenKey>("home");
+  // لا نعرض شاشة غير مفعّلة في التصميم.
+  const enabledScreens: AppScreenKey[] = ["home", "product", "cart", "account", "tracking", "catalog"];
+  const theme = {
+    previewPrimary: design.colors.headerColor,
+    previewSecondary: design.colors.buttonColor,
+    previewAccent: design.colors.accentColor,
+  };
+  // بيانات المتجر غير متاحة هنا، لكن المعاينة تعمل بعناصر نموذجية.
+  const bundle: MobileAppBundle | null = null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl shadow-2xl max-h-[92vh] overflow-y-auto w-full max-w-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <div>
+            <h3 className="font-bold text-gray-800">{t("adminMobileApp.previewDesignTitle")}</h3>
+            <p className="text-xs text-gray-500">
+              {sub.storeName} · <span dir="ltr">{sub.storeSlug}</span>
+            </p>
+          </div>
+          <button className="btn btn-sm" onClick={onClose}>{t("adminMobileApp.closeBtn")}</button>
+        </div>
+
+        <div className="p-4 flex flex-col items-center gap-3">
+          {/* تبويبات التنقّل بين الشاشات لمعاينتها */}
+          <div className="flex flex-wrap gap-1 justify-center">
+            {enabledScreens.map((s) => (
+              <button
+                key={s}
+                className={`btn btn-sm ${screen === s ? "btn-primary" : ""}`}
+                onClick={() => setScreen(s)}
+              >
+                {t(`appDesigner.screen.${s}`)}
+              </button>
+            ))}
+          </div>
+
+          <AppPreview
+            design={design}
+            bundle={bundle}
+            storeName={sub.storeName}
+            theme={theme}
+            screen={screen}
+            product={null}
+            onNavigate={(s) => setScreen(s)}
+          />
+
+          {/* ملخّص بيانات التطبيق */}
+          <div className="w-full max-w-md text-xs text-gray-600 grid grid-cols-2 gap-2 mt-2">
+            <div>
+              <span className="text-gray-400">{t("adminMobileApp.appName")}: </span>
+              {sub.appName || "—"}
+            </div>
+            <div>
+              <span className="text-gray-400">{t("adminMobileApp.listingCategory")}: </span>
+              {sub.listingCategory || "—"}
+            </div>
+            {sub.tagline && (
+              <div className="col-span-2">
+                <span className="text-gray-400">{t("mobileApp.listingShortDescription")}: </span>
+                {sub.tagline}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

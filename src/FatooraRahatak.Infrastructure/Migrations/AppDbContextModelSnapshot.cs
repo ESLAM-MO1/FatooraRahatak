@@ -2486,6 +2486,24 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<long?>("HandledByUserId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("KeyAlias")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("KeyPassword")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("KeystoreBase64")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("KeystoreCreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("KeystorePassword")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("ListingCategory")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -2550,6 +2568,10 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
                     b.Property<DateTime?>("SubmittedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Tagline")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -6702,7 +6724,7 @@ namespace FatooraRahatak.Infrastructure.Migrations
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppBuild", b =>
                 {
                     b.HasOne("FatooraRahatak.Domain.Entities.Packages.StoreAppSubscription", null)
-                        .WithMany()
+                        .WithMany("Builds")
                         .HasForeignKey("StoreAppSubscriptionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -7491,6 +7513,11 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("Stores");
 
                     b.Navigation("Subscriptions");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppSubscription", b =>
+                {
+                    b.Navigation("Builds");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.Subscription", b =>

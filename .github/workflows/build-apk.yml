@@ -58,6 +58,10 @@ jobs:
             echo "version_name=${{ github.event.client_payload.version_name }}" >> $GITHUB_OUTPUT
             echo "icon_url=${{ github.event.client_payload.icon_url }}" >> $GITHUB_OUTPUT
             echo "${{ github.event.client_payload.config_json }}" > /tmp/config.json
+            printf '%s' "${{ github.event.client_payload.keystore_b64 }}" > /tmp/keystore.b64
+            echo "keystore_password=${{ github.event.client_payload.keystore_password }}" >> $GITHUB_OUTPUT
+            echo "key_alias=${{ github.event.client_payload.key_alias }}" >> $GITHUB_OUTPUT
+            echo "key_password=${{ github.event.client_payload.key_password }}" >> $GITHUB_OUTPUT
           else
             echo "store_id=${{ github.event.inputs.store_id }}" >> $GITHUB_OUTPUT
             echo "app_name=${{ github.event.inputs.app_name }}" >> $GITHUB_OUTPUT
@@ -65,6 +69,10 @@ jobs:
             echo "version_name=${{ github.event.inputs.version_name }}" >> $GITHUB_OUTPUT
             echo "icon_url=${{ github.event.inputs.icon_url }}" >> $GITHUB_OUTPUT
             printf '%s' '${{ github.event.inputs.config_json }}' > /tmp/config.json
+            : > /tmp/keystore.b64
+            echo "keystore_password=" >> $GITHUB_OUTPUT
+            echo "key_alias=" >> $GITHUB_OUTPUT
+            echo "key_password=" >> $GITHUB_OUTPUT
           fi
 
       - name: Inject store config
@@ -117,27 +125,61 @@ jobs:
             fi
           fi
 
-      - name: Generate keystore (per store)
+      - name: Prepare keystore (reuse stored, or generate once)
         id: ks
         run: |
           STORE_ID="${{ steps.vars.outputs.store_id }}"
-          # المفتاح يُولَّد لكل متجر. في الإنتاج يجب تخزين مفتاح ثابت لكل متجر
-          # (هو المطلوب لتحديثات المتجر على Google Play).
-          keytool -genkeypair -v \
-            -keystore /tmp/store-$STORE_ID.jks \
-            -alias store$STORE_ID \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass rahtk2026 -keypass rahtk2026 \
-            -dname "CN=Store $STORE_ID, OU=Rahtk, O=Rahtk, L=Riyadh, C=SA" || true
+          STORE_PASS="${{ steps.vars.outputs.keystore_password }}"
+          KEY_PASS="${{ steps.vars.outputs.key_password }}"
+          ALIAS="${{ steps.vars.outputs.key_alias }}"
+
+          if [ -s /tmp/keystore.b64 ]; then
+            # مفتاح مخزّن مسبقًا لهذا المتجر: نُعيد استخدامه (التحديثات لا تُكسَر).
+            echo "Reusing stored keystore for store $STORE_ID"
+            base64 -d /tmp/keystore.b64 > /tmp/store-$STORE_ID.jks
+            NEW="false"
+          else
+            # أول بناء: نُولّد مفتاحًا ثابتًا جديدًا ونحفظ كلماته ليخزّنها السيرفر.
+            echo "Generating new keystore for store $STORE_ID"
+            STORE_PASS="${STORE_PASS:-rahtk$STORE_ID$(date +%s)}"
+            KEY_PASS="${KEY_PASS:-$STORE_PASS}"
+            ALIAS="${ALIAS:-store$STORE_ID}"
+            keytool -genkeypair -v \
+              -keystore /tmp/store-$STORE_ID.jks \
+              -alias "$ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$STORE_PASS" -keypass "$KEY_PASS" \
+              -dname "CN=Store $STORE_ID, OU=Rahtk, O=Rahtk, L=Riyadh, C=SA"
+            NEW="true"
+          fi
+
+          mkdir -p /tmp/kspkg
+          cp /tmp/store-$STORE_ID.jks /tmp/kspkg/store-$STORE_ID.jks
+          cat > /tmp/kspkg/keystore-meta.json <<EOF
+          {"alias":"$ALIAS","storePassword":"$STORE_PASS","keyPassword":"$KEY_PASS"}
+          EOF
+
           echo "keystore=/tmp/store-$STORE_ID.jks" >> $GITHUB_OUTPUT
+          echo "store_pass=$STORE_PASS" >> $GITHUB_OUTPUT
+          echo "key_pass=$KEY_PASS" >> $GITHUB_OUTPUT
+          echo "alias=$ALIAS" >> $GITHUB_OUTPUT
+          echo "new=$NEW" >> $GITHUB_OUTPUT
+
+      - name: Upload keystore artifact (first build only)
+        if: steps.ks.outputs.new == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-keystore-${{ steps.vars.outputs.store_id }}
+          path: /tmp/kspkg/*
+          retention-days: 90
 
       - name: Configure signing
         working-directory: mobile-app-template/android
         run: |
           cat > key.properties <<EOF
-          storePassword=rahtk2026
-          keyPassword=rahtk2026
-          keyAlias=store${{ steps.vars.outputs.store_id }}
+          storePassword=${{ steps.ks.outputs.store_pass }}
+          keyPassword=${{ steps.ks.outputs.key_pass }}
+          keyAlias=${{ steps.ks.outputs.alias }}
           storeFile=${{ steps.ks.outputs.keystore }}
           EOF
 

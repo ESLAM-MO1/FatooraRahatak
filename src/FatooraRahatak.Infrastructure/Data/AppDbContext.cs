@@ -327,7 +327,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<StoreAppBuild>()
             .HasOne<StoreAppSubscription>()
-            .WithMany()
+            .WithMany(s => s.Builds)
             .HasForeignKey(b => b.StoreAppSubscriptionId)
             .OnDelete(DeleteBehavior.Cascade);
 

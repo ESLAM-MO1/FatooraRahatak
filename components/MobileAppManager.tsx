@@ -137,7 +137,6 @@ export default function MobileAppManager() {
 
   // نموذج الاشتراك
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("Monthly");
-  const [appName, setAppName] = useState("");
   const [devAccountType, setDevAccountType] = useState<"Company" | "Platform">("Company");
   const [devAccountInfo, setDevAccountInfo] = useState("");
   const [notes, setNotes] = useState("");
@@ -149,7 +148,6 @@ export default function MobileAppManager() {
   const [longDesc, setLongDesc] = useState("");
   const [keywords, setKeywords] = useState("");
   const [category, setCategory] = useState("");
-  const [iconUrl, setIconUrl] = useState("");
   const [screenshots, setScreenshots] = useState<string[]>([]);
   const [supportEmail, setSupportEmail] = useState("");
   const [privacyUrl, setPrivacyUrl] = useState("");
@@ -180,13 +178,14 @@ export default function MobileAppManager() {
       if (d.developerAccountType === "Platform" || d.developerAccountType === "Company") {
         setDevAccountType(d.developerAccountType);
       }
-      setDesign(parseDesign(d.designJson, d.appName));
-      setAppName(d.appName || "");
+      const parsed = parseDesign(d.designJson, d.appName);
+      // دمج الأيقونة المحفوظة في صفحة الإطلاق ضمن التصميم
+      if (d.listingIconUrl) parsed.iconUrl = parsed.iconUrl || d.listingIconUrl;
+      setDesign(parsed);
       setShortDesc(d.listingShortDescription || "");
       setLongDesc(d.listingDescription || "");
       setKeywords(d.listingKeywords || "");
       setCategory(d.listingCategory || "");
-      setIconUrl(d.listingIconUrl || "");
       setScreenshots(d.listingScreenshots || []);
       setSupportEmail(d.listingSupportEmail || "");
       setPrivacyUrl(d.listingPrivacyUrl || "");
@@ -364,8 +363,8 @@ export default function MobileAppManager() {
     setSavingDesign(true);
     try {
       const res = await api.post("/mobile-app/design", {
-        designJson: serializeDesign({ ...design, appName }),
-        appName: appName.trim() || null,
+        designJson: serializeDesign(design),
+        appName: design.appName.trim() || null,
       });
       const d = res.data.data as MobileAppStatus;
       setStatus(d);
@@ -387,7 +386,7 @@ export default function MobileAppManager() {
       if (status?.id) await handleSaveDesign(true);
       const res = await api.post("/mobile-app/subscribe", {
         billingCycle,
-        appName: (design.appName || appName).trim() || null,
+        appName: design.appName.trim() || null,
         developerAccountType: devAccountType,
         developerAccountInfo: devAccountInfo.trim() || null,
         merchantNotes: notes.trim() || null,
@@ -426,12 +425,12 @@ export default function MobileAppManager() {
     try {
       await handleSaveDesign(true);
       const res = await api.post("/mobile-app/publish", {
-        appName: (design.appName || appName).trim() || null,
+        appName: design.appName.trim() || null,
         listingShortDescription: shortDesc.trim() || null,
         listingDescription: longDesc.trim() || null,
         listingKeywords: keywords.trim() || null,
         listingCategory: category.trim() || null,
-        listingIconUrl: iconUrl.trim() || null,
+        listingIconUrl: design.iconUrl.trim() || null,
         listingScreenshots: screenshots.filter((s) => s.trim()),
         listingSupportEmail: supportEmail.trim() || null,
         listingPrivacyUrl: privacyUrl.trim() || null,
@@ -644,7 +643,7 @@ export default function MobileAppManager() {
                   <span>{t("mobileApp.designBeforeSubscribe")}</span>
                 </div>
               )}
-              <AppDesigner design={{ ...design, appName }} onChange={setDesign} products={products} storeName={storeName} />
+              <AppDesigner design={design} onChange={setDesign} products={products} storeName={storeName} />
               {hasSubscription && (
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Can code="StoreSettings.Edit">
@@ -702,7 +701,7 @@ export default function MobileAppManager() {
               longDesc={longDesc} setLongDesc={setLongDesc}
               keywords={keywords} setKeywords={setKeywords}
               category={category} setCategory={setCategory}
-              iconUrl={iconUrl} setIconUrl={setIconUrl}
+              iconUrl={design.iconUrl}
               screenshots={screenshots} setScreenshots={setScreenshots}
               supportEmail={supportEmail} setSupportEmail={setSupportEmail}
               privacyUrl={privacyUrl} setPrivacyUrl={setPrivacyUrl}
@@ -920,7 +919,7 @@ function LaunchStep(props: any) {
   const {
     t, status, isActive, hasSubscription,
     shortDesc, setShortDesc, longDesc, setLongDesc, keywords, setKeywords,
-    category, setCategory, iconUrl, setIconUrl, screenshots, setScreenshots,
+    category, setCategory, iconUrl, screenshots, setScreenshots,
     supportEmail, setSupportEmail, privacyUrl, setPrivacyUrl, publishing, onPublish,
     onGoSubscribe, formatDate,
   } = props;
@@ -1006,8 +1005,16 @@ function LaunchStep(props: any) {
         </div>
         <div>
           <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingIcon")}</label>
-          <div className="field-shell">
-            <input type="text" value={iconUrl} onChange={(e) => setIconUrl(e.target.value)} placeholder="https://..." />
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-xl border flex items-center justify-center overflow-hidden shrink-0" style={{ borderColor: "var(--border)" }}>
+              {iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={iconUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Icon name="package" size={22} className="text-[var(--sub-light)]" />
+              )}
+            </div>
+            <span className="text-[11.5px] text-[var(--sub)]">{t("mobileApp.listingIconNote")}</span>
           </div>
         </div>
         <div>

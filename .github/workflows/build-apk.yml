@@ -1,0 +1,163 @@
+name: Build Store APK
+
+# يُشغَّل من الباكند عبر GitHub API (repository_dispatch) أو يدويًا من تبويب Actions.
+on:
+  workflow_dispatch:
+    inputs:
+      store_id:
+        description: 'Store ID'
+        required: true
+      app_name:
+        description: 'App display name'
+        required: true
+      package_name:
+        description: 'Android package name (e.g. sa.rahtk.mystore)'
+        required: true
+      version_name:
+        description: 'Version name'
+        required: false
+        default: '1.0.0'
+      config_json:
+        description: 'Full app_config.json content (single line)'
+        required: true
+      icon_url:
+        description: 'App icon image URL'
+        required: false
+        default: ''
+  repository_dispatch:
+    types: [build-store-apk]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Resolve inputs
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "store_id=${{ github.event.client_payload.store_id }}" >> $GITHUB_OUTPUT
+            echo "app_name=${{ github.event.client_payload.app_name }}" >> $GITHUB_OUTPUT
+            echo "package_name=${{ github.event.client_payload.package_name }}" >> $GITHUB_OUTPUT
+            echo "version_name=${{ github.event.client_payload.version_name }}" >> $GITHUB_OUTPUT
+            echo "icon_url=${{ github.event.client_payload.icon_url }}" >> $GITHUB_OUTPUT
+            echo "${{ github.event.client_payload.config_json }}" > /tmp/config.json
+          else
+            echo "store_id=${{ github.event.inputs.store_id }}" >> $GITHUB_OUTPUT
+            echo "app_name=${{ github.event.inputs.app_name }}" >> $GITHUB_OUTPUT
+            echo "package_name=${{ github.event.inputs.package_name }}" >> $GITHUB_OUTPUT
+            echo "version_name=${{ github.event.inputs.version_name }}" >> $GITHUB_OUTPUT
+            echo "icon_url=${{ github.event.inputs.icon_url }}" >> $GITHUB_OUTPUT
+            printf '%s' '${{ github.event.inputs.config_json }}' > /tmp/config.json
+          fi
+
+      - name: Inject store config
+        working-directory: mobile-app-template
+        run: |
+          cp /tmp/config.json assets/app_config.json
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          PKG="${{ steps.vars.outputs.package_name }}"
+          VER="${{ steps.vars.outputs.version_name }}"
+
+          # applicationId / namespace
+          sed -i "s|namespace 'sa.rahtk.app'|namespace '$PKG'|g" android/app/build.gradle
+          sed -i "s|applicationId 'sa.rahtk.app'|applicationId '$PKG'|g" android/app/build.gradle
+          sed -i "s|resValue \"string\", \"app_name\", \"متجري\"|resValue \"string\", \"app_name\", \"$APP_NAME\"|g" android/app/build.gradle
+          sed -i "s|version: 1.0.0+1|version: $VER+1|g" pubspec.yaml
+
+          # strings.xml app_name
+          printf '<resources>\n    <string name="app_name">%s</string>\n</resources>\n' "$APP_NAME" > android/app/src/main/res/values/strings.xml
+
+          # Kotlin package path
+          PKG_PATH=$(echo "$PKG" | tr '.' '/')
+          rm -rf android/app/src/main/kotlin
+          mkdir -p "android/app/src/main/kotlin/$PKG_PATH"
+          cat > "android/app/src/main/kotlin/$PKG_PATH/MainActivity.kt" <<EOF
+          package $PKG
+
+          import io.flutter.embedding.android.FlutterActivity
+
+          class MainActivity : FlutterActivity()
+          EOF
+
+      - name: Fetch app icon
+        working-directory: mobile-app-template
+        run: |
+          ICON_URL="${{ steps.vars.outputs.icon_url }}"
+          if [ -n "$ICON_URL" ] && [ "$ICON_URL" != "null" ]; then
+            echo "Downloading icon from $ICON_URL"
+            curl -sSL "$ICON_URL" -o /tmp/icon.png || true
+            if [ -f /tmp/icon.png ] && [ -s /tmp/icon.png ]; then
+              # requires ImageMagick (preinstalled on ubuntu-latest)
+              mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi \
+                       android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi \
+                       android/app/src/main/res/mipmap-xxxhdpi
+              for pair in "48 mdpi" "72 hdpi" "96 xhdpi" "144 xxhdpi" "192 xxxhdpi"; do
+                size=$(echo $pair | cut -d' ' -f1)
+                dpi=$(echo $pair | cut -d' ' -f2)
+                convert /tmp/icon.png -resize ${size}x${size} android/app/src/main/res/mipmap-$dpi/ic_launcher.png
+              done
+              echo "Icon applied."
+            fi
+          fi
+
+      - name: Generate keystore (per store)
+        id: ks
+        run: |
+          STORE_ID="${{ steps.vars.outputs.store_id }}"
+          # المفتاح يُولَّد لكل متجر. في الإنتاج يجب تخزين مفتاح ثابت لكل متجر
+          # (هو المطلوب لتحديثات المتجر على Google Play).
+          keytool -genkeypair -v \
+            -keystore /tmp/store-$STORE_ID.jks \
+            -alias store$STORE_ID \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass rahtk2026 -keypass rahtk2026 \
+            -dname "CN=Store $STORE_ID, OU=Rahtk, O=Rahtk, L=Riyadh, C=SA" || true
+          echo "keystore=/tmp/store-$STORE_ID.jks" >> $GITHUB_OUTPUT
+
+      - name: Configure signing
+        working-directory: mobile-app-template/android
+        run: |
+          cat > key.properties <<EOF
+          storePassword=rahtk2026
+          keyPassword=rahtk2026
+          keyAlias=store${{ steps.vars.outputs.store_id }}
+          storeFile=${{ steps.ks.outputs.keystore }}
+          EOF
+
+      - name: Flutter pub get
+        working-directory: mobile-app-template
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: mobile-app-template
+        run: flutter build apk --release --no-shrink
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-apk-${{ steps.vars.outputs.store_id }}
+          path: mobile-app-template/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+      - name: Rename & summarize
+        working-directory: mobile-app-template
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/store-${{ steps.vars.outputs.store_id }}.apk
+          ls -lh /tmp/store-${{ steps.vars.outputs.store_id }}.apk

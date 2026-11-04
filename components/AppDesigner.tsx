@@ -647,16 +647,16 @@ export function AppPreview({
               <p className="text-white text-[12.5px] font-extrabold truncate leading-tight">{appName}</p>
               {design.tagline && <p className="text-white/70 text-[9px] truncate">{design.tagline}</p>}
             </div>
-            <span className="relative text-white/95">
+            <button type="button" onClick={() => onNavigate("account")} className="relative text-white/95">
               <Icon name="bell" size={16} />
               <span className="absolute -top-1 -end-1 w-3 h-3 rounded-full text-[7px] flex items-center justify-center text-white font-bold" style={{ background: "#ef4444" }}>3</span>
-            </span>
+            </button>
           </div>
           {screen !== "product" && (
-            <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
+            <button type="button" onClick={() => onNavigate("catalog")} className="mt-3 w-full flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
               <Icon name="search" size={13} className="text-gray-400" />
               <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
-            </div>
+            </button>
           )}
         </div>
 
@@ -666,7 +666,7 @@ export function AppPreview({
             <div className="mx-3 mt-3 rounded-xl flex items-center gap-2 px-3 py-2 shadow-sm" style={{ background: `linear-gradient(90deg, ${c.heroFrom}, ${c.heroTo})` }}>
               <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center text-white shrink-0"><Icon name="tag" size={11} /></span>
               <span className="text-[10.5px] text-white font-bold truncate flex-1">{design.splashText}</span>
-              <span className="text-white/70 shrink-0"><Icon name="close" size={11} /></span>
+              <button type="button" onClick={() => onNavigate("catalog")} className="text-white/70 shrink-0"><Icon name="close" size={11} /></button>
             </div>
           )}
 
@@ -677,19 +677,30 @@ export function AppPreview({
           {screen === "tracking" && <TrackingScreen c={c} onNavigate={onNavigate} t={t} items={design.screens.tracking.items ?? {}} />}
           {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.catalog.items ?? {}} />}
 
-          <div className="text-center text-[8px] text-gray-300 py-3">{t("appDesigner.poweredBy")}</div>
+          <div className="flex items-center justify-center gap-1.5 py-4 mt-2 border-t" style={{ borderColor: "#eef0f3" }}>
+            <span className="w-4 h-4 rounded-md flex items-center justify-center text-[8px] font-extrabold text-white" style={{ background: c.buttonColor }}>
+              {appName.slice(0, 1)}
+            </span>
+            <span className="text-[9px] font-bold" style={{ color: "#9aa1ac" }}>{t("appDesigner.poweredBy")}</span>
+          </div>
         </div>
 
         {/* شريط التنقل السفلي */}
-        <div className="flex items-center justify-around bg-white border-t" style={{ height: 54, borderColor: "#eef0f3" }}>
-          {design.bottomNav.map((n, idx) => {
+        <div className="flex items-stretch justify-around bg-white border-t px-1" style={{ height: 58, borderColor: "#eceef2" }}>
+          {design.bottomNav.map((n) => {
             const target: AppScreenKey = n === "home" ? "home" : n === "cart" ? "cart" : n === "account" ? "account" : n === "categories" ? "catalog" : "home";
-            const active = (previewActive(screen, n));
+            const active = previewActive(screen, n);
+            const color = active ? c.buttonColor : "#9aa1ac";
             return (
-              <button key={n} type="button" onClick={() => onNavigate(target, null)} className="flex flex-col items-center gap-0.5"
-                style={{ color: active ? c.buttonColor : "#9ca3af" }}>
-                <Icon name={navIcons[n] ?? "home"} size={17} />
-                <span className="text-[8px] font-bold">{t(`appDesigner.nav.${n}`)}</span>
+              <button
+                key={n}
+                type="button"
+                onClick={() => onNavigate(target, null)}
+                className="flex-1 flex flex-col items-center justify-center gap-1 rounded-xl my-1 transition-colors"
+                style={{ color, background: active ? `${c.buttonColor}12` : "transparent" }}
+              >
+                <Icon name={navIcons[n] ?? "home"} size={18} />
+                <span className="text-[8.5px] leading-none" style={{ fontWeight: active ? 800 : 600 }}>{t(`appDesigner.nav.${n}`)}</span>
               </button>
             );
           })}
@@ -790,11 +801,11 @@ function HomeSection({ sectionKey, bundle, currency, theme, onNavigate, c, t }: 
     case "banners":
       return (
         <div className="px-3 pt-3">
-          <div className="rounded-xl h-20 flex flex-col items-center justify-center text-white relative overflow-hidden" style={{ background: `linear-gradient(120deg, ${theme.previewSecondary}, ${c.accentColor})` }}>
+          <button type="button" onClick={() => onNavigate("catalog")} className="w-full rounded-xl h-20 flex flex-col items-center justify-center text-white relative overflow-hidden" style={{ background: `linear-gradient(120deg, ${theme.previewSecondary}, ${c.accentColor})` }}>
             <span className="text-[11.5px] font-extrabold">{bundle?.banners?.[0]?.title || t("appDesigner.bannerTitle")}</span>
             <span className="text-[8.5px] opacity-90 mt-0.5">{bundle?.banners?.[0]?.subtitle || t("appDesigner.bannerSub")}</span>
             <span className="flex gap-1 mt-2"><span className="w-4 h-1 rounded-full bg-white" /><span className="w-1.5 h-1 rounded-full bg-white/50" /><span className="w-1.5 h-1 rounded-full bg-white/50" /></span>
-          </div>
+          </button>
         </div>
       );
     case "featured": {
@@ -848,7 +859,7 @@ function HomeSection({ sectionKey, bundle, currency, theme, onNavigate, c, t }: 
           <p className="text-[8px] text-white/60 mb-2">{t("appDesigner.newsletterSub")}</p>
           <div className="flex gap-1.5">
             <span className="flex-1 bg-white/90 rounded-lg h-7 flex items-center px-2 text-[8px] text-gray-400">{t("appDesigner.emailPlaceholder")}</span>
-            <span className="text-[9px] font-bold px-3 rounded-lg flex items-center text-white" style={{ background: c.buttonColor }}>{t("appDesigner.subscribeBtn")}</span>
+            <button type="button" onClick={() => onNavigate("account")} className="text-[9px] font-bold px-3 rounded-lg flex items-center text-white" style={{ background: c.buttonColor }}>{t("appDesigner.subscribeBtn")}</button>
           </div>
         </div>
       );
@@ -858,9 +869,9 @@ function HomeSection({ sectionKey, bundle, currency, theme, onNavigate, c, t }: 
           <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.section.contact")}</p>
           <div className="flex gap-2">
             {["phone", "mail", "whatsapp", "location"].map((ic) => (
-              <span key={ic} className="w-8 h-8 rounded-full flex items-center justify-center bg-white border" style={{ borderColor: "#eef0f3" }}>
+              <button key={ic} type="button" onClick={() => onNavigate("account")} className="w-9 h-9 rounded-full flex items-center justify-center bg-white border" style={{ borderColor: "#e6e8ee" }}>
                 <Icon name={ic as any} size={13} className="text-gray-500" />
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -912,8 +923,8 @@ function ProductScreen({ product, bundle, c, currency, onNavigate, t, items }: a
         {on("description") && <p className="text-[9.5px] text-gray-500 leading-relaxed mb-3">{product.shortDescription || t("appDesigner.sampleProductDesc")}</p>}
         {on("addToCart") && (
         <div className="flex gap-2">
-          <button className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.addToCart")}</button>
-          <button onClick={() => onNavigate("cart")} className="w-10 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: c.headerColor }}>
+          <button type="button" onClick={() => onNavigate("cart")} className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.addToCart")}</button>
+          <button type="button" onClick={() => onNavigate("cart")} className="w-10 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: c.headerColor }}>
             <Icon name="cashier" size={15} />
           </button>
         </div>
@@ -955,10 +966,10 @@ function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
                 <p className="text-[9.5px] font-bold text-gray-700 truncate">{p.name}</p>
                 <p className="text-[9.5px] font-extrabold" style={{ color: c.buttonColor }}>{p.discountPrice ?? p.price} {currency}</p>
               </div>
-              <div className="flex items-center gap-1 text-gray-500">
-                <span className="w-5 h-5 rounded-md border flex items-center justify-center text-[11px]" style={{ borderColor: "#eef0f3" }}>−</span>
-                <span className="text-[10px] font-bold">1</span>
-                <span className="w-5 h-5 rounded-md border flex items-center justify-center text-[11px]" style={{ borderColor: "#eef0f3" }}>+</span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => onNavigate("cart")} className="w-6 h-6 rounded-md border flex items-center justify-center text-[12px] text-gray-500" style={{ borderColor: "#e6e8ee" }} aria-label="−">&minus;</button>
+                <span className="text-[10px] font-bold w-4 text-center">1</span>
+                <button type="button" onClick={() => onNavigate("cart")} className="w-6 h-6 rounded-md border flex items-center justify-center text-[12px] text-gray-500" style={{ borderColor: "#e6e8ee" }} aria-label="+">+</button>
               </div>
             </div>
           ))}
@@ -967,7 +978,7 @@ function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
             {on("coupon") && (
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[9.5px] text-gray-500">{t("appDesigner.coupon")}</span>
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg border" style={{ borderColor: "#eef0f3", color: c.buttonColor }}>{t("appDesigner.applyCoupon")}</span>
+              <button type="button" onClick={() => onNavigate("cart")} className="text-[9px] font-bold px-2.5 py-1 rounded-lg border" style={{ borderColor: "#e6e8ee", color: c.buttonColor }}>{t("appDesigner.applyCoupon")}</button>
             </div>
             )}
             {on("total") && <div className="flex items-center justify-between text-[9.5px] mb-1"><span className="text-gray-500">{t("appDesigner.subtotal")}</span><span className="font-bold">{subtotal} {currency}</span></div>}
@@ -1008,11 +1019,17 @@ function AccountScreen({ c, appName, onNavigate, t, items }: any) {
       {rows.length > 0 && (
       <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
         {rows.map((r, i) => (
-          <div key={r.k} className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}>
+          <button
+            key={r.k}
+            type="button"
+            onClick={() => onNavigate(r.k === "orders" ? "tracking" : r.k === "settings" || r.k === "support" ? "account" : "account")}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-start"
+            style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}
+          >
             <span style={{ color: c.buttonColor }}><Icon name={r.icon as any} size={14} /></span>
             <span className="flex-1 text-[11px] font-bold text-gray-700">{t(`appDesigner.accountItem.${r.k}`)}</span>
             <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
-          </div>
+          </button>
         ))}
       </div>
       )}
@@ -1062,7 +1079,7 @@ function TrackingScreen({ c, onNavigate, t, items }: any) {
         })}
       </div>
       )}
-      {on("courier") && <button className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.headerColor }}>{t("appDesigner.contactCourier")}</button>}
+      {on("courier") && <button type="button" onClick={() => onNavigate("account")} className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.headerColor }}>{t("appDesigner.contactCourier")}</button>}
     </div>
   );
 }
@@ -1076,15 +1093,15 @@ function CatalogScreen({ bundle, c, currency, onNavigate, t, items }: any) {
     <div className="p-3">
       <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.screen.catalog")}</p>
       {on("search") && (
-        <div className="flex items-center gap-2 rounded-xl bg-white border px-3 py-1.5 mb-2" style={{ borderColor: "#eef0f3" }}>
+        <button type="button" onClick={() => onNavigate("catalog")} className="w-full flex items-center gap-2 rounded-xl bg-white border px-3 py-1.5 mb-2" style={{ borderColor: "#e6e8ee" }}>
           <Icon name="search" size={13} className="text-gray-400" />
           <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
-        </div>
+        </button>
       )}
       {on("categories") && cats.length > 0 && (
-        <div className="flex gap-1.5 mb-3 overflow-x-auto">
+        <div className="flex gap-1.5 mb-3 overflow-x-auto pb-0.5">
           {cats.slice(0, 6).map((cat: BundleCategory) => (
-            <span key={cat.id} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>{cat.name}</span>
+            <button key={cat.id} type="button" onClick={() => onNavigate("catalog")} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: `${c.buttonColor}14`, color: c.buttonColor }}>{cat.name}</button>
           ))}
         </div>
       )}

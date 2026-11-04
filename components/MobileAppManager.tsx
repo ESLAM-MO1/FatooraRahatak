@@ -638,7 +638,7 @@ export default function MobileAppManager() {
           <p className="text-[15px] font-bold text-[var(--ink)]">
             {isActive && status?.daysRemaining != null
               ? `${status.daysRemaining} ${t("mobileApp.daysSuffix")}`
-              : `${formatMoney(status?.monthlyPrice || 0)} ${t("mobileApp.perMonth")}`}
+              : `${formatMoney(status?.monthlyPrice || 0)} ${t("common.currency")} ${t("mobileApp.perMonth")}`}
           </p>
         </div>
       </div>
@@ -864,7 +864,7 @@ function SubscribeStep(props: any) {
           </div>
           <div>
             <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.dueAmount")}</p>
-            <p className="font-bold text-[var(--ink)]">{formatMoney(status.dueAmount)}</p>
+            <p className="font-bold text-[var(--ink)]">{formatMoney(status.dueAmount)} {t("common.currency")}</p>
           </div>
           <div>
             <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.startDate")}</p>
@@ -931,7 +931,7 @@ function SubscribeStep(props: any) {
                   {c === "Yearly" ? t("mobileApp.billingYearly") : t("mobileApp.billingMonthly")}
                 </span>
                 <span className="block text-[12px] text-[var(--sub)] mt-0.5">
-                  {formatMoney(c === "Yearly" ? (status?.yearlyPrice || 0) : (status?.monthlyPrice || 0))}
+                  {formatMoney(c === "Yearly" ? (status?.yearlyPrice || 0) : (status?.monthlyPrice || 0))} {t("common.currency")}
                 </span>
               </button>
             ))}

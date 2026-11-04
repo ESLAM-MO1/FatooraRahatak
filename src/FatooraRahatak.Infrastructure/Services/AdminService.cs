@@ -600,7 +600,9 @@ public class AdminService : IAdminService
                 HasFreeShipping = p.HasFreeShipping,
                 HasCashOnDelivery = p.HasCashOnDelivery,
                 HasShippingDiscounts = p.HasShippingDiscounts,
-                IsActive = p.IsActive
+                IsActive = p.IsActive,
+                HasMobileApp = p.HasMobileApp,
+                MobileAppMonthlyPrice = p.MobileAppMonthlyPrice
             })
             .ToListAsync();
     }
@@ -640,7 +642,9 @@ public class AdminService : IAdminService
             HasFreeShipping = package.HasFreeShipping,
             HasCashOnDelivery = package.HasCashOnDelivery,
             HasShippingDiscounts = package.HasShippingDiscounts,
-            IsActive = package.IsActive
+            IsActive = package.IsActive,
+            HasMobileApp = package.HasMobileApp,
+            MobileAppMonthlyPrice = package.MobileAppMonthlyPrice
         };
     }
 
@@ -678,6 +682,8 @@ public class AdminService : IAdminService
         package.HasCashOnDelivery = dto.HasCashOnDelivery;
         package.HasShippingDiscounts = dto.HasShippingDiscounts;
         package.IsActive = dto.IsActive;
+        package.HasMobileApp = dto.HasMobileApp;
+        package.MobileAppMonthlyPrice = dto.MobileAppMonthlyPrice;
 
         await _context.SaveChangesAsync();
     }

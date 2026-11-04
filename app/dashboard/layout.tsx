@@ -183,6 +183,7 @@ const superAdminNavKeys: NavGroupKey[] = [
       { href: "/dashboard/kpis",    labelKey: "nav.kpis",    icon: "chart" },
       { href: "/dashboard/domains", labelKey: "nav.domains", icon: "settings" },
       { href: "/dashboard/domain-purchase-requests", labelKey: "nav.domainPurchaseRequests", icon: "settings" },
+      { href: "/dashboard/app-subscriptions", labelKey: "nav.appSubscriptions", icon: "box" },
       { href: "/dashboard/admin-referrals", labelKey: "nav.referrals", icon: "share" },
       { href: "/dashboard/admin-verifications", labelKey: "nav.adminVerifications", icon: "clipboard" },
       { href: "/dashboard/admin-merchant-accounts", labelKey: "nav.adminMerchantAccounts", icon: "store" },
@@ -415,7 +416,7 @@ const handler = () => {
     "stores", "packages", "themes", "users", "reports", "kpis", "domains",
     "admin-referrals", "admin-verifications", "admin-merchant-accounts",
     "admin-settlements", "admin-return-refunds", "settings", "site-content",
-    "domain-purchase-requests",
+    "domain-purchase-requests", "app-subscriptions",
     "dashboard-sections", "site-menus", "blog", "careers", "academy", "design-requests",
   ];
   const deniedAdminRoute =

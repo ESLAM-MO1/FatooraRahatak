@@ -227,6 +227,8 @@ public class SiteService : ISiteService
                 HasFreeShipping = p.HasFreeShipping,
                 HasCashOnDelivery = p.HasCashOnDelivery,
                 HasShippingDiscounts = p.HasShippingDiscounts,
+                HasMobileApp = p.HasMobileApp,
+                MobileAppMonthlyPrice = p.MobileAppMonthlyPrice,
             })
             .ToListAsync();
     }

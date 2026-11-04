@@ -20,6 +20,7 @@ import StoreBlogManager from "@/components/store-managers/StoreBlogManager";
 import StoreBannersManager from "@/components/store-managers/StoreBannersManager";
 import StorePaymentCredentialsManager from "@/components/store-managers/StorePaymentCredentialsManager";
 import DomainPurchaseRequestCard from "@/components/DomainPurchaseRequestCard";
+import MobileAppManager from "@/components/MobileAppManager";
 
 type DomainStatus = "None" | "Pending" | "Active";
 
@@ -132,7 +133,7 @@ const COLOR_FIELDS: { key: keyof StoreColors; labelKey: string }[] = [
 // named sections — reachable from one tab strip — keeps every field exactly
 // where it was, just organized around the questions a merchant actually asks
 // ("what does my store look like?" vs "how do people pay?").
-type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "pages" | "advanced" | "designChat" | "faq" | "blog" | "banners";
+type TabId = "overview" | "domain" | "design" | "contact" | "commerce" | "pages" | "advanced" | "designChat" | "faq" | "blog" | "banners" | "mobileApp";
 
 const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "overview", labelKey: "storeSettings.tabOverview", icon: "chart" },
@@ -145,6 +146,7 @@ const TABS: { id: TabId; labelKey: string; icon: string }[] = [
   { id: "faq", labelKey: "storeFaq.title", icon: "book" },
   { id: "blog", labelKey: "storeBlog.title", icon: "edit" },
   { id: "banners", labelKey: "banners.title", icon: "layout" },
+  { id: "mobileApp", labelKey: "storeSettings.tabMobileApp", icon: "box" },
   { id: "advanced", labelKey: "storeSettings.tabAdvanced", icon: "card" },
 ];
 
@@ -155,6 +157,7 @@ const TAB_GROUPS: { key: string; labelKey: string; items: TabId[] }[] = [
   { key: "presence", labelKey: "storeSettings.groupPresence", items: ["domain", "contact"] },
   { key: "commerce", labelKey: "storeSettings.groupCommerce", items: ["commerce"] },
   { key: "content", labelKey: "storeSettings.groupContent", items: ["pages", "faq", "blog", "banners"] },
+  { key: "apps", labelKey: "storeSettings.groupMobileApp", items: ["mobileApp"] },
   { key: "advanced", labelKey: "storeSettings.groupAdvanced", items: ["advanced"] },
 ];
 
@@ -169,6 +172,7 @@ const TAB_FALLBACK: Record<TabId, string> = {
   faq: "الأسئلة الشائعة",
   blog: "المدونة",
   banners: "البنرات الإعلانية",
+  mobileApp: "صناعة تطبيقات الجوال",
   advanced: "إعدادات متقدمة",
 };
 
@@ -1746,6 +1750,12 @@ export default function StoreSettingsPage() {
         {activeTab === "banners" && (
           <SettingCard icon="layout" title={t("banners.title")} accent="gold">
             <StoreBannersManager />
+          </SettingCard>
+        )}
+
+        {activeTab === "mobileApp" && (
+          <SettingCard icon="box" title={t("mobileApp.title")} desc={t("mobileApp.desc")} accent="blue">
+            <MobileAppManager />
           </SettingCard>
         )}
 

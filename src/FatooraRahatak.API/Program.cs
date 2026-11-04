@@ -142,6 +142,7 @@ builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.INotificationSe
 builder.Services.AddScoped<IKpiService, KpiService>();
 builder.Services.AddScoped<IDomainService, DomainService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IDomainPurchaseService, FatooraRahatak.Infrastructure.Services.DomainPurchaseService>();
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IMobileAppSubscriptionService, FatooraRahatak.Infrastructure.Services.MobileAppSubscriptionService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();

@@ -37,4 +37,8 @@ public class SubscriptionStatusDto
     public bool HasFreeShipping { get; set; }
     public bool HasCashOnDelivery { get; set; }
     public bool HasShippingDiscounts { get; set; }
+
+    // صناعة تطبيقات الجوال: إتاحة الخاصية للباقة + سعر الاشتراك الشهري المحدد من الأدمن.
+    public bool HasMobileApp { get; set; }
+    public decimal MobileAppMonthlyPrice { get; set; }
 }

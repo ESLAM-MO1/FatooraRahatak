@@ -116,6 +116,7 @@ public class AppDbContext : DbContext
     public DbSet<DomainRegistrationRequest> DomainRegistrationRequests => Set<DomainRegistrationRequest>();
     public DbSet<DomainBlacklistEntry> DomainBlacklistEntries => Set<DomainBlacklistEntry>();
     public DbSet<DomainPurchaseRequest> DomainPurchaseRequests => Set<DomainPurchaseRequest>();
+    public DbSet<StoreAppSubscription> StoreAppSubscriptions => Set<StoreAppSubscription>();
     public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<SiteMenu> SiteMenus => Set<SiteMenu>();
     public DbSet<DashboardSection> DashboardSections => Set<DashboardSection>();
@@ -288,6 +289,28 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Package>()
             .Property(p => p.CommissionPercentage)
             .HasPrecision(5, 2);
+
+        modelBuilder.Entity<StoreAppSubscription>()
+            .HasOne(s => s.Store)
+            .WithMany()
+            .HasForeignKey(s => s.StoreId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StoreAppSubscription>()
+            .HasOne(s => s.Package)
+            .WithMany()
+            .HasForeignKey(s => s.PackageId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StoreAppSubscription>()
+            .Property(s => s.DueAmount)
+            .HasPrecision(10, 2);
+
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.AppSubscription)
+            .WithMany()
+            .HasForeignKey(p => p.AppSubscriptionId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Employee>()
             .Property(e => e.Salary)

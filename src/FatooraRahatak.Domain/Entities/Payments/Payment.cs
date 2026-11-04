@@ -12,6 +12,9 @@ public class Payment : BaseEntity
     public long? InvoiceId { get; set; }
     public long? OrderId { get; set; }
     public long? SubscriptionId { get; set; }
+
+    // اشتراك "صناعة تطبيقات الجوال" (إضافة مستقلة عن اشتراك المنصة).
+    public long? AppSubscriptionId { get; set; }
     public decimal Amount { get; set; }
     public string Currency { get; set; } = "SAR";
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
@@ -39,4 +42,5 @@ public class Payment : BaseEntity
     public Invoice? Invoice { get; set; }
     public Order? Order { get; set; }
     public Subscription? Subscription { get; set; }
+    public StoreAppSubscription? AppSubscription { get; set; }
 }

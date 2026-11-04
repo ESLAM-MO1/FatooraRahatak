@@ -34,6 +34,11 @@ public class Package : BaseEntity
     public bool IsActive { get; set; } = true;
     public bool HidePlatformBranding { get; set; } = false;
 
+    // صناعة تطبيقات الجوال: الخاصية تحدد إتاحتها للباقة (ممنوعة في الباقة المجانية)،
+    // والسعر يحدده الأدمن لكل باقة على حدة، على نمط باقي حقول الباقة.
+    public bool HasMobileApp { get; set; } = false;
+    public decimal MobileAppMonthlyPrice { get; set; } = 0m;
+
     public ICollection<Store> Stores { get; set; } = new List<Store>();
     public ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
 }

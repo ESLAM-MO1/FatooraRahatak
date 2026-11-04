@@ -26,6 +26,7 @@ public class PaymentService : IPaymentService
     private readonly TamaraPaymentProvider _tamaraProvider;
     private readonly IStorePaymentCredentialService _credentialService;
     private readonly ISubscriptionService _subscriptionService;
+    private readonly IMobileAppSubscriptionService _mobileAppSubscriptionService;
     private readonly IAccountingService _accountingService;
     private readonly IOrderStockService _orderStockService;
     private readonly INotificationService _notificationService;
@@ -33,7 +34,7 @@ public class PaymentService : IPaymentService
     private readonly ILogger<PaymentService> _logger;
     private readonly IEmailService _emailService;
 
-    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, IStorePaymentCredentialService credentialService, ISubscriptionService subscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config, ILogger<PaymentService> logger, IEmailService emailService)
+    public PaymentService(AppDbContext context, MoyasarPaymentProvider provider, PayPalPaymentProvider payPalProvider, TabbyPaymentProvider tabbyProvider, TamaraPaymentProvider tamaraProvider, IStorePaymentCredentialService credentialService, ISubscriptionService subscriptionService, IMobileAppSubscriptionService mobileAppSubscriptionService, IAccountingService accountingService, IOrderStockService orderStockService, INotificationService notificationService, IConfiguration config, ILogger<PaymentService> logger, IEmailService emailService)
     {
         _context = context;
         _provider = provider;
@@ -42,6 +43,7 @@ public class PaymentService : IPaymentService
         _tamaraProvider = tamaraProvider;
         _credentialService = credentialService;
         _subscriptionService = subscriptionService;
+        _mobileAppSubscriptionService = mobileAppSubscriptionService;
         _accountingService = accountingService;
         _orderStockService = orderStockService;
         _notificationService = notificationService;
@@ -141,6 +143,7 @@ public class PaymentService : IPaymentService
         if (payment.Order != null) return payment.Order.StoreId;
         if (payment.Invoice != null) return payment.Invoice.StoreId;
         if (payment.SubscriptionId.HasValue) return null;
+        if (payment.AppSubscriptionId.HasValue) return null;
         if (payment.InvoiceId.HasValue)
         {
             var invoiceStoreId = await _context.Invoices
@@ -289,8 +292,28 @@ public class PaymentService : IPaymentService
             return new CreatePaymentResult { Success = false, Message = "مبلغ الدفع غير صالح" };
 
         if (!dto.SubscriptionId.HasValue && !dto.OrderId.HasValue && !dto.InvoiceId.HasValue
+            && !dto.AppSubscriptionId.HasValue
             && string.IsNullOrWhiteSpace(dto.PendingPosPayloadJson))
             return new CreatePaymentResult { Success = false, Message = "يجب تحديد مرجع الدفع (طلب أو فاتورة أو اشتراك)" };
+
+        if (dto.AppSubscriptionId.HasValue)
+        {
+            var appSubscription = await _context.StoreAppSubscriptions.FindAsync(dto.AppSubscriptionId.Value);
+            if (appSubscription == null)
+                return new CreatePaymentResult { Success = false, Message = "اشتراك تطبيق الجوال غير موجود" };
+            if (storeId.HasValue && appSubscription.StoreId != storeId.Value)
+                return new CreatePaymentResult { Success = false, Message = "اشتراك تطبيق الجوال غير موجود" };
+            if (appSubscription.PaymentStatus == "Paid")
+                return new CreatePaymentResult { Success = false, Message = "هذا الاشتراك مدفوع بالفعل" };
+            if (appSubscription.Status != SubscriptionStatus.Pending)
+                return new CreatePaymentResult { Success = false, Message = "لا يمكن دفع اشتراك غير معلّق" };
+            if (!AreAmountsEqual(dto.Amount, appSubscription.DueAmount))
+                return new CreatePaymentResult
+                {
+                    Success = false,
+                    Message = $"المبلغ المطلوب دفعه هو {appSubscription.DueAmount:0.##} ر.س بالضبط"
+                };
+        }
 
         if (dto.SubscriptionId.HasValue)
         {
@@ -384,15 +407,15 @@ public class PaymentService : IPaymentService
 
         var isBnpl = providerType == PaymentProviderType.Tabby || providerType == PaymentProviderType.Tamara;
         long? bnplStoreId = order?.StoreId ?? storeId ?? dto.PosShiftStoreId;
-        if (isBnpl && (dto.SubscriptionId.HasValue || dto.InvoiceId.HasValue || bnplStoreId == null))
+        if (isBnpl && (dto.SubscriptionId.HasValue || dto.AppSubscriptionId.HasValue || dto.InvoiceId.HasValue || bnplStoreId == null))
             return new CreatePaymentResult { Success = false, Message = "تابي وتمارا متاحان لطلبات المتجر ونقطة البيع فقط" };
         var bnplReferenceId = order != null ? order.OrderNumber : "POS-" + Guid.NewGuid().ToString("N").Substring(0, 12);
         var bnplReturnUrl = string.IsNullOrWhiteSpace(dto.SuccessUrl) ? ToAbsoluteStoreUrl("/dashboard") : ToAbsoluteStoreUrl(dto.SuccessUrl);
 
         if (providerType == PaymentProviderType.PayPal)
         {
-            long? ppStoreId = dto.SubscriptionId.HasValue ? null : bnplStoreId;
-            if (ppStoreId == null && !dto.SubscriptionId.HasValue && dto.InvoiceId.HasValue)
+            long? ppStoreId = (dto.SubscriptionId.HasValue || dto.AppSubscriptionId.HasValue) ? null : bnplStoreId;
+            if (ppStoreId == null && !dto.SubscriptionId.HasValue && !dto.AppSubscriptionId.HasValue && dto.InvoiceId.HasValue)
             {
                 ppStoreId = await _context.Invoices
                     .Where(i => i.Id == dto.InvoiceId.Value)
@@ -492,7 +515,7 @@ public class PaymentService : IPaymentService
         }
         else if (providerType == PaymentProviderType.BankTransfer)
         {
-            if (dto.SubscriptionId.HasValue)
+            if (dto.SubscriptionId.HasValue || dto.AppSubscriptionId.HasValue)
             {
                 var platformBank = await GetPlatformBankAccountAsync();
                 if (platformBank == null || string.IsNullOrWhiteSpace(platformBank.Iban))
@@ -551,10 +574,14 @@ public class PaymentService : IPaymentService
         }
         else
         {
-            long? payStoreId = dto.SubscriptionId.HasValue
+            // اشتراكات المنصة (SubscriptionId) واشتراكات تطبيقات الجوال
+            // (AppSubscriptionId) تُدفع على حساب مياسر الخاص بالمنصة، لا حساب التاجر،
+            // ولهذا نُمرّر payStoreId = null ليُستخدم مفتاح المنصة ويُعاد المفتاح العام
+            // لعرض فورم الدفع داخل الصفحة (Moyasar.init) بدون تحويل خارجي.
+            long? payStoreId = (dto.SubscriptionId.HasValue || dto.AppSubscriptionId.HasValue)
                 ? null
                 : (order?.StoreId ?? storeId ?? dto.PosShiftStoreId);
-            if (payStoreId == null && dto.InvoiceId.HasValue)
+            if (payStoreId == null && !dto.SubscriptionId.HasValue && !dto.AppSubscriptionId.HasValue && dto.InvoiceId.HasValue)
             {
                 payStoreId = await _context.Invoices
                     .Where(i => i.Id == dto.InvoiceId.Value)
@@ -640,6 +667,8 @@ public class PaymentService : IPaymentService
         Payment? existingPayment = null;
         if (dto.SubscriptionId.HasValue)
             existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.SubscriptionId == dto.SubscriptionId);
+        else if (dto.AppSubscriptionId.HasValue)
+            existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.AppSubscriptionId == dto.AppSubscriptionId);
         else if (dto.OrderId.HasValue)
             existingPayment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == dto.OrderId);
         else if (dto.InvoiceId.HasValue)
@@ -670,6 +699,7 @@ public class PaymentService : IPaymentService
                 InvoiceId = dto.InvoiceId,
                 OrderId = dto.OrderId,
                 SubscriptionId = dto.SubscriptionId,
+                AppSubscriptionId = dto.AppSubscriptionId,
                 Amount = dto.Amount,
                 Currency = dto.Currency,
                 Status = PaymentStatus.Pending,
@@ -1025,7 +1055,7 @@ public class PaymentService : IPaymentService
             }
         }
 
-        if (!payment.InvoiceId.HasValue && !payment.OrderId.HasValue && !payment.SubscriptionId.HasValue)
+        if (!payment.InvoiceId.HasValue && !payment.OrderId.HasValue && !payment.SubscriptionId.HasValue && !payment.AppSubscriptionId.HasValue)
             return;
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -1136,6 +1166,21 @@ public class PaymentService : IPaymentService
                     {
                         await _subscriptionService.ActivateSubscriptionOnPaymentAsync(subscription.Id);
                         await AwardReferralCommissionAsync(subscription, payment);
+                    }
+                }
+            }
+
+            if (payment.AppSubscriptionId.HasValue)
+            {
+                var appSubscription = await _context.StoreAppSubscriptions.FindAsync(payment.AppSubscriptionId.Value);
+                if (appSubscription != null)
+                {
+                    appSubscription.PaymentStatus = payment.Status.ToString();
+                    appSubscription.UpdatedAt = DateTime.UtcNow;
+
+                    if (payment.Status == PaymentStatus.Paid)
+                    {
+                        await _mobileAppSubscriptionService.ActivateOnPaymentAsync(appSubscription.Id);
                     }
                 }
             }
@@ -1710,6 +1755,8 @@ public class PaymentService : IPaymentService
     {
         if (dto.SubscriptionId.HasValue)
             return "دفع اشتراك - فاتورة راحتك";
+        if (dto.AppSubscriptionId.HasValue)
+            return "اشتراك صناعة تطبيقات الجوال - فاتورة راحتك";
         if (dto.OrderId.HasValue)
             return "سداد طلب إلكتروني - فاتورة راحتك";
         if (dto.InvoiceId.HasValue)

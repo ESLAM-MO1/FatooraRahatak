@@ -31,4 +31,6 @@ public class AdminPackageDto
     public bool HasCashOnDelivery { get; set; }
     public bool HasShippingDiscounts { get; set; }
     public bool IsActive { get; set; }
+    public bool HasMobileApp { get; set; }
+    public decimal MobileAppMonthlyPrice { get; set; }
 }

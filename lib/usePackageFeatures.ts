@@ -18,7 +18,8 @@ export type PackageFeatureKey =
   | "hasShippingLabelPrinting"
   | "hasFreeShipping"
   | "hasCashOnDelivery"
-  | "hasShippingDiscounts";
+  | "hasShippingDiscounts"
+  | "hasMobileApp";
 
 export interface PackageFeatures {
   hasPos: boolean;
@@ -36,6 +37,7 @@ export interface PackageFeatures {
   hasFreeShipping: boolean;
   hasCashOnDelivery: boolean;
   hasShippingDiscounts: boolean;
+  hasMobileApp: boolean;
 }
 
 type StatusShape = Record<string, boolean>;
@@ -66,6 +68,7 @@ async function loadFeatures(): Promise<PackageFeatures> {
           hasFreeShipping: !!d.hasFreeShipping,
           hasCashOnDelivery: !!d.hasCashOnDelivery,
           hasShippingDiscounts: !!d.hasShippingDiscounts,
+          hasMobileApp: !!d.hasMobileApp,
         };
         return cached;
       })

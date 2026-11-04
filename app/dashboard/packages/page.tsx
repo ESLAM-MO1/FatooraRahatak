@@ -56,6 +56,8 @@ interface Package {
   hasCashOnDelivery: boolean;
   hasShippingDiscounts: boolean;
   isActive: boolean;
+  hasMobileApp: boolean;
+  mobileAppMonthlyPrice: number;
 }
 
 interface RevenueData {
@@ -235,6 +237,8 @@ export default function PackagesPage() {
       hasCashOnDelivery: pkg.hasCashOnDelivery,
       hasShippingDiscounts: pkg.hasShippingDiscounts,
       isActive: pkg.isActive,
+      hasMobileApp: pkg.hasMobileApp,
+      mobileAppMonthlyPrice: pkg.mobileAppMonthlyPrice,
     });
     setActionError("");
     setActionSuccess("");
@@ -647,6 +651,33 @@ export default function PackagesPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {(Object.entries(SHIPPING_FEATURE_LABELS) as [keyof Package, string][]).map(([key, label]) =>
                       renderFeatureField(pkg, key, label)
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
+                  <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packagesAdmin.featureMobileApp")}</p>
+                  <div className="mt-1.5">
+                    {renderFeatureField(pkg, "hasMobileApp", "packagesAdmin.featureMobileApp")}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-[12.5px] mt-2">
+                    <label className="text-[var(--sub)] shrink-0">{t("packagesAdmin.mobileAppPrice")}</label>
+                    {isEditing ? (
+                      <div className="field-shell py-1 px-2.5 w-28">
+                        <input
+                          type="number"
+                          value={editForm.mobileAppMonthlyPrice ?? pkg.mobileAppMonthlyPrice}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, mobileAppMonthlyPrice: parseFloat(e.target.value) || 0 })
+                          }
+                          min={0}
+                          step="0.01"
+                          dir="ltr"
+                          className="text-left"
+                        />
+                      </div>
+                    ) : (
+                      <span className="font-bold text-[var(--ink)]">{getPriceDisplay(pkg.mobileAppMonthlyPrice)}</span>
                     )}
                   </div>
                 </div>

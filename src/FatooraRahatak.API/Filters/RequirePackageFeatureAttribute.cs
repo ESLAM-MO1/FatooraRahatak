@@ -88,6 +88,7 @@ public sealed class RequirePackageFeatureAttribute : Attribute, IAsyncActionFilt
         "HasAffiliateMarketing" => package.HasAffiliateMarketing,
         "HasShippingDiscounts" => package.HasShippingDiscounts,
         "HasFreeShipping" => package.HasFreeShipping,
+        "HasMobileApp" => package.HasMobileApp,
         _ => true
     };
 }

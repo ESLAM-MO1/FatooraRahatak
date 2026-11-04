@@ -30,4 +30,6 @@ public class PublicPackageDto
     public bool HasFreeShipping { get; set; }
     public bool HasCashOnDelivery { get; set; }
     public bool HasShippingDiscounts { get; set; }
+    public bool HasMobileApp { get; set; }
+    public decimal MobileAppMonthlyPrice { get; set; }
 }

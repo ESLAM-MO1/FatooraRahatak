@@ -126,7 +126,9 @@ public class SubscriptionService : ISubscriptionService
             HasShippingLabelPrinting = store.Package.HasShippingLabelPrinting,
             HasFreeShipping = store.Package.HasFreeShipping,
             HasCashOnDelivery = store.Package.HasCashOnDelivery,
-            HasShippingDiscounts = store.Package.HasShippingDiscounts
+            HasShippingDiscounts = store.Package.HasShippingDiscounts,
+            HasMobileApp = store.Package.HasMobileApp,
+            MobileAppMonthlyPrice = store.Package.MobileAppMonthlyPrice
         };
     }
 

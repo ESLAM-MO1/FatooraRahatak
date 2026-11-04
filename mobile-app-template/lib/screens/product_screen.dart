@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../models/models.dart';
 import '../state/app_state.dart';
 import '../widgets/widgets.dart';
 import '../services/api_client.dart';
-import '../main.dart' show TabController;
+import '../main.dart' show AppTabs;
 
 class ProductScreen extends StatefulWidget {
   final List<Product> products;
@@ -133,7 +133,7 @@ class _ProductScreenState extends State<ProductScreen> {
                   Navigator.of(context).popUntil((r) => r.isFirst);
                   // الانتقال لتبويب السلة حسب ترتيب التنقل الفعلي.
                   final ci = AppConfig.I.bottomNav.indexOf('cart');
-                  TabController.I.go(ci >= 0 ? ci : 0);
+                  AppTabs.I.go(ci >= 0 ? ci : 0);
                 },
               ),
             ],
@@ -172,7 +172,7 @@ class _ProductScreenState extends State<ProductScreen> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          border: Border.all(color: c['button']!.withValues(alpha: 0.4)),
+          border: Border.all(color: c['button']!.withOpacity(0.4)),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, size: 18, color: c['button']),

@@ -120,7 +120,7 @@ class CartScreen extends StatelessWidget {
 
   Widget _mini(IconData icon, Color color) => Container(
         padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(border: Border.all(color: color.withValues(alpha: 0.4)), borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(border: Border.all(color: color.withOpacity(0.4)), borderRadius: BorderRadius.circular(6)),
         child: Icon(icon, size: 16, color: color),
       );
 

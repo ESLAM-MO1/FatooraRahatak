@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'config/app_config.dart';
 import 'state/app_state.dart';
@@ -10,10 +10,10 @@ import 'screens/account_screen.dart';
 import 'screens/tracking_screen.dart';
 
 /// متحكّم التبويبات (لتمكين التنقل من أي شاشة).
-class TabController extends ChangeNotifier {
+class AppTabs extends ChangeNotifier {
   int index = 0;
-  static final TabController I = TabController._();
-  TabController._();
+  static final AppTabs I = AppTabs._();
+  AppTabs._();
   void go(int i) { index = i; notifyListeners(); }
 }
 
@@ -129,9 +129,9 @@ class _RootShellState extends State<RootShell> {
     final cartIndex = navKeys.indexOf('cart');
 
     return AnimatedBuilder(
-      animation: TabController.I,
+      animation: AppTabs.I,
       builder: (context, _) {
-        final idx = TabController.I.index.clamp(0, screens.length - 1);
+        final idx = AppTabs.I.index.clamp(0, screens.length - 1);
         final cartCount = context.watch<AppState>().cartCount;
         return Scaffold(
           appBar: AppBar(
@@ -145,21 +145,21 @@ class _RootShellState extends State<RootShell> {
                     label: Text('$cartCount'),
                     child: const Icon(Icons.shopping_cart_outlined),
                   ),
-                  onPressed: () => TabController.I.go(cartIndex),
+                  onPressed: () => AppTabs.I.go(cartIndex),
                 ),
             ],
           ),
           body: IndexedStack(index: idx, children: screens),
           bottomNavigationBar: NavigationBarTheme(
             data: NavigationBarThemeData(
-              indicatorColor: c['button']!.withValues(alpha: 0.15),
+              indicatorColor: c['button']!.withOpacity(0.15),
               labelTextStyle: WidgetStateProperty.all(
                 const TextStyle(fontSize: 10, fontWeight: FontWeight.w600)),
             ),
             child: NavigationBar(
               height: 62,
               selectedIndex: idx,
-              onDestinationSelected: (i) => TabController.I.go(i),
+              onDestinationSelected: (i) => AppTabs.I.go(i),
               backgroundColor: Colors.white,
               surfaceTintColor: Colors.transparent,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../state/app_state.dart';
 import 'tracking_screen.dart';
-import '../main.dart' show TabController;
+import '../main.dart' show AppTabs;
 
 /// شاشة الحساب — تطابق حساب العميل في متجرك:
 /// تسجيل دخول (بريد → رمز تحقق) ثم تبويبات: طلباتي / العناوين / بياناتي، مع تسجيل الخروج.
@@ -34,7 +34,7 @@ class _AccountScreenState extends State<AccountScreen> {
       Center(
         child: Container(
           width: 64, height: 64,
-          decoration: BoxDecoration(color: c['button']!.withValues(alpha: 0.12), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: c['button']!.withOpacity(0.12), shape: BoxShape.circle),
           child: Icon(Icons.person_outline, color: c['button'], size: 30),
         ),
       ),
@@ -210,7 +210,7 @@ class _AccountScreenState extends State<AccountScreen> {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: c['button']!.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: c['button']!.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
         child: Icon(icon, color: c['button'], size: 20),
       ),
       title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),

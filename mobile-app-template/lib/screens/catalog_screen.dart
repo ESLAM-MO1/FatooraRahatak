@@ -58,7 +58,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   label: Text(isAll ? 'الكل' : cat!.name),
                   selected: selected,
                   onSelected: (_) => s.selectCategory(isAll ? null : cat!.id),
-                  selectedColor: c['button']!.withValues(alpha: 0.15),
+                  selectedColor: c['button']!.withOpacity(0.15),
                   labelStyle: TextStyle(color: selected ? c['button'] : Colors.black87, fontWeight: FontWeight.bold, fontSize: 12),
                 );
               },

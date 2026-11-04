@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/app_config.dart';
+import '../models/models.dart';
 import '../state/app_state.dart';
 import '../widgets/widgets.dart';
 import '../screens/product_screen.dart';
@@ -149,7 +150,7 @@ class HomeScreen extends StatelessWidget {
           return GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(categoryId: cat.id))),
             child: Column(children: [
-              CircleAvatar(radius: 28, backgroundColor: c['accent']!.withValues(alpha: 0.12),
+              CircleAvatar(radius: 28, backgroundColor: c['accent']!.withOpacity(0.12),
                 backgroundImage: (cat.image != null && cat.image!.isNotEmpty) ? NetworkImage(cat.image!) : null,
                 child: (cat.image == null || cat.image!.isEmpty)
                     ? Icon(Icons.category_outlined, color: c['accent']) : null),

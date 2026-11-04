@@ -9,6 +9,7 @@ import Can from "@/components/Can";
 import { formatMoney } from "@/lib/formatNumber";
 import AppDesigner, {
   type AppDesign,
+  type MobileAppBundle,
   parseDesign,
   serializeDesign,
   DEFAULT_DESIGN,
@@ -131,7 +132,7 @@ export default function MobileAppManager() {
   const [activeStep, setActiveStep] = useState<StepId>("design");
 
   const [design, setDesign] = useState<AppDesign>(DEFAULT_DESIGN);
-  const [products, setProducts] = useState<{ name: string; price: number; imageUrl?: string | null }[]>([]);
+  const [bundle, setBundle] = useState<MobileAppBundle | null>(null);
   const [storeName, setStoreName] = useState("");
   const [savingDesign, setSavingDesign] = useState(false);
 
@@ -199,20 +200,12 @@ export default function MobileAppManager() {
 
   const loadStoreInfo = async () => {
     try {
-      const res = await api.get("/store-settings");
-      const d = res.data?.data ?? res.data;
-      if (d?.storeName) setStoreName(d.storeName);
-    } catch { /* تجاهل */ }
-    try {
-      const p = await api.get("/products", { params: { page: 1, pageSize: 6 } });
-      const items = p.data?.data?.items ?? p.data?.items ?? [];
-      setProducts(
-        (Array.isArray(items) ? items : []).slice(0, 6).map((x: any) => ({
-          name: x.name || x.productName || "",
-          price: x.price ?? x.salePrice ?? 0,
-          imageUrl: x.mainImageUrl || x.imageUrl || null,
-        }))
-      );
+      const res = await api.get("/mobile-app/bundle");
+      const d = res.data?.data as MobileAppBundle | undefined;
+      if (d) {
+        setBundle(d);
+        if (d.store?.storeName) setStoreName(d.store.storeName);
+      }
     } catch { /* تجاهل */ }
   };
 
@@ -643,7 +636,7 @@ export default function MobileAppManager() {
                   <span>{t("mobileApp.designBeforeSubscribe")}</span>
                 </div>
               )}
-              <AppDesigner design={design} onChange={setDesign} products={products} storeName={storeName} />
+              <AppDesigner design={design} onChange={setDesign} bundle={bundle} storeName={storeName} />
               {hasSubscription && (
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Can code="StoreSettings.Edit">

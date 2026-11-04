@@ -74,6 +74,25 @@ public class MobileAppController : ControllerBase
         }
     }
 
+    // ── حزمة بيانات المتجر الفعلية (تُغذّي المصمّم والمعاينة) ──
+    [RequirePermission("StoreSettings.View")]
+    [HttpGet("bundle")]
+    public async Task<IActionResult> GetBundle()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بالمستخدم" });
+
+        try
+        {
+            var data = await _service.GetBundleAsync(storeId.Value);
+            return Ok(new { success = true, data });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
     // ── صمّم: حفظ تصميم التطبيق ──
     [RequirePermission("StoreSettings.Edit")]
     [HttpPost("design")]

@@ -19,6 +19,9 @@ public interface IMobileAppSubscriptionService
     Task CancelAsync(long storeId);
 
     // ── مرحلة التصميم (صمّم) ──
+    // حزمة بيانات المتجر الفعلية التي تُغذّي المصمّم والمعاينة الحيّة.
+    Task<MobileAppBundleDto> GetBundleAsync(long storeId);
+
     // حفظ تصميم التطبيق القادم من مصمّم السحب والإفلات.
     Task<MobileAppSubscriptionDto> SaveDesignAsync(long storeId, long userId, SaveMobileAppDesignDto dto);
 

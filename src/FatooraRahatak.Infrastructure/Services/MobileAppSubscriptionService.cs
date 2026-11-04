@@ -128,6 +128,131 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         return dto;
     }
 
+    // ── حزمة بيانات المتجر الفعلية ──
+    // تُغذّي المصمّم والمعاينة بمنتجات المتجر وأقسامه وهويته الحقيقية.
+    public async Task<MobileAppBundleDto> GetBundleAsync(long storeId)
+    {
+        var store = await _context.Stores
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == storeId)
+            ?? throw new InvalidOperationException("المتجر غير موجود");
+
+        var bundle = new MobileAppBundleDto
+        {
+            Store = new StoreBrandingDto
+            {
+                StoreId = store.Id,
+                StoreName = store.StoreName,
+                StoreSlug = store.StoreSlug,
+                Logo = store.Logo,
+                CoverImage = store.CoverImage,
+                Currency = string.IsNullOrWhiteSpace(store.Currency) ? "SAR" : store.Currency,
+                ThemeName = store.ThemeName,
+                ColorsJson = store.ColorsJson,
+                Bio = store.BioLink
+            },
+            Contact = new AppContactDto
+            {
+                Phone = store.ContactPhone,
+                Email = store.ContactEmail,
+                Whatsapp = store.WhatsappUrl,
+                Address = store.ContactAddress,
+                Instagram = store.InstagramUrl,
+                Twitter = store.TwitterUrl,
+                Facebook = store.FacebookUrl
+            }
+        };
+
+        // ── الأقسام الحقيقية ──
+        var categories = await _context.Categories
+            .AsNoTracking()
+            .Where(c => c.StoreId == storeId && c.IsActive)
+            .OrderBy(c => c.SortOrder)
+            .Select(c => new { c.Id, c.NameAr, c.Image })
+            .ToListAsync();
+
+        var productCounts = await _context.Products
+            .AsNoTracking()
+            .Where(p => p.StoreId == storeId && p.Status == ProductStatus.Active)
+            .GroupBy(p => p.CategoryId)
+            .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        bundle.Categories = categories.Select(c => new AppCategoryDto
+        {
+            Id = c.Id,
+            Name = c.NameAr,
+            Image = c.Image,
+            ProductCount = productCounts.FirstOrDefault(x => x.CategoryId == c.Id)?.Count ?? 0
+        }).ToList();
+
+        // ── المنتجات الحقيقية (المنشور فقط) ──
+        var products = await _context.Products
+            .AsNoTracking()
+            .Include(p => p.Images)
+            .Where(p => p.StoreId == storeId && p.Status == ProductStatus.Active)
+            .OrderByDescending(p => p.CreatedAt)
+            .Take(120)
+            .ToListAsync();
+
+        var catNames = categories.ToDictionary(c => c.Id, c => c.NameAr);
+        var mapped = products.Select(p => MapProduct(p, catNames)).ToList();
+
+        bundle.Products = mapped;
+        bundle.NewArrivals = mapped.Take(8).ToList();
+        bundle.FeaturedProducts = mapped
+            .Where(p => p.DiscountPrice.HasValue)
+            .Take(8)
+            .ToList();
+        if (bundle.FeaturedProducts.Count == 0) bundle.FeaturedProducts = mapped.Take(8).ToList();
+
+        bundle.Offers = mapped
+            .Where(p => p.DiscountPrice.HasValue && p.DiscountPrice.Value < p.Price)
+            .Take(8)
+            .ToList();
+
+        // ── بانر رئيسي من معلومات المتجر (تغطية/شعار) ──
+        if (!string.IsNullOrWhiteSpace(store.CoverImage) || !string.IsNullOrWhiteSpace(store.StoreName))
+        {
+            bundle.Banners.Add(new AppBannerDto
+            {
+                Title = store.StoreName,
+                Subtitle = store.BioLink,
+                ImageUrl = store.CoverImage
+            });
+        }
+
+        return bundle;
+    }
+
+    private static AppProductDto MapProduct(Domain.Entities.Products.Product p, Dictionary<long, string> catNames)
+    {
+        var image = p.Images
+            .OrderByDescending(i => i.IsPrimary)
+            .ThenBy(i => i.SortOrder)
+            .Select(i => i.ImageUrl)
+            .FirstOrDefault();
+
+        decimal? discountPercent = null;
+        if (p.DiscountPrice.HasValue && p.BasePrice > 0 && p.DiscountPrice.Value < p.BasePrice)
+            discountPercent = Math.Round((1 - (p.DiscountPrice.Value / p.BasePrice)) * 100, 0);
+
+        return new AppProductDto
+        {
+            Id = p.Id,
+            Name = p.NameAr,
+            Price = p.BasePrice,
+            DiscountPrice = p.DiscountPrice,
+            DiscountPercent = discountPercent,
+            ImageUrl = image,
+            CategoryId = p.CategoryId,
+            CategoryName = p.CategoryId.HasValue ? catNames.GetValueOrDefault(p.CategoryId.Value) : null,
+            InStock = true,
+            ShortDescription = p.DescriptionAr,
+            CreatedAt = p.CreatedAt
+        };
+    }
+
     // الخطوة الحالية في المسار: صمّم → اشترك → أطلق.
     private static string ResolveStep(StoreAppSubscription s)
     {

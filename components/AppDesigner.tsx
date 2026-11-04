@@ -7,70 +7,171 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import { STORE_THEMES, getDefaultColors, type StoreColors } from "@/components/store-templates/configs";
 
-// ── مصمّم التطبيق بالسحب والإفلات مع معاينة مباشرة ──
-// يتيح للتاجر ترتيب أقسام الشاشة الرئيسية، وتخصيص الألوان والأيقونة برفع صورة،
-// ومشاهدة النتيجة فورًا داخل هاتف تجريبي، مطابقةً لصانع تطبيقات سلة.
+// ── مصمّم التطبيق بمحرّك شاشات ومعاينة حيّة ──
+// يتيح للتاجر تصميم شاشات التطبيق الخمس (الرئيسية، المنتج، السلة، الحساب، تتبّع الطلب)،
+// واختيار الأقسام داخل كل شاشة، ومعاينة النتيجة فورًا ببيانات متجره الحقيقية،
+// مطابقةً لصانع تطبيقات سلة.
 
-export type AppSectionKey =
+// ── أنواع البيانات الحقيقية القادمة من /mobile-app/bundle ──
+export interface BundleBranding {
+  storeId: number;
+  storeName: string;
+  storeSlug: string;
+  logo?: string | null;
+  coverImage?: string | null;
+  currency: string;
+  themeName: string;
+  colorsJson?: string | null;
+  bio?: string | null;
+}
+export interface BundleCategory {
+  id: number;
+  name: string;
+  image?: string | null;
+  productCount: number;
+}
+export interface BundleProduct {
+  id: number;
+  name: string;
+  price: number;
+  discountPrice?: number | null;
+  discountPercent?: number | null;
+  imageUrl?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
+  inStock: boolean;
+  shortDescription?: string | null;
+  createdAt: string;
+}
+export interface BundleBanner {
+  title: string;
+  subtitle?: string | null;
+  imageUrl?: string | null;
+}
+export interface BundleContact {
+  phone?: string | null;
+  email?: string | null;
+  whatsapp?: string | null;
+  address?: string | null;
+  instagram?: string | null;
+  twitter?: string | null;
+  facebook?: string | null;
+}
+export interface MobileAppBundle {
+  store: BundleBranding;
+  categories: BundleCategory[];
+  products: BundleProduct[];
+  featuredProducts: BundleProduct[];
+  newArrivals: BundleProduct[];
+  offers: BundleProduct[];
+  banners: BundleBanner[];
+  contact: BundleContact;
+}
+
+// ── محرّك الشاشات ──
+export type AppScreenKey = "home" | "product" | "cart" | "account" | "tracking" | "catalog";
+
+export type HomeSectionKey =
   | "hero"
   | "categories"
   | "banners"
   | "featured"
   | "newArrivals"
   | "offers"
-  | "brands"
   | "testimonials"
   | "newsletter"
-  | "contact";
+  | "contact"
+  | "brands";
 
 export interface AppSection {
-  key: AppSectionKey;
+  key: HomeSectionKey;
   enabled: boolean;
 }
 
+export interface ScreenConfig {
+  enabled: boolean;
+  sections: AppSection[];
+}
+
 export interface AppDesign {
+  version: number;
   themeId: string;
   colors: StoreColors;
-  sections: AppSection[];
   appName: string;
   tagline: string;
   iconUrl: string;
   splashText: string;
   bottomNav: string[];
+  screens: Record<AppScreenKey, ScreenConfig>;
 }
 
-const SECTION_KEYS: AppSectionKey[] = [
+const HOME_SECTION_KEYS: HomeSectionKey[] = [
   "hero", "categories", "banners", "featured", "newArrivals",
   "offers", "brands", "testimonials", "newsletter", "contact",
 ];
 
+const DEFAULT_HOME_ENABLED = ["hero", "categories", "featured", "newArrivals", "offers"];
+
 export const DEFAULT_DESIGN: AppDesign = {
+  version: 2,
   themeId: "professional-blue",
   colors: getDefaultColors("professional-blue"),
-  sections: SECTION_KEYS.map((k) => ({ key: k, enabled: ["hero", "categories", "featured", "newArrivals"].includes(k) })),
   appName: "",
   tagline: "",
   iconUrl: "",
   splashText: "",
   bottomNav: ["home", "categories", "cart", "account"],
+  screens: {
+    home: {
+      enabled: true,
+      sections: HOME_SECTION_KEYS.map((k) => ({ key: k, enabled: DEFAULT_HOME_ENABLED.includes(k) })),
+    },
+    product: { enabled: true, sections: [] },
+    cart: { enabled: true, sections: [] },
+    account: { enabled: true, sections: [] },
+    tracking: { enabled: true, sections: [] },
+    catalog: { enabled: true, sections: [] },
+  },
 };
 
 export function parseDesign(json: string | null | undefined, appName?: string | null): AppDesign {
-  const base: AppDesign = { ...DEFAULT_DESIGN, appName: appName || "" };
+  const base: AppDesign = {
+    ...DEFAULT_DESIGN,
+    appName: appName || "",
+    screens: { ...DEFAULT_DESIGN.screens },
+  };
   if (!json) return base;
   try {
     const parsed = JSON.parse(json);
+
+    // تصميم الإصدار الأول (شاشة واحدة) — نُرحّل أقسامه إلى شاشة الرئيسية.
+    const isV1 = !parsed.screens && Array.isArray(parsed.sections);
+
+    const themeId = typeof parsed.themeId === "string" ? parsed.themeId : base.themeId;
+    const colors = parsed.colors && typeof parsed.colors === "object"
+      ? { ...getDefaultColors(themeId), ...parsed.colors } : getDefaultColors(themeId);
+
+    const homeSections = isV1 && Array.isArray(parsed.sections)
+      ? normalizeSections(parsed.sections)
+      : (parsed.screens?.home?.sections ? normalizeSections(parsed.screens.home.sections) : base.screens.home.sections);
+
     return {
-      themeId: typeof parsed.themeId === "string" ? parsed.themeId : base.themeId,
-      colors: parsed.colors && typeof parsed.colors === "object"
-        ? { ...base.colors, ...parsed.colors } : base.colors,
-      sections: Array.isArray(parsed.sections) && parsed.sections.length
-        ? normalizeSections(parsed.sections) : base.sections,
+      version: 2,
+      themeId,
+      colors,
       appName: typeof parsed.appName === "string" && parsed.appName ? parsed.appName : base.appName,
       tagline: typeof parsed.tagline === "string" ? parsed.tagline : "",
       iconUrl: typeof parsed.iconUrl === "string" ? parsed.iconUrl : "",
       splashText: typeof parsed.splashText === "string" ? parsed.splashText : "",
       bottomNav: Array.isArray(parsed.bottomNav) && parsed.bottomNav.length ? parsed.bottomNav : base.bottomNav,
+      screens: {
+        home: { enabled: true, sections: homeSections },
+        product: { enabled: parsed.screens?.product?.enabled !== false, sections: [] },
+        cart: { enabled: parsed.screens?.cart?.enabled !== false, sections: [] },
+        account: { enabled: parsed.screens?.account?.enabled !== false, sections: [] },
+        tracking: { enabled: parsed.screens?.tracking?.enabled !== false, sections: [] },
+        catalog: { enabled: parsed.screens?.catalog?.enabled !== false, sections: [] },
+      },
     };
   } catch {
     return base;
@@ -81,13 +182,13 @@ function normalizeSections(arr: any[]): AppSection[] {
   const seen = new Set<string>();
   const out: AppSection[] = [];
   for (const item of arr) {
-    const key = item?.key as AppSectionKey;
-    if (SECTION_KEYS.includes(key) && !seen.has(key)) {
+    const key = item?.key as HomeSectionKey;
+    if (HOME_SECTION_KEYS.includes(key) && !seen.has(key)) {
       seen.add(key);
       out.push({ key, enabled: !!item.enabled });
     }
   }
-  for (const k of SECTION_KEYS) if (!seen.has(k)) out.push({ key: k, enabled: false });
+  for (const k of HOME_SECTION_KEYS) if (!seen.has(k)) out.push({ key: k, enabled: false });
   return out;
 }
 
@@ -98,14 +199,17 @@ export function serializeDesign(d: AppDesign): string {
 interface Props {
   design: AppDesign;
   onChange: (d: AppDesign) => void;
-  products: { name: string; price: number; imageUrl?: string | null }[];
+  bundle: MobileAppBundle | null;
   storeName: string;
 }
 
-export default function AppDesigner({ design, onChange, products, storeName }: Props) {
+export default function AppDesigner({ design, onChange, bundle, storeName }: Props) {
   const { t } = useTranslation();
-  const [dragKey, setDragKey] = useState<AppSectionKey | null>(null);
-  const [overKey, setOverKey] = useState<AppSectionKey | null>(null);
+  const [activeScreen, setActiveScreen] = useState<AppScreenKey>("home");
+  const [previewScreen, setPreviewScreen] = useState<AppScreenKey>("home");
+  const [previewProduct, setPreviewProduct] = useState<BundleProduct | null>(null);
+  const [dragKey, setDragKey] = useState<HomeSectionKey | null>(null);
+  const [overKey, setOverKey] = useState<HomeSectionKey | null>(null);
   const dragIndexRef = useRef<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -119,44 +223,50 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
 
   const setTheme = (id: string) => update({ themeId: id, colors: getDefaultColors(id) });
 
-  const toggleSection = (key: AppSectionKey) => {
-    update({ sections: design.sections.map((s) => (s.key === key ? { ...s, enabled: !s.enabled } : s)) });
+  const toggleSection = (key: HomeSectionKey) => {
+    const home = design.screens.home;
+    update({
+      screens: {
+        ...design.screens,
+        home: { ...home, sections: home.sections.map((s) => (s.key === key ? { ...s, enabled: !s.enabled } : s)) },
+      },
+    });
   };
 
-  const onDragStart = (key: AppSectionKey, index: number) => {
+  const onDragStart = (key: HomeSectionKey, index: number) => {
     setDragKey(key);
     dragIndexRef.current = index;
   };
-
-  const onDragOver = (e: React.DragEvent, key: AppSectionKey) => {
+  const onDragOver = (e: React.DragEvent, key: HomeSectionKey) => {
     e.preventDefault();
     setOverKey(key);
   };
-
   const onDrop = (e: React.DragEvent, targetIndex: number) => {
     e.preventDefault();
     const from = dragIndexRef.current;
     setOverKey(null);
     setDragKey(null);
     if (from === null || from === targetIndex) return;
-    const next = [...design.sections];
+    const home = design.screens.home;
+    const next = [...home.sections];
     const [moved] = next.splice(from, 1);
     next.splice(targetIndex, 0, moved);
-    update({ sections: next });
+    update({ screens: { ...design.screens, home: { ...home, sections: next } } });
     dragIndexRef.current = null;
+  };
+
+  const move = (index: number, dir: -1 | 1) => {
+    const home = design.screens.home;
+    const target = index + dir;
+    if (target < 0 || target >= home.sections.length) return;
+    const next = [...home.sections];
+    const [moved] = next.splice(index, 1);
+    next.splice(target, 0, moved);
+    update({ screens: { ...design.screens, home: { ...home, sections: next } } });
   };
 
   const setColor = (key: keyof StoreColors, val: string) => {
     update({ colors: { ...design.colors, [key]: val } });
-  };
-
-  const move = (index: number, dir: -1 | 1) => {
-    const target = index + dir;
-    if (target < 0 || target >= design.sections.length) return;
-    const next = [...design.sections];
-    const [moved] = next.splice(index, 1);
-    next.splice(target, 0, moved);
-    update({ sections: next });
   };
 
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,55 +288,41 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
     }
   };
 
+  const screens: { key: AppScreenKey; icon: any }[] = [
+    { key: "home", icon: "home" },
+    { key: "catalog", icon: "search" },
+    { key: "product", icon: "package" },
+    { key: "cart", icon: "cashier" },
+    { key: "account", icon: "user" },
+    { key: "tracking", icon: "truck" },
+  ];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
       {/* ── لوحة الإعدادات ── */}
       <div className="lg:col-span-3 space-y-5">
-        {/* الهوية: الاسم + الشعار/الأيقونة + الشريط العلوي */}
+        {/* الهوية */}
         <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
-              <Icon name="star" size={15} />
-            </span>
-            <p className="text-[13px] font-extrabold text-[var(--ink)]">{t("appDesigner.identity")}</p>
-          </div>
-
-          {/* اسم التطبيق */}
+          <PanelHeader icon="star" title={t("appDesigner.identity")} />
           <div className="mb-4">
             <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.appName")}</label>
             <div className="field-shell">
-              <input
-                type="text"
-                value={design.appName}
-                onChange={(e) => update({ appName: e.target.value })}
-                maxLength={200}
-                placeholder={storeName || t("mobileApp.appNamePlaceholder")}
-              />
+              <input type="text" value={design.appName} onChange={(e) => update({ appName: e.target.value })} maxLength={200} placeholder={storeName || t("mobileApp.appNamePlaceholder")} />
             </div>
             <p className="text-[10.5px] text-[var(--sub)] mt-1">{t("appDesigner.appNameHint")}</p>
           </div>
 
-          {/* وصف قصير تحت الاسم */}
           <div className="mb-4">
             <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("appDesigner.tagline")}</label>
             <div className="field-shell">
-              <input
-                type="text"
-                value={design.tagline}
-                onChange={(e) => update({ tagline: e.target.value })}
-                maxLength={60}
-                placeholder={t("appDesigner.taglinePlaceholder")}
-              />
+              <input type="text" value={design.tagline} onChange={(e) => update({ tagline: e.target.value })} maxLength={60} placeholder={t("appDesigner.taglinePlaceholder")} />
             </div>
           </div>
 
-          {/* الأيقونة: رفع صورة */}
           <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("appDesigner.iconLabel")}</label>
           <div className="flex items-center gap-4">
-            <div
-              className="w-20 h-20 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden shrink-0"
-              style={{ borderColor: design.iconUrl ? "transparent" : "var(--border)", background: design.iconUrl ? "transparent" : "var(--bg)" }}
-            >
+            <div className="w-20 h-20 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden shrink-0"
+              style={{ borderColor: design.iconUrl ? "transparent" : "var(--border)", background: design.iconUrl ? "transparent" : "var(--bg)" }}>
               {design.iconUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={design.iconUrl} alt="" className="w-full h-full object-cover rounded-2xl" />
@@ -241,26 +337,17 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
                 <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleIconUpload} disabled={uploading} />
               </label>
               {design.iconUrl && (
-                <button type="button" className="btn btn-sm btn-ghost ms-2" onClick={() => update({ iconUrl: "" })}>
-                  {t("appDesigner.removeIcon")}
-                </button>
+                <button type="button" className="btn btn-sm btn-ghost ms-2" onClick={() => update({ iconUrl: "" })}>{t("appDesigner.removeIcon")}</button>
               )}
               <p className="text-[10.5px] text-[var(--sub)] mt-1.5">{t("appDesigner.iconHint")}</p>
               {uploadError && <p className="text-[10.5px] text-[var(--red)] mt-1">{uploadError}</p>}
             </div>
           </div>
 
-          {/* نص الشريط العلوي */}
           <div className="mt-4">
             <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("appDesigner.splashText")}</label>
             <div className="field-shell">
-              <input
-                type="text"
-                value={design.splashText}
-                onChange={(e) => update({ splashText: e.target.value })}
-                maxLength={80}
-                placeholder={t("appDesigner.splashPlaceholder")}
-              />
+              <input type="text" value={design.splashText} onChange={(e) => update({ splashText: e.target.value })} maxLength={80} placeholder={t("appDesigner.splashPlaceholder")} />
             </div>
             {design.splashText.trim() && (
               <div className="mt-2 rounded-xl overflow-hidden flex items-center gap-2 px-3 py-2 text-white text-[11.5px] font-bold"
@@ -273,24 +360,14 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
           </div>
         </div>
 
-        {/* القالب */}
+        {/* القالب والألوان */}
         <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
-              <Icon name="layout" size={15} />
-            </span>
-            <p className="text-[13px] font-extrabold text-[var(--ink)]">{t("appDesigner.template")}</p>
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5">
+          <PanelHeader icon="layout" title={t("appDesigner.template")} />
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2.5 mb-4">
             {STORE_THEMES.map((th) => (
-              <button
-                key={th.id}
-                type="button"
-                onClick={() => setTheme(th.id)}
+              <button key={th.id} type="button" onClick={() => setTheme(th.id)}
                 className="rounded-xl border-2 p-2 transition-all text-center relative"
-                style={{ borderColor: design.themeId === th.id ? "var(--blue)" : "var(--border)" }}
-                title={t(th.nameKey)}
-              >
+                style={{ borderColor: design.themeId === th.id ? "var(--blue)" : "var(--border)" }} title={t(th.nameKey)}>
                 {design.themeId === th.id && (
                   <span className="absolute -top-1.5 -end-1.5 w-4 h-4 rounded-full flex items-center justify-center text-white" style={{ background: "var(--blue)" }}>
                     <Icon name="check" size={10} />
@@ -304,16 +381,6 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
               </button>
             ))}
           </div>
-        </div>
-
-        {/* الألوان */}
-        <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-2 mb-4">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
-              <Icon name="palette" size={15} />
-            </span>
-            <p className="text-[13px] font-extrabold text-[var(--ink)]">{t("appDesigner.colors")}</p>
-          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {([
               ["headerColor", "appDesigner.colorHeader"],
@@ -324,69 +391,82 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
               ["footerColor", "appDesigner.colorFooter"],
             ] as [keyof StoreColors, string][]).map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 rounded-xl border p-2 cursor-pointer" style={{ borderColor: "var(--border)" }}>
-                <input
-                  type="color"
-                  value={design.colors[key]}
-                  onChange={(e) => setColor(key, e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent"
-                />
+                <input type="color" value={design.colors[key]} onChange={(e) => setColor(key, e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
                 <span className="text-[11.5px] font-bold text-[var(--ink)]">{t(label)}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* الأقسام بالسحب والإفلات */}
+        {/* الشاشات */}
         <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
-              <Icon name="layers" size={15} />
-            </span>
-            <p className="text-[13px] font-extrabold text-[var(--ink)]">{t("appDesigner.sections")}</p>
-          </div>
-          <p className="text-[11.5px] text-[var(--sub)] mb-4">{t("appDesigner.sectionsHint")}</p>
-          <div className="space-y-2">
-            {design.sections.map((s, i) => (
-              <div
-                key={s.key}
-                draggable
-                onDragStart={() => onDragStart(s.key, i)}
-                onDragOver={(e) => onDragOver(e, s.key)}
-                onDragLeave={() => setOverKey(null)}
-                onDrop={(e) => onDrop(e, i)}
-                className="flex items-center gap-2.5 rounded-xl border p-2.5 transition-colors"
+          <PanelHeader icon="layers" title={t("appDesigner.screensTitle")} />
+          <p className="text-[11.5px] text-[var(--sub)] mb-4">{t("appDesigner.screensHint")}</p>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {screens.map((s) => (
+              <button key={s.key} type="button"
+                onClick={() => { setActiveScreen(s.key); setPreviewScreen(s.key); setPreviewProduct(null); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[11.5px] font-bold transition-all"
                 style={{
-                  borderColor: overKey === s.key ? "var(--blue)" : "var(--border)",
-                  background: overKey === s.key ? "var(--blue-50)" : "transparent",
-                  opacity: dragKey === s.key ? 0.5 : 1,
-                }}
-              >
-                <span className="cursor-grab text-[var(--sub)]" title={t("appDesigner.dragHint")}>
-                  <Icon name="sidebarToggle" size={14} />
-                </span>
-                <span className="flex-1 text-[12.5px] font-bold text-[var(--ink)]">{t(`appDesigner.section.${s.key}`)}</span>
-                <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-[var(--sub)] disabled:opacity-30" title={t("appDesigner.moveUp")}>
-                    <span className="block rotate-[-90deg]"><Icon name="arrowLeft" size={13} /></span>
-                  </button>
-                  <button type="button" onClick={() => move(i, 1)} disabled={i === design.sections.length - 1} className="p-1 text-[var(--sub)] disabled:opacity-30" title={t("appDesigner.moveDown")}>
-                    <span className="block rotate-[90deg]"><Icon name="arrowLeft" size={13} /></span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(s.key)}
-                    className="ms-1 px-2 py-1 rounded-lg text-[10.5px] font-bold"
-                    style={{
-                      background: s.enabled ? "var(--green-soft)" : "var(--bg)",
-                      color: s.enabled ? "var(--green)" : "var(--sub)",
-                    }}
-                  >
-                    {s.enabled ? t("appDesigner.shown") : t("appDesigner.hidden")}
-                  </button>
-                </div>
-              </div>
+                  borderColor: activeScreen === s.key ? "var(--blue)" : "var(--border)",
+                  background: activeScreen === s.key ? "var(--blue-50)" : "transparent",
+                  color: activeScreen === s.key ? "var(--blue)" : "var(--ink)",
+                }}>
+                <Icon name={s.icon} size={14} />
+                {t(`appDesigner.screen.${s.key}`)}
+              </button>
             ))}
           </div>
+
+          {activeScreen === "home" ? (
+            <div className="space-y-2">
+              {design.screens.home.sections.map((s, i) => (
+                <div key={s.key} draggable
+                  onDragStart={() => onDragStart(s.key, i)}
+                  onDragOver={(e) => onDragOver(e, s.key)}
+                  onDragLeave={() => setOverKey(null)}
+                  onDrop={(e) => onDrop(e, i)}
+                  className="flex items-center gap-2.5 rounded-xl border p-2.5 transition-colors"
+                  style={{
+                    borderColor: overKey === s.key ? "var(--blue)" : "var(--border)",
+                    background: overKey === s.key ? "var(--blue-50)" : "transparent",
+                    opacity: dragKey === s.key ? 0.5 : 1,
+                  }}>
+                  <span className="cursor-grab text-[var(--sub)]"><Icon name="sidebarToggle" size={14} /></span>
+                  <span className="flex-1 text-[12.5px] font-bold text-[var(--ink)]">{t(`appDesigner.section.${s.key}`)}</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-[var(--sub)] disabled:opacity-30">
+                      <span className="block rotate-[-90deg]"><Icon name="arrowLeft" size={13} /></span>
+                    </button>
+                    <button type="button" onClick={() => move(i, 1)} disabled={i === design.screens.home.sections.length - 1} className="p-1 text-[var(--sub)] disabled:opacity-30">
+                      <span className="block rotate-[90deg]"><Icon name="arrowLeft" size={13} /></span>
+                    </button>
+                    <button type="button" onClick={() => toggleSection(s.key)}
+                      className="ms-1 px-2 py-1 rounded-lg text-[10.5px] font-bold"
+                      style={{ background: s.enabled ? "var(--green-soft)" : "var(--bg)", color: s.enabled ? "var(--green)" : "var(--sub)" }}>
+                      {s.enabled ? t("appDesigner.shown") : t("appDesigner.hidden")}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ScreenInspector screen={activeScreen} bundle={bundle} t={t} />
+          )}
+        </div>
+
+        {/* بيانات المتجر الحقيقية */}
+        <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+          <PanelHeader icon="store" title={t("appDesigner.storeData")} />
+          {bundle ? (
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <Stat value={bundle.products.length} label={t("appDesigner.dataProducts")} />
+              <Stat value={bundle.categories.length} label={t("appDesigner.dataCategories")} />
+              <Stat value={bundle.offers.length} label={t("appDesigner.dataOffers")} />
+            </div>
+          ) : (
+            <p className="text-[11.5px] text-[var(--sub)]">{t("appDesigner.loadingStoreData")}</p>
+          )}
         </div>
       </div>
 
@@ -396,67 +476,113 @@ export default function AppDesigner({ design, onChange, products, storeName }: P
           <div className="flex items-center justify-center gap-2 mb-3">
             <Icon name="eye" size={15} className="text-[var(--blue)]" />
             <p className="text-[13px] font-extrabold text-[var(--ink)]">{t("appDesigner.preview")}</p>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ background: "var(--green-soft)", color: "var(--green)" }}>
+              {t("appDesigner.liveData")}
+            </span>
           </div>
-          <AppPreview design={design} products={products} storeName={storeName} theme={theme} />
+          <AppPreview
+            design={design} bundle={bundle} storeName={storeName} theme={theme}
+            screen={previewScreen} product={previewProduct}
+            onNavigate={(s, p) => { setPreviewScreen(s); if (p !== undefined) setPreviewProduct(p); }}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-// ── هاتف تجريبي فاخر يعرض المعاينة الحيّة ──
+function PanelHeader({ icon, title }: { icon: any; title: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <span className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "var(--blue-50)", color: "var(--blue)" }}>
+        <Icon name={icon} size={15} />
+      </span>
+      <p className="text-[13px] font-extrabold text-[var(--ink)]">{title}</p>
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rounded-xl border py-3" style={{ borderColor: "var(--border)" }}>
+      <p className="text-[19px] font-extrabold" style={{ color: "var(--blue)" }}>{value}</p>
+      <p className="text-[10.5px] text-[var(--sub)] mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+// لوحة معلومات الشاشة الداخلية (المنتج/السلة/الحساب/التتبّع)
+function ScreenInspector({ screen, bundle, t }: { screen: AppScreenKey; bundle: MobileAppBundle | null; t: (k: string) => string }) {
+  const items: Record<string, string[]> = {
+    product: ["photos", "price", "discount", "rating", "variants", "addToCart", "related"],
+    cart: ["items", "coupon", "shipping", "total", "checkout"],
+    account: ["profile", "orders", "wishlist", "addresses", "support", "settings"],
+    tracking: ["timeline", "map", "courier", "support"],
+    catalog: ["search", "filters", "sort", "grid"],
+  };
+  const list = items[screen] ?? [];
+  return (
+    <div>
+      <p className="text-[11.5px] text-[var(--sub)] mb-3">{t(`appDesigner.screenDesc.${screen}`)}</p>
+      <div className="space-y-2">
+        {list.map((k) => (
+          <div key={k} className="flex items-center gap-2.5 rounded-xl border p-2.5" style={{ borderColor: "var(--border)" }}>
+            <span style={{ color: "var(--green)" }}><Icon name="check" size={13} /></span>
+            <span className="flex-1 text-[12px] font-bold text-[var(--ink)]">{t(`appDesigner.screenItem.${screen}.${k}`)}</span>
+          </div>
+        ))}
+      </div>
+      {bundle && screen === "product" && bundle.products.length > 0 && (
+        <p className="text-[10.5px] text-[var(--sub)] mt-3">
+          {t("appDesigner.dataNoteProducts")} {bundle.products.length}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ── هاتف تجريبي بمحرّك تنقّل يعرض بيانات المتجر الحقيقية ──
 export function AppPreview({
-  design,
-  products,
-  storeName,
-  theme,
+  design, bundle, storeName, theme, screen, product, onNavigate,
 }: {
   design: AppDesign;
-  products: { name: string; price: number; imageUrl?: string | null }[];
+  bundle: MobileAppBundle | null;
   storeName: string;
   theme: { previewPrimary: string; previewSecondary: string; previewAccent: string };
+  screen: AppScreenKey;
+  product: BundleProduct | null;
+  onNavigate: (s: AppScreenKey, p?: BundleProduct | null) => void;
 }) {
   const { t, i18n } = useTranslation();
   const c = design.colors;
-  const appName = design.appName || storeName || t("mobileApp.title");
+  const appName = design.appName || bundle?.store.storeName || storeName || t("mobileApp.title");
   const isRtl = (i18n.language || "ar").startsWith("ar");
-  const enabled = design.sections.filter((s) => s.enabled);
+  const currency = bundle?.store.currency === "SAR" ? "ر.س" : (bundle?.store.currency || "ر.س");
+  const logo = design.iconUrl || bundle?.store.logo || "";
 
-  const navIcons: Record<string, "home" | "layers" | "cashier" | "user" | "star" | "search"> = {
-    home: "home", categories: "layers", cart: "cashier", account: "user", wishlist: "star", search: "search",
+  const navIcons: Record<string, any> = {
+    home: "home", categories: "layers", catalog: "search", cart: "cashier", account: "user", wishlist: "star", tracking: "truck",
   };
-
-  const sample = products.length ? products : [
-    { name: t("appDesigner.sampleProduct1"), price: 120, imageUrl: null },
-    { name: t("appDesigner.sampleProduct2"), price: 89, imageUrl: null },
-    { name: t("appDesigner.sampleProduct3"), price: 240, imageUrl: null },
-    { name: t("appDesigner.sampleProduct4"), price: 75, imageUrl: null },
-  ];
 
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="mx-auto" style={{ width: 306 }}>
       <div className="rounded-[40px] shadow-2xl overflow-hidden bg-white relative" style={{ border: "11px solid #0f172a", height: 610 }}>
-        {/* النوتش */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl" style={{ width: 120, height: 22, background: "#0f172a", zIndex: 20 }} />
 
         {/* شريط الحالة */}
         <div className="flex items-center justify-between px-5 pt-2.5 pb-1.5" style={{ background: c.headerColor }}>
           <span className="text-white/90 text-[10px] font-bold">9:41</span>
-          <span className="flex items-center gap-1 text-white/90 text-[9px]">
-            <span>●●●</span><span>◗</span><span>▮</span>
-          </span>
+          <span className="flex items-center gap-1 text-white/90 text-[9px]"><span>●●●</span><span>◗</span><span>▮</span></span>
         </div>
 
-        {/* شريط التطبيق */}
+        {/* شريط التطبيق + بحث */}
         <div className="px-4 pb-3.5" style={{ background: c.headerColor }}>
           <div className="flex items-center gap-2.5">
-            {design.iconUrl ? (
+            {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={design.iconUrl} alt="" className="w-9 h-9 rounded-xl object-cover bg-white/20 ring-2 ring-white/30" />
+              <img src={logo} alt="" className="w-9 h-9 rounded-xl object-cover bg-white/20 ring-2 ring-white/30" />
             ) : (
-              <span className="w-9 h-9 rounded-xl flex items-center justify-center text-[15px] font-extrabold text-white shadow-inner" style={{ background: c.buttonColor }}>
-                {appName.slice(0, 1)}
-              </span>
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center text-[15px] font-extrabold text-white" style={{ background: c.buttonColor }}>{appName.slice(0, 1)}</span>
             )}
             <div className="min-w-0 flex-1">
               <p className="text-white text-[12.5px] font-extrabold truncate leading-tight">{appName}</p>
@@ -467,74 +593,67 @@ export function AppPreview({
               <span className="absolute -top-1 -end-1 w-3 h-3 rounded-full text-[7px] flex items-center justify-center text-white font-bold" style={{ background: "#ef4444" }}>3</span>
             </span>
           </div>
-          {/* شريط بحث */}
-          <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
-            <Icon name="search" size={13} className="text-gray-400" />
-            <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
-          </div>
+          {screen !== "product" && (
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
+              <Icon name="search" size={13} className="text-gray-400" />
+              <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
+            </div>
+          )}
         </div>
 
         {/* محتوى الشاشة */}
         <div className="overflow-y-auto" style={{ height: 610 - 30 - 96 - 54, background: "#f7f8fa" }}>
-          {/* الشريط العلوي (الخبر/الإعلان) بتصميم أنيق */}
-          {design.splashText.trim() && (
-            <div className="mx-3 mt-3 rounded-xl flex items-center gap-2 px-3 py-2 shadow-sm"
-              style={{ background: `linear-gradient(90deg, ${c.heroFrom}, ${c.heroTo})` }}>
-              <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center text-white shrink-0">
-                <Icon name="tag" size={11} />
-              </span>
+          {design.splashText.trim() && screen === "home" && (
+            <div className="mx-3 mt-3 rounded-xl flex items-center gap-2 px-3 py-2 shadow-sm" style={{ background: `linear-gradient(90deg, ${c.heroFrom}, ${c.heroTo})` }}>
+              <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center text-white shrink-0"><Icon name="tag" size={11} /></span>
               <span className="text-[10.5px] text-white font-bold truncate flex-1">{design.splashText}</span>
               <span className="text-white/70 shrink-0"><Icon name="close" size={11} /></span>
             </div>
           )}
 
-          {enabled.length === 0 && (
-            <div className="p-6 text-center text-[11.5px] text-gray-400">{t("appDesigner.noSections")}</div>
-          )}
+          {screen === "home" && <HomeScreen design={design} bundle={bundle} appName={appName} currency={currency} theme={theme} onNavigate={onNavigate} c={c} t={t} />}
+          {screen === "product" && <ProductScreen product={product || bundle?.products?.[0] || null} bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} />}
+          {screen === "cart" && <CartScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} />}
+          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} t={t} />}
+          {screen === "tracking" && <TrackingScreen c={c} onNavigate={onNavigate} t={t} />}
+          {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} />}
 
-          {enabled.map((s) => (
-            <PreviewSection key={s.key} sectionKey={s.key} colors={c} theme={theme} products={sample} t={t} />
-          ))}
-
-          {/* حقوق */}
           <div className="text-center text-[8px] text-gray-300 py-3">{t("appDesigner.poweredBy")}</div>
         </div>
 
         {/* شريط التنقل السفلي */}
-        <div className="flex items-center justify-around bg-white border-t relative" style={{ height: 54, borderColor: "#eef0f3" }}>
-          {design.bottomNav.map((n, idx) => (
-            <span key={n} className="flex flex-col items-center gap-0.5" style={{ color: idx === 0 ? c.buttonColor : "#9ca3af" }}>
-              <Icon name={navIcons[n] ?? "home"} size={17} />
-              <span className="text-[8px] font-bold">{t(`appDesigner.nav.${n}`)}</span>
-            </span>
-          ))}
+        <div className="flex items-center justify-around bg-white border-t" style={{ height: 54, borderColor: "#eef0f3" }}>
+          {design.bottomNav.map((n, idx) => {
+            const target: AppScreenKey = n === "home" ? "home" : n === "cart" ? "cart" : n === "account" ? "account" : n === "categories" ? "catalog" : "home";
+            const active = (previewActive(screen, n));
+            return (
+              <button key={n} type="button" onClick={() => onNavigate(target, null)} className="flex flex-col items-center gap-0.5"
+                style={{ color: active ? c.buttonColor : "#9ca3af" }}>
+                <Icon name={navIcons[n] ?? "home"} size={17} />
+                <span className="text-[8px] font-bold">{t(`appDesigner.nav.${n}`)}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-function PreviewSection({
-  sectionKey,
-  colors,
-  theme,
-  products,
-  t,
-}: {
-  sectionKey: AppSectionKey;
-  colors: StoreColors;
-  theme: { previewPrimary: string; previewSecondary: string; previewAccent: string };
-  products: { name: string; price: number; imageUrl?: string | null }[];
-  t: (k: string) => string;
-}) {
-  const Card = ({ p, badge }: { p: { name: string; price: number; imageUrl?: string | null }; badge?: string }) => (
-    <div className="rounded-xl bg-white border overflow-hidden relative" style={{ borderColor: "#eef0f3" }}>
-      {badge && (
-        <span className="absolute top-1 start-1 z-10 text-[7px] font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: colors.buttonColor }}>
-          {badge}
-        </span>
-      )}
-      <div className="h-16 flex items-center justify-center relative" style={{ background: "#f3f4f6" }}>
+function previewActive(screen: AppScreenKey, nav: string): boolean {
+  if (nav === "home" && (screen === "home" || screen === "tracking")) return true;
+  if (nav === "cart" && screen === "cart") return true;
+  if (nav === "account" && screen === "account") return true;
+  if (nav === "categories" && (screen === "catalog" || screen === "product")) return true;
+  return false;
+}
+
+function ProductCard({ p, c, currency, badge, wide, onTap }: { p: BundleProduct; c: StoreColors; currency: string; badge?: string; wide?: boolean; onTap?: () => void }) {
+  const price = p.discountPrice ?? p.price;
+  return (
+    <button type="button" onClick={onTap} className="rounded-xl bg-white border overflow-hidden relative text-start" style={{ borderColor: "#eef0f3" }}>
+      {badge && <span className="absolute top-1 start-1 z-10 text-[7px] font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: c.buttonColor }}>{badge}</span>}
+      <div className={wide ? "h-24 flex items-center justify-center relative" : "h-16 flex items-center justify-center relative"} style={{ background: "#f3f4f6" }}>
         {p.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -545,44 +664,66 @@ function PreviewSection({
       <div className="p-1.5">
         <p className="text-[9px] font-bold text-gray-700 truncate">{p.name}</p>
         <div className="flex items-center gap-1 mt-0.5">
-          <span className="text-[9.5px] font-extrabold" style={{ color: colors.buttonColor }}>{p.price} ر.س</span>
-          <span className="text-[7.5px] text-amber-500 flex items-center ms-auto">
-            ★ <span className="text-gray-400 ms-0.5">4.8</span>
-          </span>
+          <span className="text-[9.5px] font-extrabold" style={{ color: c.buttonColor }}>{price} {currency}</span>
+          {p.discountPrice && <span className="text-[7.5px] text-gray-400 line-through">{p.price}</span>}
         </div>
       </div>
-    </div>
+    </button>
   );
+}
+
+function HomeScreen({ design, bundle, appName, currency, theme, onNavigate, c, t }: any) {
+  const enabled = design.screens.home.sections.filter((s: AppSection) => s.enabled);
+  const products: BundleProduct[] = bundle?.products ?? [];
+  const cats: BundleCategory[] = bundle?.categories ?? [];
+
+  if (products.length === 0 && cats.length === 0) {
+    return (
+      <div className="p-6 text-center">
+        <Icon name="box" size={28} className="text-gray-300 mx-auto mb-2" />
+        <p className="text-[11px] text-gray-400">{t("appDesigner.noProducts")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {enabled.map((s: AppSection) => (
+        <HomeSection key={s.key} sectionKey={s.key} bundle={bundle} currency={currency} theme={theme} onNavigate={onNavigate} c={c} t={t} appName={appName} />
+      ))}
+    </>
+  );
+}
+
+function HomeSection({ sectionKey, bundle, currency, theme, onNavigate, c, t }: any) {
+  const products: BundleProduct[] = bundle?.products ?? [];
+  const cats: BundleCategory[] = bundle?.categories ?? [];
 
   switch (sectionKey) {
     case "hero":
       return (
-        <div className="mx-3 mt-3 rounded-2xl p-4 text-white relative overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${colors.heroFrom}, ${colors.heroTo})` }}>
+        <div className="mx-3 mt-3 rounded-2xl p-4 text-white relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${c.heroFrom}, ${c.heroTo})` }}>
           <div className="absolute -end-6 -bottom-6 w-24 h-24 rounded-full bg-white/10" />
-          <div className="absolute -end-2 top-2 w-12 h-12 rounded-full bg-white/10" />
-          <p className="text-[13.5px] font-extrabold mb-1 relative">{t("appDesigner.heroTitle")}</p>
-          <p className="text-[10px] opacity-90 mb-2.5 relative">{t("appDesigner.heroSub")}</p>
-          <span className="inline-block text-[10px] font-bold px-3.5 py-1.5 rounded-full shadow relative" style={{ background: "#fff", color: colors.buttonColor }}>
-            {t("appDesigner.heroCta")}
-          </span>
+          <p className="text-[13.5px] font-extrabold mb-1 relative">{bundle?.store.storeName || t("appDesigner.heroTitle")}</p>
+          <p className="text-[10px] opacity-90 mb-2.5 relative">{bundle?.store.bio || t("appDesigner.heroSub")}</p>
+          <button onClick={() => onNavigate("catalog")} className="inline-block text-[10px] font-bold px-3.5 py-1.5 rounded-full shadow bg-white" style={{ color: c.buttonColor }}>{t("appDesigner.heroCta")}</button>
         </div>
       );
     case "categories":
       return (
         <div className="px-3 pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.section.categories")}</p>
-            <span className="text-[8.5px] font-bold" style={{ color: colors.buttonColor }}>{t("appDesigner.viewAll")}</span>
-          </div>
+          <SectionHeader title={t("appDesigner.section.categories")} cta={t("appDesigner.viewAll")} color={c.buttonColor} onClick={() => onNavigate("catalog")} />
           <div className="grid grid-cols-4 gap-2">
-            {["electronics", "fashion", "home", "beauty"].map((k) => (
-              <div key={k} className="flex flex-col items-center gap-1">
-                <span className="w-11 h-11 rounded-full flex items-center justify-center ring-1 ring-black/5" style={{ background: `${colors.accentColor}1a`, color: colors.accentColor }}>
-                  <Icon name="tag" size={16} />
+            {cats.slice(0, 8).map((cat: BundleCategory) => (
+              <button key={cat.id} onClick={() => onNavigate("catalog")} className="flex flex-col items-center gap-1">
+                <span className="w-11 h-11 rounded-full flex items-center justify-center ring-1 ring-black/5 overflow-hidden" style={{ background: `${c.accentColor}1a`, color: c.accentColor }}>
+                  {cat.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={cat.image} alt="" className="w-full h-full object-cover" />
+                  ) : <Icon name="tag" size={16} />}
                 </span>
-                <span className="text-[8px] text-gray-600 font-bold">{t(`appDesigner.cat.${k}`)}</span>
-              </div>
+                <span className="text-[8px] text-gray-600 font-bold truncate w-full text-center">{cat.name}</span>
+              </button>
             ))}
           </div>
         </div>
@@ -590,61 +731,46 @@ function PreviewSection({
     case "banners":
       return (
         <div className="px-3 pt-3">
-          <div className="rounded-xl h-20 flex flex-col items-center justify-center text-white relative overflow-hidden"
-            style={{ background: `linear-gradient(120deg, ${theme.previewSecondary}, ${colors.accentColor})` }}>
-            <span className="text-[11.5px] font-extrabold">{t("appDesigner.bannerTitle")}</span>
-            <span className="text-[8.5px] opacity-90 mt-0.5">{t("appDesigner.bannerSub")}</span>
-            <span className="flex gap-1 mt-2">
-              <span className="w-4 h-1 rounded-full bg-white" />
-              <span className="w-1.5 h-1 rounded-full bg-white/50" />
-              <span className="w-1.5 h-1 rounded-full bg-white/50" />
-            </span>
+          <div className="rounded-xl h-20 flex flex-col items-center justify-center text-white relative overflow-hidden" style={{ background: `linear-gradient(120deg, ${theme.previewSecondary}, ${c.accentColor})` }}>
+            <span className="text-[11.5px] font-extrabold">{bundle?.banners?.[0]?.title || t("appDesigner.bannerTitle")}</span>
+            <span className="text-[8.5px] opacity-90 mt-0.5">{bundle?.banners?.[0]?.subtitle || t("appDesigner.bannerSub")}</span>
+            <span className="flex gap-1 mt-2"><span className="w-4 h-1 rounded-full bg-white" /><span className="w-1.5 h-1 rounded-full bg-white/50" /><span className="w-1.5 h-1 rounded-full bg-white/50" /></span>
           </div>
         </div>
       );
-    case "featured":
+    case "featured": {
+      const list = (bundle?.featuredProducts?.length ? bundle.featuredProducts : products).slice(0, 3);
       return (
         <div className="px-3 pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.section.featured")}</p>
-            <span className="text-[8.5px] font-bold" style={{ color: colors.buttonColor }}>{t("appDesigner.viewAll")}</span>
+          <SectionHeader title={t("appDesigner.section.featured")} cta={t("appDesigner.viewAll")} color={c.buttonColor} onClick={() => onNavigate("catalog")} />
+          <div className="grid grid-cols-3 gap-2">
+            {list.map((p: BundleProduct, i: number) => <ProductCard key={p.id} p={p} c={c} currency={currency} badge={i === 0 ? t("appDesigner.badgeNew") : undefined} onTap={() => onNavigate("product", p)} />)}
           </div>
-          <div className="grid grid-cols-3 gap-2">{products.slice(0, 3).map((p, i) => <Card key={i} p={p} badge={i === 0 ? t("appDesigner.badgeNew") : undefined} />)}</div>
         </div>
       );
-    case "newArrivals":
+    }
+    case "newArrivals": {
+      const list = (bundle?.newArrivals?.length ? bundle.newArrivals : products).slice(0, 4);
       return (
         <div className="px-3 pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.section.newArrivals")}</p>
-            <span className="text-[8.5px] font-bold" style={{ color: colors.buttonColor }}>{t("appDesigner.viewAll")}</span>
+          <SectionHeader title={t("appDesigner.section.newArrivals")} cta={t("appDesigner.viewAll")} color={c.buttonColor} onClick={() => onNavigate("catalog")} />
+          <div className="grid grid-cols-2 gap-2">
+            {list.map((p: BundleProduct) => <ProductCard key={p.id} p={p} c={c} currency={currency} onTap={() => onNavigate("product", p)} />)}
           </div>
-          <div className="grid grid-cols-2 gap-2">{products.slice(0, 4).map((p, i) => <Card key={i} p={p} />)}</div>
         </div>
       );
-    case "offers":
+    }
+    case "offers": {
+      const list = (bundle?.offers?.length ? bundle.offers : products).slice(0, 3);
       return (
         <div className="px-3 pt-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.section.offers")}</p>
-            <span className="text-[8.5px] font-bold text-red-500">{t("appDesigner.endsSoon")}</span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">{products.slice(0, 3).map((p, i) => <Card key={i} p={p} badge={`-${20 + i * 5}%`} />)}</div>
-        </div>
-      );
-    case "brands":
-      return (
-        <div className="px-3 pt-3">
-          <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.section.brands")}</p>
-          <div className="flex gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex-1 h-9 rounded-lg bg-white border flex items-center justify-center" style={{ borderColor: "#eef0f3" }}>
-                <Icon name="store" size={13} className="text-gray-300" />
-              </div>
-            ))}
+          <SectionHeader title={t("appDesigner.section.offers")} cta={t("appDesigner.endsSoon")} color="#ef4444" />
+          <div className="grid grid-cols-3 gap-2">
+            {list.map((p: BundleProduct) => <ProductCard key={p.id} p={p} c={c} currency={currency} badge={p.discountPercent ? `-${p.discountPercent}%` : undefined} onTap={() => onNavigate("product", p)} />)}
           </div>
         </div>
       );
+    }
     case "testimonials":
       return (
         <div className="px-3 pt-3">
@@ -652,20 +778,18 @@ function PreviewSection({
           <div className="rounded-xl bg-white border p-2.5" style={{ borderColor: "#eef0f3" }}>
             <div className="flex gap-0.5 text-amber-400 mb-1">{"★★★★★".split("").map((s, i) => <span key={i} className="text-[8px]">{s}</span>)}</div>
             <p className="text-[9.5px] text-gray-600 leading-relaxed">{t("appDesigner.sampleReview")}</p>
-            <p className="text-[9px] font-bold mt-1" style={{ color: colors.buttonColor }}>— {t("appDesigner.sampleReviewer")}</p>
+            <p className="text-[9px] font-bold mt-1" style={{ color: c.buttonColor }}>— {t("appDesigner.sampleReviewer")}</p>
           </div>
         </div>
       );
     case "newsletter":
       return (
-        <div className="mx-3 mt-3 rounded-xl p-3" style={{ background: colors.footerColor }}>
+        <div className="mx-3 mt-3 rounded-xl p-3" style={{ background: c.footerColor }}>
           <p className="text-[10.5px] font-extrabold text-white mb-0.5">{t("appDesigner.section.newsletter")}</p>
           <p className="text-[8px] text-white/60 mb-2">{t("appDesigner.newsletterSub")}</p>
           <div className="flex gap-1.5">
             <span className="flex-1 bg-white/90 rounded-lg h-7 flex items-center px-2 text-[8px] text-gray-400">{t("appDesigner.emailPlaceholder")}</span>
-            <span className="text-[9px] font-bold px-3 rounded-lg flex items-center text-white" style={{ background: colors.buttonColor }}>
-              {t("appDesigner.subscribeBtn")}
-            </span>
+            <span className="text-[9px] font-bold px-3 rounded-lg flex items-center text-white" style={{ background: c.buttonColor }}>{t("appDesigner.subscribeBtn")}</span>
           </div>
         </div>
       );
@@ -685,4 +809,198 @@ function PreviewSection({
     default:
       return null;
   }
+}
+
+function SectionHeader({ title, cta, color, onClick }: { title: string; cta: string; color: string; onClick?: () => void }) {
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <p className="text-[11px] font-extrabold text-gray-800">{title}</p>
+      <button type="button" onClick={onClick} className="text-[8.5px] font-bold" style={{ color }}>{cta}</button>
+    </div>
+  );
+}
+
+// ── شاشة المنتج ──
+function ProductScreen({ product, bundle, c, currency, onNavigate, t }: any) {
+  if (!product) return <div className="p-6 text-center text-[11px] text-gray-400">{t("appDesigner.noProducts")}</div>;
+  const price = product.discountPrice ?? product.price;
+  return (
+    <div className="pb-3">
+      <div className="h-44 bg-gray-100 flex items-center justify-center relative">
+        {product.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
+        ) : <Icon name="box" size={32} className="text-gray-300" />}
+        {product.discountPercent ? (
+          <span className="absolute top-2 start-2 text-[9px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: c.buttonColor }}>-{product.discountPercent}%</span>
+        ) : null}
+      </div>
+      <div className="px-3 pt-3">
+        {product.categoryName && <p className="text-[9px] font-bold mb-1" style={{ color: c.accentColor }}>{product.categoryName}</p>}
+        <p className="text-[13px] font-extrabold text-gray-800 mb-1">{product.name}</p>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[15px] font-extrabold" style={{ color: c.buttonColor }}>{price} {currency}</span>
+          {product.discountPrice && <span className="text-[10px] text-gray-400 line-through">{product.price}</span>}
+        </div>
+        <div className="flex gap-0.5 text-amber-400 mb-2">{"★★★★★".split("").map((s, i) => <span key={i} className="text-[10px]">{s}</span>)}<span className="text-[9px] text-gray-400 ms-1">4.8 (23)</span></div>
+        <p className="text-[9.5px] text-gray-500 leading-relaxed mb-3">{product.shortDescription || t("appDesigner.sampleProductDesc")}</p>
+        <div className="flex gap-2">
+          <button className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.addToCart")}</button>
+          <button onClick={() => onNavigate("cart")} className="w-10 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: c.headerColor }}>
+            <Icon name="cashier" size={15} />
+          </button>
+        </div>
+      </div>
+      {bundle?.products?.length > 1 && (
+        <div className="px-3 pt-4">
+          <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.related")}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {bundle.products.filter((x: BundleProduct) => x.id !== product.id).slice(0, 3).map((p: BundleProduct) => (
+              <ProductCard key={p.id} p={p} c={c} currency={currency} onTap={() => onNavigate("product", p)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── شاشة السلة ──
+function CartScreen({ bundle, c, currency, onNavigate, t }: any) {
+  const items = (bundle?.products ?? []).slice(0, 2);
+  const subtotal = items.reduce((s: number, p: BundleProduct) => s + (p.discountPrice ?? p.price), 0);
+  return (
+    <div className="p-3">
+      <p className="text-[12px] font-extrabold text-gray-800 mb-2">{t("appDesigner.screen.cart")}</p>
+      {items.length === 0 ? <div className="text-center text-[11px] text-gray-400 py-6">{t("appDesigner.cartEmpty")}</div> : (
+        <>
+          {items.map((p: BundleProduct) => (
+            <div key={p.id} className="flex items-center gap-2 bg-white rounded-xl border p-2 mb-2" style={{ borderColor: "#eef0f3" }}>
+              <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : <Icon name="box" size={14} className="text-gray-300" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[9.5px] font-bold text-gray-700 truncate">{p.name}</p>
+                <p className="text-[9.5px] font-extrabold" style={{ color: c.buttonColor }}>{p.discountPrice ?? p.price} {currency}</p>
+              </div>
+              <div className="flex items-center gap-1 text-gray-500">
+                <span className="w-5 h-5 rounded-md border flex items-center justify-center text-[11px]" style={{ borderColor: "#eef0f3" }}>−</span>
+                <span className="text-[10px] font-bold">1</span>
+                <span className="w-5 h-5 rounded-md border flex items-center justify-center text-[11px]" style={{ borderColor: "#eef0f3" }}>+</span>
+              </div>
+            </div>
+          ))}
+          <div className="bg-white rounded-xl border p-2.5 mb-2" style={{ borderColor: "#eef0f3" }}>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[9.5px] text-gray-500">{t("appDesigner.coupon")}</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg border" style={{ borderColor: "#eef0f3", color: c.buttonColor }}>{t("appDesigner.applyCoupon")}</span>
+            </div>
+            <div className="flex items-center justify-between text-[9.5px] mb-1"><span className="text-gray-500">{t("appDesigner.subtotal")}</span><span className="font-bold">{subtotal} {currency}</span></div>
+            <div className="flex items-center justify-between text-[9.5px]"><span className="text-gray-500">{t("appDesigner.shipping")}</span><span className="font-bold" style={{ color: "var(--green)" }}>{t("appDesigner.free")}</span></div>
+          </div>
+          <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.total")}</span><span className="text-[12px] font-extrabold" style={{ color: c.buttonColor }}>{subtotal} {currency}</span></div>
+          <button onClick={() => onNavigate("tracking")} className="w-full py-2.5 rounded-xl text-[11.5px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.checkout")}</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── شاشة الحساب ──
+function AccountScreen({ c, appName, onNavigate, t }: any) {
+  const rows = [
+    { icon: "package", k: "orders" },
+    { icon: "star", k: "wishlist" },
+    { icon: "location", k: "addresses" },
+    { icon: "mail", k: "support" },
+    { icon: "layout", k: "settings" },
+  ];
+  return (
+    <div className="p-3">
+      <div className="rounded-2xl p-4 text-white mb-3" style={{ background: `linear-gradient(135deg, ${c.headerColor}, ${c.accentColor})` }}>
+        <div className="flex items-center gap-2.5">
+          <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center"><Icon name="user" size={20} /></span>
+          <div>
+            <p className="text-[12px] font-extrabold">{t("appDesigner.welcomeUser")}</p>
+            <p className="text-[9px] text-white/70">{appName}</p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
+        {rows.map((r, i) => (
+          <div key={r.k} className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}>
+            <span style={{ color: c.buttonColor }}><Icon name={r.icon as any} size={14} /></span>
+            <span className="flex-1 text-[11px] font-bold text-gray-700">{t(`appDesigner.accountItem.${r.k}`)}</span>
+            <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => onNavigate("tracking")} className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>
+        {t("appDesigner.trackOrder")}
+      </button>
+    </div>
+  );
+}
+
+// ── شاشة تتبّع الطلب ──
+function TrackingScreen({ c, onNavigate, t }: any) {
+  const steps = ["confirmed", "preparing", "shipped", "delivered"];
+  const activeIdx = 2;
+  return (
+    <div className="p-3">
+      <div className="flex items-center gap-2 mb-3">
+        <button onClick={() => onNavigate("account")} className="text-gray-400"><span className="block rotate-180"><Icon name="arrowLeft" size={14} /></span></button>
+        <p className="text-[12px] font-extrabold text-gray-800">{t("appDesigner.screen.tracking")}</p>
+      </div>
+      <div className="bg-white rounded-xl border p-3 mb-3" style={{ borderColor: "#eef0f3" }}>
+        <div className="flex items-center justify-between mb-1"><span className="text-[9.5px] text-gray-500">{t("appDesigner.orderNumber")}</span><span className="text-[10px] font-bold">#10245</span></div>
+        <p className="text-[9.5px] text-gray-500">{t("appDesigner.arrivesTomorrow")}</p>
+      </div>
+      <div className="bg-white rounded-xl border p-3" style={{ borderColor: "#eef0f3" }}>
+        {steps.map((s, i) => {
+          const done = i <= activeIdx;
+          const last = i === steps.length - 1;
+          return (
+            <div key={s} className="flex gap-2.5">
+              <div className="flex flex-col items-center">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center text-white" style={{ background: done ? c.buttonColor : "#e5e7eb" }}>
+                  {done ? <Icon name="check" size={10} /> : <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </span>
+                {!last && <span className="w-0.5 flex-1 my-0.5" style={{ background: i < activeIdx ? c.buttonColor : "#e5e7eb", minHeight: 18 }} />}
+              </div>
+              <div className="pb-3">
+                <p className="text-[10.5px] font-bold" style={{ color: done ? "#1f2937" : "#9ca3af" }}>{t(`appDesigner.track.${s}`)}</p>
+                {i === activeIdx && <p className="text-[8.5px] text-gray-400 mt-0.5">{t("appDesigner.trackNow")}</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <button className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.headerColor }}>{t("appDesigner.contactCourier")}</button>
+    </div>
+  );
+}
+
+// ── شاشة التصفّح ──
+function CatalogScreen({ bundle, c, currency, onNavigate, t }: any) {
+  const cats: BundleCategory[] = bundle?.categories ?? [];
+  const products: BundleProduct[] = bundle?.products ?? [];
+  return (
+    <div className="p-3">
+      <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.screen.catalog")}</p>
+      {cats.length > 0 && (
+        <div className="flex gap-1.5 mb-3 overflow-x-auto">
+          {cats.slice(0, 6).map((cat: BundleCategory) => (
+            <span key={cat.id} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>{cat.name}</span>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        {products.slice(0, 8).map((p: BundleProduct) => <ProductCard key={p.id} p={p} c={c} currency={currency} wide onTap={() => onNavigate("product", p)} />)}
+      </div>
+    </div>
+  );
 }

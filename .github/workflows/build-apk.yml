@@ -108,22 +108,38 @@ jobs:
         working-directory: mobile-app-template
         run: |
           ICON_URL="${{ steps.vars.outputs.icon_url }}"
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          ICON_SRC=""
           if [ -n "$ICON_URL" ] && [ "$ICON_URL" != "null" ]; then
             echo "Downloading icon from $ICON_URL"
             curl -sSL "$ICON_URL" -o /tmp/icon.png || true
             if [ -f /tmp/icon.png ] && [ -s /tmp/icon.png ]; then
-              # requires ImageMagick (preinstalled on ubuntu-latest)
-              mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi \
-                       android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi \
-                       android/app/src/main/res/mipmap-xxxhdpi
-              for pair in "48 mdpi" "72 hdpi" "96 xhdpi" "144 xxhdpi" "192 xxxhdpi"; do
-                size=$(echo $pair | cut -d' ' -f1)
-                dpi=$(echo $pair | cut -d' ' -f2)
-                convert /tmp/icon.png -resize ${size}x${size} android/app/src/main/res/mipmap-$dpi/ic_launcher.png
-              done
-              echo "Icon applied."
+              ICON_SRC=/tmp/icon.png
             fi
           fi
+
+          # أيقونة افتراضية إن لم يرفع التاجر أيقونة: مربّع ملوّن يحمل الحرف الأول
+          # من اسم التطبيق، حتى لا يفشل ربط الموارد (المانيفست يشير دائمًا إلى ic_launcher).
+          if [ -z "$ICON_SRC" ]; then
+            echo "No merchant icon; generating a default branded icon."
+            LETTER=$(printf '%s' "$APP_NAME" | head -c 1)
+            [ -z "$LETTER" ] && LETTER="ر"
+            convert -size 512x512 xc:'#12a8db' \
+              -fill white -gravity center -pointsize 300 -annotate 0 "$LETTER" \
+              /tmp/icon.png
+            ICON_SRC=/tmp/icon.png
+          fi
+
+          # requires ImageMagick (preinstalled on ubuntu-latest)
+          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi \
+                   android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi \
+                   android/app/src/main/res/mipmap-xxxhdpi
+          for pair in "48 mdpi" "72 hdpi" "96 xhdpi" "144 xxhdpi" "192 xxxhdpi"; do
+            size=$(echo $pair | cut -d' ' -f1)
+            dpi=$(echo $pair | cut -d' ' -f2)
+            convert "$ICON_SRC" -resize ${size}x${size} android/app/src/main/res/mipmap-$dpi/ic_launcher.png
+          done
+          echo "Launcher icons applied."
 
       - name: Prepare keystore (reuse stored, or generate once)
         id: ks

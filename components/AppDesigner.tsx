@@ -91,6 +91,8 @@ export interface AppSection {
 export interface ScreenConfig {
   enabled: boolean;
   sections: AppSection[];
+  // عناصر قابلة للإظهار/الإخفاء داخل الشاشات الداخلية (المنتج، السلة، الحساب، التتبّع).
+  items?: Record<string, boolean>;
 }
 
 export interface AppDesign {
@@ -112,6 +114,21 @@ const HOME_SECTION_KEYS: HomeSectionKey[] = [
 
 const DEFAULT_HOME_ENABLED = ["hero", "categories", "featured", "newArrivals", "offers"];
 
+// عناصر الشاشات الداخلية القابلة للتحكم (مفتاح العنصر).
+export const SCREEN_ITEMS: Record<Exclude<AppScreenKey, "home">, string[]> = {
+  product: ["photos", "price", "discount", "rating", "description", "addToCart", "related"],
+  cart: ["items", "coupon", "shipping", "total", "checkout"],
+  account: ["profile", "orders", "wishlist", "addresses", "support", "settings", "trackOrder"],
+  tracking: ["timeline", "courier"],
+  catalog: ["search", "categories", "grid"],
+};
+
+function defaultItems(screen: Exclude<AppScreenKey, "home">): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  for (const k of SCREEN_ITEMS[screen]) out[k] = true;
+  return out;
+}
+
 export const DEFAULT_DESIGN: AppDesign = {
   version: 2,
   themeId: "professional-blue",
@@ -126,11 +143,11 @@ export const DEFAULT_DESIGN: AppDesign = {
       enabled: true,
       sections: HOME_SECTION_KEYS.map((k) => ({ key: k, enabled: DEFAULT_HOME_ENABLED.includes(k) })),
     },
-    product: { enabled: true, sections: [] },
-    cart: { enabled: true, sections: [] },
-    account: { enabled: true, sections: [] },
-    tracking: { enabled: true, sections: [] },
-    catalog: { enabled: true, sections: [] },
+    product: { enabled: true, sections: [], items: defaultItems("product") },
+    cart: { enabled: true, sections: [], items: defaultItems("cart") },
+    account: { enabled: true, sections: [], items: defaultItems("account") },
+    tracking: { enabled: true, sections: [], items: defaultItems("tracking") },
+    catalog: { enabled: true, sections: [], items: defaultItems("catalog") },
   },
 };
 
@@ -166,16 +183,26 @@ export function parseDesign(json: string | null | undefined, appName?: string | 
       bottomNav: Array.isArray(parsed.bottomNav) && parsed.bottomNav.length ? parsed.bottomNav : base.bottomNav,
       screens: {
         home: { enabled: true, sections: homeSections },
-        product: { enabled: parsed.screens?.product?.enabled !== false, sections: [] },
-        cart: { enabled: parsed.screens?.cart?.enabled !== false, sections: [] },
-        account: { enabled: parsed.screens?.account?.enabled !== false, sections: [] },
-        tracking: { enabled: parsed.screens?.tracking?.enabled !== false, sections: [] },
-        catalog: { enabled: parsed.screens?.catalog?.enabled !== false, sections: [] },
+        product: { enabled: parsed.screens?.product?.enabled !== false, sections: [], items: mergeItems("product", parsed.screens?.product?.items) },
+        cart: { enabled: parsed.screens?.cart?.enabled !== false, sections: [], items: mergeItems("cart", parsed.screens?.cart?.items) },
+        account: { enabled: parsed.screens?.account?.enabled !== false, sections: [], items: mergeItems("account", parsed.screens?.account?.items) },
+        tracking: { enabled: parsed.screens?.tracking?.enabled !== false, sections: [], items: mergeItems("tracking", parsed.screens?.tracking?.items) },
+        catalog: { enabled: parsed.screens?.catalog?.enabled !== false, sections: [], items: mergeItems("catalog", parsed.screens?.catalog?.items) },
       },
     };
   } catch {
     return base;
   }
+}
+
+function mergeItems(screen: Exclude<AppScreenKey, "home">, incoming: any): Record<string, boolean> {
+  const out = defaultItems(screen);
+  if (incoming && typeof incoming === "object") {
+    for (const k of SCREEN_ITEMS[screen]) {
+      if (typeof incoming[k] === "boolean") out[k] = incoming[k];
+    }
+  }
+  return out;
 }
 
 function normalizeSections(arr: any[]): AppSection[] {
@@ -231,6 +258,13 @@ export default function AppDesigner({ design, onChange, bundle, storeName }: Pro
         home: { ...home, sections: home.sections.map((s) => (s.key === key ? { ...s, enabled: !s.enabled } : s)) },
       },
     });
+  };
+
+  const toggleScreenItem = (screen: Exclude<AppScreenKey, "home">, item: string) => {
+    const cfg = design.screens[screen];
+    const items = { ...(cfg.items ?? {}) };
+    items[item] = !items[item];
+    update({ screens: { ...design.screens, [screen]: { ...cfg, items } } });
   };
 
   const onDragStart = (key: HomeSectionKey, index: number) => {
@@ -451,7 +485,7 @@ export default function AppDesigner({ design, onChange, bundle, storeName }: Pro
               ))}
             </div>
           ) : (
-            <ScreenInspector screen={activeScreen} bundle={bundle} t={t} />
+            <ScreenInspector screen={activeScreen} bundle={bundle} t={t} design={design} onToggleItem={toggleScreenItem} dict={t} />
           )}
         </div>
 
@@ -512,25 +546,50 @@ function Stat({ value, label }: { value: number; label: string }) {
 }
 
 // لوحة معلومات الشاشة الداخلية (المنتج/السلة/الحساب/التتبّع)
-function ScreenInspector({ screen, bundle, t }: { screen: AppScreenKey; bundle: MobileAppBundle | null; t: (k: string) => string }) {
-  const items: Record<string, string[]> = {
-    product: ["photos", "price", "discount", "rating", "variants", "addToCart", "related"],
-    cart: ["items", "coupon", "shipping", "total", "checkout"],
-    account: ["profile", "orders", "wishlist", "addresses", "support", "settings"],
-    tracking: ["timeline", "map", "courier", "support"],
-    catalog: ["search", "filters", "sort", "grid"],
-  };
-  const list = items[screen] ?? [];
+function ScreenInspector({
+  screen, bundle, t, design, onToggleItem,
+}: {
+  screen: AppScreenKey;
+  bundle: MobileAppBundle | null;
+  t: (k: string) => string;
+  design: AppDesign;
+  onToggleItem: (screen: Exclude<AppScreenKey, "home">, item: string) => void;
+  dict?: unknown;
+}) {
+  if (screen === "home") return null;
+  const list = SCREEN_ITEMS[screen];
+  const items = design.screens[screen].items ?? {};
   return (
     <div>
       <p className="text-[11.5px] text-[var(--sub)] mb-3">{t(`appDesigner.screenDesc.${screen}`)}</p>
       <div className="space-y-2">
-        {list.map((k) => (
-          <div key={k} className="flex items-center gap-2.5 rounded-xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-            <span style={{ color: "var(--green)" }}><Icon name="check" size={13} /></span>
-            <span className="flex-1 text-[12px] font-bold text-[var(--ink)]">{t(`appDesigner.screenItem.${screen}.${k}`)}</span>
-          </div>
-        ))}
+        {list.map((k) => {
+          const on = items[k] !== false;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => onToggleItem(screen, k)}
+              className="w-full flex items-center gap-2.5 rounded-xl border p-2.5 text-start transition-colors"
+              style={{
+                borderColor: on ? "var(--border)" : "var(--border-light, #f3f4f6)",
+                background: on ? "transparent" : "var(--bg)",
+              }}
+            >
+              <span className="w-5 h-5 rounded-full flex items-center justify-center text-white shrink-0"
+                style={{ background: on ? "var(--green)" : "#cbd5e1" }}>
+                <Icon name={on ? "check" : "close"} size={11} />
+              </span>
+              <span className="flex-1 text-[12px] font-bold" style={{ color: on ? "var(--ink)" : "var(--sub)" }}>
+                {t(`appDesigner.screenItem.${screen}.${k}`)}
+              </span>
+              <span className="text-[10.5px] font-bold px-2 py-0.5 rounded-lg"
+                style={{ background: on ? "var(--green-soft)" : "var(--bg)", color: on ? "var(--green)" : "var(--sub)" }}>
+                {on ? t("appDesigner.shown") : t("appDesigner.hidden")}
+              </span>
+            </button>
+          );
+        })}
       </div>
       {bundle && screen === "product" && bundle.products.length > 0 && (
         <p className="text-[10.5px] text-[var(--sub)] mt-3">
@@ -612,11 +671,11 @@ export function AppPreview({
           )}
 
           {screen === "home" && <HomeScreen design={design} bundle={bundle} appName={appName} currency={currency} theme={theme} onNavigate={onNavigate} c={c} t={t} />}
-          {screen === "product" && <ProductScreen product={product || bundle?.products?.[0] || null} bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} />}
-          {screen === "cart" && <CartScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} />}
-          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} t={t} />}
-          {screen === "tracking" && <TrackingScreen c={c} onNavigate={onNavigate} t={t} />}
-          {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} />}
+          {screen === "product" && <ProductScreen product={product || bundle?.products?.[0] || null} bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.product.items ?? {}} />}
+          {screen === "cart" && <CartScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.cart.items ?? {}} />}
+          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} t={t} items={design.screens.account.items ?? {}} />}
+          {screen === "tracking" && <TrackingScreen c={c} onNavigate={onNavigate} t={t} items={design.screens.tracking.items ?? {}} />}
+          {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.catalog.items ?? {}} />}
 
           <div className="text-center text-[8px] text-gray-300 py-3">{t("appDesigner.poweredBy")}</div>
         </div>
@@ -821,37 +880,46 @@ function SectionHeader({ title, cta, color, onClick }: { title: string; cta: str
 }
 
 // ── شاشة المنتج ──
-function ProductScreen({ product, bundle, c, currency, onNavigate, t }: any) {
+function ProductScreen({ product, bundle, c, currency, onNavigate, t, items }: any) {
   if (!product) return <div className="p-6 text-center text-[11px] text-gray-400">{t("appDesigner.noProducts")}</div>;
+  const on = (k: string) => items?.[k] !== false;
   const price = product.discountPrice ?? product.price;
   return (
     <div className="pb-3">
+      {on("photos") && (
       <div className="h-44 bg-gray-100 flex items-center justify-center relative">
         {product.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.imageUrl} alt="" className="w-full h-full object-cover" />
         ) : <Icon name="box" size={32} className="text-gray-300" />}
-        {product.discountPercent ? (
+        {on("discount") && product.discountPercent ? (
           <span className="absolute top-2 start-2 text-[9px] font-bold text-white px-2 py-0.5 rounded-full" style={{ background: c.buttonColor }}>-{product.discountPercent}%</span>
         ) : null}
       </div>
+      )}
       <div className="px-3 pt-3">
         {product.categoryName && <p className="text-[9px] font-bold mb-1" style={{ color: c.accentColor }}>{product.categoryName}</p>}
         <p className="text-[13px] font-extrabold text-gray-800 mb-1">{product.name}</p>
+        {on("price") && (
         <div className="flex items-center gap-2 mb-2">
           <span className="text-[15px] font-extrabold" style={{ color: c.buttonColor }}>{price} {currency}</span>
           {product.discountPrice && <span className="text-[10px] text-gray-400 line-through">{product.price}</span>}
         </div>
+        )}
+        {on("rating") && (
         <div className="flex gap-0.5 text-amber-400 mb-2">{"★★★★★".split("").map((s, i) => <span key={i} className="text-[10px]">{s}</span>)}<span className="text-[9px] text-gray-400 ms-1">4.8 (23)</span></div>
-        <p className="text-[9.5px] text-gray-500 leading-relaxed mb-3">{product.shortDescription || t("appDesigner.sampleProductDesc")}</p>
+        )}
+        {on("description") && <p className="text-[9.5px] text-gray-500 leading-relaxed mb-3">{product.shortDescription || t("appDesigner.sampleProductDesc")}</p>}
+        {on("addToCart") && (
         <div className="flex gap-2">
           <button className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.addToCart")}</button>
           <button onClick={() => onNavigate("cart")} className="w-10 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: c.headerColor }}>
             <Icon name="cashier" size={15} />
           </button>
         </div>
+        )}
       </div>
-      {bundle?.products?.length > 1 && (
+      {on("related") && bundle?.products?.length > 1 && (
         <div className="px-3 pt-4">
           <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.related")}</p>
           <div className="grid grid-cols-3 gap-2">
@@ -866,15 +934,16 @@ function ProductScreen({ product, bundle, c, currency, onNavigate, t }: any) {
 }
 
 // ── شاشة السلة ──
-function CartScreen({ bundle, c, currency, onNavigate, t }: any) {
-  const items = (bundle?.products ?? []).slice(0, 2);
-  const subtotal = items.reduce((s: number, p: BundleProduct) => s + (p.discountPrice ?? p.price), 0);
+function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
+  const on = (k: string) => items?.[k] !== false;
+  const list = (bundle?.products ?? []).slice(0, 2);
+  const subtotal = list.reduce((s: number, p: BundleProduct) => s + (p.discountPrice ?? p.price), 0);
   return (
     <div className="p-3">
       <p className="text-[12px] font-extrabold text-gray-800 mb-2">{t("appDesigner.screen.cart")}</p>
-      {items.length === 0 ? <div className="text-center text-[11px] text-gray-400 py-6">{t("appDesigner.cartEmpty")}</div> : (
+      {list.length === 0 ? <div className="text-center text-[11px] text-gray-400 py-6">{t("appDesigner.cartEmpty")}</div> : (
         <>
-          {items.map((p: BundleProduct) => (
+          {on("items") && list.map((p: BundleProduct) => (
             <div key={p.id} className="flex items-center gap-2 bg-white rounded-xl border p-2 mb-2" style={{ borderColor: "#eef0f3" }}>
               <div className="w-11 h-11 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden shrink-0">
                 {p.imageUrl ? (
@@ -893,16 +962,20 @@ function CartScreen({ bundle, c, currency, onNavigate, t }: any) {
               </div>
             </div>
           ))}
+          {(on("coupon") || on("shipping") || on("total")) && (
           <div className="bg-white rounded-xl border p-2.5 mb-2" style={{ borderColor: "#eef0f3" }}>
+            {on("coupon") && (
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[9.5px] text-gray-500">{t("appDesigner.coupon")}</span>
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-lg border" style={{ borderColor: "#eef0f3", color: c.buttonColor }}>{t("appDesigner.applyCoupon")}</span>
             </div>
-            <div className="flex items-center justify-between text-[9.5px] mb-1"><span className="text-gray-500">{t("appDesigner.subtotal")}</span><span className="font-bold">{subtotal} {currency}</span></div>
-            <div className="flex items-center justify-between text-[9.5px]"><span className="text-gray-500">{t("appDesigner.shipping")}</span><span className="font-bold" style={{ color: "var(--green)" }}>{t("appDesigner.free")}</span></div>
+            )}
+            {on("total") && <div className="flex items-center justify-between text-[9.5px] mb-1"><span className="text-gray-500">{t("appDesigner.subtotal")}</span><span className="font-bold">{subtotal} {currency}</span></div>}
+            {on("shipping") && <div className="flex items-center justify-between text-[9.5px]"><span className="text-gray-500">{t("appDesigner.shipping")}</span><span className="font-bold" style={{ color: "var(--green)" }}>{t("appDesigner.free")}</span></div>}
           </div>
-          <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.total")}</span><span className="text-[12px] font-extrabold" style={{ color: c.buttonColor }}>{subtotal} {currency}</span></div>
-          <button onClick={() => onNavigate("tracking")} className="w-full py-2.5 rounded-xl text-[11.5px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.checkout")}</button>
+          )}
+          {on("total") && <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.total")}</span><span className="text-[12px] font-extrabold" style={{ color: c.buttonColor }}>{subtotal} {currency}</span></div>}
+          {on("checkout") && <button onClick={() => onNavigate("tracking")} className="w-full py-2.5 rounded-xl text-[11.5px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.checkout")}</button>}
         </>
       )}
     </div>
@@ -910,16 +983,18 @@ function CartScreen({ bundle, c, currency, onNavigate, t }: any) {
 }
 
 // ── شاشة الحساب ──
-function AccountScreen({ c, appName, onNavigate, t }: any) {
+function AccountScreen({ c, appName, onNavigate, t, items }: any) {
+  const on = (k: string) => items?.[k] !== false;
   const rows = [
     { icon: "package", k: "orders" },
     { icon: "star", k: "wishlist" },
     { icon: "location", k: "addresses" },
     { icon: "mail", k: "support" },
     { icon: "layout", k: "settings" },
-  ];
+  ].filter((r) => on(r.k));
   return (
     <div className="p-3">
+      {on("profile") && (
       <div className="rounded-2xl p-4 text-white mb-3" style={{ background: `linear-gradient(135deg, ${c.headerColor}, ${c.accentColor})` }}>
         <div className="flex items-center gap-2.5">
           <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center"><Icon name="user" size={20} /></span>
@@ -929,6 +1004,8 @@ function AccountScreen({ c, appName, onNavigate, t }: any) {
           </div>
         </div>
       </div>
+      )}
+      {rows.length > 0 && (
       <div className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
         {rows.map((r, i) => (
           <div key={r.k} className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}>
@@ -938,15 +1015,19 @@ function AccountScreen({ c, appName, onNavigate, t }: any) {
           </div>
         ))}
       </div>
+      )}
+      {on("trackOrder") && (
       <button onClick={() => onNavigate("tracking")} className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>
         {t("appDesigner.trackOrder")}
       </button>
+      )}
     </div>
   );
 }
 
 // ── شاشة تتبّع الطلب ──
-function TrackingScreen({ c, onNavigate, t }: any) {
+function TrackingScreen({ c, onNavigate, t, items }: any) {
+  const on = (k: string) => items?.[k] !== false;
   const steps = ["confirmed", "preparing", "shipped", "delivered"];
   const activeIdx = 2;
   return (
@@ -959,6 +1040,7 @@ function TrackingScreen({ c, onNavigate, t }: any) {
         <div className="flex items-center justify-between mb-1"><span className="text-[9.5px] text-gray-500">{t("appDesigner.orderNumber")}</span><span className="text-[10px] font-bold">#10245</span></div>
         <p className="text-[9.5px] text-gray-500">{t("appDesigner.arrivesTomorrow")}</p>
       </div>
+      {on("timeline") && (
       <div className="bg-white rounded-xl border p-3" style={{ borderColor: "#eef0f3" }}>
         {steps.map((s, i) => {
           const done = i <= activeIdx;
@@ -979,28 +1061,38 @@ function TrackingScreen({ c, onNavigate, t }: any) {
           );
         })}
       </div>
-      <button className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.headerColor }}>{t("appDesigner.contactCourier")}</button>
+      )}
+      {on("courier") && <button className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.headerColor }}>{t("appDesigner.contactCourier")}</button>}
     </div>
   );
 }
 
 // ── شاشة التصفّح ──
-function CatalogScreen({ bundle, c, currency, onNavigate, t }: any) {
+function CatalogScreen({ bundle, c, currency, onNavigate, t, items }: any) {
+  const on = (k: string) => items?.[k] !== false;
   const cats: BundleCategory[] = bundle?.categories ?? [];
   const products: BundleProduct[] = bundle?.products ?? [];
   return (
     <div className="p-3">
       <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.screen.catalog")}</p>
-      {cats.length > 0 && (
+      {on("search") && (
+        <div className="flex items-center gap-2 rounded-xl bg-white border px-3 py-1.5 mb-2" style={{ borderColor: "#eef0f3" }}>
+          <Icon name="search" size={13} className="text-gray-400" />
+          <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
+        </div>
+      )}
+      {on("categories") && cats.length > 0 && (
         <div className="flex gap-1.5 mb-3 overflow-x-auto">
           {cats.slice(0, 6).map((cat: BundleCategory) => (
             <span key={cat.id} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>{cat.name}</span>
           ))}
         </div>
       )}
+      {on("grid") && (
       <div className="grid grid-cols-2 gap-2">
         {products.slice(0, 8).map((p: BundleProduct) => <ProductCard key={p.id} p={p} c={c} currency={currency} wide onTap={() => onNavigate("product", p)} />)}
       </div>
+      )}
     </div>
   );
 }

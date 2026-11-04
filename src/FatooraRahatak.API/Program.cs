@@ -143,6 +143,8 @@ builder.Services.AddScoped<IKpiService, KpiService>();
 builder.Services.AddScoped<IDomainService, DomainService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IDomainPurchaseService, FatooraRahatak.Infrastructure.Services.DomainPurchaseService>();
 builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IMobileAppSubscriptionService, FatooraRahatak.Infrastructure.Services.MobileAppSubscriptionService>();
+builder.Services.AddHttpClient<FatooraRahatak.Infrastructure.Services.MobileAppBuildService>(c => c.Timeout = TimeSpan.FromMinutes(5));
+builder.Services.AddScoped<FatooraRahatak.Application.Interfaces.IMobileAppBuildService>(sp => sp.GetRequiredService<FatooraRahatak.Infrastructure.Services.MobileAppBuildService>());
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddScoped<IInvitationService, InvitationService>();
 builder.Services.AddScoped<IRoleService, RoleService>();

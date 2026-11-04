@@ -14,11 +14,16 @@ namespace FatooraRahatak.API.Controllers;
 public class MobileAppController : ControllerBase
 {
     private readonly IMobileAppSubscriptionService _service;
+    private readonly IMobileAppBuildService _buildService;
     private readonly IPermissionCheckService _permCheck;
 
-    public MobileAppController(IMobileAppSubscriptionService service, IPermissionCheckService permCheck)
+    public MobileAppController(
+        IMobileAppSubscriptionService service,
+        IMobileAppBuildService buildService,
+        IPermissionCheckService permCheck)
     {
         _service = service;
+        _buildService = buildService;
         _permCheck = permCheck;
     }
 
@@ -212,5 +217,32 @@ public class MobileAppController : ControllerBase
         if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بالمستخدم" });
         var data = await _service.GetAnalyticsAsync(storeId.Value, days);
         return Ok(new { success = true, data });
+    }
+
+    // ── بناء التطبيق (APK) ──
+    // أحدث عملية بناء لتطبيق المتجر (لعرض الحالة في لوحة التاجر).
+    [RequirePermission("StoreSettings.View")]
+    [HttpGet("build")]
+    public async Task<IActionResult> GetLatestBuild()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بالمستخدم" });
+        var data = await _buildService.GetLatestForStoreAsync(storeId.Value);
+        return Ok(new { success = true, data });
+    }
+
+    // تنزيل ملف APK المبني (للتاجر، بعد نجاح البناء).
+    [RequirePermission("StoreSettings.View")]
+    [HttpGet("build/download")]
+    public async Task<IActionResult> DownloadBuild()
+    {
+        var storeId = await GetStoreIdAsync();
+        if (storeId == null) return BadRequest(new { success = false, message = "لا يوجد متجر مرتبط بالمستخدم" });
+        var latest = await _buildService.GetLatestForStoreAsync(storeId.Value);
+        if (latest == null) return NotFound(new { success = false, message = "لا يوجد بناء جاهز" });
+        var file = await _buildService.GetApkFileAsync(latest.Id);
+        if (file == null) return NotFound(new { success = false, message = "ملف الـ APK غير جاهز" });
+        var (path, fileName) = file.Value;
+        return PhysicalFile(path, "application/vnd.android.package-archive", fileName);
     }
 }

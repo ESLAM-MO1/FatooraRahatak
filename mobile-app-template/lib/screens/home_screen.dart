@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../config/app_config.dart';
+import '../state/app_state.dart';
+import '../widgets/widgets.dart';
+import '../screens/product_screen.dart';
+import '../screens/catalog_screen.dart';
+
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final c = AppConfig.I.colors;
+    if (s.loading) return const Center(child: CircularProgressIndicator());
+    if (s.error != null) {
+      return Center(child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.cloud_off, size: 48, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Text('تعذّر تحميل بيانات المتجر'),
+          const SizedBox(height: 12),
+          AppButton(label: 'إعادة المحاولة', icon: Icons.refresh, onPressed: s.init),
+        ]),
+      ));
+    }
+    if (s.products.isEmpty && s.categories.isEmpty) {
+      return const Center(child: Text('لا توجد منتجات منشورة بعد', style: TextStyle(color: Colors.grey)));
+    }
+    final offers = s.offers.take(6).toList();
+    final featured = s.products.take(4).toList();
+
+    return RefreshIndicator(
+      onRefresh: s.init,
+      child: ListView(children: [
+        if (AppConfig.I.splashText.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [c['heroFrom']!, c['heroTo']!]),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(children: [
+              const Icon(Icons.local_offer, color: Colors.white, size: 16),
+              const SizedBox(width: 8),
+              Expanded(child: Text(AppConfig.I.splashText,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12))),
+            ]),
+          ),
+        // البانر الرئيسي
+        Container(
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                colors: [c['heroFrom']!, c['heroTo']!]),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(s.store?.name ?? AppConfig.I.appName,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 17)),
+            if ((s.store?.bio ?? '').isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(s.store!.bio!, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+            ],
+            const SizedBox(height: 12),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: c['button']),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen())),
+              child: const Text('تسوّق الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ]),
+        ),
+        // الأقسام
+        if (s.categories.isNotEmpty) ...[
+          const SectionTitle('الأقسام'),
+          SizedBox(
+            height: 92,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: s.categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (_, i) {
+                final cat = s.categories[i];
+                return GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CatalogScreen(categoryId: cat.id))),
+                  child: Column(children: [
+                    CircleAvatar(radius: 28, backgroundColor: c['accent']!.withValues(alpha: 0.12),
+                      backgroundImage: (cat.image != null && cat.image!.isNotEmpty) ? NetworkImage(cat.image!) : null,
+                      child: (cat.image == null || cat.image!.isEmpty)
+                          ? Icon(Icons.category_outlined, color: c['accent']) : null),
+                    const SizedBox(height: 6),
+                    SizedBox(width: 64, child: Text(cat.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center, style: const TextStyle(fontSize: 11))),
+                  ]),
+                );
+              },
+            ),
+          ),
+        ],
+        // العروض
+        if (offers.isNotEmpty) ...[
+          SectionTitle('العروض', action: 'الكل', onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen()))),
+          SizedBox(
+            height: 190,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: offers.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) => SizedBox(width: 130,
+                child: ProductCard(product: offers[i],
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(products: offers[i]))))),
+            ),
+          ),
+        ],
+        // منتجات مميزة
+        if (featured.isNotEmpty) ...[
+          SectionTitle('منتجات مميزة', action: 'الكل', onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CatalogScreen()))),
+          GridView.builder(
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 0.72),
+            itemCount: featured.length,
+            itemBuilder: (_, i) => ProductCard(product: featured[i],
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductScreen(products: featured[i])))),
+          ),
+        ],
+        const SizedBox(height: 20),
+      ]),
+    );
+  }
+}

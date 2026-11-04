@@ -2227,6 +2227,83 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("Packages");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppBuild", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ApkPath")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ApkSha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long?>("ApkSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("GithubRunId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("GithubRunUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("LogTail")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("PackageName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("StoreAppSubscriptionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("TriggeredByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("VersionName")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreAppSubscriptionId");
+
+                    b.HasIndex("StoreId", "Status");
+
+                    b.ToTable("StoreAppBuilds");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppNotification", b =>
                 {
                     b.Property<long>("Id")
@@ -6620,6 +6697,15 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("OrderItem");
 
                     b.Navigation("ReturnRequest");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppBuild", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Packages.StoreAppSubscription", null)
+                        .WithMany()
+                        .HasForeignKey("StoreAppSubscriptionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppNotification", b =>

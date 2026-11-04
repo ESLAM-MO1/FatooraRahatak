@@ -36,6 +36,27 @@ interface AppSubscription {
   createdAt: string;
 }
 
+interface AppBuild {
+  id: number;
+  storeId: number;
+  storeAppSubscriptionId: number;
+  storeName: string | null;
+  appName: string | null;
+  status: string;
+  githubRunId: number | null;
+  githubRunUrl: string | null;
+  packageName: string | null;
+  versionName: string | null;
+  isApkReady: boolean;
+  apkSizeBytes: number | null;
+  apkSha256: string | null;
+  downloadUrl: string | null;
+  errorMessage: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
 export default function AppSubscriptionsPage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"subscriptions" | "publish">("subscriptions");
@@ -46,6 +67,7 @@ export default function AppSubscriptionsPage() {
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [urls, setUrls] = useState<Record<number, { appStoreUrl: string; googlePlayUrl: string; appVersion: string }>>({});
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [builds, setBuilds] = useState<Record<number, AppBuild | null>>({});
 
   const load = async () => {
     setLoading(true);
@@ -56,6 +78,7 @@ export default function AppSubscriptionsPage() {
       ]);
       setItems(all.data.data);
       setPending(pend.data.data);
+      loadBuilds([...(all.data.data as AppSubscription[]), ...(pend.data.data as AppSubscription[])]);
     } catch {
       setMessage({ ok: false, text: t("adminMobileApp.error") });
     } finally {
@@ -166,6 +189,60 @@ export default function AppSubscriptionsPage() {
       case "Cancelled": return t("adminMobileApp.statusCancelled");
       case "Expired": return t("adminMobileApp.statusExpired");
       default: return t("adminMobileApp.statusPending");
+    }
+  };
+
+  // ── بناء التطبيق (APK) ──
+  const loadBuilds = async (subs: AppSubscription[]) => {
+    const entries = await Promise.all(
+      subs.map(async (r) => {
+        try {
+          const res = await api.get(`/admin/app-builds/by-subscription/${r.id}`);
+          return [r.id, (res.data?.data as AppBuild) || null] as const;
+        } catch {
+          return [r.id, null] as const;
+        }
+      })
+    );
+    setBuilds(Object.fromEntries(entries));
+  };
+
+  const startBuild = async (r: AppSubscription) => {
+    setBusyId(r.id);
+    setMessage(null);
+    try {
+      const res = await api.post(`/admin/app-builds/subscription/${r.id}/start`);
+      setBuilds((prev) => ({ ...prev, [r.id]: res.data?.data || null }));
+      setMessage({ ok: true, text: t("adminMobileApp.buildStarted") });
+    } catch (err: any) {
+      setMessage({ ok: false, text: err.response?.data?.message || t("adminMobileApp.error") });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const refreshBuild = async (r: AppSubscription, buildId: number) => {
+    try {
+      const res = await api.post(`/admin/app-builds/${buildId}/refresh`);
+      setBuilds((prev) => ({ ...prev, [r.id]: res.data?.data || null }));
+    } catch (err: any) {
+      setMessage({ ok: false, text: err.response?.data?.message || t("adminMobileApp.error") });
+    }
+  };
+
+  const downloadBuild = async (r: AppSubscription, buildId: number) => {
+    try {
+      const res = await api.get(`/admin/app-builds/${buildId}/download`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${r.storeSlug || "store"}-app.apk`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setMessage({ ok: false, text: t("adminMobileApp.buildDownloadError") });
     }
   };
 
@@ -422,6 +499,16 @@ export default function AppSubscriptionsPage() {
                     onChange={(e) => setNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
                   />
 
+                  {/* ── بناء ملف التطبيق (APK) ── */}
+                  <AdminBuildControl
+                    t={t}
+                    build={builds[r.id] ?? null}
+                    busy={busy}
+                    onStart={() => startBuild(r)}
+                    onRefresh={(id: number) => refreshBuild(r, id)}
+                    onDownload={(id: number) => downloadBuild(r, id)}
+                  />
+
                   <div className="flex gap-2 flex-wrap">
                     {r.publishStatus === "Submitted" && (
                       <button className="btn" disabled={busy} onClick={() => startReview(r)}>
@@ -440,6 +527,96 @@ export default function AppSubscriptionsPage() {
             })
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── لوحة بناء التطبيق (APK) في صفحة الأدمن ──
+function AdminBuildControl({ t, build, busy, onStart, onRefresh, onDownload }: {
+  t: (key: string) => string;
+  build: AppBuild | null;
+  busy: boolean;
+  onStart: () => void;
+  onRefresh: (id: number) => void;
+  onDownload: (id: number) => void;
+}) {
+  const badgeCls = (s: string) => {
+    switch (s) {
+      case "Succeeded": return "badge badge--green";
+      case "Running": return "badge badge--yellow";
+      case "Queued": return "badge badge--yellow";
+      case "Failed": return "badge badge--red";
+      default: return "badge badge--gray";
+    }
+  };
+  const statusLabel = (s: string) => {
+    switch (s) {
+      case "Succeeded": return t("adminMobileApp.buildStatusSucceeded");
+      case "Running": return t("adminMobileApp.buildStatusRunning");
+      case "Queued": return t("adminMobileApp.buildStatusQueued");
+      case "Failed": return t("adminMobileApp.buildStatusFailed");
+      default: return t("adminMobileApp.buildStatusNone");
+    }
+  };
+  const sizeMb = build?.apkSizeBytes ? (build.apkSizeBytes / (1024 * 1024)).toFixed(1) : null;
+
+  return (
+    <div className="border rounded-lg p-3 mb-3 bg-gray-50">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <span className="text-sm font-bold text-gray-700">{t("adminMobileApp.buildTitle")}</span>
+        <div className="flex items-center gap-2">
+          {build && <span className={badgeCls(build.status)}>{statusLabel(build.status)}</span>}
+          {!build || build.status === "Failed" || build.status === "Succeeded" ? (
+            <button className="btn btn-sm" disabled={busy} onClick={onStart}>
+              {build ? t("adminMobileApp.buildRebuildBtn") : t("adminMobileApp.buildStartBtn")}
+            </button>
+          ) : (
+            <button className="btn btn-sm" disabled={busy} onClick={() => onRefresh(build.id)}>
+              {t("adminMobileApp.buildRefreshBtn")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {build && (
+        <div className="text-xs text-gray-600 space-y-1">
+          {build.packageName && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">{t("mobileApp.buildPackage")}</span>
+              <span dir="ltr" className="font-mono">{build.packageName}</span>
+            </div>
+          )}
+          {build.versionName && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">{t("mobileApp.buildVersion")}</span>
+              <span dir="ltr">v{build.versionName}</span>
+            </div>
+          )}
+          {build.status === "Succeeded" && sizeMb && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">{t("mobileApp.buildSize")}</span>
+              <span dir="ltr">{sizeMb} MB</span>
+            </div>
+          )}
+          {build.githubRunUrl && (
+            <div className="flex justify-between">
+              <span className="text-gray-400">{t("adminMobileApp.buildRun")}</span>
+              <a href={build.githubRunUrl} target="_blank" rel="noreferrer" className="text-blue-600 truncate" dir="ltr">
+                #{build.githubRunId}
+              </a>
+            </div>
+          )}
+          {build.errorMessage && (
+            <div className="text-xs text-red-600 break-all mt-1">{build.errorMessage}</div>
+          )}
+        </div>
+      )}
+
+      {build?.isApkReady && (
+        <button className="btn btn-primary btn-sm mt-2" onClick={() => onDownload(build.id)}>
+          {t("adminMobileApp.buildDownloadBtn")}
+        </button>
       )}
     </div>
   );

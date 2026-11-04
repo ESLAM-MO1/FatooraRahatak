@@ -1,0 +1,27 @@
+{
+  "appName": "متجري",
+  "tagline": "",
+  "storeSlug": "demo",
+  "apiBaseUrl": "https://rahtk.sa",
+  "currency": "SAR",
+  "packageName": "sa.rahtk.demo",
+  "versionName": "1.0.0",
+  "colors": {
+    "headerColor": "#0b5e78",
+    "buttonColor": "#12a8db",
+    "accentColor": "#1fb983",
+    "heroFrom": "#12a8db",
+    "heroTo": "#0b5e78",
+    "footerColor": "#1f2937"
+  },
+  "iconUrl": "",
+  "splashText": "",
+  "screens": {
+    "home": true,
+    "catalog": true,
+    "product": true,
+    "cart": true,
+    "account": true,
+    "tracking": true
+  }
+}

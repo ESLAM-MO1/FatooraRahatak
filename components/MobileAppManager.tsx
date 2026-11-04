@@ -120,6 +120,28 @@ interface Analytics {
   salesCount: number;
 }
 
+interface AppBuild {
+  id: number;
+  storeId: number;
+  storeAppSubscriptionId: number;
+  storeName: string | null;
+  appName: string | null;
+  status: string;
+  githubRunId: number | null;
+  githubRunUrl: string | null;
+  packageName: string | null;
+  versionName: string | null;
+  isApkReady: boolean;
+  apkSizeBytes: number | null;
+  apkSha256: string | null;
+  downloadUrl: string | null;
+  errorMessage: string | null;
+  logTail: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
 type BillingCycle = "Monthly" | "Yearly";
 type StepId = "design" | "subscribe" | "launch";
 
@@ -153,6 +175,10 @@ export default function MobileAppManager() {
   const [supportEmail, setSupportEmail] = useState("");
   const [privacyUrl, setPrivacyUrl] = useState("");
   const [publishing, setPublishing] = useState(false);
+
+  // بناء التطبيق (APK)
+  const [build, setBuild] = useState<AppBuild | null>(null);
+  const [buildLoading, setBuildLoading] = useState(false);
 
   // الدفع
   const [showPayModal, setShowPayModal] = useState(false);
@@ -209,11 +235,56 @@ export default function MobileAppManager() {
     } catch { /* تجاهل */ }
   };
 
+  const loadBuild = async () => {
+    try {
+      const res = await api.get("/mobile-app/build");
+      setBuild(res.data?.data || null);
+    } catch { setBuild(null); }
+  };
+
   useEffect(() => {
     load();
     loadStoreInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // متابعة حالة البناء أثناء التشغيل (استقصاء كل 15 ثانية).
+  useEffect(() => {
+    if (!build || (build.status !== "Queued" && build.status !== "Running")) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await api.get("/mobile-app/build");
+        setBuild(res.data?.data || null);
+      } catch { /* تجاهل */ }
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [build]);
+
+  // تحميل حالة البناء عند الدخول لخطوة الإطلاق.
+  useEffect(() => {
+    if (activeStep === "launch") loadBuild();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep]);
+
+  const downloadBuild = async () => {
+    if (!build?.isApkReady) return;
+    setBuildLoading(true);
+    try {
+      const res = await api.get("/mobile-app/build/download", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `app-${build.packageName || "store"}-v${build.versionName || "1.0.0"}.apk`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      setError(t("mobileApp.buildDownloadError"));
+    } finally {
+      setBuildLoading(false);
+    }
+  };
 
   const openPaymentModal = (appSubscriptionId: number, amount: number) => {
     paidHandledRef.current = false;
@@ -702,6 +773,10 @@ export default function MobileAppManager() {
               onPublish={handlePublish}
               onGoSubscribe={() => setActiveStep("subscribe")}
               formatDate={formatDate}
+              build={build}
+              buildLoading={buildLoading}
+              onDownloadBuild={downloadBuild}
+              onRefreshBuild={loadBuild}
             />
           )}
         </>
@@ -915,6 +990,7 @@ function LaunchStep(props: any) {
     category, setCategory, iconUrl, screenshots, setScreenshots,
     supportEmail, setSupportEmail, privacyUrl, setPrivacyUrl, publishing, onPublish,
     onGoSubscribe, formatDate,
+    build, buildLoading, onDownloadBuild, onRefreshBuild,
   } = props;
 
   if (!hasSubscription || !isActive) {
@@ -1066,6 +1142,110 @@ function LaunchStep(props: any) {
           <span className="text-[12px] text-[var(--sub)] self-center">{t("mobileApp.publishedAt")}: {formatDate(status.publishedAt)}</span>
         )}
       </div>
+
+      {/* ── بناء التطبيق (APK) ── */}
+      {(published || awaitingReview) && (
+        <BuildPanel
+          t={t}
+          build={build}
+          buildLoading={buildLoading}
+          onDownload={onDownloadBuild}
+          onRefresh={onRefreshBuild}
+          formatDate={formatDate}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── لوحة بناء التطبيق (APK) ──
+function BuildPanel({ t, build, buildLoading, onDownload, onRefresh, formatDate }: any) {
+  const badgeCls = (s: string) => {
+    switch (s) {
+      case "Succeeded": return "badge badge--green";
+      case "Running": return "badge badge--yellow";
+      case "Queued": return "badge badge--yellow";
+      case "Failed": return "badge badge--red";
+      default: return "badge badge--gray";
+    }
+  };
+  const statusLabel = (s: string) => {
+    switch (s) {
+      case "Succeeded": return t("mobileApp.buildStatusSucceeded");
+      case "Running": return t("mobileApp.buildStatusRunning");
+      case "Queued": return t("mobileApp.buildStatusQueued");
+      case "Failed": return t("mobileApp.buildStatusFailed");
+      default: return t("mobileApp.buildStatusNone");
+    }
+  };
+  const sizeMb = build?.apkSizeBytes ? (build.apkSizeBytes / (1024 * 1024)).toFixed(1) : null;
+
+  return (
+    <div className="rounded-2xl border p-5 mt-5" style={{ borderColor: "var(--border)" }}>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Icon name="download" size={18} className="text-[var(--blue)]" />
+          <p className="text-[13px] font-extrabold text-[var(--ink)]">{t("mobileApp.buildTitle")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {build && <span className={badgeCls(build.status)}>{statusLabel(build.status)}</span>}
+          <button type="button" className="btn btn-sm" onClick={onRefresh}>
+            <Icon name="refresh" size={14} /> {t("mobileApp.buildRefresh")}
+          </button>
+        </div>
+      </div>
+
+      <p className="text-[11.5px] text-[var(--sub)] mb-4 leading-relaxed">{t("mobileApp.buildDesc")}</p>
+
+      {!build ? (
+        <p className="text-[12.5px] text-[var(--sub)]">{t("mobileApp.buildNone")}</p>
+      ) : (
+        <div className="space-y-2 text-[12px]">
+          {build.packageName && (
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--sub)]">{t("mobileApp.buildPackage")}</span>
+              <span className="font-bold text-[var(--ink)] font-mono text-[11.5px]">{build.packageName}</span>
+            </div>
+          )}
+          {build.versionName && (
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--sub)]">{t("mobileApp.buildVersion")}</span>
+              <span className="font-bold text-[var(--ink)]">v{build.versionName}</span>
+            </div>
+          )}
+          {build.status === "Succeeded" && sizeMb && (
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--sub)]">{t("mobileApp.buildSize")}</span>
+              <span className="font-bold text-[var(--ink)]">{sizeMb} MB</span>
+            </div>
+          )}
+          {build.finishedAt && (
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--sub)]">{t("mobileApp.buildFinishedAt")}</span>
+              <span className="font-bold text-[var(--ink)]">{formatDate(build.finishedAt)}</span>
+            </div>
+          )}
+          {build.errorMessage && (
+            <div className="alert alert--danger mt-2">
+              <Icon name="alert" size={15} className="shrink-0 mt-0.5" />
+              <span className="text-[11.5px] break-all">{build.errorMessage}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {build?.isApkReady && (
+        <button type="button" className="btn btn-primary mt-4" disabled={buildLoading} onClick={onDownload}>
+          <Icon name="download" size={15} /> {buildLoading ? t("common.loading") : t("mobileApp.buildDownload")}
+        </button>
+      )}
+
+      {build && (build.status === "Queued" || build.status === "Running") && (
+        <div className="alert alert--warning mt-4">
+          <Icon name="alert" size={15} className="shrink-0 mt-0.5" />
+          <span className="text-[11.5px]">{t("mobileApp.buildInProgressNote")}</span>
+        </div>
+      )}
     </div>
   );
 }

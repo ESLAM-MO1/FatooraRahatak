@@ -119,6 +119,7 @@ public class AppDbContext : DbContext
     public DbSet<StoreAppSubscription> StoreAppSubscriptions => Set<StoreAppSubscription>();
     public DbSet<StoreAppNotification> StoreAppNotifications => Set<StoreAppNotification>();
     public DbSet<StoreAppStat> StoreAppStats => Set<StoreAppStat>();
+    public DbSet<StoreAppBuild> StoreAppBuilds => Set<StoreAppBuild>();
     public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<SiteMenu> SiteMenus => Set<SiteMenu>();
     public DbSet<DashboardSection> DashboardSections => Set<DashboardSection>();
@@ -323,6 +324,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<StoreAppStat>()
             .Property(s => s.Revenue)
             .HasPrecision(18, 2);
+
+        modelBuilder.Entity<StoreAppBuild>()
+            .HasOne<StoreAppSubscription>()
+            .WithMany()
+            .HasForeignKey(b => b.StoreAppSubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreAppBuild>()
+            .HasIndex(b => new { b.StoreId, b.Status });
 
         modelBuilder.Entity<Payment>()
             .HasOne(p => p.AppSubscription)

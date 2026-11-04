@@ -623,6 +623,11 @@ export function AppPreview({
     home: "home", categories: "layers", catalog: "search", cart: "cashier", account: "user", wishlist: "star", tracking: "truck",
   };
 
+  // شاشة فرعية تُفتح داخل الإطار عند الضغط على عنصر (بدل أن يبقى الضغط بلا أثر)
+  const [detail, setDetail] = useState<string | null>(null);
+
+  const openDetail = (key: string) => setDetail(key);
+
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="mx-auto" style={{ width: 306 }}>
       <div className="rounded-[36px] shadow-2xl overflow-hidden bg-white relative flex flex-col" style={{ border: "10px solid #0f172a", height: 620 }}>
@@ -647,13 +652,13 @@ export function AppPreview({
               <p className="text-white text-[12.5px] font-extrabold truncate leading-tight">{appName}</p>
               {design.tagline && <p className="text-white/70 text-[9px] truncate">{design.tagline}</p>}
             </div>
-            <button type="button" onClick={() => onNavigate("account")} className="relative text-white/95">
+            <button type="button" onClick={() => openDetail("notifications")} className="relative text-white/95 cursor-pointer active:scale-90 transition-transform">
               <Icon name="bell" size={16} />
               <span className="absolute -top-1 -end-1 w-3 h-3 rounded-full text-[7px] flex items-center justify-center text-white font-bold" style={{ background: "#ef4444" }}>3</span>
             </button>
           </div>
           {screen !== "product" && (
-            <button type="button" onClick={() => onNavigate("catalog")} className="mt-3 w-full flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5">
+            <button type="button" onClick={() => openDetail("search")} className="mt-3 w-full flex items-center gap-2 rounded-xl bg-white/95 px-3 py-1.5 cursor-pointer active:scale-[0.99] transition-transform">
               <Icon name="search" size={13} className="text-gray-400" />
               <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
             </button>
@@ -672,10 +677,10 @@ export function AppPreview({
 
           {screen === "home" && <HomeScreen design={design} bundle={bundle} appName={appName} currency={currency} theme={theme} onNavigate={onNavigate} c={c} t={t} />}
           {screen === "product" && <ProductScreen product={product || bundle?.products?.[0] || null} bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.product.items ?? {}} />}
-          {screen === "cart" && <CartScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.cart.items ?? {}} />}
-          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} t={t} items={design.screens.account.items ?? {}} />}
+          {screen === "cart" && <CartScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.cart.items ?? {}} />}
+          {screen === "account" && <AccountScreen c={c} appName={appName} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.account.items ?? {}} />}
           {screen === "tracking" && <TrackingScreen c={c} onNavigate={onNavigate} t={t} items={design.screens.tracking.items ?? {}} />}
-          {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} t={t} items={design.screens.catalog.items ?? {}} />}
+          {screen === "catalog" && <CatalogScreen bundle={bundle} c={c} currency={currency} onNavigate={onNavigate} onDetail={openDetail} t={t} items={design.screens.catalog.items ?? {}} />}
 
           <div className="flex items-center justify-center gap-1.5 py-4 mt-2 border-t" style={{ borderColor: "#eef0f3" }}>
             <span className="w-4 h-4 rounded-md flex items-center justify-center text-[8px] font-extrabold text-white" style={{ background: c.buttonColor }}>
@@ -684,6 +689,21 @@ export function AppPreview({
             <span className="text-[9px] font-bold" style={{ color: "#9aa1ac" }}>{t("appDesigner.poweredBy")}</span>
           </div>
         </div>
+
+        {/* شاشة فرعية داخلية (تُفتح عند الضغط على عناصر لم تكن تستجيب) */}
+        {detail && (
+          <div className="absolute inset-x-0 top-0 bottom-[66px] bg-white z-40 flex flex-col" style={{ borderTopLeftRadius: 26, borderTopRightRadius: 26 }}>
+            <div className="shrink-0 flex items-center gap-2 px-3 py-2.5 border-b" style={{ background: c.headerColor, borderColor: "#e6e8ee" }}>
+              <button type="button" onClick={() => setDetail(null)} className="text-white cursor-pointer active:scale-90 transition-transform">
+                <span className="block rotate-180"><Icon name="arrowLeft" size={15} /></span>
+              </button>
+              <p className="text-[12px] font-extrabold text-white">{t(`appDesigner.detail.${detail}.title`)}</p>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-0" style={{ background: "#f7f8fa" }}>
+              <DetailBody detail={detail} c={c} currency={currency} bundle={bundle} t={t} />
+            </div>
+          </div>
+        )}
 
         {/* شريط التنقل السفلي */}
         <div className="shrink-0 flex items-stretch bg-white border-t" style={{ height: 66, borderColor: "#e6e8ee", paddingBottom: 4, boxShadow: "0 -2px 10px rgba(15,23,42,0.05)" }}>
@@ -695,7 +715,7 @@ export function AppPreview({
               <button
                 key={n}
                 type="button"
-                onClick={() => onNavigate(target, null)}
+                onClick={() => { setDetail(null); onNavigate(target, null); }}
                 className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 transition-all cursor-pointer active:scale-95 hover:bg-gray-50"
                 style={{ color }}
               >
@@ -719,6 +739,123 @@ function previewActive(screen: AppScreenKey, nav: string): boolean {
   if (nav === "account" && screen === "account") return true;
   if (nav === "categories" && (screen === "catalog" || screen === "product")) return true;
   return false;
+}
+
+// ── محتوى الشاشات الفرعية التي تُفتح داخل الإطار ──
+function DetailBody({ detail, c, currency, bundle, t }: any) {
+  const rowCls = "bg-white rounded-xl border p-3 mb-2 flex items-center justify-between";
+  if (detail === "orders") {
+    const orders = [
+      { id: "#10245", total: 320, status: t("appDesigner.detail.orders.shipped") },
+      { id: "#10231", total: 180, status: t("appDesigner.detail.orders.delivered") },
+    ];
+    return (
+      <div className="p-3">
+        {orders.map((o) => (
+          <div key={o.id} className={rowCls} style={{ borderColor: "#eef0f3" }}>
+            <div>
+              <p className="text-[11px] font-extrabold text-gray-800">{o.id}</p>
+              <p className="text-[9px] text-gray-400">{o.status}</p>
+            </div>
+            <p className="text-[11px] font-extrabold" style={{ color: c.buttonColor }}>{o.total} {currency}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (detail === "wishlist") {
+    const items = (bundle?.products ?? []).slice(0, 3);
+    return (
+      <div className="p-3 grid grid-cols-2 gap-2">
+        {items.map((p: BundleProduct) => (
+          <div key={p.id} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
+            <div className="h-16 bg-gray-100 flex items-center justify-center"><Icon name="package" size={20} className="text-gray-300" /></div>
+            <div className="p-1.5">
+              <p className="text-[9px] font-bold text-gray-700 truncate">{p.name}</p>
+              <p className="text-[9.5px] font-extrabold" style={{ color: c.buttonColor }}>{p.discountPrice ?? p.price} {currency}</p>
+            </div>
+          </div>
+        ))}
+        {items.length === 0 && <p className="col-span-2 text-center text-[10px] text-gray-400 py-6">{t("appDesigner.detail.empty")}</p>}
+      </div>
+    );
+  }
+  if (detail === "addresses") {
+    const addrs = [t("appDesigner.detail.addresses.home"), t("appDesigner.detail.addresses.work")];
+    return (
+      <div className="p-3">
+        {addrs.map((a: string) => (
+          <div key={a} className={rowCls} style={{ borderColor: "#eef0f3" }}>
+            <span className="flex items-center gap-2 text-[10.5px] font-bold text-gray-700"><Icon name="location" size={13} className="text-gray-400" />{a}</span>
+            <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (detail === "support") {
+    return (
+      <div className="p-3 space-y-2">
+        <div className="bg-white rounded-xl border p-3" style={{ borderColor: "#eef0f3" }}>
+          <p className="text-[10.5px] font-bold text-gray-700 mb-1.5">{t("appDesigner.detail.support.msg")}</p>
+          <textarea readOnly className="w-full text-[10px] border rounded-lg p-2 h-16 resize-none" style={{ borderColor: "#e6e8ee" }} placeholder={t("appDesigner.detail.support.ph")} />
+          <button type="button" className="w-full mt-2 py-1.5 rounded-lg text-[10.5px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.detail.support.send")}</button>
+        </div>
+      </div>
+    );
+  }
+  if (detail === "settings") {
+    const opts = [t("appDesigner.detail.settings.notifications"), t("appDesigner.detail.settings.lang"), t("appDesigner.detail.settings.about")];
+    return (
+      <div className="p-3">
+        {opts.map((o: string) => (
+          <div key={o} className={rowCls} style={{ borderColor: "#eef0f3" }}>
+            <span className="text-[10.5px] font-bold text-gray-700">{o}</span>
+            <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (detail === "notifications") {
+    const notes = [t("appDesigner.detail.notifications.n1"), t("appDesigner.detail.notifications.n2")];
+    return (
+      <div className="p-3">
+        {notes.map((n: string) => (
+          <div key={n} className="bg-white rounded-xl border p-3 mb-2 flex items-start gap-2" style={{ borderColor: "#eef0f3" }}>
+            <span className="w-7 h-7 rounded-full flex items-center justify-center text-white shrink-0" style={{ background: c.buttonColor }}><Icon name="bell" size={12} /></span>
+            <p className="text-[10px] text-gray-600 leading-relaxed">{n}</p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (detail === "coupon") {
+    return (
+      <div className="p-3">
+        <div className="bg-white rounded-xl border p-3" style={{ borderColor: "#eef0f3" }}>
+          <input readOnly className="w-full text-[10.5px] border rounded-lg px-2 py-1.5 mb-2" style={{ borderColor: "#e6e8ee" }} placeholder={t("appDesigner.detail.coupon.ph")} />
+          <button type="button" className="w-full py-1.5 rounded-lg text-[10.5px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.detail.coupon.apply")}</button>
+        </div>
+      </div>
+    );
+  }
+  if (detail === "search") {
+    return (
+      <div className="p-3">
+        <input readOnly className="w-full text-[10.5px] border rounded-lg px-2 py-1.5 mb-2" style={{ borderColor: "#e6e8ee" }} placeholder={t("appDesigner.searchPlaceholder")} />
+        <div className="grid grid-cols-2 gap-2">
+          {(bundle?.products ?? []).slice(0, 4).map((p: BundleProduct) => (
+            <div key={p.id} className="bg-white rounded-xl border overflow-hidden" style={{ borderColor: "#eef0f3" }}>
+              <div className="h-14 bg-gray-100 flex items-center justify-center"><Icon name="package" size={18} className="text-gray-300" /></div>
+              <div className="p-1.5"><p className="text-[9px] font-bold text-gray-700 truncate">{p.name}</p><p className="text-[9px] font-extrabold" style={{ color: c.buttonColor }}>{p.discountPrice ?? p.price} {currency}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return <div className="p-6 text-center text-[10px] text-gray-400">{t("appDesigner.detail.empty")}</div>;
 }
 
 function ProductCard({ p, c, currency, badge, wide, onTap }: { p: BundleProduct; c: StoreColors; currency: string; badge?: string; wide?: boolean; onTap?: () => void }) {
@@ -948,7 +1085,7 @@ function ProductScreen({ product, bundle, c, currency, onNavigate, t, items }: a
 }
 
 // ── شاشة السلة ──
-function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
+function CartScreen({ bundle, c, currency, onNavigate, onDetail, t, items }: any) {
   const on = (k: string) => items?.[k] !== false;
   const list = (bundle?.products ?? []).slice(0, 2);
   const subtotal = list.reduce((s: number, p: BundleProduct) => s + (p.discountPrice ?? p.price), 0);
@@ -981,7 +1118,7 @@ function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
             {on("coupon") && (
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[9.5px] text-gray-500">{t("appDesigner.coupon")}</span>
-              <button type="button" onClick={() => onNavigate("cart")} className="text-[9px] font-bold px-2.5 py-1 rounded-lg border" style={{ borderColor: "#e6e8ee", color: c.buttonColor }}>{t("appDesigner.applyCoupon")}</button>
+              <button type="button" onClick={() => onDetail("coupon")} className="text-[9px] font-bold px-2.5 py-1 rounded-lg border cursor-pointer active:scale-95 transition-transform" style={{ borderColor: "#e6e8ee", color: c.buttonColor }}>{t("appDesigner.applyCoupon")}</button>
             </div>
             )}
             {on("total") && <div className="flex items-center justify-between text-[9.5px] mb-1"><span className="text-gray-500">{t("appDesigner.subtotal")}</span><span className="font-bold">{subtotal} {currency}</span></div>}
@@ -997,7 +1134,7 @@ function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
 }
 
 // ── شاشة الحساب ──
-function AccountScreen({ c, appName, onNavigate, t, items }: any) {
+function AccountScreen({ c, appName, onNavigate, onDetail, t, items }: any) {
   const on = (k: string) => items?.[k] !== false;
   const rows = [
     { icon: "package", k: "orders" },
@@ -1025,7 +1162,7 @@ function AccountScreen({ c, appName, onNavigate, t, items }: any) {
           <button
             key={r.k}
             type="button"
-            onClick={() => onNavigate(r.k === "orders" ? "tracking" : "account")}
+            onClick={() => (r.k === "orders" ? onNavigate("tracking") : onDetail(r.k))}
             className="w-full flex items-center gap-2.5 px-3 py-3 text-start cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
             style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}
           >
@@ -1088,7 +1225,7 @@ function TrackingScreen({ c, onNavigate, t, items }: any) {
 }
 
 // ── شاشة التصفّح ──
-function CatalogScreen({ bundle, c, currency, onNavigate, t, items }: any) {
+function CatalogScreen({ bundle, c, currency, onNavigate, onDetail, t, items }: any) {
   const on = (k: string) => items?.[k] !== false;
   const cats: BundleCategory[] = bundle?.categories ?? [];
   const products: BundleProduct[] = bundle?.products ?? [];
@@ -1096,7 +1233,7 @@ function CatalogScreen({ bundle, c, currency, onNavigate, t, items }: any) {
     <div className="p-3">
       <p className="text-[11px] font-extrabold text-gray-800 mb-2">{t("appDesigner.screen.catalog")}</p>
       {on("search") && (
-        <button type="button" onClick={() => onNavigate("catalog")} className="w-full flex items-center gap-2 rounded-xl bg-white border px-3 py-1.5 mb-2" style={{ borderColor: "#e6e8ee" }}>
+        <button type="button" onClick={() => onDetail("search")} className="w-full flex items-center gap-2 rounded-xl bg-white border px-3 py-1.5 mb-2 cursor-pointer active:scale-[0.99] transition-transform" style={{ borderColor: "#e6e8ee" }}>
           <Icon name="search" size={13} className="text-gray-400" />
           <span className="text-[9.5px] text-gray-400">{t("appDesigner.searchPlaceholder")}</span>
         </button>
@@ -1104,7 +1241,7 @@ function CatalogScreen({ bundle, c, currency, onNavigate, t, items }: any) {
       {on("categories") && cats.length > 0 && (
         <div className="flex gap-1.5 mb-3 overflow-x-auto pb-0.5">
           {cats.slice(0, 6).map((cat: BundleCategory) => (
-            <button key={cat.id} type="button" onClick={() => onNavigate("catalog")} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap cursor-pointer transition-transform active:scale-95" style={{ background: `${c.buttonColor}14`, color: c.buttonColor }}>{cat.name}</button>
+            <button key={cat.id} type="button" onClick={() => onDetail("search")} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap cursor-pointer transition-transform active:scale-95" style={{ background: `${c.buttonColor}14`, color: c.buttonColor }}>{cat.name}</button>
           ))}
         </div>
       )}

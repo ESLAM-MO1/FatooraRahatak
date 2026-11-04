@@ -541,12 +541,35 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         await _context.SaveChangesAsync();
     }
 
-    public Task<List<AutomatedAppNotificationDto>> GetAutomatedNotificationsAsync(long storeId)
+    public async Task<List<AutomatedAppNotificationDto>> GetAutomatedNotificationsAsync(long storeId)
     {
-        // الإشعارات المؤتمتة قوالب ثابتة تُخزَّن في DesignJson تحت المفتاح automatedNotifications.
-        // نعيد القالب الافتراضي مدموجًا مع ما خزّنه التاجر.
+        // القوالب الافتراضية، مدموجة مع ما خزّنه التاجر في DesignJson (تحت المفتاح
+        // automatedNotifications). أي قالب خزّنه التاجر يستبدل الافتراضي بنفس المفتاح.
         var defaults = DefaultAutomated();
-        return Task.FromResult(defaults);
+        try
+        {
+            var sub = await _context.StoreAppSubscriptions
+                .AsNoTracking()
+                .Where(s => s.StoreId == storeId)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+            if (sub == null) return defaults;
+
+            var stored = ReadAutomatedFromDesign(sub.DesignJson);
+            if (stored.Count == 0) return defaults;
+
+            foreach (var item in defaults)
+            {
+                if (stored.TryGetValue(item.Key, out var custom))
+                {
+                    if (!string.IsNullOrWhiteSpace(custom.Title)) item.Title = custom.Title!;
+                    if (!string.IsNullOrWhiteSpace(custom.Body)) item.Body = custom.Body!;
+                    item.Enabled = custom.Enabled;
+                }
+            }
+        }
+        catch { /* عند أي خطأ نُعيد الافتراضي */ }
+        return defaults;
     }
 
     public async Task SetAutomatedNotificationAsync(long storeId, AutomatedAppNotificationDto dto)

@@ -178,6 +178,9 @@ builder.Services.AddHostedService<SubscriptionExpiryBackgroundService>();
 builder.Services.AddHostedService<PendingPaymentReconcilerBackgroundService>();
 builder.Services.AddHostedService<SubscriptionAlertsBackgroundService>();
 builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.CustomDomainActivationBackgroundService>();
+// دورة حياة صانع التطبيقات: متابعة البناء تلقائيًا + تجميع الإحصاءات وإرسال الإشعارات المجدولة.
+builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.MobileAppBuildPollBackgroundService>();
+builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.MobileAppStatsBackgroundService>();
 builder.Services.AddScoped<IShippingProvider, SmsaShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, AramexShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, ZajilShippingProvider>();

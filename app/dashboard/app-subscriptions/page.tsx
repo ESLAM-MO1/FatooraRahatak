@@ -268,6 +268,17 @@ export default function AppSubscriptionsPage() {
   const formatMoney = (v: number) =>
     `${(v ?? 0).toLocaleString("ar-SA-u-nu-latn", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t("common.sar")}`;
 
+  // تاريخ ميلادي بصيغة YYYY/MM/DD بأرقام لاتينية (تجنّب التقويم الهجري الذي يشوّه التاريخ)
+  const formatDate = (v: string | null | undefined) => {
+    if (!v) return "—";
+    const d = new Date(v);
+    if (isNaN(d.getTime())) return "—";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}/${m}/${day}`;
+  };
+
   const canAct = (r: AppSubscription) => r.status === "Pending" || r.status === "GracePeriod";
 
   const setUrl = (id: number, patch: Partial<{ appStoreUrl: string; googlePlayUrl: string; appVersion: string }>) =>
@@ -305,6 +316,7 @@ export default function AppSubscriptionsPage() {
               <tr>
                 <th className="p-3 text-right">{t("adminMobileApp.colStore")}</th>
                 <th className="p-3 text-right">{t("adminMobileApp.colPackage")}</th>
+                <th className="p-3 text-right">{t("adminMobileApp.colAppData")}</th>
                 <th className="p-3 text-right">{t("adminMobileApp.colStatus")}</th>
                 <th className="p-3 text-right">{t("adminMobileApp.colPayment")}</th>
                 <th className="p-3 text-right">{t("adminMobileApp.colAmount")}</th>
@@ -315,7 +327,7 @@ export default function AppSubscriptionsPage() {
             <tbody>
               {items.length === 0 && (
                 <tr>
-                  <td className="p-4 text-center text-gray-500" colSpan={7}>{t("adminMobileApp.empty")}</td>
+                  <td className="p-4 text-center text-gray-500" colSpan={8}>{t("adminMobileApp.empty")}</td>
                 </tr>
               )}
               {items.map((r) => {
@@ -328,6 +340,38 @@ export default function AppSubscriptionsPage() {
                       <div className="text-xs text-gray-500" dir="ltr">{r.storeSlug}</div>
                     </td>
                     <td className="p-3">{r.packageName}</td>
+                    <td className="p-3">
+                      <div className="min-w-[200px] text-xs text-gray-600 space-y-0.5">
+                        <div>
+                          <span className="text-gray-400">{t("adminMobileApp.appName")}: </span>
+                          {r.appName || "—"}
+                        </div>
+                        <div>
+                          <span className="text-gray-400">{t("adminMobileApp.developerAccount")}: </span>
+                          {r.developerAccountType === "Platform" ? t("mobileApp.devAccountPlatform") : t("mobileApp.devAccountCompany")}
+                        </div>
+                        {r.developerAccountInfo && (
+                          <div className="break-all">
+                            <span className="text-gray-400">{t("adminMobileApp.devAccountInfo")}: </span>
+                            <span dir="ltr">{r.developerAccountInfo}</span>
+                          </div>
+                        )}
+                        {r.merchantNotes && (
+                          <div>
+                            <span className="text-gray-400">{t("adminMobileApp.merchantNotes")}: </span>
+                            {r.merchantNotes}
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-gray-400">{t("adminMobileApp.startDate")}: </span>
+                          <span dir="ltr">{formatDate(r.startDate)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">{t("adminMobileApp.endDate")}: </span>
+                          <span dir="ltr">{formatDate(r.endDate)}</span>
+                        </div>
+                      </div>
+                    </td>
                     <td className="p-3">
                       <span className={badgeClass(r.status)}>{statusLabel(r.status)}</span>
                       <div className="mt-1"><span className={publishBadgeClass(r.publishStatus)}>{publishLabel(r.publishStatus)}</span></div>
@@ -342,34 +386,9 @@ export default function AppSubscriptionsPage() {
                       </span>
                     </td>
                     <td className="p-3 font-medium" dir="ltr">{formatMoney(r.dueAmount)}</td>
-                    <td className="p-3" dir="ltr">{new Date(r.createdAt).toLocaleDateString("ar-SA-u-nu-latn")}</td>
+                    <td className="p-3" dir="ltr">{formatDate(r.createdAt)}</td>
                     <td className="p-3">
                       <div className="min-w-[260px] space-y-2">
-                        <div className="text-xs text-gray-500 space-y-0.5">
-                          {r.appName && (
-                            <div>
-                              <span className="text-gray-400">{t("adminMobileApp.appName")}: </span>
-                              {r.appName}
-                            </div>
-                          )}
-                          <div>
-                            <span className="text-gray-400">{t("adminMobileApp.developerAccount")}: </span>
-                            {r.developerAccountType === "Platform" ? t("mobileApp.devAccountPlatform") : t("mobileApp.devAccountCompany")}
-                          </div>
-                          {r.developerAccountInfo && (
-                            <div className="break-all">
-                              <span className="text-gray-400">{t("adminMobileApp.devAccountInfo")}: </span>
-                              {r.developerAccountInfo}
-                            </div>
-                          )}
-                          {r.merchantNotes && (
-                            <div>
-                              <span className="text-gray-400">{t("adminMobileApp.merchantNotes")}: </span>
-                              {r.merchantNotes}
-                            </div>
-                          )}
-                        </div>
-
                         {canAct(r) && (
                           <div className="flex flex-col gap-2">
                             <input
@@ -429,7 +448,7 @@ export default function AppSubscriptionsPage() {
                     </div>
                     <div>
                       <div className="text-xs text-gray-400 mb-1">{t("adminMobileApp.submittedAt")}</div>
-                      <div className="text-sm" dir="ltr">{r.submittedAt ? new Date(r.submittedAt).toLocaleDateString("ar-SA-u-nu-latn") : "—"}</div>
+                      <div className="text-sm" dir="ltr">{formatDate(r.submittedAt)}</div>
                     </div>
                   </div>
 

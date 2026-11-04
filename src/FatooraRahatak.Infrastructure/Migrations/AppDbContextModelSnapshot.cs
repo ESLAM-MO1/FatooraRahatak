@@ -2227,6 +2227,119 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.ToTable("Packages");
                 });
 
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AutomatedKey")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("CreatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("OpensCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecipientsCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ScheduledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("StoreAppNotifications");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppStat", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Installs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NewCustomers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Orders")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Revenue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Sessions")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StatDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("StoreId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Uninstalls")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
+
+                    b.ToTable("StoreAppStats");
+                });
+
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppSubscription", b =>
                 {
                     b.Property<long>("Id")
@@ -2239,9 +2352,17 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("AdminReviewNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("AppName")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("AppStoreUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("AutoRenew")
                         .HasColumnType("bit");
@@ -2255,6 +2376,13 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CurrentAppVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("DesignJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("DeveloperAccountInfo")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -2264,6 +2392,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int>("DownloadCount")
+                        .HasColumnType("int");
+
                     b.Property<decimal>("DueAmount")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
@@ -2271,8 +2402,43 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("GooglePlayUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<long?>("HandledByUserId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("ListingCategory")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ListingDescription")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("ListingIconUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ListingKeywords")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ListingPrivacyUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ListingScreenshotsJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ListingShortDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ListingSupportEmail")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("MerchantNotes")
                         .HasMaxLength(1000)
@@ -2285,6 +2451,17 @@ namespace FatooraRahatak.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("PublishStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SalesCount")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("datetime2");
 
@@ -2293,6 +2470,9 @@ namespace FatooraRahatak.Infrastructure.Migrations
 
                     b.Property<long>("StoreId")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -6440,6 +6620,28 @@ namespace FatooraRahatak.Infrastructure.Migrations
                     b.Navigation("OrderItem");
 
                     b.Navigation("ReturnRequest");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppNotification", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Stores.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
+                });
+
+            modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppStat", b =>
+                {
+                    b.HasOne("FatooraRahatak.Domain.Entities.Stores.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
                 });
 
             modelBuilder.Entity("FatooraRahatak.Domain.Entities.Packages.StoreAppSubscription", b =>

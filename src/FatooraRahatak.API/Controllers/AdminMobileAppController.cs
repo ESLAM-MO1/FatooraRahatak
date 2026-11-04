@@ -6,7 +6,7 @@ using FatooraRahatak.Application.Interfaces;
 
 namespace FatooraRahatak.API.Controllers;
 
-// واجهات إدارة طلبات "صناعة تطبيقات الجوال" (SuperAdmin أو SupportStaff بدور Admin/Technical).
+// واجهات إدارة "صانع تطبيقات الجوال" (SuperAdmin أو SupportStaff بدور Admin/Technical).
 [ApiController]
 [Route("api/v1/admin/app-subscriptions")]
 [Authorize]
@@ -46,6 +46,16 @@ public class AdminMobileAppController : ControllerBase
         return Ok(new { success = true, data });
     }
 
+    // طلبات النشر المعلّقة (بانتظار مراجعة الفريق).
+    [HttpGet("pending-publish")]
+    public async Task<IActionResult> GetPendingPublish()
+    {
+        var forbidden = CheckAccess();
+        if (forbidden != null) return forbidden;
+        var data = await _service.GetPendingPublishAsync();
+        return Ok(new { success = true, data });
+    }
+
     [HttpPost("{id}/complete")]
     public async Task<IActionResult> Complete(long id, [FromBody] UpdateMobileAppSubscriptionDto dto)
     {
@@ -71,6 +81,55 @@ public class AdminMobileAppController : ControllerBase
         {
             var data = await _service.RejectAsync(id, GetCurrentUserId(), dto);
             return Ok(new { success = true, data, message = "تم رفض الطلب" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    // ── مراجعة طلبات النشر ──
+    [HttpPost("{id}/start-review")]
+    public async Task<IActionResult> StartReview(long id)
+    {
+        var forbidden = CheckAccess();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _service.StartReviewAsync(id, GetCurrentUserId());
+            return Ok(new { success = true, data, message = "بدأت مراجعة الطلب" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/publish")]
+    public async Task<IActionResult> Publish(long id, [FromBody] ReviewMobileAppPublishDto dto)
+    {
+        var forbidden = CheckAccess();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _service.PublishAsync(id, GetCurrentUserId(), dto);
+            return Ok(new { success = true, data, message = "تم نشر التطبيق" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { success = false, message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/reject-publish")]
+    public async Task<IActionResult> RejectPublish(long id, [FromBody] ReviewMobileAppPublishDto dto)
+    {
+        var forbidden = CheckAccess();
+        if (forbidden != null) return forbidden;
+        try
+        {
+            var data = await _service.RejectPublishAsync(id, GetCurrentUserId(), dto);
+            return Ok(new { success = true, data, message = "تم رفض طلب النشر" });
         }
         catch (InvalidOperationException ex)
         {

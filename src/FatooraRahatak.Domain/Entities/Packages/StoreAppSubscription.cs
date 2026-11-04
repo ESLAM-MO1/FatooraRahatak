@@ -8,6 +8,10 @@ namespace FatooraRahatak.Domain.Entities.Packages;
 // اشتراك المتجر في خدمة "صناعة تطبيقات الجوال".
 // يماثل نموذج Subscription القائم: يُنشأ بحالة Pending مع مبلغ DueAmount،
 // ثم يُفعَّل عند نجاح الدفع عبر مسار الدفع الإلكتروني نفسه (Moyasar).
+//
+// بعد الدفع يمرّ الطلب بمراحل النشر نفسها التي يمرّ بها صانع تطبيقات سلة:
+//   DesignConfirmed (صمّم) → Subscribed (اشترك) → Submitted (أطلق → قيد مراجعة الفريق)
+//   → InReview (مراجعة فريق المنصة) → Published (منشور) / Rejected (مرفوض).
 public class StoreAppSubscription : BaseEntity
 {
     public long StoreId { get; set; }
@@ -22,7 +26,7 @@ public class StoreAppSubscription : BaseEntity
     public bool AutoRenew { get; set; } = true;
 
     // نوع حساب المطوّر الذي سيُنشر عليه التطبيق: "Company" (حساب شركة موجود لدى التاجر)
-    // أو "Platform" (تتولّى المنصة إنشاء الحساب).
+    // أو "Platform" (تتولّى المنصة إنشاء الحساب مقابل رسوم إضافية، مثل سلة).
     [MaxLength(50)]
     public string DeveloperAccountType { get; set; } = "Company";
 
@@ -44,6 +48,59 @@ public class StoreAppSubscription : BaseEntity
 
     public DateTime? CompletedAt { get; set; }
     public long? HandledByUserId { get; set; }
+
+    // ── مرحلة التصميم (صمّم) ──
+    // إعدادات تصميم التطبيق (الأقسام، الألوان، الترتيب…) بصيغة JSON،
+    // متوافقة مع قالب التطبيق الأصلي وتُعدَّل لاحقًا من لوحة تحكم المتجر.
+    public string? DesignJson { get; set; }
+
+    // ── مرحلة الإطلاق (أطلق) ──
+    // حالة النشر: Draft / Submitted / InReview / Published / Rejected.
+    [MaxLength(20)]
+    public string PublishStatus { get; set; } = "Draft";
+
+    [MaxLength(500)]
+    public string? AdminReviewNote { get; set; }
+
+    [MaxLength(1000)]
+    public string? ListingShortDescription { get; set; }
+
+    [MaxLength(4000)]
+    public string? ListingDescription { get; set; }
+
+    [MaxLength(200)]
+    public string? ListingKeywords { get; set; }
+
+    [MaxLength(100)]
+    public string? ListingCategory { get; set; }
+
+    [MaxLength(500)]
+    public string? ListingIconUrl { get; set; }
+
+    // لقطات شاشة التطبيق، بصيغة JSON مصفوفة روابط.
+    public string? ListingScreenshotsJson { get; set; }
+
+    [MaxLength(500)]
+    public string? ListingSupportEmail { get; set; }
+
+    [MaxLength(500)]
+    public string? ListingPrivacyUrl { get; set; }
+
+    public DateTime? SubmittedAt { get; set; }
+    public DateTime? PublishedAt { get; set; }
+
+    [MaxLength(500)]
+    public string? AppStoreUrl { get; set; }
+
+    [MaxLength(500)]
+    public string? GooglePlayUrl { get; set; }
+
+    // نسخة التطبيق الحالية، تُزاد عند كل تحديث يُنشر.
+    [MaxLength(40)]
+    public string? CurrentAppVersion { get; set; }
+
+    public int DownloadCount { get; set; }
+    public int SalesCount { get; set; }
 
     public Store Store { get; set; } = null!;
     public Package Package { get; set; } = null!;

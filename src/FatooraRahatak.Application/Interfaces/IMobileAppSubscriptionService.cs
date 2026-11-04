@@ -18,6 +18,25 @@ public interface IMobileAppSubscriptionService
     // إلغاء الاشتراك (لا يمسّ اشتراك المنصة).
     Task CancelAsync(long storeId);
 
+    // ── مرحلة التصميم (صمّم) ──
+    // حفظ تصميم التطبيق القادم من مصمّم السحب والإفلات.
+    Task<MobileAppSubscriptionDto> SaveDesignAsync(long storeId, long userId, SaveMobileAppDesignDto dto);
+
+    // ── مرحلة الإطلاق (أطلق) ──
+    // إرسال التطبيق للإطلاق ليدخل مراجعة فريق المنصة.
+    Task<MobileAppSubscriptionDto> SubmitForPublishAsync(long storeId, long userId, SubmitMobileAppPublishDto dto);
+
+    // ── الإشعارات ──
+    Task<List<AppNotificationDto>> GetNotificationsAsync(long storeId);
+    Task<AppNotificationDto> SendNotificationAsync(long storeId, long userId, SendAppNotificationDto dto);
+    Task CancelNotificationAsync(long storeId, long notificationId);
+    Task<List<AutomatedAppNotificationDto>> GetAutomatedNotificationsAsync(long storeId);
+    Task SetAutomatedNotificationAsync(long storeId, AutomatedAppNotificationDto dto);
+
+    // ── الإحصاءات ──
+    Task<AppAnalyticsDto> GetAnalyticsAsync(long storeId, int days);
+
+    // ── الإدارة ──
     // قائمة إدارية بكل طلبات واشتراكات التطبيقات.
     Task<List<AdminMobileAppSubscriptionDto>> GetAllAsync(string? status);
 
@@ -26,4 +45,10 @@ public interface IMobileAppSubscriptionService
 
     // رفض الطلب من الأدمن.
     Task<AdminMobileAppSubscriptionDto> RejectAsync(long id, long adminUserId, UpdateMobileAppSubscriptionDto dto);
+
+    // ── مراجعة طلبات النشر من فريق المنصة ──
+    Task<List<AdminMobileAppSubscriptionDto>> GetPendingPublishAsync();
+    Task<AdminMobileAppSubscriptionDto> StartReviewAsync(long id, long adminUserId);
+    Task<AdminMobileAppSubscriptionDto> PublishAsync(long id, long adminUserId, ReviewMobileAppPublishDto dto);
+    Task<AdminMobileAppSubscriptionDto> RejectPublishAsync(long id, long adminUserId, ReviewMobileAppPublishDto dto);
 }

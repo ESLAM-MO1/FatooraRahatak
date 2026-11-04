@@ -117,6 +117,8 @@ public class AppDbContext : DbContext
     public DbSet<DomainBlacklistEntry> DomainBlacklistEntries => Set<DomainBlacklistEntry>();
     public DbSet<DomainPurchaseRequest> DomainPurchaseRequests => Set<DomainPurchaseRequest>();
     public DbSet<StoreAppSubscription> StoreAppSubscriptions => Set<StoreAppSubscription>();
+    public DbSet<StoreAppNotification> StoreAppNotifications => Set<StoreAppNotification>();
+    public DbSet<StoreAppStat> StoreAppStats => Set<StoreAppStat>();
     public DbSet<Theme> Themes => Set<Theme>();
     public DbSet<SiteMenu> SiteMenus => Set<SiteMenu>();
     public DbSet<DashboardSection> DashboardSections => Set<DashboardSection>();
@@ -305,6 +307,22 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<StoreAppSubscription>()
             .Property(s => s.DueAmount)
             .HasPrecision(10, 2);
+
+        modelBuilder.Entity<StoreAppNotification>()
+            .HasOne(n => n.Store)
+            .WithMany()
+            .HasForeignKey(n => n.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreAppStat>()
+            .HasOne(s => s.Store)
+            .WithMany()
+            .HasForeignKey(s => s.StoreId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StoreAppStat>()
+            .Property(s => s.Revenue)
+            .HasPrecision(18, 2);
 
         modelBuilder.Entity<Payment>()
             .HasOne(p => p.AppSubscription)

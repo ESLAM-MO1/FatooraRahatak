@@ -7,6 +7,12 @@ import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import Can from "@/components/Can";
 import { formatMoney } from "@/lib/formatNumber";
+import AppDesigner, {
+  type AppDesign,
+  parseDesign,
+  serializeDesign,
+  DEFAULT_DESIGN,
+} from "@/components/AppDesigner";
 
 // ── Moyasar Payment Form (in-page) ── تُحمَّل من CDN مرة واحدة وتُحقن داخل المودال
 const MOYASAR_JS_URL = "https://cdn.jsdelivr.net/npm/moyasar-payment-form@2.3.0/dist/moyasar.umd.min.js";
@@ -68,9 +74,53 @@ interface MobileAppStatus {
   daysRemaining: number | null;
   completedAt: string | null;
   createdAt: string | null;
+  publishStatus: string;
+  adminReviewNote: string | null;
+  currentStep: string;
+  designJson: string | null;
+  listingShortDescription: string | null;
+  listingDescription: string | null;
+  listingKeywords: string | null;
+  listingCategory: string | null;
+  listingIconUrl: string | null;
+  listingScreenshots: string[];
+  listingSupportEmail: string | null;
+  listingPrivacyUrl: string | null;
+  submittedAt: string | null;
+  publishedAt: string | null;
+  appStoreUrl: string | null;
+  googlePlayUrl: string | null;
+  currentAppVersion: string | null;
+  downloadCount: number;
+  salesCount: number;
+}
+
+interface AppNotification {
+  id: number;
+  title: string;
+  body: string;
+  kind: string;
+  imageUrl: string | null;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  status: string;
+  recipientsCount: number;
+  opensCount: number;
+  createdAt: string;
+}
+
+interface Analytics {
+  totalInstalls: number;
+  totalSessions: number;
+  totalOrders: number;
+  totalRevenue: number;
+  totalNewCustomers: number;
+  downloadCount: number;
+  salesCount: number;
 }
 
 type BillingCycle = "Monthly" | "Yearly";
+type StepId = "design" | "subscribe" | "launch";
 
 export default function MobileAppManager() {
   const { t } = useTranslation();
@@ -78,6 +128,12 @@ export default function MobileAppManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [activeStep, setActiveStep] = useState<StepId>("design");
+
+  const [design, setDesign] = useState<AppDesign>(DEFAULT_DESIGN);
+  const [products, setProducts] = useState<{ name: string; price: number; imageUrl?: string | null }[]>([]);
+  const [storeName, setStoreName] = useState("");
+  const [savingDesign, setSavingDesign] = useState(false);
 
   // نموذج الاشتراك
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("Monthly");
@@ -87,6 +143,17 @@ export default function MobileAppManager() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  // نموذج الإطلاق
+  const [shortDesc, setShortDesc] = useState("");
+  const [longDesc, setLongDesc] = useState("");
+  const [keywords, setKeywords] = useState("");
+  const [category, setCategory] = useState("");
+  const [iconUrl, setIconUrl] = useState("");
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [supportEmail, setSupportEmail] = useState("");
+  const [privacyUrl, setPrivacyUrl] = useState("");
+  const [publishing, setPublishing] = useState(false);
 
   // الدفع
   const [showPayModal, setShowPayModal] = useState(false);
@@ -98,6 +165,11 @@ export default function MobileAppManager() {
   const [confirming, setConfirming] = useState(false);
   const paidHandledRef = useRef(false);
 
+  // لوحات فرعية
+  const [panel, setPanel] = useState<"none" | "notifications" | "analytics">("none");
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -108,6 +180,17 @@ export default function MobileAppManager() {
       if (d.developerAccountType === "Platform" || d.developerAccountType === "Company") {
         setDevAccountType(d.developerAccountType);
       }
+      setDesign(parseDesign(d.designJson, d.appName));
+      setAppName(d.appName || "");
+      setShortDesc(d.listingShortDescription || "");
+      setLongDesc(d.listingDescription || "");
+      setKeywords(d.listingKeywords || "");
+      setCategory(d.listingCategory || "");
+      setIconUrl(d.listingIconUrl || "");
+      setScreenshots(d.listingScreenshots || []);
+      setSupportEmail(d.listingSupportEmail || "");
+      setPrivacyUrl(d.listingPrivacyUrl || "");
+      setActiveStep((d.currentStep as StepId) || "design");
     } catch {
       setError(t("mobileApp.loadError"));
     } finally {
@@ -115,8 +198,28 @@ export default function MobileAppManager() {
     }
   };
 
+  const loadStoreInfo = async () => {
+    try {
+      const res = await api.get("/store-settings");
+      const d = res.data?.data ?? res.data;
+      if (d?.storeName) setStoreName(d.storeName);
+    } catch { /* تجاهل */ }
+    try {
+      const p = await api.get("/products", { params: { page: 1, pageSize: 6 } });
+      const items = p.data?.data?.items ?? p.data?.items ?? [];
+      setProducts(
+        (Array.isArray(items) ? items : []).slice(0, 6).map((x: any) => ({
+          name: x.name || x.productName || "",
+          price: x.price ?? x.salePrice ?? 0,
+          imageUrl: x.mainImageUrl || x.imageUrl || null,
+        }))
+      );
+    } catch { /* تجاهل */ }
+  };
+
   useEffect(() => {
     load();
+    loadStoreInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -173,7 +276,6 @@ export default function MobileAppManager() {
     setFormReady(false);
   };
 
-  // تحميل فورم ميستر وتشغيله داخل المودال بمجرد إنشاء الفاتورة
   useEffect(() => {
     if (!payForm) return;
     let disposed = false;
@@ -228,13 +330,10 @@ export default function MobileAppManager() {
         }
       }
     })();
-    return () => {
-      disposed = true;
-    };
+    return () => { disposed = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payForm]);
 
-  // بعد الرجوع من صفحة الدفع، نتحقق من النتيجة
   useEffect(() => {
     const ref = sessionStorage.getItem("app_payment_ref");
     if (!ref) return;
@@ -245,36 +344,38 @@ export default function MobileAppManager() {
       try {
         const res = await api.get(`/payments/status/${ref}`);
         const st = res.data?.data?.status;
-        if (st === "Paid") {
-          clearInterval(timer);
-          setSuccess(t("mobileApp.paymentSuccess"));
-          load();
-          return;
-        }
-        if (st === "Failed") {
-          clearInterval(timer);
-          setError(t("mobileApp.paymentError"));
-          load();
-          return;
-        }
+        if (st === "Paid") { clearInterval(timer); setSuccess(t("mobileApp.paymentSuccess")); load(); return; }
+        if (st === "Failed") { clearInterval(timer); setError(t("mobileApp.paymentError")); load(); return; }
         tries += 1;
-        if (tries >= maxTries) {
-          clearInterval(timer);
-          setError(t("mobileApp.paymentStatusUnknown"));
-          load();
-        }
+        if (tries >= maxTries) { clearInterval(timer); setError(t("mobileApp.paymentStatusUnknown")); load(); }
       } catch {
         tries += 1;
-        if (tries >= maxTries) {
-          clearInterval(timer);
-          setError(t("mobileApp.paymentStatusUnknown"));
-          load();
-        }
+        if (tries >= maxTries) { clearInterval(timer); setError(t("mobileApp.paymentStatusUnknown")); load(); }
       }
     }, 3000);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleSaveDesign = async (silent = false) => {
+    if (!status?.id) return;
+    setError("");
+    if (!silent) setSuccess("");
+    setSavingDesign(true);
+    try {
+      const res = await api.post("/mobile-app/design", {
+        designJson: serializeDesign({ ...design, appName }),
+        appName: appName.trim() || null,
+      });
+      const d = res.data.data as MobileAppStatus;
+      setStatus(d);
+      if (!silent) setSuccess(t("appDesigner.saved"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("mobileApp.loadError"));
+    } finally {
+      setSavingDesign(false);
+    }
+  };
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,9 +383,11 @@ export default function MobileAppManager() {
     setSuccess("");
     setSubmitting(true);
     try {
+      // نحفظ التصميم أولًا إن كان الاشتراك قائمًا
+      if (status?.id) await handleSaveDesign(true);
       const res = await api.post("/mobile-app/subscribe", {
         billingCycle,
-        appName: appName.trim() || null,
+        appName: (design.appName || appName).trim() || null,
         developerAccountType: devAccountType,
         developerAccountInfo: devAccountInfo.trim() || null,
         merchantNotes: notes.trim() || null,
@@ -316,6 +419,49 @@ export default function MobileAppManager() {
     }
   };
 
+  const handlePublish = async () => {
+    setError("");
+    setSuccess("");
+    setPublishing(true);
+    try {
+      await handleSaveDesign(true);
+      const res = await api.post("/mobile-app/publish", {
+        appName: (design.appName || appName).trim() || null,
+        listingShortDescription: shortDesc.trim() || null,
+        listingDescription: longDesc.trim() || null,
+        listingKeywords: keywords.trim() || null,
+        listingCategory: category.trim() || null,
+        listingIconUrl: iconUrl.trim() || null,
+        listingScreenshots: screenshots.filter((s) => s.trim()),
+        listingSupportEmail: supportEmail.trim() || null,
+        listingPrivacyUrl: privacyUrl.trim() || null,
+      });
+      const d = res.data.data as MobileAppStatus;
+      setStatus(d);
+      setSuccess(res.data.message || t("mobileApp.publishSubmitted"));
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("mobileApp.loadError"));
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const openNotifications = async () => {
+    setPanel("notifications");
+    try {
+      const res = await api.get("/mobile-app/notifications");
+      setNotifications(res.data.data || []);
+    } catch { setNotifications([]); }
+  };
+
+  const openAnalytics = async () => {
+    setPanel("analytics");
+    try {
+      const res = await api.get("/mobile-app/analytics", { params: { days: 30 } });
+      setAnalytics(res.data.data || null);
+    } catch { setAnalytics(null); }
+  };
+
   const statusLabel = (s: string) => {
     switch (s) {
       case "Pending": return t("mobileApp.statusPending");
@@ -335,6 +481,16 @@ export default function MobileAppManager() {
       case "Cancelled": return "badge badge--red";
       case "Expired": return "badge badge--gray";
       default: return "badge badge--gray";
+    }
+  };
+
+  const publishBadge = (s: string) => {
+    switch (s) {
+      case "Published": return { cls: "badge badge--green", key: "mobileApp.pubPublished" };
+      case "Submitted": return { cls: "badge badge--yellow", key: "mobileApp.pubSubmitted" };
+      case "InReview": return { cls: "badge badge--yellow", key: "mobileApp.pubInReview" };
+      case "Rejected": return { cls: "badge badge--red", key: "mobileApp.pubRejected" };
+      default: return { cls: "badge badge--gray", key: "mobileApp.pubDraft" };
     }
   };
 
@@ -376,6 +532,14 @@ export default function MobileAppManager() {
 
   const isActive = status?.status === "Active";
   const isPending = status?.status === "Pending";
+  const hasSubscription = !!status?.id;
+  const publish = publishBadge(status?.publishStatus || "Draft");
+
+  const steps: { id: StepId; labelKey: string; icon: string; done: boolean }[] = [
+    { id: "design", labelKey: "mobileApp.stepDesign", icon: "edit", done: !!status?.designJson },
+    { id: "subscribe", labelKey: "mobileApp.stepSubscribe", icon: "card", done: isActive },
+    { id: "launch", labelKey: "mobileApp.stepLaunch", icon: "download", done: status?.publishStatus === "Published" },
+  ];
 
   return (
     <div>
@@ -392,11 +556,17 @@ export default function MobileAppManager() {
         </div>
       )}
 
-      {/* الحالة الحالية */}
-      <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-5 py-4 mb-5 border border-gray-100 flex-wrap gap-3">
+      {/* ── شريط الحالة + الأزرار الفرعية ── */}
+      <div className="flex items-center justify-between bg-gray-50 rounded-2xl px-5 py-4 mb-4 border border-gray-100 flex-wrap gap-3">
         <div className="min-w-0">
           <p className="text-[12px] text-[var(--sub)] mb-1">{t("mobileApp.currentStatus")}</p>
-          <span className={statusBadge(status?.status || "None")}>{statusLabel(status?.status || "None")}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={statusBadge(status?.status || "None")}>{statusLabel(status?.status || "None")}</span>
+            {hasSubscription && <span className={publish.cls}>{t(publish.key)}</span>}
+            {hasSubscription && status?.currentAppVersion && (
+              <span className="badge badge--gray">v{status.currentAppVersion}</span>
+            )}
+          </div>
         </div>
         <div className="text-end">
           <p className="text-[12px] text-[var(--sub)] mb-1">
@@ -410,160 +580,139 @@ export default function MobileAppManager() {
         </div>
       </div>
 
-      {/* تفاصيل الاشتراك القائم */}
-      {status?.id && (
-        <div className="rounded-2xl border p-5 mb-5" style={{ borderColor: "var(--border)" }}>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-[12.5px]">
-            <div>
-              <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.billingCycle")}</p>
-              <p className="font-bold text-[var(--ink)]">{cycleLabel(status.billingCycle)}</p>
-            </div>
-            <div>
-              <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.dueAmount")}</p>
-              <p className="font-bold text-[var(--ink)]">{formatMoney(status.dueAmount)}</p>
-            </div>
-            <div>
-              <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.startDate")}</p>
-              <p className="font-bold text-[var(--ink)]">{formatDate(status.startDate)}</p>
-            </div>
-            <div>
-              <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.endDate")}</p>
-              <p className="font-bold text-[var(--ink)]">{formatDate(status.endDate)}</p>
-            </div>
-            {status.appName && (
-              <div className="col-span-2">
-                <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.appName")}</p>
-                <p className="font-bold text-[var(--ink)]">{status.appName}</p>
-              </div>
-            )}
-            {status.adminNote && (
-              <div className="col-span-2 sm:col-span-3">
-                <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.adminNote")}</p>
-                <p className="text-[var(--ink)]">{status.adminNote}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-3 mt-5">
-            {isPending && status.id && (
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => openPaymentModal(status.id as number, status.dueAmount)}
-              >
-                {t("mobileApp.payNow")}
-              </button>
-            )}
-            {(isActive || isPending) && (
-              <Can code="StoreSettings.Edit">
-                <button type="button" className="btn btn-sm" disabled={cancelling} onClick={handleCancel}>
-                  {cancelling ? t("mobileApp.cancelling") : t("mobileApp.cancelSubscription")}
-                </button>
-              </Can>
-            )}
-          </div>
+      {/* زر إدارة/إلغاء + الإشعارات والإحصاءات */}
+      {hasSubscription && isActive && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button type="button" onClick={openNotifications} className={`btn btn-sm ${panel === "notifications" ? "btn-primary" : ""}`}>
+            <Icon name="bell" size={14} /> {t("mobileApp.notificationsBtn")}
+          </button>
+          <button type="button" onClick={openAnalytics} className={`btn btn-sm ${panel === "analytics" ? "btn-primary" : ""}`}>
+            <Icon name="chart" size={14} /> {t("mobileApp.analyticsBtn")}
+          </button>
+          <button type="button" onClick={() => setPanel("none")} className={`btn btn-sm ${panel === "none" ? "btn-primary" : ""}`}>
+            <Icon name="layers" size={14} /> {t("mobileApp.manageBtn")}
+          </button>
+          <Can code="StoreSettings.Edit">
+            <button type="button" className="btn btn-sm ms-auto" disabled={cancelling} onClick={handleCancel}>
+              {cancelling ? t("mobileApp.cancelling") : t("mobileApp.cancelSubscription")}
+            </button>
+          </Can>
         </div>
       )}
 
-      {/* نموذج الاشتراك الجديد */}
-      {!status?.id && (
-        <div className="rounded-2xl border p-5 mb-5" style={{ borderColor: "var(--border)" }}>
-          <p className="text-[13px] font-extrabold text-[var(--ink)] mb-4">{t("mobileApp.includedFeatures")}</p>
-          <FeatureList t={t} />
+      {/* لوحة الإشعارات */}
+      {panel === "notifications" && <NotificationsPanel notifications={notifications} reload={openNotifications} setError={setError} setSuccess={setSuccess} />}
 
-          <form onSubmit={handleSubscribe} className="space-y-4 mt-6 border-t border-gray-100 pt-5">
-            <div>
-              <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.billingCycle")}</label>
-              <div className="flex gap-3">
-                {(["Monthly", "Yearly"] as BillingCycle[]).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setBillingCycle(c)}
-                    className={`flex-1 rounded-xl border-2 p-3 text-center transition-colors ${
-                      billingCycle === c ? "border-[var(--blue)] bg-[var(--blue-50)]" : "border-gray-200"
-                    }`}
+      {/* لوحة الإحصاءات */}
+      {panel === "analytics" && <AnalyticsPanel analytics={analytics} downloadCount={status?.downloadCount || 0} salesCount={status?.salesCount || 0} />}
+
+      {panel === "none" && (
+        <>
+          {/* ── خطوات صانع التطبيقات ── */}
+          <div className="flex items-center gap-1 mb-5">
+            {steps.map((s, i) => (
+              <div key={s.id} className="flex items-center flex-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveStep(s.id)}
+                  className="flex items-center gap-2 flex-1 min-w-0"
+                >
+                  <span
+                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[12px] font-bold"
+                    style={{
+                      background: activeStep === s.id ? "var(--blue)" : s.done ? "var(--green-soft, #e4f9f0)" : "var(--bg, #eef1f5)",
+                      color: activeStep === s.id ? "#fff" : s.done ? "var(--green)" : "var(--sub)",
+                    }}
                   >
-                    <span className="block text-[13px] font-bold text-[var(--ink)]">
-                      {c === "Yearly" ? t("mobileApp.billingYearly") : t("mobileApp.billingMonthly")}
-                    </span>
-                    <span className="block text-[12px] text-[var(--sub)] mt-0.5">
-                      {formatMoney(c === "Yearly" ? (status?.yearlyPrice || 0) : (status?.monthlyPrice || 0))}
-                    </span>
+                    {s.done ? <Icon name="check" size={14} /> : i + 1}
+                  </span>
+                  <span className={`text-[12.5px] font-bold truncate ${activeStep === s.id ? "text-[var(--ink)]" : "text-[var(--sub)]"}`}>
+                    {t(s.labelKey)}
+                  </span>
+                </button>
+                {i < steps.length - 1 && <span className="w-4 h-px bg-gray-300 mx-1 shrink-0" />}
+              </div>
+            ))}
+          </div>
+
+          {/* ── الخطوة 1: صمّم ── */}
+          {activeStep === "design" && (
+            <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+              {!hasSubscription && (
+                <div className="alert alert--info mb-4">
+                  <Icon name="alert" size={16} className="shrink-0 mt-0.5" />
+                  <span>{t("mobileApp.designBeforeSubscribe")}</span>
+                </div>
+              )}
+              <AppDesigner design={{ ...design, appName }} onChange={setDesign} products={products} storeName={storeName} />
+              {hasSubscription && (
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Can code="StoreSettings.Edit">
+                    <button type="button" className="btn btn-primary" disabled={savingDesign} onClick={() => handleSaveDesign(false)}>
+                      {savingDesign ? t("mobileApp.saving") : t("mobileApp.saveDesign")}
+                    </button>
+                  </Can>
+                  {isActive && <SaveAndPublishHint onGo={() => setActiveStep("launch")} label={t("mobileApp.goToLaunch")} />}
+                </div>
+              )}
+              {!hasSubscription && (
+                <div className="mt-5">
+                  <button type="button" className="btn btn-primary" onClick={() => setActiveStep("subscribe")}>
+                    {t("mobileApp.nextSubscribe")}
                   </button>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
+          )}
 
-            <div>
-              <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.appName")}</label>
-              <div className="field-shell">
-                <input
-                  type="text"
-                  value={appName}
-                  onChange={(e) => setAppName(e.target.value)}
-                  maxLength={200}
-                  placeholder={t("mobileApp.appNamePlaceholder")}
-                />
-              </div>
-            </div>
+          {/* ── الخطوة 2: اشترك ── */}
+          {activeStep === "subscribe" && (
+            <SubscribeStep
+              t={t}
+              status={status}
+              isActive={isActive}
+              isPending={isPending}
+              hasSubscription={hasSubscription}
+              billingCycle={billingCycle}
+              setBillingCycle={setBillingCycle}
+              devAccountType={devAccountType}
+              setDevAccountType={setDevAccountType}
+              devAccountInfo={devAccountInfo}
+              setDevAccountInfo={setDevAccountInfo}
+              notes={notes}
+              setNotes={setNotes}
+              submitting={submitting}
+              onSubmit={handleSubscribe}
+              onPayNow={() => status?.id && openPaymentModal(status.id, status.dueAmount)}
+              onGoLaunch={() => setActiveStep("launch")}
+              onGoDesign={() => setActiveStep("design")}
+              formatDate={formatDate}
+              cycleLabel={cycleLabel}
+            />
+          )}
 
-            <div>
-              <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.developerAccount")}</label>
-              <div className="space-y-2">
-                {(["Company", "Platform"] as const).map((opt) => (
-                  <label key={opt} className="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" style={{ borderColor: devAccountType === opt ? "var(--blue)" : "var(--border)" }}>
-                    <input
-                      type="radio"
-                      name="devAccountType"
-                      checked={devAccountType === opt}
-                      onChange={() => setDevAccountType(opt)}
-                      className="mt-0.5 accent-[var(--blue)]"
-                    />
-                    <span className="text-[12.5px] text-[var(--ink)]">
-                      {opt === "Platform" ? t("mobileApp.devAccountPlatform") : t("mobileApp.devAccountCompany")}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.devAccountInfo")}</label>
-              <div className="field-shell">
-                <input
-                  type="text"
-                  value={devAccountInfo}
-                  onChange={(e) => setDevAccountInfo(e.target.value)}
-                  maxLength={1000}
-                  placeholder={t("mobileApp.devAccountInfoPlaceholder")}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.notes")}</label>
-              <div className="field-shell">
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  maxLength={1000}
-                  placeholder={t("mobileApp.notesPlaceholder")}
-                />
-              </div>
-            </div>
-
-            <div className="alert alert--info">
-              <Icon name="alert" size={16} className="shrink-0 mt-0.5" />
-              <span>{t("mobileApp.devFeesNote")}</span>
-            </div>
-
-            <button type="submit" disabled={submitting} className="btn btn-primary w-full sm:w-auto">
-              {submitting ? t("mobileApp.subscribing") : t("mobileApp.subscribe")}
-            </button>
-          </form>
-        </div>
+          {/* ── الخطوة 3: أطلق ── */}
+          {activeStep === "launch" && (
+            <LaunchStep
+              t={t}
+              status={status}
+              isActive={isActive}
+              hasSubscription={hasSubscription}
+              shortDesc={shortDesc} setShortDesc={setShortDesc}
+              longDesc={longDesc} setLongDesc={setLongDesc}
+              keywords={keywords} setKeywords={setKeywords}
+              category={category} setCategory={setCategory}
+              iconUrl={iconUrl} setIconUrl={setIconUrl}
+              screenshots={screenshots} setScreenshots={setScreenshots}
+              supportEmail={supportEmail} setSupportEmail={setSupportEmail}
+              privacyUrl={privacyUrl} setPrivacyUrl={setPrivacyUrl}
+              publishing={publishing}
+              onPublish={handlePublish}
+              onGoSubscribe={() => setActiveStep("subscribe")}
+              formatDate={formatDate}
+            />
+          )}
+        </>
       )}
 
       {/* مودال الدفع */}
@@ -626,6 +775,465 @@ export default function MobileAppManager() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── الخطوة 2: اشترك ──
+function SubscribeStep(props: any) {
+  const {
+    t, status, isActive, isPending, hasSubscription,
+    billingCycle, setBillingCycle, devAccountType, setDevAccountType,
+    devAccountInfo, setDevAccountInfo, notes, setNotes, submitting, onSubmit,
+    onPayNow, onGoLaunch, onGoDesign, formatDate, cycleLabel,
+  } = props;
+
+  if (hasSubscription) {
+    return (
+      <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-[12.5px]">
+          <div>
+            <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.billingCycle")}</p>
+            <p className="font-bold text-[var(--ink)]">{cycleLabel(status.billingCycle)}</p>
+          </div>
+          <div>
+            <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.dueAmount")}</p>
+            <p className="font-bold text-[var(--ink)]">{formatMoney(status.dueAmount)}</p>
+          </div>
+          <div>
+            <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.startDate")}</p>
+            <p className="font-bold text-[var(--ink)]">{formatDate(status.startDate)}</p>
+          </div>
+          <div>
+            <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.endDate")}</p>
+            <p className="font-bold text-[var(--ink)]">{formatDate(status.endDate)}</p>
+          </div>
+          {status.appName && (
+            <div className="col-span-2">
+              <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.appName")}</p>
+              <p className="font-bold text-[var(--ink)]">{status.appName}</p>
+            </div>
+          )}
+          {status.adminNote && (
+            <div className="col-span-2 sm:col-span-3">
+              <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.adminNote")}</p>
+              <p className="text-[var(--ink)]">{status.adminNote}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-3 mt-5">
+          {isPending && status.id && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={onPayNow}>
+              {t("mobileApp.payNow")}
+            </button>
+          )}
+          {isActive && (
+            <>
+              <button type="button" className="btn btn-primary btn-sm" onClick={onGoLaunch}>
+                {t("mobileApp.nextLaunch")}
+              </button>
+              <button type="button" className="btn btn-sm" onClick={onGoDesign}>
+                {t("mobileApp.backToDesign")}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+      <p className="text-[13px] font-extrabold text-[var(--ink)] mb-4">{t("mobileApp.includedFeatures")}</p>
+      <FeatureList t={t} />
+
+      <form onSubmit={onSubmit} className="space-y-4 mt-6 border-t border-gray-100 pt-5">
+        <div>
+          <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.billingCycle")}</label>
+          <div className="flex gap-3">
+            {(["Monthly", "Yearly"] as BillingCycle[]).map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setBillingCycle(c)}
+                className={`flex-1 rounded-xl border-2 p-3 text-center transition-colors ${
+                  billingCycle === c ? "border-[var(--blue)] bg-[var(--blue-50)]" : "border-gray-200"
+                }`}
+              >
+                <span className="block text-[13px] font-bold text-[var(--ink)]">
+                  {c === "Yearly" ? t("mobileApp.billingYearly") : t("mobileApp.billingMonthly")}
+                </span>
+                <span className="block text-[12px] text-[var(--sub)] mt-0.5">
+                  {formatMoney(c === "Yearly" ? (status?.yearlyPrice || 0) : (status?.monthlyPrice || 0))}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.developerAccount")}</label>
+          <div className="space-y-2">
+            {(["Company", "Platform"] as const).map((opt) => (
+              <label key={opt} className="flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer" style={{ borderColor: devAccountType === opt ? "var(--blue)" : "var(--border)" }}>
+                <input type="radio" name="devAccountType" checked={devAccountType === opt} onChange={() => setDevAccountType(opt)} className="mt-0.5 accent-[var(--blue)]" />
+                <span className="text-[12.5px] text-[var(--ink)]">
+                  {opt === "Platform" ? t("mobileApp.devAccountPlatform") : t("mobileApp.devAccountCompany")}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.devAccountInfo")}</label>
+          <div className="field-shell">
+            <input type="text" value={devAccountInfo} onChange={(e) => setDevAccountInfo(e.target.value)} maxLength={1000} placeholder={t("mobileApp.devAccountInfoPlaceholder")} />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.notes")}</label>
+          <div className="field-shell">
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} maxLength={1000} placeholder={t("mobileApp.notesPlaceholder")} />
+          </div>
+        </div>
+
+        <div className="alert alert--info">
+          <Icon name="alert" size={16} className="shrink-0 mt-0.5" />
+          <span>{t("mobileApp.devFeesNote")}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" disabled={submitting} className="btn btn-primary">
+            {submitting ? t("mobileApp.subscribing") : t("mobileApp.subscribe")}
+          </button>
+          <button type="button" className="btn" onClick={onGoDesign}>{t("mobileApp.backToDesign")}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ── الخطوة 3: أطلق ──
+function LaunchStep(props: any) {
+  const {
+    t, status, isActive, hasSubscription,
+    shortDesc, setShortDesc, longDesc, setLongDesc, keywords, setKeywords,
+    category, setCategory, iconUrl, setIconUrl, screenshots, setScreenshots,
+    supportEmail, setSupportEmail, privacyUrl, setPrivacyUrl, publishing, onPublish,
+    onGoSubscribe, formatDate,
+  } = props;
+
+  if (!hasSubscription || !isActive) {
+    return (
+      <div className="rounded-2xl border p-6 text-center" style={{ borderColor: "var(--border)" }}>
+        <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center" style={{ background: "var(--blue-50, #f5f9ff)", color: "var(--blue)" }}>
+          <Icon name="lock" size={20} />
+        </div>
+        <p className="text-[13px] font-bold text-[var(--ink)] mb-1">{t("mobileApp.launchLockedTitle")}</p>
+        <p className="text-[12.5px] text-[var(--sub)] mb-4 max-w-md mx-auto">{t("mobileApp.launchLockedDesc")}</p>
+        <button type="button" className="btn btn-primary btn-sm" onClick={onGoSubscribe}>{t("mobileApp.goToSubscribe")}</button>
+      </div>
+    );
+  }
+
+  const published = status.publishStatus === "Published";
+  const awaitingReview = status.publishStatus === "Submitted" || status.publishStatus === "InReview";
+
+  return (
+    <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+      {/* حالة النشر */}
+      {status.publishStatus !== "Draft" && (
+        <div className={`alert ${published ? "alert--info" : awaitingReview ? "alert--warning" : "alert--danger"} mb-5`}>
+          <Icon name={published ? "check" : "alert"} size={16} className="shrink-0 mt-0.5" />
+          <span>
+            {published && t("mobileApp.reviewPublished")}
+            {awaitingReview && t("mobileApp.reviewAwaiting")}
+            {status.publishStatus === "Rejected" && t("mobileApp.reviewRejected")}
+            {status.adminReviewNote && <><br />{t("mobileApp.reviewNote")}: {status.adminReviewNote}</>}
+          </span>
+        </div>
+      )}
+
+      {/* روابط المتاجر بعد النشر */}
+      {published && (status.appStoreUrl || status.googlePlayUrl) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          {status.appStoreUrl && (
+            <a href={status.appStoreUrl} target="_blank" rel="noreferrer" className="rounded-xl border p-3 flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
+              <Icon name="download" size={16} className="text-[var(--blue)]" />
+              <span className="text-[12.5px] font-bold text-[var(--ink)]">App Store</span>
+            </a>
+          )}
+          {status.googlePlayUrl && (
+            <a href={status.googlePlayUrl} target="_blank" rel="noreferrer" className="rounded-xl border p-3 flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
+              <Icon name="download" size={16} className="text-[var(--blue)]" />
+              <span className="text-[12.5px] font-bold text-[var(--ink)]">Google Play</span>
+            </a>
+          )}
+        </div>
+      )}
+
+      <p className="text-[13px] font-extrabold text-[var(--ink)] mb-1">{t("mobileApp.listingTitle")}</p>
+      <p className="text-[11.5px] text-[var(--sub)] mb-4">{t("mobileApp.listingDesc")}</p>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingShortDescription")}</label>
+          <div className="field-shell">
+            <input type="text" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} maxLength={1000} placeholder={t("mobileApp.listingShortPlaceholder")} />
+          </div>
+        </div>
+        <div>
+          <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingDescription")}</label>
+          <div className="field-shell">
+            <textarea value={longDesc} onChange={(e) => setLongDesc(e.target.value)} rows={4} maxLength={4000} placeholder={t("mobileApp.listingDescPlaceholder")} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingKeywords")}</label>
+            <div className="field-shell">
+              <input type="text" value={keywords} onChange={(e) => setKeywords(e.target.value)} maxLength={200} placeholder={t("mobileApp.listingKeywordsPlaceholder")} />
+            </div>
+          </div>
+          <div>
+            <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingCategory")}</label>
+            <div className="field-shell">
+              <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} maxLength={100} placeholder={t("mobileApp.listingCategoryPlaceholder")} />
+            </div>
+          </div>
+        </div>
+        <div>
+          <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingIcon")}</label>
+          <div className="field-shell">
+            <input type="text" value={iconUrl} onChange={(e) => setIconUrl(e.target.value)} placeholder="https://..." />
+          </div>
+        </div>
+        <div>
+          <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingScreenshots")}</label>
+          <div className="space-y-2">
+            {screenshots.map((s: string, i: number) => (
+              <div key={i} className="flex gap-2">
+                <div className="field-shell flex-1">
+                  <input
+                    type="text"
+                    value={s}
+                    onChange={(e) => setScreenshots(screenshots.map((x: string, j: number) => (j === i ? e.target.value : x)))}
+                    placeholder="https://..."
+                  />
+                </div>
+                <button type="button" className="btn btn-sm" onClick={() => setScreenshots(screenshots.filter((_: string, j: number) => j !== i))}>
+                  <Icon name="trash" size={14} />
+                </button>
+              </div>
+            ))}
+            {screenshots.length < 12 && (
+              <button type="button" className="btn btn-sm" onClick={() => setScreenshots([...screenshots, ""])}>
+                <Icon name="plus" size={14} /> {t("mobileApp.addScreenshot")}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingSupportEmail")}</label>
+            <div className="field-shell">
+              <input type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} maxLength={500} placeholder="support@store.com" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.listingPrivacyUrl")}</label>
+            <div className="field-shell">
+              <input type="text" value={privacyUrl} onChange={(e) => setPrivacyUrl(e.target.value)} maxLength={500} placeholder="https://..." />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="alert alert--info mt-5">
+        <Icon name="clock" size={16} className="shrink-0 mt-0.5" />
+        <span>{t("mobileApp.reviewTimeline")}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-3 mt-5">
+        <Can code="StoreSettings.Edit">
+          <button type="button" className="btn btn-primary" disabled={publishing || awaitingReview} onClick={onPublish}>
+            {publishing ? t("mobileApp.publishing") : published ? t("mobileApp.republish") : t("mobileApp.publishBtn")}
+          </button>
+        </Can>
+        {published && (
+          <span className="text-[12px] text-[var(--sub)] self-center">{t("mobileApp.publishedAt")}: {formatDate(status.publishedAt)}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── لوحة الإشعارات ──
+function NotificationsPanel({ notifications, reload, setError, setSuccess }: any) {
+  const { t } = useTranslation();
+  const [kind, setKind] = useState<"Instant" | "Scheduled">("Instant");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    setError(""); setSuccess("");
+    setSending(true);
+    try {
+      await api.post("/mobile-app/notifications", {
+        kind,
+        title: title.trim(),
+        body: body.trim(),
+        imageUrl: imageUrl.trim() || null,
+        scheduledAt: kind === "Scheduled" && scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      });
+      setSuccess(t("mobileApp.notifSent"));
+      setTitle(""); setBody(""); setImageUrl(""); setScheduledAt("");
+      reload();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("mobileApp.loadError"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const cancel = async (id: number) => {
+    setError(""); setSuccess("");
+    try {
+      await api.post(`/mobile-app/notifications/${id}/cancel`);
+      setSuccess(t("mobileApp.notifCancelled"));
+      reload();
+    } catch (err: any) {
+      setError(err.response?.data?.message || t("mobileApp.loadError"));
+    }
+  };
+
+  const kindLabel = (k: string) => k === "Scheduled" ? t("mobileApp.notifScheduled") : k === "Automated" ? t("mobileApp.notifAutomated") : t("mobileApp.notifInstant");
+  const statusLabel = (s: string) =>
+    s === "Sent" ? t("mobileApp.notifStatusSent") : s === "Scheduled" ? t("mobileApp.notifStatusScheduled") : s === "Cancelled" ? t("mobileApp.notifStatusCancelled") : s;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+        <p className="text-[13px] font-extrabold text-[var(--ink)] mb-1">{t("mobileApp.notifNewTitle")}</p>
+        <p className="text-[11.5px] text-[var(--sub)] mb-4">{t("mobileApp.notifNewDesc")}</p>
+
+        <div className="flex gap-2 mb-4">
+          {(["Instant", "Scheduled"] as const).map((k) => (
+            <button key={k} type="button" onClick={() => setKind(k)}
+              className={`btn btn-sm ${kind === k ? "btn-primary" : ""}`}>
+              {kindLabel(k)}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.notifTitle")}</label>
+            <div className="field-shell">
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
+            </div>
+          </div>
+          <div>
+            <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.notifBody")}</label>
+            <div className="field-shell">
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} maxLength={2000} />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.notifImage")}</label>
+              <div className="field-shell">
+                <input type="text" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
+              </div>
+            </div>
+            {kind === "Scheduled" && (
+              <div>
+                <label className="text-[12px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.notifSchedule")}</label>
+                <div className="field-shell">
+                  <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
+          <button type="button" className="btn btn-primary" disabled={sending} onClick={send}>
+            {sending ? t("mobileApp.sending") : t("mobileApp.notifSend")}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+        <p className="text-[13px] font-extrabold text-[var(--ink)] mb-4">{t("mobileApp.notifHistory")}</p>
+        {notifications.length === 0 ? (
+          <p className="text-[12.5px] text-[var(--sub)]">{t("mobileApp.notifEmpty")}</p>
+        ) : (
+          <div className="space-y-2">
+            {notifications.map((n: AppNotification) => (
+              <div key={n.id} className="rounded-xl border p-3" style={{ borderColor: "var(--border)" }}>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[12.5px] font-bold text-[var(--ink)]">{n.title}</span>
+                  <span className="badge badge--gray">{kindLabel(n.kind)}</span>
+                </div>
+                <p className="text-[11.5px] text-[var(--sub)] leading-relaxed">{n.body}</p>
+                <div className="flex items-center gap-3 mt-2 text-[11px] text-[var(--sub)]">
+                  <span>{statusLabel(n.status)}</span>
+                  {n.scheduledAt && <span>{t("mobileApp.notifScheduledFor")}: {new Date(n.scheduledAt).toLocaleString("ar-SA-u-nu-latn")}</span>}
+                  <span>{n.recipientsCount} {t("mobileApp.notifRecipients")}</span>
+                  {n.status === "Scheduled" && (
+                    <button type="button" className="text-[var(--red)] font-bold" onClick={() => cancel(n.id)}>{t("mobileApp.notifCancel")}</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── لوحة الإحصاءات ──
+function AnalyticsPanel({ analytics, downloadCount, salesCount }: { analytics: Analytics | null; downloadCount: number; salesCount: number }) {
+  const { t } = useTranslation();
+  const cards: { key: string; value: string; icon: "wallet" | "receipt" | "download" | "users" | "userGroup" | "chart" }[] = [
+    { key: "mobileApp.statRevenue", value: analytics ? `${formatMoney(analytics.totalRevenue)} ${t("common.sar")}` : "—", icon: "wallet" },
+    { key: "mobileApp.statOrders", value: analytics ? String(analytics.totalOrders) : "—", icon: "receipt" },
+    { key: "mobileApp.statInstalls", value: analytics ? String(analytics.totalInstalls || downloadCount) : String(downloadCount), icon: "download" },
+    { key: "mobileApp.statSessions", value: analytics ? String(analytics.totalSessions) : "—", icon: "users" },
+    { key: "mobileApp.statNewCustomers", value: analytics ? String(analytics.totalNewCustomers) : "—", icon: "userGroup" },
+    { key: "mobileApp.statAppSales", value: String(salesCount), icon: "chart" },
+  ];
+  return (
+    <div className="rounded-2xl border p-5" style={{ borderColor: "var(--border)" }}>
+      <p className="text-[13px] font-extrabold text-[var(--ink)] mb-1">{t("mobileApp.analyticsTitle")}</p>
+      <p className="text-[11.5px] text-[var(--sub)] mb-4">{t("mobileApp.analyticsDesc")}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {cards.map((c) => (
+          <div key={c.key} className="rounded-xl border p-4" style={{ borderColor: "var(--border)" }}>
+            <span className="w-8 h-8 rounded-full flex items-center justify-center mb-2" style={{ background: "var(--blue-50, #f5f9ff)", color: "var(--blue)" }}>
+              <Icon name={c.icon} size={15} />
+            </span>
+            <p className="text-[11px] text-[var(--sub)] mb-0.5">{t(c.key)}</p>
+            <p className="text-[16px] font-extrabold text-[var(--ink)]">{c.value}</p>
+          </div>
+        ))}
+      </div>
+      {(!analytics || analytics.totalSessions === 0) && (
+        <p className="text-[11.5px] text-[var(--sub)] mt-4">{t("mobileApp.analyticsEmpty")}</p>
+      )}
+    </div>
+  );
+}
+
+function SaveAndPublishHint({ onGo, label }: { onGo: () => void; label: string }) {
+  return (
+    <button type="button" className="btn" onClick={onGo}>
+      {label}
+    </button>
   );
 }
 

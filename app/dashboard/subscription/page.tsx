@@ -97,6 +97,8 @@ interface PackageInfo {
   hasFreeShipping: boolean;
   hasCashOnDelivery: boolean;
   hasShippingDiscounts: boolean;
+  hasMobileApp: boolean;
+  mobileAppMonthlyPrice: number;
 }
 
 type BillingCycle = "Monthly" | "Yearly" | "TwoYears";

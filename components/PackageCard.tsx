@@ -30,6 +30,8 @@ export interface PackageCardData {
   hasFreeShipping: boolean;
   hasCashOnDelivery: boolean;
   hasShippingDiscounts: boolean;
+  hasMobileApp: boolean;
+  mobileAppMonthlyPrice: number;
 }
 
 interface PackageCardProps {
@@ -66,6 +68,11 @@ const LIMITS: { key: keyof PackageCardData; labelKey: string }[] = [
   { key: "maxProducts", labelKey: "packages.products" },
   { key: "maxEmployees", labelKey: "packages.employees" },
   { key: "maxWarehouses", labelKey: "packages.warehouses" },
+];
+
+// مزايا إضافية خارج الباقة الأساسية (خدمات تُطلب باشتراك واستحقاق منفصل).
+const EXTRA_FEATURES: { key: keyof PackageCardData; labelKey: string }[] = [
+  { key: "hasMobileApp", labelKey: "packages.mobileApp" },
 ];
 
 function CheckIcon() {
@@ -204,6 +211,21 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
             <FeatureChip key={feat.key} active={Boolean(pkg[feat.key])} label={t(feat.labelKey)} />
           ))}
         </div>
+      </div>
+
+      {/* ── مزايا إضافية (اختيارية) ── */}
+      <div className="space-y-2 mb-4 border-t border-[var(--border)] pt-4">
+        <p className="text-[11.5px] text-[var(--sub)] mb-1">{t("packages.extrasTitle")}</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {EXTRA_FEATURES.map((feat) => (
+            <FeatureChip key={feat.key} active={Boolean(pkg[feat.key])} label={t(feat.labelKey)} />
+          ))}
+        </div>
+        {pkg.hasMobileApp && pkg.mobileAppMonthlyPrice > 0 && (
+          <p className="text-[11px] text-[var(--sub)] mt-1.5 leading-relaxed">
+            {t("packages.mobileAppNote").replace("{price}", formatMoney(pkg.mobileAppMonthlyPrice))}
+          </p>
+        )}
       </div>
 
       {footer && <div className="flex flex-col gap-2 mt-4">{footer}</div>}

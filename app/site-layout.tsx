@@ -820,7 +820,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
-      <PublicChatWidget />
+      {/* الشات بوت العام: مُعطَّل مؤقتًا بإخفائه من الواجهة. المكوّن كما هو في
+          components/PublicChatWidget.tsx، ولإعادة تشغيله يكفي إلغاء التعليق عن السطر التالي. */}
+      {/* <PublicChatWidget /> */}
       <a
         href="https://wa.me/966531118224"
         target="_blank"

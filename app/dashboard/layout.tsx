@@ -998,7 +998,9 @@ const handler = () => {
 
       <UpgradeModal />
       <PageHelp />
-      <SupportChatWidget />
+      {/* شات الدعم في لوحة التحكم: مُعطَّل مؤقتًا بإخفائه من الواجهة. المكوّن كما هو في
+          components/SupportChatWidget.tsx، ولإعادة تشغيله يكفي إلغاء التعليق عن السطر التالي. */}
+      {/* <SupportChatWidget /> */}
     </div>
   );
 }

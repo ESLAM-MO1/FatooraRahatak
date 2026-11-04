@@ -55,6 +55,10 @@ interface PackageItem {
   hasFreeShipping: boolean;
   hasCashOnDelivery: boolean;
   hasShippingDiscounts: boolean;
+
+  hasMobileApp: boolean;
+
+  mobileAppMonthlyPrice: number;
 }
 
 interface FaqItem { id: number; questionAr: string; questionEn: string; answerAr: string; answerEn: string; displayOrder: number }

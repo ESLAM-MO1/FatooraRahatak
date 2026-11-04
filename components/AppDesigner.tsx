@@ -625,17 +625,17 @@ export function AppPreview({
 
   return (
     <div dir={isRtl ? "rtl" : "ltr"} className="mx-auto" style={{ width: 306 }}>
-      <div className="rounded-[40px] shadow-2xl overflow-hidden bg-white relative" style={{ border: "11px solid #0f172a", height: 610 }}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl" style={{ width: 120, height: 22, background: "#0f172a", zIndex: 20 }} />
+      <div className="rounded-[36px] shadow-2xl overflow-hidden bg-white relative flex flex-col" style={{ border: "10px solid #0f172a", height: 620 }}>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 rounded-b-2xl" style={{ width: 110, height: 20, background: "#0f172a", zIndex: 30 }} />
 
         {/* شريط الحالة */}
-        <div className="flex items-center justify-between px-5 pt-2.5 pb-1.5" style={{ background: c.headerColor }}>
+        <div className="flex items-center justify-between px-5 pt-2 pb-1 shrink-0" style={{ background: c.headerColor }}>
           <span className="text-white/90 text-[10px] font-bold">9:41</span>
           <span className="flex items-center gap-1 text-white/90 text-[9px]"><span>●●●</span><span>◗</span><span>▮</span></span>
         </div>
 
         {/* شريط التطبيق + بحث */}
-        <div className="px-4 pb-3.5" style={{ background: c.headerColor }}>
+        <div className="px-4 pb-3 shrink-0" style={{ background: c.headerColor }}>
           <div className="flex items-center gap-2.5">
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -660,8 +660,8 @@ export function AppPreview({
           )}
         </div>
 
-        {/* محتوى الشاشة */}
-        <div className="overflow-y-auto" style={{ height: 610 - 30 - 96 - 54, background: "#f7f8fa" }}>
+        {/* محتوى الشاشة — يملأ المساحة المتبقية تلقائيًا */}
+        <div className="flex-1 overflow-y-auto min-h-0" style={{ background: "#f7f8fa" }}>
           {design.splashText.trim() && screen === "home" && (
             <div className="mx-3 mt-3 rounded-xl flex items-center gap-2 px-3 py-2 shadow-sm" style={{ background: `linear-gradient(90deg, ${c.heroFrom}, ${c.heroTo})` }}>
               <span className="w-5 h-5 rounded-full bg-white/25 flex items-center justify-center text-white shrink-0"><Icon name="tag" size={11} /></span>
@@ -686,21 +686,24 @@ export function AppPreview({
         </div>
 
         {/* شريط التنقل السفلي */}
-        <div className="flex items-stretch justify-around bg-white border-t px-1" style={{ height: 58, borderColor: "#eceef2" }}>
+        <div className="shrink-0 flex items-stretch bg-white border-t" style={{ height: 66, borderColor: "#e6e8ee", paddingBottom: 4, boxShadow: "0 -2px 10px rgba(15,23,42,0.05)" }}>
           {design.bottomNav.map((n) => {
             const target: AppScreenKey = n === "home" ? "home" : n === "cart" ? "cart" : n === "account" ? "account" : n === "categories" ? "catalog" : "home";
             const active = previewActive(screen, n);
-            const color = active ? c.buttonColor : "#9aa1ac";
+            const color = active ? c.buttonColor : "#98a0ab";
             return (
               <button
                 key={n}
                 type="button"
                 onClick={() => onNavigate(target, null)}
-                className="flex-1 flex flex-col items-center justify-center gap-1 rounded-xl my-1 transition-colors"
-                style={{ color, background: active ? `${c.buttonColor}12` : "transparent" }}
+                className="flex-1 flex flex-col items-center justify-center gap-1 pt-2 transition-all cursor-pointer active:scale-95 hover:bg-gray-50"
+                style={{ color }}
               >
-                <Icon name={navIcons[n] ?? "home"} size={18} />
-                <span className="text-[8.5px] leading-none" style={{ fontWeight: active ? 800 : 600 }}>{t(`appDesigner.nav.${n}`)}</span>
+                <span className="flex items-center justify-center rounded-full transition-all"
+                  style={{ width: 30, height: 22, background: active ? `${c.buttonColor}18` : "transparent" }}>
+                  <Icon name={navIcons[n] ?? "home"} size={19} />
+                </span>
+                <span className="text-[9px] leading-none" style={{ fontWeight: active ? 800 : 600 }}>{t(`appDesigner.nav.${n}`)}</span>
               </button>
             );
           })}
@@ -721,7 +724,7 @@ function previewActive(screen: AppScreenKey, nav: string): boolean {
 function ProductCard({ p, c, currency, badge, wide, onTap }: { p: BundleProduct; c: StoreColors; currency: string; badge?: string; wide?: boolean; onTap?: () => void }) {
   const price = p.discountPrice ?? p.price;
   return (
-    <button type="button" onClick={onTap} className="rounded-xl bg-white border overflow-hidden relative text-start" style={{ borderColor: "#eef0f3" }}>
+    <button type="button" onClick={onTap} className="rounded-xl bg-white border overflow-hidden relative text-start cursor-pointer transition-all hover:shadow-md active:scale-[0.98]" style={{ borderColor: "#eef0f3" }}>
       {badge && <span className="absolute top-1 start-1 z-10 text-[7px] font-bold text-white px-1.5 py-0.5 rounded-full" style={{ background: c.buttonColor }}>{badge}</span>}
       <div className={wide ? "h-24 flex items-center justify-center relative" : "h-16 flex items-center justify-center relative"} style={{ background: "#f3f4f6" }}>
         {p.imageUrl ? (
@@ -776,7 +779,7 @@ function HomeSection({ sectionKey, bundle, currency, theme, onNavigate, c, t }: 
           <div className="absolute -end-6 -bottom-6 w-24 h-24 rounded-full bg-white/10" />
           <p className="text-[13.5px] font-extrabold mb-1 relative">{bundle?.store.storeName || t("appDesigner.heroTitle")}</p>
           <p className="text-[10px] opacity-90 mb-2.5 relative">{bundle?.store.bio || t("appDesigner.heroSub")}</p>
-          <button onClick={() => onNavigate("catalog")} className="inline-block text-[10px] font-bold px-3.5 py-1.5 rounded-full shadow bg-white" style={{ color: c.buttonColor }}>{t("appDesigner.heroCta")}</button>
+          <button onClick={() => onNavigate("catalog")} className="inline-block text-[10px] font-bold px-3.5 py-1.5 rounded-full shadow bg-white cursor-pointer transition-transform active:scale-95" style={{ color: c.buttonColor }}>{t("appDesigner.heroCta")}</button>
         </div>
       );
     case "categories":
@@ -785,7 +788,7 @@ function HomeSection({ sectionKey, bundle, currency, theme, onNavigate, c, t }: 
           <SectionHeader title={t("appDesigner.section.categories")} cta={t("appDesigner.viewAll")} color={c.buttonColor} onClick={() => onNavigate("catalog")} />
           <div className="grid grid-cols-4 gap-2">
             {cats.slice(0, 8).map((cat: BundleCategory) => (
-              <button key={cat.id} onClick={() => onNavigate("catalog")} className="flex flex-col items-center gap-1">
+              <button key={cat.id} onClick={() => onNavigate("catalog")} className="flex flex-col items-center gap-1 cursor-pointer transition-transform active:scale-95">
                 <span className="w-11 h-11 rounded-full flex items-center justify-center ring-1 ring-black/5 overflow-hidden" style={{ background: `${c.accentColor}1a`, color: c.accentColor }}>
                   {cat.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -885,7 +888,7 @@ function SectionHeader({ title, cta, color, onClick }: { title: string; cta: str
   return (
     <div className="flex items-center justify-between mb-2">
       <p className="text-[11px] font-extrabold text-gray-800">{title}</p>
-      <button type="button" onClick={onClick} className="text-[8.5px] font-bold" style={{ color }}>{cta}</button>
+      <button type="button" onClick={onClick} className="text-[8.5px] font-bold cursor-pointer hover:underline" style={{ color }}>{cta}</button>
     </div>
   );
 }
@@ -923,8 +926,8 @@ function ProductScreen({ product, bundle, c, currency, onNavigate, t, items }: a
         {on("description") && <p className="text-[9.5px] text-gray-500 leading-relaxed mb-3">{product.shortDescription || t("appDesigner.sampleProductDesc")}</p>}
         {on("addToCart") && (
         <div className="flex gap-2">
-          <button type="button" onClick={() => onNavigate("cart")} className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.addToCart")}</button>
-          <button type="button" onClick={() => onNavigate("cart")} className="w-10 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: c.headerColor }}>
+          <button type="button" onClick={() => onNavigate("cart")} className="flex-1 py-2 rounded-xl text-[11px] font-bold text-white cursor-pointer transition-transform active:scale-[0.98]" style={{ background: c.buttonColor }}>{t("appDesigner.addToCart")}</button>
+          <button type="button" onClick={() => onNavigate("cart")} className="w-10 h-9 rounded-xl flex items-center justify-center text-white cursor-pointer active:scale-95" style={{ background: c.headerColor }}>
             <Icon name="cashier" size={15} />
           </button>
         </div>
@@ -986,7 +989,7 @@ function CartScreen({ bundle, c, currency, onNavigate, t, items }: any) {
           </div>
           )}
           {on("total") && <div className="flex items-center justify-between mb-2"><span className="text-[11px] font-extrabold text-gray-800">{t("appDesigner.total")}</span><span className="text-[12px] font-extrabold" style={{ color: c.buttonColor }}>{subtotal} {currency}</span></div>}
-          {on("checkout") && <button onClick={() => onNavigate("tracking")} className="w-full py-2.5 rounded-xl text-[11.5px] font-bold text-white" style={{ background: c.buttonColor }}>{t("appDesigner.checkout")}</button>}
+          {on("checkout") && <button type="button" onClick={() => onNavigate("tracking")} className="w-full py-2.5 rounded-xl text-[11.5px] font-bold text-white cursor-pointer transition-transform active:scale-[0.99]" style={{ background: c.buttonColor }}>{t("appDesigner.checkout")}</button>}
         </>
       )}
     </div>
@@ -1022,11 +1025,11 @@ function AccountScreen({ c, appName, onNavigate, t, items }: any) {
           <button
             key={r.k}
             type="button"
-            onClick={() => onNavigate(r.k === "orders" ? "tracking" : r.k === "settings" || r.k === "support" ? "account" : "account")}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-start"
+            onClick={() => onNavigate(r.k === "orders" ? "tracking" : "account")}
+            className="w-full flex items-center gap-2.5 px-3 py-3 text-start cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
             style={{ borderTop: i ? "1px solid #f3f4f6" : "none" }}
           >
-            <span style={{ color: c.buttonColor }}><Icon name={r.icon as any} size={14} /></span>
+            <span style={{ color: c.buttonColor }}><Icon name={r.icon as any} size={15} /></span>
             <span className="flex-1 text-[11px] font-bold text-gray-700">{t(`appDesigner.accountItem.${r.k}`)}</span>
             <span className="text-gray-300"><Icon name="arrowLeft" size={12} /></span>
           </button>
@@ -1034,7 +1037,7 @@ function AccountScreen({ c, appName, onNavigate, t, items }: any) {
       </div>
       )}
       {on("trackOrder") && (
-      <button onClick={() => onNavigate("tracking")} className="w-full mt-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>
+      <button type="button" onClick={() => onNavigate("tracking")} className="w-full mt-3 py-2.5 rounded-xl text-[11px] font-bold cursor-pointer transition-colors active:scale-[0.99]" style={{ background: `${c.buttonColor}1a`, color: c.buttonColor }}>
         {t("appDesigner.trackOrder")}
       </button>
       )}
@@ -1101,7 +1104,7 @@ function CatalogScreen({ bundle, c, currency, onNavigate, t, items }: any) {
       {on("categories") && cats.length > 0 && (
         <div className="flex gap-1.5 mb-3 overflow-x-auto pb-0.5">
           {cats.slice(0, 6).map((cat: BundleCategory) => (
-            <button key={cat.id} type="button" onClick={() => onNavigate("catalog")} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap" style={{ background: `${c.buttonColor}14`, color: c.buttonColor }}>{cat.name}</button>
+            <button key={cat.id} type="button" onClick={() => onNavigate("catalog")} className="px-2.5 py-1 rounded-full text-[9px] font-bold whitespace-nowrap cursor-pointer transition-transform active:scale-95" style={{ background: `${c.buttonColor}14`, color: c.buttonColor }}>{cat.name}</button>
           ))}
         </div>
       )}

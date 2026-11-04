@@ -107,39 +107,39 @@ jobs:
       - name: Fetch app icon
         working-directory: mobile-app-template
         run: |
+          # نضمن وجود أيقونات mipmap دائمًا حتى لا يفشل ربط الموارد
+          # (المانيفست يشير إلى ic_launcher). إن رفع التاجر أيقونة نستبدلها،
+          # وإلا نُبقي الأيقونة الافتراضية المضمّنة في المستودع.
           ICON_URL="${{ steps.vars.outputs.icon_url }}"
           APP_NAME="${{ steps.vars.outputs.app_name }}"
-          ICON_SRC=""
+          echo "$APP_NAME" > /tmp/app_name.txt
+
           if [ -n "$ICON_URL" ] && [ "$ICON_URL" != "null" ]; then
-            echo "Downloading icon from $ICON_URL"
+            echo "Downloading merchant icon from $ICON_URL"
             curl -sSL "$ICON_URL" -o /tmp/icon.png || true
             if [ -f /tmp/icon.png ] && [ -s /tmp/icon.png ]; then
-              ICON_SRC=/tmp/icon.png
+              # نثبّت ImageMagick فقط عند الحاجة الفعلية لتحويل الأيقونة.
+              sudo apt-get update -qq
+              sudo apt-get install -y -qq imagemagick >/dev/null 2>&1 || sudo apt-get install -y -qq imagemagick-6.q16 >/dev/null 2>&1 || true
+              CONVERT=$(command -v convert || command -v magick || echo "")
+              if [ -n "$CONVERT" ]; then
+                for pair in "48 mdpi" "72 hdpi" "96 xhdpi" "144 xxhdpi" "192 xxxhdpi"; do
+                  size=$(echo $pair | cut -d' ' -f1)
+                  dpi=$(echo $pair | cut -d' ' -f2)
+                  "$CONVERT" /tmp/icon.png -resize ${size}x${size} android/app/src/main/res/mipmap-$dpi/ic_launcher.png
+                done
+                echo "Merchant icon applied."
+              else
+                echo "ImageMagick unavailable; keeping default launcher icons."
+              fi
             fi
           fi
 
-          # أيقونة افتراضية إن لم يرفع التاجر أيقونة: مربّع ملوّن يحمل الحرف الأول
-          # من اسم التطبيق، حتى لا يفشل ربط الموارد (المانيفست يشير دائمًا إلى ic_launcher).
-          if [ -z "$ICON_SRC" ]; then
-            echo "No merchant icon; generating a default branded icon."
-            LETTER=$(printf '%s' "$APP_NAME" | head -c 1)
-            [ -z "$LETTER" ] && LETTER="ر"
-            convert -size 512x512 xc:'#12a8db' \
-              -fill white -gravity center -pointsize 300 -annotate 0 "$LETTER" \
-              /tmp/icon.png
-            ICON_SRC=/tmp/icon.png
-          fi
-
-          # requires ImageMagick (preinstalled on ubuntu-latest)
-          mkdir -p android/app/src/main/res/mipmap-mdpi android/app/src/main/res/mipmap-hdpi \
-                   android/app/src/main/res/mipmap-xhdpi android/app/src/main/res/mipmap-xxhdpi \
-                   android/app/src/main/res/mipmap-xxxhdpi
-          for pair in "48 mdpi" "72 hdpi" "96 xhdpi" "144 xxhdpi" "192 xxxhdpi"; do
-            size=$(echo $pair | cut -d' ' -f1)
-            dpi=$(echo $pair | cut -d' ' -f2)
-            convert "$ICON_SRC" -resize ${size}x${size} android/app/src/main/res/mipmap-$dpi/ic_launcher.png
+          # تحقّق أخير: يجب أن توجد الأيقونة في كل كثافة.
+          for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            test -f android/app/src/main/res/mipmap-$dpi/ic_launcher.png || { echo "Missing ic_launcher for $dpi"; exit 1; }
           done
-          echo "Launcher icons applied."
+          echo "Launcher icons OK."
 
       - name: Prepare keystore (reuse stored, or generate once)
         id: ks

@@ -48,66 +48,67 @@ public class MobileAppExpiryBackgroundService : BackgroundService
         var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
         var changed = false;
 
-        // اشتراكات تطبيقات نشطة انتهت مدتها (بعد تسليم نسخة) ⇒ منتهية.
-        var expired = await db.StoreAppSubscriptions
+        // نجلب الاشتراكات النشطة التي سُلِّمت نسختها، ونحسب الانتهاء من تاريخ
+        // التسليم + 12 شهرًا (مرجع موحّد)، بدلًا من الاعتماد على EndDate المخزَّن.
+        var active = await db.StoreAppSubscriptions
             .Include(s => s.Store)
-            .Where(s => s.Status == SubscriptionStatus.Active
-                        && s.PublishedAt != null
-                        && s.EndDate < now)
+            .Where(s => s.Status == SubscriptionStatus.Active && s.PublishedAt != null)
             .ToListAsync(ct);
 
-        foreach (var sub in expired)
+        foreach (var sub in active)
         {
-            sub.Status = SubscriptionStatus.Expired;
-            sub.UpdatedAt = now;
-            changed = true;
+            var realEnd = sub.PublishedAt!.Value.AddMonths(12);
 
-            try
+            // انتهت السنة بلا تجديد ⇒ منتهٍ + إشعار (مرة واحدة عبر تغيير الحالة).
+            if (realEnd < now)
             {
-                if (sub.Store != null)
+                sub.Status = SubscriptionStatus.Expired;
+                sub.EndDate = realEnd;
+                sub.UpdatedAt = now;
+                changed = true;
+                try
                 {
-                    await notifications.CreateAsync(
-                        sub.Store.OwnerUserId,
-                        "انتهى اشتراك تطبيق الجوال",
-                        "انتهى اشتراك تطبيق الجوال ولم يتم تجديده، فتوقف التطبيق عن العمل مؤقتًا. جدّد الاشتراك (300 ر.س سنويًا) لإعادة تشغيله.",
-                        NotificationType.SubscriptionExpired,
-                        "/dashboard/store-settings?tab=mobileApp");
+                    if (sub.Store != null)
+                    {
+                        await notifications.CreateAsync(
+                            sub.Store.OwnerUserId,
+                            "انتهى اشتراك تطبيق الجوال",
+                            "انتهى اشتراك تطبيق الجوال ولم يتم تجديده، فتوقف التطبيق عن العمل مؤقتًا. جدّد الاشتراك (300 ر.س سنويًا) لإعادة تشغيله.",
+                            NotificationType.SubscriptionExpired,
+                            "/dashboard/store-settings?tab=mobileApp");
+                    }
                 }
+                catch { }
+                continue;
             }
-            catch { }
-        }
 
-        // تنبيه قبل الانتهاء بـ 14 يومًا — يُرسل مرة واحدة فقط لكل اشتراك،
-        // نرصده عبر وسم في AdminNote لتفادي التكرار كل دورة فحص.
-        var soon = await db.StoreAppSubscriptions
-            .Include(s => s.Store)
-            .Where(s => s.Status == SubscriptionStatus.Active
-                        && s.PublishedAt != null
-                        && s.EndDate >= now
-                        && s.EndDate < now.AddDays(14)
-                        && (s.AdminNote == null || !s.AdminNote.Contains("[renewal-reminded]")))
-            .ToListAsync(ct);
+            // حافظ على تزامن EndDate مع المرجع الموحّد.
+            sub.EndDate = realEnd;
 
-        foreach (var sub in soon)
-        {
-            sub.AdminNote = string.IsNullOrWhiteSpace(sub.AdminNote)
-                ? "[renewal-reminded]"
-                : sub.AdminNote + " [renewal-reminded]";
-            sub.UpdatedAt = now;
-            changed = true;
-            try
+            // تنبيه قبل الانتهاء بـ 14 يومًا — مرة واحدة فقط لكل اشتراك،
+            // نرصده عبر وسم في AdminNote لتفادي التكرار كل دورة فحص.
+            if (realEnd < now.AddDays(14)
+                && (sub.AdminNote == null || !sub.AdminNote.Contains("[renewal-reminded]")))
             {
-                if (sub.Store != null)
+                sub.AdminNote = string.IsNullOrWhiteSpace(sub.AdminNote)
+                    ? "[renewal-reminded]"
+                    : sub.AdminNote + " [renewal-reminded]";
+                sub.UpdatedAt = now;
+                changed = true;
+                try
                 {
-                    await notifications.CreateAsync(
-                        sub.Store.OwnerUserId,
-                        "اشتراك تطبيق الجوال على وشك الانتهاء",
-                        $"ينتهي اشتراك تطبيق الجوال في {sub.EndDate:yyyy-MM-dd}. جدّده (300 ر.س سنويًا) لتفادي توقف التطبيق.",
-                        NotificationType.SubscriptionExpiring,
-                        "/dashboard/store-settings?tab=mobileApp");
+                    if (sub.Store != null)
+                    {
+                        await notifications.CreateAsync(
+                            sub.Store.OwnerUserId,
+                            "اشتراك تطبيق الجوال على وشك الانتهاء",
+                            $"ينتهي اشتراك تطبيق الجوال في {realEnd:yyyy-MM-dd}. جدّده (300 ر.س سنويًا) لتفادي توقف التطبيق.",
+                            NotificationType.SubscriptionExpiring,
+                            "/dashboard/store-settings?tab=mobileApp");
+                    }
                 }
+                catch { }
             }
-            catch { }
         }
 
         if (changed)

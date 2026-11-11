@@ -91,7 +91,6 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
 
         if (latest != null)
         {
-            var effectiveEnd = latest.EndDate;
             dto.Id = latest.Id;
             dto.Status = latest.Status.ToString();
             dto.PaymentStatus = latest.PaymentStatus;
@@ -107,9 +106,31 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
             dto.EndDate = latest.EndDate;
             dto.CompletedAt = latest.CompletedAt;
             dto.CreatedAt = latest.CreatedAt;
-            dto.DaysRemaining = latest.Status == SubscriptionStatus.Active
-                ? Math.Max(0, (int)Math.Ceiling((effectiveEnd - DateTime.UtcNow).TotalDays))
-                : null;
+
+            // ── العدّاد السنوي الحقيقي ──
+            // لا يبدأ إلا عند تسليم النسخة (PublishedAt). قبل ذلك نُخفي العدّاد
+            // والتاريخ لتفادي عرض مدة وهمية محسوبة من لحظة الاشتراك.
+            dto.RenewalStarted = latest.PublishedAt.HasValue;
+            if (latest.PublishedAt.HasValue)
+            {
+                // تاريخ الانتهاء الفعلي = تاريخ التسليم + 12 شهرًا (مرجع موحّد).
+                var realEnd = latest.PublishedAt.Value.AddMonths(RenewalPeriodMonths);
+                dto.EndDate = realEnd;
+                dto.DaysRemaining = latest.Status == SubscriptionStatus.Active
+                    ? Math.Max(0, (int)Math.Ceiling((realEnd - DateTime.UtcNow).TotalDays))
+                    : null;
+            }
+            else
+            {
+                // لم تُسلَّم النسخة بعد: لا عدّاد ولا تاريخ انتهاء معروض.
+                dto.EndDate = null;
+                dto.DaysRemaining = null;
+            }
+
+            // هذا تفعيل أول مجاني سارٍ ولم يُدفع عنه مبلغ.
+            dto.IsFreeActivation = latest.Status == SubscriptionStatus.Active
+                && latest.DueAmount <= 0m
+                && !latest.PublishedAt.HasValue;
 
             // ── عناصر صانع التطبيقات ──
             dto.PublishStatus = latest.PublishStatus;
@@ -471,8 +492,10 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         if (latest.Status == SubscriptionStatus.Cancelled || latest.Status == SubscriptionStatus.Expired)
             return false;
 
-        // انتهت السنة بلا تجديد ⇒ منع.
-        if (latest.EndDate < DateTime.UtcNow) return false;
+        // انتهت السنة بلا تجديد ⇒ منع. المرجع الموحّد: تاريخ التسليم + 12 شهرًا
+        // (وليس EndDate المخزَّن، لتفادي أي تباين في البيانات القديمة).
+        var realEnd = latest.PublishedAt.Value.AddMonths(RenewalPeriodMonths);
+        if (realEnd < DateTime.UtcNow) return false;
 
         return true;
     }

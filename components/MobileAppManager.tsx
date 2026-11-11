@@ -65,6 +65,8 @@ interface MobileAppStatus {
   yearlyPrice: number;
   renewalPrice: number;
   isFirstSubscriptionFree: boolean;
+  isFreeActivation: boolean;
+  renewalStarted: boolean;
   isAvailable: boolean;
   autoRenew: boolean;
   appName: string | null;
@@ -641,15 +643,26 @@ export default function MobileAppManager() {
         </div>
         <div className="text-end">
           <p className="text-[12px] text-[var(--sub)] mb-1">
-            {isActive ? t("mobileApp.daysRemaining") : t("mobileApp.currentPrice")}
+            {isActive && status?.renewalStarted ? t("mobileApp.daysRemaining") : t("mobileApp.currentPrice")}
           </p>
           <p className="text-[15px] font-bold text-[var(--ink)]">
-            {isActive && status?.daysRemaining != null
+            {isActive && status?.renewalStarted && status?.daysRemaining != null
               ? `${status.daysRemaining} ${t("mobileApp.daysSuffix")}`
               : `${formatMoney(status?.renewalPrice ?? 300)} ${t("common.currency")} ${t("mobileApp.perYear")}`}
           </p>
+          {isActive && !status?.renewalStarted && (
+            <p className="text-[11px] text-[var(--sub)] mt-1">{t("mobileApp.counterStartsOnPublish")}</p>
+          )}
         </div>
       </div>
+
+      {/* ── شارة دائمة: التفعيل الأول مجانًا ── */}
+      {isActive && status?.isFreeActivation && (
+        <div className="alert alert--info mb-4">
+          <Icon name="check" size={16} className="shrink-0 mt-0.5" />
+          <span>{t("mobileApp.freeActivationBadge")}</span>
+        </div>
+      )}
 
       {/* زر إدارة/إلغاء + الإشعارات والإحصاءات */}
       {hasSubscription && isActive && (
@@ -880,7 +893,11 @@ function SubscribeStep(props: any) {
           </div>
           <div>
             <p className="text-[var(--sub)] mb-0.5">{t("mobileApp.endDate")}</p>
-            <p className="font-bold text-[var(--ink)]">{formatDate(status.endDate)}</p>
+            {status.renewalStarted ? (
+              <p className="font-bold text-[var(--ink)]">{formatDate(status.endDate)}</p>
+            ) : (
+              <p className="text-[var(--sub)]">{t("mobileApp.startsOnPublish")}</p>
+            )}
           </div>
           {status.appName && (
             <div className="col-span-2">

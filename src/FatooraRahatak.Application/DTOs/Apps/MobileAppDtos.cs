@@ -26,6 +26,12 @@ public class MobileAppSubscriptionDto
     public decimal RenewalPrice { get; set; }
     // هل هذا الاشتراك الأول للمتجر (مجاني)؟ أم تجديد (مدفوع)؟
     public bool IsFirstSubscriptionFree { get; set; }
+    // هل هذا الاشتراك الحالي هو تفعيل أول مجاني (سارٍ ولم يُدفع عنه شيء)؟
+    // يُستخدم لعرض شارة دائمة «التفعيل الأول مجانًا» في الواجهة.
+    public bool IsFreeActivation { get; set; }
+    // هل بدأ العدّاد السنوي للتجديد فعليًا؟ (يبدأ من لحظة نشر/تسليم التطبيق).
+    // قبل النشر تكون قيمتا EndDate و DaysRemaining غير معبّرتين عن عدّاد حقيقي.
+    public bool RenewalStarted { get; set; }
     public bool IsAvailable { get; set; }
     public bool AutoRenew { get; set; }
     public string? AppName { get; set; }

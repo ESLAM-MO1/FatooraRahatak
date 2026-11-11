@@ -9,21 +9,20 @@ const STORE_HOSTS = [
 const MAIN_HOST = "rahtk.sa";
 const MAIN_HOST_STORE_PATHS = ["/store/zahbe"];
 
-const CDN = "https://res.cloudinary.com/dshkk2l2h/image/upload/f_auto,q_auto";
 const IMG: Record<string, string> = {
-  vat: `${CDN}/v1791306848/White_VAT_Number_with_Saudi_Badge_rujvfk.png`,
-  logo: `${CDN}/v1791306855/3D_Arabic_Delivery_Services_Logo_shjnvt.png`,
-  tm: `${CDN}/v1791306860/TM-01-00-38510-26_Logo_mc6u9f.png`,
-  moc: `${CDN}/v1791306861/Saudi_Ministry_of_Commerce_Logo_and_Number_xfbfib.png`,
-  paypal: `${CDN}/v1791306865/PayPal_Logo_on_Transparent_Background_vbeswl.png`,
-  gpay: `${CDN}/v1791306865/Google_Pay_Rounded_Badge_jy6qek.png`,
-  applepay: `${CDN}/v1791306866/Apple_Pay_Button_on_Transparent_Background_lbj6al.png`,
-  tamara: `${CDN}/v1791306868/Pastel_Gradient_%D8%AA%D9%85%D8%A7%D8%B1%D8%A7_Badge_mq42xb.png`,
-  tabby: `${CDN}/v1791306869/Mint_Tabby_Logo_Badge_rw92qg.png`,
-  visa: `${CDN}/v1791306870/Classic_Blue_and_Gold_Visa_Wordmark_qjav80.png`,
-  mada: `${CDN}/v1791306871/Mada_Logo_Badge_on_Transparent_Canvas_wroh8j.png`,
-  bank: `${CDN}/v1791306873/Arabic_Bank_Transfer_Badge_hapnos.png`,
-  mastercard: `${CDN}/v1791306877/Classic_MasterCard_Logo_on_Transparent_Background_lr1tlu.png`,
+  vat: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793976672/White_VAT_Number_with_Saudi_Badge_1.png",
+  logo: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975278/3D_Arabic_Delivery_Services_Logo_1.png",
+  tm: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975267/TM-01-00-38510-26_Logo_1.png",
+  moc: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975273/Saudi_Ministry_of_Commerce_Logo_and_Number_1.png",
+  paypal: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975282/PayPal_Logo_on_Transparent_Background_1.png",
+  gpay: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975286/Google_Pay_Rounded_Badge_1.png",
+  applepay: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975265/Apple_Pay_Button_on_Transparent_Background_1.png",
+  tamara: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975280/Pastel_Gradient_%D8%AA%D9%85%D8%A7%D8%B1%D8%A7_Badge_1.png",
+  tabby: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975285/Mint_Tabby_Logo_Badge_1.png",
+  visa: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975270/Classic_Blue_and_Gold_Visa_Wordmark_1.png",
+  mada: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975268/Mada_Logo_Badge_on_Transparent_Canvas_1.png",
+  bank: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793976672/%D8%AA%D8%AD%D9%88%D9%8A%D9%84_%D8%A8%D9%86%D9%83%D9%8A_%D9%88%D8%B4%D8%B9%D8%A7%D8%B1_%D8%A7%D9%84%D8%A8%D9%86%D9%83.png",
+  mastercard: "https://res.cloudinary.com/vlfmzisv/image/upload/f_auto,q_auto/v1793975274/Classic_MasterCard_Logo_on_Transparent_Background_1.png",
 };
 const BADGES = [
   { f: "vat", alt: "ضريبة القيمة المضافة" },

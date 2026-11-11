@@ -181,6 +181,7 @@ builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.CustomDo
 // دورة حياة صانع التطبيقات: متابعة البناء تلقائيًا + تجميع الإحصاءات وإرسال الإشعارات المجدولة.
 builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.MobileAppBuildPollBackgroundService>();
 builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.MobileAppStatsBackgroundService>();
+builder.Services.AddHostedService<FatooraRahatak.API.BackgroundServices.MobileAppExpiryBackgroundService>();
 builder.Services.AddScoped<IShippingProvider, SmsaShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, AramexShippingProvider>();
 builder.Services.AddScoped<IShippingProvider, ZajilShippingProvider>();
@@ -268,5 +269,48 @@ app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// ── بوابة التطبيق المولَّد (صناعة تطبيقات الجوال) ──
+// التطبيق المولَّد لكل متجر يبعت ترويسة X-App-Client، فنتحقّق من أهلية الوصول:
+// إن انتهى الاشتراك السنوي بلا تجديد ⇒ نوقف التطبيق عن الباك إند بردّ 402.
+// ملاحظة: المتجر على المتصفح لا يبعت هذه الترويسة، فلا يتأثّر إطلاقًا.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.TryGetValue("X-App-Client", out var appClient)
+        && !string.IsNullOrWhiteSpace(appClient.ToString()))
+    {
+        var path = context.Request.Path.Value ?? "";
+        const string prefix = "/api/v1/public/stores/";
+        if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            var rest = path.Substring(prefix.Length);
+            var slug = rest.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(slug))
+            {
+                try
+                {
+                    var svc = context.RequestServices.GetRequiredService<IMobileAppSubscriptionService>();
+                    var allowed = await svc.IsAppAccessAllowedAsync(slug);
+                    if (!allowed)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
+                        context.Response.ContentType = "application/json; charset=utf-8";
+                        await context.Response.WriteAsync(
+                            "{\"success\":false,\"code\":\"APP_SUBSCRIPTION_EXPIRED\",\"message\":\"انتهى اشتراك تطبيق الجوال. يرجى تجديد الاشتراك لمواصلة استخدام التطبيق.\"}",
+                            context.RequestAborted);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // عند أي خطأ غير متوقع لا نمنع المتجر (تفادي تعطيل غير مقصود).
+                }
+            }
+        }
+    }
+
+    await next();
+});
+
 app.MapControllers();
 app.Run();

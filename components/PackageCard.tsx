@@ -221,9 +221,9 @@ export default function PackageCard({ pkg, badge, isCurrent, footer, totalPrice,
             <FeatureChip key={feat.key} active={Boolean(pkg[feat.key])} label={t(feat.labelKey)} />
           ))}
         </div>
-        {pkg.hasMobileApp && pkg.mobileAppMonthlyPrice > 0 && (
+        {pkg.hasMobileApp && (
           <p className="text-[11px] text-[var(--sub)] mt-1.5 leading-relaxed">
-            {t("packages.mobileAppNote").replace("{price}", formatMoney(pkg.mobileAppMonthlyPrice))}
+            {t("packages.mobileAppNote")}
           </p>
         )}
       </div>

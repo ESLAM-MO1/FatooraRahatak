@@ -38,7 +38,65 @@ class StoreApp extends StatelessWidget {
           textDirection: TextDirection.rtl,
           child: child ?? const SizedBox.shrink(),
         ),
-        home: const RootShell(),
+        home: const _AppGate(),
+      ),
+    );
+  }
+}
+
+/// بوابة الجذر: تعرض شاشة "انتهى الاشتراك" عندما يمنع الباك إند التطبيق،
+/// وإلا تعرض الشل الرئيسي للتطبيق.
+class _AppGate extends StatelessWidget {
+  const _AppGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    if (state.subscriptionExpired) {
+      return const SubscriptionExpiredScreen();
+    }
+    return const RootShell();
+  }
+}
+
+/// شاشة تُعرض عند انتهاء اشتراك تطبيق الجوال بلا تجديد.
+/// الباك إند يمنع طلبات التطبيق (HTTP 402) فلا يمكن استخدام التطبيق حتى التجديد.
+class SubscriptionExpiredScreen extends StatelessWidget {
+  const SubscriptionExpiredScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = AppConfig.I.colors;
+    final state = context.watch<AppState>();
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_clock_outlined, size: 72, color: c['button']),
+              const SizedBox(height: 16),
+              Text(
+                'انتهى اشتراك تطبيق الجوال',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c['header']),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                state.error ?? 'انتهى اشتراك تطبيق الجوال ولم يتم تجديده.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: c['button']),
+                onPressed: () => context.read<AppState>().init(),
+                child: const Text('إعادة المحاولة بعد التجديد'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

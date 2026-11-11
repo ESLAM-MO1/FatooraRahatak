@@ -9,11 +9,15 @@ public interface IMobileAppSubscriptionService
     // حالة اشتراك المتجر الحالي (منعًا: الباقة المجانية ⇒ IsAvailable=false).
     Task<MobileAppSubscriptionDto> GetStatusAsync(long storeId);
 
-    // إنشاء طلب اشتراك بحالة Pending مع احتساب المستحق على حسب الباقة ودورة الفوترة.
+    // إنشاء طلب اشتراك: أول مرة مجاني ويُفعَّل فورًا، والتجديد سنوي مدفوع (300 ر.س).
     Task<MobileAppSubscriptionDto> SubscribeAsync(long storeId, long userId, SubscribeMobileAppDto dto);
 
     // تفعيل الاشتراك بعد نجاح الدفع (يُستدعى من ويب هوك الدفع).
     Task ActivateOnPaymentAsync(long appSubscriptionId);
+
+    // هل التطبيق المولَّد لهذا المتجر مسموح له بالوصول للباك إند؟
+    // (اشتراك فعّال + نسخة مُسلَّمة + لم تنتهِ السنة). يُستخدم لبوابة التطبيقات.
+    Task<bool> IsAppAccessAllowedAsync(string storeSlug);
 
     // إلغاء الاشتراك (لا يمسّ اشتراك المنصة).
     Task CancelAsync(long storeId);

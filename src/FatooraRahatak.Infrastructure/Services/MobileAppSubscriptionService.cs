@@ -17,6 +17,13 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
 {
     private const string FreePackageName = "المجانية";
 
+    // ── تسعير خدمة صناعة تطبيقات الجوال ──
+    // النموذج: الاشتراك الأول (التفعيل) مجاني تمامًا، ثم يُجدَّد سنويًا بسعر ثابت.
+    // العدّاد السنوي يبدأ من لحظة تسليم النسخة (Publish)، وليس من لحظة الاشتراك.
+    // لو لم يُجدَّد بعد السنة → يتوقف التطبيق المولَّد عن الاتصال بالباك إند.
+    private const decimal AnnualRenewalPrice = 300m;
+    private const int RenewalPeriodMonths = 12;
+
     private static readonly string[] AutomatedKeys =
     {
         "OrderTracking", "AbandonedCart", "BackInStock", "OrderShipped", "WelcomeMessage", "OrderDelivered"
@@ -48,6 +55,10 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         return monthlyPrice * months * (1 - discount);
     }
 
+    // هل توجد للمتجر أي اشتراك سابق في خدمة التطبيقات؟ (يحدّد: أول مرة أم تجديد)
+    private async Task<bool> HasAnyPreviousSubscriptionAsync(long storeId) =>
+        await _context.StoreAppSubscriptions.AnyAsync(s => s.StoreId == storeId);
+
     private static bool IsFreePackage(Package package) =>
         package.MonthlyPrice <= 0m || package.PackageName == FreePackageName;
 
@@ -69,8 +80,11 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         {
             StoreId = storeId,
             PackageName = package?.PackageName ?? string.Empty,
-            MonthlyPrice = package?.MobileAppMonthlyPrice ?? 0m,
-            YearlyPrice = GetTotalPrice(package?.MobileAppMonthlyPrice ?? 0m, BillingCycle.Yearly),
+            // السعر الشهري لم يعد مستخدمًا في هذا النموذج؛ نُظهر سعر التجديد السنوي.
+            MonthlyPrice = 0m,
+            YearlyPrice = AnnualRenewalPrice,
+            RenewalPrice = AnnualRenewalPrice,
+            IsFirstSubscriptionFree = !await HasAnyPreviousSubscriptionAsync(storeId),
             // متاحة في كل الباقات ما عدا المجانية، وبشرط أن تكون مفعّلة على الباقة.
             IsAvailable = package != null && package.HasMobileApp && !IsFreePackage(package)
         };
@@ -276,9 +290,6 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         if (!package.HasMobileApp)
             throw new InvalidOperationException("خدمة صناعة تطبيقات الجوال غير متاحة في باقتك الحالية");
 
-        if (package.MobileAppMonthlyPrice <= 0m)
-            throw new InvalidOperationException("لم يُحدَّد سعر اشتراك التطبيق بعد. يرجى التواصل مع الدعم");
-
         // منع فتح أكثر من اشتراك نشط أو قيد الدفع في الوقت نفسه.
         var hasActiveOrPending = await _context.StoreAppSubscriptions
             .AnyAsync(s => s.StoreId == storeId &&
@@ -286,34 +297,50 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         if (hasActiveOrPending)
             throw new InvalidOperationException("لديك اشتراك قائم أو طلب قيد الدفع في خدمة تطبيقات الجوال");
 
-        if (!Enum.TryParse<BillingCycle>(dto.BillingCycle, true, out var cycle))
-            cycle = BillingCycle.Monthly;
-
         var accountType = string.IsNullOrWhiteSpace(dto.DeveloperAccountType)
             ? "Company"
             : dto.DeveloperAccountType.Trim();
         if (accountType != "Company" && accountType != "Platform")
             accountType = "Company";
 
-        var total = GetTotalPrice(package.MobileAppMonthlyPrice, cycle);
+        // ── النموذج الجديد ──
+        // الاشتراك الأول للمتجر: مجاني تمامًا ويُفعَّل فورًا بلا دفع، ولا يبدأ عدّاد
+        // التجديد إلا عند تسليم النسخة (Publish). الاشتراكات التالية (التجديد):
+        // سنوية بسعر ثابت = 300 ر.س وتتطلّب الدفع عبر مسار الدفع الإلكتروني.
+        var isFirstSubscription = !await HasAnyPreviousSubscriptionAsync(storeId);
 
         var subscription = new StoreAppSubscription
         {
             StoreId = storeId,
             PackageId = package.Id,
             StartDate = DateTime.UtcNow,
-            EndDate = DateTime.UtcNow.AddMonths(GetBillingMonths(cycle)),
-            BillingCycle = cycle,
-            Status = SubscriptionStatus.Pending,
-            PaymentStatus = "Pending",
-            DueAmount = total,
-            AutoRenew = true,
+            // الاشتراك المجاني يبدأ دورته السنوية فعليًا عند النشر؛ نحفظ هنا تاريخًا
+            // تقديريًا للمرحلة الأولى فقط، ثم يُضبط بدقة في PublishAsync.
+            EndDate = DateTime.UtcNow.AddMonths(RenewalPeriodMonths),
+            BillingCycle = BillingCycle.Yearly,
             AppName = Trim(dto.AppName, 200),
             DeveloperAccountType = accountType,
             DeveloperAccountInfo = Trim(dto.DeveloperAccountInfo, 1000),
             MerchantNotes = Trim(dto.MerchantNotes, 1000),
             PublishStatus = "Draft"
         };
+
+        if (isFirstSubscription)
+        {
+            // أول اشتراك: مجاني — يُفعَّل مباشرةً بلا مبلغ مستحق.
+            subscription.Status = SubscriptionStatus.Active;
+            subscription.PaymentStatus = "Paid";
+            subscription.DueAmount = 0m;
+            subscription.AutoRenew = true;
+        }
+        else
+        {
+            // تجديد سنوي مدفوع = 300 ر.س.
+            subscription.Status = SubscriptionStatus.Pending;
+            subscription.PaymentStatus = "Pending";
+            subscription.DueAmount = AnnualRenewalPrice;
+            subscription.AutoRenew = true;
+        }
 
         _context.StoreAppSubscriptions.Add(subscription);
         await _context.SaveChangesAsync();
@@ -326,10 +353,16 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
                 .ToListAsync();
             foreach (var adminId in adminIds)
             {
+                var title = isFirstSubscription
+                    ? "اشتراك جديد في صناعة تطبيقات الجوال"
+                    : "طلب تجديد اشتراك صناعة تطبيقات الجوال";
+                var body = isFirstSubscription
+                    ? $"تقدّم متجر \"{store.StoreName}\" بطلب اشتراك في صناعة تطبيقات الجوال (أول مرة — مجانًا)."
+                    : $"تقدّم متجر \"{store.StoreName}\" بطلب تجديد اشتراك صناعة تطبيقات الجوال بقيمة {AnnualRenewalPrice:0.##} ر.س.";
                 await _notificationService.CreateAsync(
                     adminId,
-                    "طلب اشتراك في صناعة تطبيقات الجوال",
-                    $"تقدّم متجر \"{store.StoreName}\" بطلب اشتراك في صناعة تطبيقات الجوال بقيمة {total:0.##} ر.س.",
+                    title,
+                    body,
                     NotificationType.General,
                     "/dashboard/app-subscriptions");
             }
@@ -366,8 +399,15 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
 
         subscription.Status = SubscriptionStatus.Active;
         subscription.StartDate = DateTime.UtcNow;
-        subscription.EndDate = DateTime.UtcNow.AddMonths(GetBillingMonths(subscription.BillingCycle));
+        // التجديد دائمًا سنوي (12 شهرًا). إن كانت النسخة لم تُسلَّم بعد فلا يبدأ
+        // العدّاد الحقيقي إلا عند النشر (PublishAsync). عند التجديد بعد التسليم
+        // (PublishedAt موجود) نحسب السنة من تاريخ النشر + سنة.
+        subscription.EndDate = subscription.PublishedAt.HasValue
+            ? subscription.PublishedAt.Value.AddMonths(RenewalPeriodMonths)
+            : DateTime.UtcNow.AddMonths(RenewalPeriodMonths);
+        subscription.BillingCycle = BillingCycle.Yearly;
         subscription.PaymentStatus = "Paid";
+        subscription.DueAmount = 0m;
         subscription.AutoRenew = true;
         subscription.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -398,6 +438,43 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
         active.AutoRenew = false;
         active.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+    }
+
+    // ── بوابة التطبيق المولَّد ──
+    // التطبيق المولَّد يصل للباك إند عبر /api/v1/public/stores/{slug}/...
+    // نمنح الوصول فقط إذا: (1) المتجر موجود (2) له اشتراك تطبيقات نشط
+    // (3) سُلِّمت له النسخة (PublishedAt) (4) لم تنتهِ السنة السنوية بعد.
+    // إن لم يكن هناك أي اشتراك تطبيقات للمتجر ⇒ لا نمنع (المتجر قد لا يستعمل التطبيق).
+    public async Task<bool> IsAppAccessAllowedAsync(string storeSlug)
+    {
+        if (string.IsNullOrWhiteSpace(storeSlug)) return true;
+
+        var storeId = await _context.Stores
+            .AsNoTracking()
+            .Where(s => s.StoreSlug == storeSlug)
+            .Select(s => (long?)s.Id)
+            .FirstOrDefaultAsync();
+        if (storeId == null) return true;
+
+        var latest = await _context.StoreAppSubscriptions
+            .AsNoTracking()
+            .Where(s => s.StoreId == storeId.Value)
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync();
+        // لا يوجد اشتراك تطبيقات أصلًا ⇒ لا علاقة لهذه البوابة (لا نمنع المتجر).
+        if (latest == null) return true;
+
+        // لا تُقيَّد إلا بعد تسليم نسخة (عدّاد السنة بدأ).
+        if (!latest.PublishedAt.HasValue) return true;
+
+        // اشتراك ملغى/منتهي صراحةً ⇒ منع.
+        if (latest.Status == SubscriptionStatus.Cancelled || latest.Status == SubscriptionStatus.Expired)
+            return false;
+
+        // انتهت السنة بلا تجديد ⇒ منع.
+        if (latest.EndDate < DateTime.UtcNow) return false;
+
+        return true;
     }
 
     // ── صمّم: حفظ تصميم التطبيق ──
@@ -820,6 +897,10 @@ public class MobileAppSubscriptionService : IMobileAppSubscriptionService
 
         sub.PublishStatus = "Published";
         sub.PublishedAt = DateTime.UtcNow;
+        // ── بداية العدّاد السنوي للتجديد ──
+        // يبدأ العدّاد من لحظة تسليم النسخة، ولو لم يُجدَّد بعد سنة يتوقف التطبيق.
+        sub.EndDate = DateTime.UtcNow.AddMonths(RenewalPeriodMonths);
+        sub.BillingCycle = BillingCycle.Yearly;
         sub.AppStoreUrl = appStoreUrl;
         sub.GooglePlayUrl = playUrl;
         sub.AdminReviewNote = Trim(dto.Note, 500);

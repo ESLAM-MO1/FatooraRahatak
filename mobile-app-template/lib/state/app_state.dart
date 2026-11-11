@@ -14,6 +14,10 @@ class AppState extends ChangeNotifier {
   bool loading = true;
   String? error;
 
+  /// يُضبط عندما يردّ الباك إند بأن اشتراك التطبيق منتهٍ (HTTP 402)،
+  /// فتعرض الواجهة شاشة تجديد تمنع الاستخدام حتى التجديد.
+  bool subscriptionExpired = false;
+
   int? selectedCategory;
 
   Future<void> init() async {
@@ -29,6 +33,9 @@ class AppState extends ChangeNotifier {
       store = results[0] as StoreInfo;
       categories = results[1] as List<Category>;
       products = results[2] as List<Product>;
+    } on AppSubscriptionExpiredException catch (e) {
+      subscriptionExpired = true;
+      error = e.message;
     } catch (e) {
       error = e.toString();
     } finally {

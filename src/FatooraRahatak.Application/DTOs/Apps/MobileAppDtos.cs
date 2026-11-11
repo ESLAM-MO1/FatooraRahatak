@@ -22,6 +22,10 @@ public class MobileAppSubscriptionDto
     public decimal DueAmount { get; set; }
     public decimal MonthlyPrice { get; set; }
     public decimal YearlyPrice { get; set; }
+    // سعر التجديد السنوي الثابت (300 ر.س) — يُطبَّق بعد انتهاء السنة الأولى المجانية.
+    public decimal RenewalPrice { get; set; }
+    // هل هذا الاشتراك الأول للمتجر (مجاني)؟ أم تجديد (مدفوع)؟
+    public bool IsFirstSubscriptionFree { get; set; }
     public bool IsAvailable { get; set; }
     public bool AutoRenew { get; set; }
     public string? AppName { get; set; }

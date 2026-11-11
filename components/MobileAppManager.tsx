@@ -63,6 +63,8 @@ interface MobileAppStatus {
   dueAmount: number;
   monthlyPrice: number;
   yearlyPrice: number;
+  renewalPrice: number;
+  isFirstSubscriptionFree: boolean;
   isAvailable: boolean;
   autoRenew: boolean;
   appName: string | null;
@@ -159,7 +161,7 @@ export default function MobileAppManager() {
   const [savingDesign, setSavingDesign] = useState(false);
 
   // نموذج الاشتراك
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>("Monthly");
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>("Yearly");
   const [devAccountType, setDevAccountType] = useState<"Company" | "Platform">("Company");
   const [devAccountInfo, setDevAccountInfo] = useState("");
   const [notes, setNotes] = useState("");
@@ -457,8 +459,14 @@ export default function MobileAppManager() {
       });
       const d = res.data.data as MobileAppStatus;
       setStatus(d);
-      setSuccess(t("mobileApp.paymentPendingMsg"));
-      if (d.id) openPaymentModal(d.id, d.dueAmount);
+      // الاشتراك الأول مجاني (المبلغ 0) ⇒ يُفعَّل مباشرةً بلا دفع.
+      // التجديد فقط (بمبلغ > 0) يتطلّب فتح نافذة الدفع.
+      if (d.dueAmount > 0 && d.id) {
+        setSuccess(t("mobileApp.paymentPendingMsg"));
+        openPaymentModal(d.id, d.dueAmount);
+      } else {
+        setSuccess(t("mobileApp.freeActivatedMsg"));
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || t("mobileApp.loadError"));
     } finally {
@@ -638,7 +646,7 @@ export default function MobileAppManager() {
           <p className="text-[15px] font-bold text-[var(--ink)]">
             {isActive && status?.daysRemaining != null
               ? `${status.daysRemaining} ${t("mobileApp.daysSuffix")}`
-              : `${formatMoney(status?.monthlyPrice || 0)} ${t("common.currency")} ${t("mobileApp.perMonth")}`}
+              : `${formatMoney(status?.renewalPrice ?? 300)} ${t("common.currency")} ${t("mobileApp.perYear")}`}
           </p>
         </div>
       </div>
@@ -915,27 +923,20 @@ function SubscribeStep(props: any) {
       <FeatureList t={t} />
 
       <form onSubmit={onSubmit} className="space-y-4 mt-6 border-t border-gray-100 pt-5">
-        <div>
-          <label className="text-[12.5px] font-bold text-[var(--ink)] mb-1.5 block">{t("mobileApp.billingCycle")}</label>
-          <div className="flex gap-3">
-            {(["Monthly", "Yearly"] as BillingCycle[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setBillingCycle(c)}
-                className={`flex-1 rounded-xl border-2 p-3 text-center transition-colors ${
-                  billingCycle === c ? "border-[var(--blue)] bg-[var(--blue-50)]" : "border-gray-200"
-                }`}
-              >
-                <span className="block text-[13px] font-bold text-[var(--ink)]">
-                  {c === "Yearly" ? t("mobileApp.billingYearly") : t("mobileApp.billingMonthly")}
-                </span>
-                <span className="block text-[12px] text-[var(--sub)] mt-0.5">
-                  {formatMoney(c === "Yearly" ? (status?.yearlyPrice || 0) : (status?.monthlyPrice || 0))} {t("common.currency")}
-                </span>
-              </button>
-            ))}
-          </div>
+        <div className="rounded-xl border border-[var(--border)] p-4">
+          {status?.isFirstSubscriptionFree ? (
+            <>
+              <p className="text-[13px] font-extrabold text-[var(--ink)] mb-1">{t("mobileApp.firstFreeTitle")}</p>
+              <p className="text-[12px] text-[var(--sub)]">{t("mobileApp.firstFreeDesc")}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px] font-extrabold text-[var(--ink)] mb-1">{t("mobileApp.renewalTitle")}</p>
+              <p className="text-[12px] text-[var(--sub)]">
+                {t("mobileApp.renewalDesc").replace("{price}", formatMoney(status?.renewalPrice ?? 300))}
+              </p>
+            </>
+          )}
         </div>
 
         <div>

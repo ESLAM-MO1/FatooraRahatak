@@ -1,0 +1,116 @@
+using FatooraRahatak.Application.Interfaces;
+using FatooraRahatak.Domain.Enums;
+using FatooraRahatak.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace FatooraRahatak.API.BackgroundServices;
+
+/// <summary>
+/// معالجة انتهاء اشتراكات "صناعة تطبيقات الجوال":
+/// بعد سنة من تسليم النسخة (PublishedAt) بلا تجديد ⇒ يُعلَّم الاشتراك كمنتهٍ
+/// (Status=Expired) ويتوقف التطبيق المولَّد عن الباك إند تلقائيًا (عبر بوابة
+/// IsAppAccessAllowedAsync)، ويُرسل إشعار للتاجر لتجديد الاشتراك (300 ر.س سنويًا).
+/// </summary>
+public class MobileAppExpiryBackgroundService : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<MobileAppExpiryBackgroundService> _logger;
+
+    public MobileAppExpiryBackgroundService(IServiceScopeFactory scopeFactory, ILogger<MobileAppExpiryBackgroundService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await RunCycleAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "فشلت دورة فحص انتهاء اشتراكات تطبيقات الجوال");
+            }
+
+            await Task.Delay(TimeSpan.FromHours(6), stoppingToken);
+        }
+    }
+
+    private async Task RunCycleAsync(CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var notifications = scope.ServiceProvider.GetRequiredService<INotificationService>();
+        var changed = false;
+
+        // اشتراكات تطبيقات نشطة انتهت مدتها (بعد تسليم نسخة) ⇒ منتهية.
+        var expired = await db.StoreAppSubscriptions
+            .Include(s => s.Store)
+            .Where(s => s.Status == SubscriptionStatus.Active
+                        && s.PublishedAt != null
+                        && s.EndDate < now)
+            .ToListAsync(ct);
+
+        foreach (var sub in expired)
+        {
+            sub.Status = SubscriptionStatus.Expired;
+            sub.UpdatedAt = now;
+            changed = true;
+
+            try
+            {
+                if (sub.Store != null)
+                {
+                    await notifications.CreateAsync(
+                        sub.Store.OwnerUserId,
+                        "انتهى اشتراك تطبيق الجوال",
+                        "انتهى اشتراك تطبيق الجوال ولم يتم تجديده، فتوقف التطبيق عن العمل مؤقتًا. جدّد الاشتراك (300 ر.س سنويًا) لإعادة تشغيله.",
+                        NotificationType.SubscriptionExpired,
+                        "/dashboard/store-settings?tab=mobileApp");
+                }
+            }
+            catch { }
+        }
+
+        // تنبيه قبل الانتهاء بـ 14 يومًا — يُرسل مرة واحدة فقط لكل اشتراك،
+        // نرصده عبر وسم في AdminNote لتفادي التكرار كل دورة فحص.
+        var soon = await db.StoreAppSubscriptions
+            .Include(s => s.Store)
+            .Where(s => s.Status == SubscriptionStatus.Active
+                        && s.PublishedAt != null
+                        && s.EndDate >= now
+                        && s.EndDate < now.AddDays(14)
+                        && (s.AdminNote == null || !s.AdminNote.Contains("[renewal-reminded]")))
+            .ToListAsync(ct);
+
+        foreach (var sub in soon)
+        {
+            sub.AdminNote = string.IsNullOrWhiteSpace(sub.AdminNote)
+                ? "[renewal-reminded]"
+                : sub.AdminNote + " [renewal-reminded]";
+            sub.UpdatedAt = now;
+            changed = true;
+            try
+            {
+                if (sub.Store != null)
+                {
+                    await notifications.CreateAsync(
+                        sub.Store.OwnerUserId,
+                        "اشتراك تطبيق الجوال على وشك الانتهاء",
+                        $"ينتهي اشتراك تطبيق الجوال في {sub.EndDate:yyyy-MM-dd}. جدّده (300 ر.س سنويًا) لتفادي توقف التطبيق.",
+                        NotificationType.SubscriptionExpiring,
+                        "/dashboard/store-settings?tab=mobileApp");
+                }
+            }
+            catch { }
+        }
+
+        if (changed)
+            await db.SaveChangesAsync(ct);
+    }
+}

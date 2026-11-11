@@ -6,6 +6,7 @@ import "@/lib/i18n/config";
 import api from "@/lib/api";
 import Icon from "@/components/Icon";
 import Can from "@/components/Can";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { formatMoney } from "@/lib/formatNumber";
 import AppDesigner, {
   type AppDesign,
@@ -151,6 +152,7 @@ type StepId = "design" | "subscribe" | "launch";
 
 export default function MobileAppManager() {
   const { t } = useTranslation();
+  const confirm = useConfirm();
   const [status, setStatus] = useState<MobileAppStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -477,7 +479,18 @@ export default function MobileAppManager() {
   };
 
   const handleCancel = async () => {
-    if (!window.confirm(t("mobileApp.cancelConfirm"))) return;
+    // رسالة توضّح بالضبط تأثير الإلغاء بحسب حالة التطبيق.
+    const isPublishedApp = status?.publishStatus === "Published";
+    const ok = await confirm({
+      title: t("mobileApp.cancelTitle"),
+      message: isPublishedApp
+        ? t("mobileApp.cancelConfirmPublished")
+        : t("mobileApp.cancelConfirmDraft"),
+      confirmLabel: t("mobileApp.cancelConfirmBtn"),
+      cancelLabel: t("mobileApp.cancelKeepBtn"),
+      danger: true,
+    });
+    if (!ok) return;
     setError("");
     setSuccess("");
     setCancelling(true);
